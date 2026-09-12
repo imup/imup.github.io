@@ -630,9 +630,7 @@
         background: rgba(255, 255, 255, 0.08);
       }
 
-      /* ============================================================
-       * AI 助手页面
-       * ============================================================ */
+      /* AI 助手页面 */
       .ai-page {
         position: relative;
         display: flex;
@@ -643,7 +641,7 @@
         overflow: hidden;
       }
 
-      /* 清除按钮：无底色 */
+      /* 清除按钮 */
       .ai-clear-btn {
         position: absolute;
         top: clamp(8px, 2vw, 14px);
@@ -657,7 +655,7 @@
         background: transparent;
         border: none;
         color: inherit;
-        font-size: 26px;
+        font-size: 32px;
         font-weight: 300;
         line-height: 1;
         display: flex;
@@ -884,7 +882,9 @@
         line-height: 1;
         cursor: pointer;
         border: none;
-        transition: background 0.15s, color 0.15s;
+        transition:
+          background 0.15s,
+          color 0.15s;
         flex: 0 0 auto;
       }
       .ai-model-item .ai-key:hover {
@@ -1092,17 +1092,13 @@
         var THEME_KEY = "p5_theme";
         var MAX_IMAGE_BYTES = 1.5 * 1024 * 1024;
 
-        /* ============================================================
-         * 【重要】p5 脚本文件夹配置
-         * ============================================================ */
+        /* p5脚本文件夹配置 */
         var P5_DIR = "p5/";
         var P5_CDN =
           "https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js";
         var P5_FILES = ["sketch1.js", "sketch2.js", "sketch3.js"];
 
-        /* ============================================================
-         * AI 助手配置
-         * ============================================================ */
+        /* AI 助手配置 */
         var AI_KEY_STORAGE = "p5_ai_keys";
         var AI_CHAT_STORAGE = "p5_ai_chats";
         var AI_PROMPT_STORAGE = "p5_ai_prompts";
@@ -1130,10 +1126,10 @@
         ];
 
         var aiState = {
-          currentModel: null, // 默认不选择模型
+          currentModel: null,
           keys: {},
           chats: {},
-          prompts: {}, // 每个模型的系统提示词
+          prompts: {},
           busy: false,
         };
 
@@ -1172,7 +1168,10 @@
         }
         function saveAIChats() {
           try {
-            localStorage.setItem(AI_CHAT_STORAGE, JSON.stringify(aiState.chats));
+            localStorage.setItem(
+              AI_CHAT_STORAGE,
+              JSON.stringify(aiState.chats),
+            );
           } catch (e) {}
         }
         function loadAIPrompts() {
@@ -1537,9 +1536,7 @@
         var sidebarSearchKeyword = "";
         var appEl;
 
-        /* ============================================================
-         * 首页运行器状态
-         * ============================================================ */
+        /* 首页运行器 */
         var runner = { mode: "random", pageId: null };
         var currentRandomFile = null;
 
@@ -1787,7 +1784,7 @@
           appEl.style.overflow = "";
         }
 
-        /* ---------------- 首页运行器 ---------------- */
+        /* 首页运行器 */
 
         function renderRunner() {
           destroyEditor();
@@ -1819,7 +1816,7 @@
               var wrap = document.createElement("div");
               wrap.innerHTML =
                 "<h1>还没有可运行的 p5 脚本</h1>" +
-                "<p>请把 .js 脚本放进与本页面同级的 <code>" +
+                "<p>请把脚本放进与本页面同级的 <code>" +
                 P5_DIR +
                 "</code> 文件夹，" +
                 "并在页面代码顶部的 <code>P5_FILES</code> 数组里写上文件名。</p>";
@@ -1970,14 +1967,14 @@
             "<h1>关于</h1>" +
             "<p>纯前端工具，基于localStorage存储，无需后端。</p>" +
             "<p>使用CodeMirror实现代码高亮，支持亮色 / 暗色主题。</p>" +
-            "<p>所有脚本均可导出为ZIP包，也可单独下载为 HTML。</p>" +
+            "<p>所有脚本均可导出为ZIP包，也可单独下载为HTML。</p>" +
             "<p>首页会从 <code>" +
             P5_DIR +
-            "</code> 文件夹中随机运行一个 p5 脚本；" +
+            "</code> 文件夹中随机运行一个p5脚本；" +
             "点击侧边栏中的脚本名即可直接运行该脚本，再点一次仍然运行该脚本；" +
             "点击“首页”“关于”“编写脚本”等其它导航项会回到随机状态。</p>" +
-            "<p>AI 助手支持 ChatGPT / Gemini / DeepSeek 流式输出，" +
-            "每个模型可单独设置 API Key 与系统提示词，可下载对话为 Markdown。</p>";
+            "<p>AI助手支持 ChatGPT / Gemini / DeepSeek流式输出，" +
+            "每个模型可单独设置API Key与系统提示词，可下载对话为Markdown </p>";
           return wrap;
         }
         function renderGenerator() {
@@ -2145,9 +2142,7 @@
           });
         }
 
-        /* ============================================================
-         * AI 助手 —— 页面渲染
-         * ============================================================ */
+        /* AI 助手 —— 页面渲染 */
         function renderAIAssistant() {
           var wrap = document.createElement("div");
           wrap.className = "ai-page";
@@ -2185,7 +2180,7 @@
             name.className = "ai-model-name";
             name.textContent = m.name;
 
-            /* 系统提示词按钮（🎭） */
+            /* 系统提示词按钮 */
             var promptBtn = document.createElement("button");
             promptBtn.className = "ai-prompt";
             promptBtn.type = "button";
@@ -2196,7 +2191,7 @@
               promptBtn.classList.add("has-prompt");
             }
 
-            /* API Key 按钮（🔑） */
+            /* API Key 按钮 */
             var keyBtn = document.createElement("button");
             keyBtn.className = "ai-key";
             keyBtn.type = "button";
@@ -2204,7 +2199,7 @@
             keyBtn.textContent = "🔑";
             keyBtn.dataset.key = m.id;
 
-            /* 下载按钮（⬇） */
+            /* 下载按钮 */
             var dl = document.createElement("button");
             dl.className = "ai-dl";
             dl.type = "button";
@@ -2314,7 +2309,7 @@
           return last.querySelector(".bubble");
         }
 
-        /* ---------------- AI 助手 —— 流式请求 ---------------- */
+        /* AI 助手 — 流式请求 */
 
         function streamAI(model, key, messages, systemPrompt, onDelta) {
           var conf = aiModelConf(model);
@@ -2435,7 +2430,7 @@
           });
         }
 
-        /* ---------------- AI 助手 —— 交互 ---------------- */
+        /* AI 助手 — 交互 */
 
         /** 弹出 API Key 输入框（密码输入，加密显示） */
         function promptAPIKey(model, onSaved) {
@@ -2461,7 +2456,7 @@
               "留空则不发送。Ctrl / Cmd + Enter 可快速保存。",
             value: existing,
             placeholder:
-              "例如：你是一位擅长 p5.js 生成艺术的助手，回答简洁专业，代码附注释。",
+              "例如：你是一位擅长p5.js生成艺术的助手，回答简洁专业，代码附注释。",
             onOk: function (v) {
               aiState.prompts[model] = v.trim();
               saveAIPrompts();
@@ -2599,8 +2594,7 @@
                 pushDelta(t);
               }
             } else {
-              var d =
-                obj.choices && obj.choices[0] && obj.choices[0].delta;
+              var d = obj.choices && obj.choices[0] && obj.choices[0].delta;
               if (d && d.content) pushDelta(d.content);
             }
           };
@@ -2750,7 +2744,7 @@
           }
         }
 
-        /* ---------------- 路由渲染 ---------------- */
+        /* 路由渲染 */
 
         function render() {
           var path = getRoute();
@@ -2763,13 +2757,13 @@
             }
           }
 
-          /* 首页 = 全屏 p5 运行器 */
+          /* 首页 = 全屏p5运行器 */
           if (path === "/" || path === "" || path === "/index.html") {
             renderRunner();
             return;
           }
 
-          /* 离开首页：解除全屏锁定，移除 AI 模式 */
+          /* 离开首页：解除全屏锁定，移除AI模式 */
           if (appEl.classList.contains("preview-mode")) {
             appEl.classList.remove("preview-mode");
           }
@@ -2870,7 +2864,7 @@
             { passive: false },
           );
 
-          /* 点击页面空白处关闭 AI 模型菜单 */
+          /* 点击页面空白处关闭AI模型菜单 */
           document.addEventListener("click", function (e) {
             var menu = $("#aiModelMenu");
             if (!menu || !menu.classList.contains("show")) return;
