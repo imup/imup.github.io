@@ -383,6 +383,20 @@
         background: #fff;
       }
 
+      /* AI 页面全屏最大化 */
+      #app.ai-mode {
+        padding: 0;
+        max-width: none;
+        height: 100vh;
+        height: 100dvh;
+        min-height: 0;
+        overflow: hidden;
+      }
+      #app.ai-mode > div {
+        max-width: none;
+        margin: 0;
+      }
+
       #app h1 {
         font-size: clamp(1.35rem, 4.5vw, 1.9rem);
         margin: 0 0 0.6em;
@@ -563,73 +577,64 @@
       }
 
       /* ============================================================
-       * AI 助手页面
+       * AI 助手页面（全屏 / 底部浮动输入栏 / + 号选模型 / - 号清除）
        * ============================================================ */
       .ai-page {
+        position: relative;
         display: flex;
         flex-direction: column;
-        height: calc(100vh - 140px);
-        height: calc(100dvh - 140px);
-        min-height: 340px;
+        height: 100vh;
+        height: 100dvh;
+        width: 100%;
+        overflow: hidden;
       }
-      .ai-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 10px;
-        gap: 10px;
-      }
-      .ai-header h1 {
-        margin: 0;
-        font-size: clamp(1.2rem, 4vw, 1.6rem);
-      }
+
       .ai-clear-btn {
-        background: transparent;
-        color: inherit;
-        border: 1px solid var(--line-light);
-        width: 36px;
-        height: 36px;
-        min-width: 36px;
-        border-radius: 50%;
-        font-size: 22px;
-        font-weight: bold;
-        line-height: 1;
+        position: absolute;
+        top: clamp(8px, 2vw, 14px);
+        right: clamp(10px, 3vw, 18px);
+        z-index: 60;
+        width: 38px;
+        height: 38px;
+        min-width: 38px;
         padding: 0;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.08);
+        color: inherit;
+        border: none;
+        font-size: 24px;
+        font-weight: 700;
+        line-height: 1;
         display: flex;
         align-items: center;
         justify-content: center;
         cursor: pointer;
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
         transition:
           background 0.15s,
-          border-color 0.15s,
-          color 0.15s;
-      }
-      body.dark-mode .ai-clear-btn {
-        border-color: var(--line-dark);
+          color 0.15s,
+          transform 0.15s;
       }
       .ai-clear-btn:hover {
-        background: var(--hover-light);
-        border-color: #d9534f;
+        background: rgba(217, 83, 79, 0.18);
         color: #d9534f;
+        transform: scale(1.06);
+      }
+      body.dark-mode .ai-clear-btn {
+        background: rgba(255, 255, 255, 0.12);
       }
       body.dark-mode .ai-clear-btn:hover {
-        background: var(--hover-dark);
+        background: rgba(217, 83, 79, 0.25);
       }
 
       .ai-messages {
-        flex: 1;
+        flex: 1 1 auto;
         min-height: 0;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
-        border: 1px solid var(--line-light);
-        border-radius: 10px;
-        padding: 12px;
-        background: rgba(0, 0, 0, 0.02);
-        margin-bottom: 10px;
-      }
-      body.dark-mode .ai-messages {
-        border-color: var(--line-dark);
-        background: rgba(255, 255, 255, 0.03);
+        padding: 64px 14px 16px;
+        scroll-behavior: smooth;
       }
       .ai-msg {
         margin-bottom: 12px;
@@ -642,9 +647,9 @@
         justify-content: flex-end;
       }
       .ai-msg .bubble {
-        max-width: 82%;
-        padding: 8px 12px;
-        border-radius: 12px;
+        max-width: 84%;
+        padding: 9px 13px;
+        border-radius: 16px;
         white-space: pre-wrap;
         word-break: break-word;
         line-height: 1.55;
@@ -653,12 +658,12 @@
       .ai-msg.user .bubble {
         background: #007bff;
         color: #fff;
-        border-bottom-right-radius: 3px;
+        border-bottom-right-radius: 4px;
       }
       .ai-msg.assistant .bubble {
         background: #e9ecef;
         color: #222;
-        border-bottom-left-radius: 3px;
+        border-bottom-left-radius: 4px;
       }
       body.dark-mode .ai-msg.assistant .bubble {
         background: #3a3a3a;
@@ -671,47 +676,101 @@
       .ai-empty {
         color: #999;
         text-align: center;
-        padding: 36px 10px;
-        font-size: 0.9rem;
-        line-height: 1.7;
+        padding: 48px 12px;
+        font-size: 0.92rem;
+        line-height: 1.8;
       }
       body.dark-mode .ai-empty {
         color: #888;
       }
 
+      /* 底部浮动输入区 */
+      .ai-input-wrap {
+        flex: 0 0 auto;
+        padding: 10px 12px calc(12px + env(safe-area-inset-bottom));
+        background: linear-gradient(
+          to top,
+          var(--surface-light) 62%,
+          rgba(255, 255, 255, 0)
+        );
+        pointer-events: none;
+      }
+      body.dark-mode .ai-input-wrap {
+        background: linear-gradient(
+          to top,
+          var(--surface-dark) 62%,
+          rgba(45, 45, 45, 0)
+        );
+      }
+
       .ai-input-bar {
         display: flex;
-        gap: 8px;
         align-items: flex-end;
-        flex-wrap: nowrap;
+        gap: 6px;
+        width: 100%;
+        max-width: 940px;
+        margin: 0 auto;
+        background: var(--surface-light);
+        border: 1px solid var(--line-light);
+        border-radius: 26px;
+        padding: 6px;
+        box-shadow: 0 8px 26px rgba(0, 0, 0, 0.16);
+        pointer-events: auto;
+        transition:
+          background 0.3s,
+          border-color 0.3s;
       }
+      body.dark-mode .ai-input-bar {
+        background: var(--surface-dark);
+        border-color: var(--line-dark);
+        box-shadow: 0 8px 26px rgba(0, 0, 0, 0.55);
+      }
+
       .ai-model-picker {
         position: relative;
         flex: 0 0 auto;
       }
       .ai-model-btn {
-        background: #6c757d;
-        color: #fff;
-        padding: 11px 12px;
-        border-radius: 8px;
-        white-space: nowrap;
-        font-size: 0.88rem;
-        line-height: 1.1;
+        width: 38px;
+        height: 38px;
+        min-width: 38px;
+        padding: 0;
+        border-radius: 50%;
+        background: transparent;
+        color: inherit;
+        border: none;
+        font-size: 24px;
+        font-weight: 400;
+        line-height: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition:
+          background 0.15s,
+          transform 0.15s;
       }
       .ai-model-btn:hover {
-        background: #5a6268;
+        background: var(--hover-light);
       }
+      body.dark-mode .ai-model-btn:hover {
+        background: var(--hover-dark);
+      }
+      .ai-model-btn:active {
+        transform: scale(0.94);
+      }
+
       .ai-model-menu {
         display: none;
         position: absolute;
-        bottom: calc(100% + 6px);
+        bottom: calc(100% + 10px);
         left: 0;
         background: #fff;
         color: #222;
         border: 1px solid #ccc;
-        border-radius: 8px;
-        box-shadow: 0 8px 26px rgba(0, 0, 0, 0.3);
-        min-width: 210px;
+        border-radius: 12px;
+        box-shadow: 0 12px 34px rgba(0, 0, 0, 0.32);
+        min-width: 220px;
         z-index: 500;
         overflow: hidden;
       }
@@ -726,10 +785,10 @@
       .ai-model-item {
         display: flex;
         align-items: center;
-        padding: 10px 10px;
+        padding: 11px 12px;
         cursor: pointer;
         gap: 8px;
-        font-size: 0.92rem;
+        font-size: 0.93rem;
         user-select: none;
       }
       .ai-model-item:hover {
@@ -760,56 +819,73 @@
       .ai-model-item .ai-dl {
         background: transparent;
         color: #888;
-        padding: 2px 7px;
-        border-radius: 4px;
+        padding: 3px 7px;
+        border-radius: 6px;
         font-size: 1rem;
         line-height: 1;
         cursor: pointer;
+        border: none;
       }
       .ai-model-item .ai-dl:hover {
         background: rgba(0, 0, 0, 0.08);
         color: #007bff;
       }
       body.dark-mode .ai-model-item .ai-dl:hover {
-        background: rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.14);
       }
 
       .ai-input-bar textarea {
         flex: 1 1 auto;
         min-width: 0;
         resize: none;
-        min-height: 44px;
+        border: none;
+        outline: none;
+        background: transparent;
+        color: inherit;
+        min-height: 38px;
         max-height: 140px;
-        padding: 11px 12px;
-        border: 1px solid #ccc;
-        border-radius: 8px;
+        padding: 9px 6px;
         font-family: inherit;
         font-size: 16px;
-        line-height: 1.4;
-        outline: none;
-        transition: border-color 0.15s;
+        line-height: 1.45;
+        overflow-y: auto;
       }
-      .ai-input-bar textarea:focus {
-        border-color: #007bff;
+      .ai-input-bar textarea::placeholder {
+        color: #9aa0a6;
       }
-      body.dark-mode .ai-input-bar textarea {
-        background: #3a3a3a;
-        color: #ddd;
-        border-color: #555;
-      }
-      body.dark-mode .ai-input-bar textarea:focus {
-        border-color: #4da3ff;
+      body.dark-mode .ai-input-bar textarea::placeholder {
+        color: #8a8a8a;
       }
 
       .ai-send-btn {
         flex: 0 0 auto;
+        width: 38px;
+        height: 38px;
+        min-width: 38px;
+        padding: 0;
+        border-radius: 50%;
         background: #007bff;
-        padding: 11px 16px;
-        border-radius: 8px;
-        white-space: nowrap;
+        color: #fff;
+        border: none;
+        font-size: 18px;
+        font-weight: bold;
+        line-height: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition:
+          background 0.15s,
+          transform 0.15s;
+      }
+      .ai-send-btn:hover {
+        background: #0056b3;
+      }
+      .ai-send-btn:active {
+        transform: scale(0.94);
       }
       .ai-send-btn:disabled {
-        opacity: 0.55;
+        opacity: 0.5;
         cursor: not-allowed;
       }
 
@@ -824,25 +900,19 @@
           font-size: 0.82rem;
           padding: 10px 6px;
         }
-        .ai-model-btn {
-          padding: 11px 9px;
-          font-size: 0.82rem;
-        }
-        .ai-send-btn {
-          padding: 11px 12px;
-          font-size: 0.9rem;
+        .ai-clear-btn {
+          width: 34px;
+          height: 34px;
+          min-width: 34px;
+          font-size: 22px;
         }
       }
       @media (max-height: 480px) {
-        #app {
-          padding-top: 52px;
-          padding-bottom: 20px;
-        }
         .form-group .CodeMirror {
           height: 140px !important;
         }
-        .ai-page {
-          height: calc(100dvh - 90px);
+        .ai-messages {
+          padding-top: 54px;
         }
       }
     </style>
@@ -1286,8 +1356,6 @@
 
         /* ============================================================
          * 首页运行器状态
-         *   mode === "random"  -> 随机运行 p5/ 文件夹里的脚本
-         *   mode === "page"    -> 运行 localStorage 中指定的作品
          * ============================================================ */
         var runner = { mode: "random", pageId: null };
         var currentRandomFile = null;
@@ -1542,6 +1610,7 @@
           destroyEditor();
           appEl.replaceChildren();
           appEl.classList.remove("preview-mode");
+          appEl.classList.remove("ai-mode");
           setActiveNav("/");
 
           var html = null;
@@ -1554,7 +1623,6 @@
               html = page.html;
               appEl.dataset.currentPageId = String(page.id);
             } else {
-              /* 作品已被删除，退回随机 */
               runner.mode = "random";
               runner.pageId = null;
             }
@@ -1593,7 +1661,6 @@
           appEl.appendChild(iframe);
         }
 
-        /** 回到“随机运行 p5 文件夹脚本”状态 */
         function setRandom() {
           runner.mode = "random";
           runner.pageId = null;
@@ -1601,10 +1668,6 @@
           else location.hash = "#/";
         }
 
-        /**
-         * 首页运行指定作品（侧边栏点脚本名 / 预览按钮 都走这里）
-         * 再次点击同一个脚本名也会重新运行，不会回到随机状态
-         */
         function runPage(id) {
           runner.mode = "page";
           runner.pageId = id;
@@ -1869,7 +1932,6 @@
             var btnContainer = document.createElement("div");
             btnContainer.className = "action-buttons";
 
-            /* 预览按钮：行为与点击左侧栏脚本名完全一致 */
             var previewBtn = document.createElement("button");
             previewBtn.className = "preview";
             previewBtn.textContent = "▶️ 预览";
@@ -1900,24 +1962,23 @@
         }
 
         /* ============================================================
-         * AI 助手 —— 页面渲染
+         * AI 助手 —— 页面渲染（全屏 / 底部浮动 / + 选模型 / - 清除）
          * ============================================================ */
         function renderAIAssistant() {
           var wrap = document.createElement("div");
           wrap.className = "ai-page";
           wrap.innerHTML =
-            '<div class="ai-header">' +
-            "  <h1>🤖 AI 助手</h1>" +
-            '  <button class="ai-clear-btn" id="aiClearBtn" type="button" title="清除当前模型的对话内容">−</button>' +
-            "</div>" +
+            '<button class="ai-clear-btn" id="aiClearBtn" type="button" title="清除当前模型的对话内容">−</button>' +
             '<div class="ai-messages" id="aiMessages"></div>' +
-            '<div class="ai-input-bar">' +
-            '  <div class="ai-model-picker">' +
-            '    <button class="ai-model-btn" id="aiModelBtn" type="button"></button>' +
-            '    <div class="ai-model-menu" id="aiModelMenu"></div>' +
+            '<div class="ai-input-wrap">' +
+            '  <div class="ai-input-bar">' +
+            '    <div class="ai-model-picker">' +
+            '      <button class="ai-model-btn" id="aiModelBtn" type="button" title="选择模型">+</button>' +
+            '      <div class="ai-model-menu" id="aiModelMenu"></div>' +
+            "    </div>" +
+            '    <textarea id="aiInput" rows="1" placeholder="输入消息，Enter 发送，Shift+Enter 换行"></textarea>' +
+            '    <button class="ai-send-btn" id="aiSendBtn" type="button" title="发送">↑</button>' +
             "  </div>" +
-            '  <textarea id="aiInput" rows="1" placeholder="输入消息，Enter 发送，Shift+Enter 换行"></textarea>' +
-            '  <button class="ai-send-btn" id="aiSendBtn" type="button">发送</button>' +
             "</div>";
           return wrap;
         }
@@ -1956,8 +2017,6 @@
         }
 
         function refreshAIModelUI() {
-          var btn = $("#aiModelBtn");
-          if (btn) btn.textContent = aiModelName(aiState.currentModel) + " ▾";
           var items = $$(".ai-model-item");
           items.forEach(function (el) {
             if (el.dataset.model === aiState.currentModel) {
@@ -1990,7 +2049,7 @@
             empty.textContent =
               "开始与 " +
               aiModelName(model) +
-              " 对话吧\n（首次选择模型时需要输入 API Key）";
+              " 对话吧\n（点击左下角 + 可切换模型并设置 API Key）";
             box.replaceChildren(empty);
             return;
           }
@@ -2025,7 +2084,6 @@
           var btn = $("#aiSendBtn");
           if (!btn) return;
           btn.disabled = !!aiState.busy;
-          btn.textContent = aiState.busy ? "思考中…" : "发送";
         }
 
         /* ---------------- AI 助手 —— 网络请求 ---------------- */
@@ -2099,8 +2157,7 @@
 
         function callGemini(key, messages) {
           var conf = aiModelConf("gemini");
-          var url =
-            conf.endpoint + "?key=" + encodeURIComponent(key);
+          var url = conf.endpoint + "?key=" + encodeURIComponent(key);
           var contents = messages.map(function (m) {
             return {
               role: m.role === "assistant" ? "model" : "user",
@@ -2160,7 +2217,9 @@
           }
           var lines = ["# " + aiModelName(model) + " 对话记录", ""];
           chat.forEach(function (m) {
-            lines.push(m.role === "user" ? "## 🧑 我" : "## 🤖 " + aiModelName(model));
+            lines.push(
+              m.role === "user" ? "## 🧑 我" : "## 🤖 " + aiModelName(model),
+            );
             lines.push("");
             lines.push(m.content);
             lines.push("");
@@ -2170,8 +2229,7 @@
           var url = URL.createObjectURL(blob);
           var a = document.createElement("a");
           a.href = url;
-          a.download =
-            "ai_chat_" + model + "_" + Date.now() + ".md";
+          a.download = "ai_chat_" + model + "_" + Date.now() + ".md";
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
@@ -2192,7 +2250,7 @@
           if (!key) {
             showAlert(
               "缺少 API Key",
-              "请先点击模型选择按钮，为 " +
+              "请先点击左下角 + 按钮，为 " +
                 aiModelName(model) +
                 " 输入 API Key。",
               true,
@@ -2243,7 +2301,13 @@
         function clearAIChat() {
           var model = aiState.currentModel;
           var chat = aiState.chats[model] || [];
-          if (!chat.length) return;
+          if (!chat.length) {
+            showAlert(
+              "无需清除",
+              "「" + aiModelName(model) + "」当前没有对话内容。",
+            );
+            return;
+          }
           showConfirm(
             "清除对话",
             "确定要清除与「" + aiModelName(model) + "」的全部对话内容吗？",
@@ -2295,8 +2359,7 @@
           if (inputEl) {
             inputEl.addEventListener("input", function () {
               this.style.height = "auto";
-              this.style.height =
-                Math.min(this.scrollHeight, 140) + "px";
+              this.style.height = Math.min(this.scrollHeight, 140) + "px";
             });
             inputEl.addEventListener("keydown", function (e) {
               if (
@@ -2343,10 +2406,11 @@
             return;
           }
 
-          /* 离开首页：解除全屏锁定 */
+          /* 离开首页：解除全屏锁定，移除 AI 模式 */
           if (appEl.classList.contains("preview-mode")) {
             appEl.classList.remove("preview-mode");
           }
+          appEl.classList.remove("ai-mode");
           delete appEl.dataset.currentPageId;
           unlockAppSize();
 
@@ -2354,11 +2418,15 @@
           appEl.replaceChildren();
           setActiveNav(path);
 
-          if (path === "/about") {
-            appEl.appendChild(renderAbout());
-          } else if (path === "/ai") {
+          if (path === "/ai") {
+            appEl.classList.add("ai-mode");
             appEl.appendChild(renderAIAssistant());
             bindAIAssistant();
+            return;
+          }
+
+          if (path === "/about") {
+            appEl.appendChild(renderAbout());
           } else if (path === "/generator") {
             appEl.appendChild(renderGenerator());
             bindGenerator();
@@ -2393,7 +2461,7 @@
           } catch (e) {}
           applyTheme(savedTheme);
 
-          /* 全局禁止缩放（iOS Safari 会忽略 user-scalable=no，这里再兜底） */
+          /* 全局禁止缩放 */
           ["gesturestart", "gesturechange", "gestureend"].forEach(
             function (type) {
               document.addEventListener(
@@ -2509,7 +2577,7 @@
           var themeBtn = $("#themeToggleSidebar");
           if (themeBtn) themeBtn.addEventListener("click", toggleTheme);
 
-          /* 顶部导航：首页 -> 回到随机状态；其它导航 -> 跳转（render 中会重置 runner） */
+          /* 顶部导航 */
           $$(".sidebar .nav-item[data-path]").forEach(function (el) {
             var go = function () {
               var path = el.getAttribute("data-path");
@@ -2530,7 +2598,7 @@
             });
           });
 
-          /* 侧边栏脚本名：点击 -> 首页直接运行；再次点击仍然运行 */
+          /* 侧边栏脚本名 */
           sidebarPagesEl.addEventListener("click", function (e) {
             var btn = e.target.closest("[data-action]");
             if (!btn) return;
