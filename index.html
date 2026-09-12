@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>randomArt创意脚本编辑</title>
+    <title>randomArt 创意脚本编辑</title>
 
     <link
       rel="stylesheet"
@@ -66,7 +66,7 @@
         overscroll-behavior: none;
       }
 
-      /* ===================== 汉堡按钮 ===================== */
+      /* 汉堡按钮 */
       .hamburger-btn {
         position: fixed;
         top: clamp(8px, 2vw, 14px);
@@ -97,7 +97,7 @@
         pointer-events: none;
       }
 
-      /* ===================== 侧边栏 ===================== */
+      /* 侧边栏 */
       .sidebar {
         position: fixed;
         top: 0;
@@ -209,7 +209,7 @@
       }
       .overlay.show { display: block; opacity: 1; }
 
-      /* ===================== 主内容 ===================== */
+      /* 主内容 */
       #app {
         width: 100%;
         min-height: 100vh;
@@ -230,8 +230,7 @@
         margin: 0 auto;
       }
 
-      /* ============ 预览模式 ============
-       * 宽高由 JS 用内联像素锁定（见 lockAppSize），这里只处理排版
+      /* 预览模式：宽高由 JS 用内联像素锁定（见 lockAppSize），这里只处理排版
        */
       #app.preview-mode {
         padding: 0;
@@ -329,7 +328,8 @@
         margin-top: 10px;
       }
       .action-buttons button { background: #6c757d; }
-      .action-buttons button.preview { background: #28a745; }
+      .action-buttons button.preview,
+      .action-buttons button.download { background: #28a745; }
       .action-buttons button.zip { background: #17a2b8; }
 
       .modal-backdrop {
@@ -446,8 +446,13 @@
         function escapeScriptClose(str) {
           return String(str).replace(/<\/script/gi, "<\\/script");
         }
+        /* 文件名安全化 */
+        function safeFileName(name) {
+          var n = String(name || "").replace(/[\\/:*?"<>|]/g, "_").trim();
+          return n || "untitled";
+        }
 
-        /* ======================= 本地存储 ======================= */
+        /* 本地存储 */
         function getPages() {
           try {
             var raw = localStorage.getItem(STORAGE_KEY);
@@ -469,7 +474,7 @@
           }
         }
 
-        /* ======================= 模态框 ======================= */
+        /* 模态框 */
         var modalBackdrop, modalBox, lastFocused;
 
         function openModal(builder) {
@@ -538,9 +543,9 @@
           });
         }
 
-        /* =====================================================================
+        /*
          * 生成独立 HTML —— CSS 保持极简
-         * ===================================================================== */
+          */
         function generatePageHtml(title, script, imageDataUrl) {
           var safeTitle = escapeHtml(title || "未命名页面");
           var imgVar = imageDataUrl
@@ -572,7 +577,24 @@
           );
         }
 
-        /* ======================= 导出 ZIP ======================= */
+        /* 下载单个 HTML 文件 */
+        function downloadSingleHtml(filename, html) {
+          try {
+            var blob = new Blob([html], { type: "text/html;charset=utf-8" });
+            var url = URL.createObjectURL(blob);
+            var link = document.createElement("a");
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+          } catch (err) {
+            showAlert("下载失败", String((err && err.message) || err), true);
+          }
+        }
+
+        /* 导出 ZIP */
         function exportZip() {
           var pages = getPages();
           if (!pages.length) {
@@ -600,7 +622,7 @@
             });
         }
 
-        /* ======================= 侧边栏 ======================= */
+        /* 侧边栏 */
         var sidebarPagesEl, sidebarEl, overlayEl, hamburgerBtn;
 
         function updateSidebarPages() {
@@ -647,9 +669,9 @@
           sidebarPagesEl.replaceChildren(frag);
         }
 
-        /* =====================================================================
-         * 事件代理：父页面 → iframe 内 canvas
-         * ===================================================================== */
+        /*
+         事件代理：父页面 → iframe 内 canvas
+          */
         function bindIframeProxy(iframe) {
           var iwin, idoc;
           try {
@@ -747,14 +769,14 @@
           });
         }
 
-        /* =====================================================================
+        /*
          * 预览：作为首页的一种模式
          * ---------------------------------------------------------------------
          * - enterPreview(id)：把路由切到 #/，render() 检测到 previewingPageId 就全屏运行
          * - 锁死 appEl 尺寸为「进入预览那一刻的像素值」，
          *   之后不随 resize / 地址栏 / 滚动条改变，保证 p5 canvas 稳定
          * - 退出：Esc，或从侧边栏点任意导航项
-         * ===================================================================== */
+          */
         var previewingPageId = null;
 
         function lockAppSize() {
@@ -874,7 +896,7 @@
           hamburgerBtn.setAttribute("aria-expanded", "false");
         }
 
-        /* ======================= 主题 ======================= */
+        /* 主题 */
         var editor = null;
         var uploadedImageDataUrl = null;
 
@@ -901,7 +923,7 @@
           try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
         }
 
-        /* ======================= 路由 ======================= */
+        /* 路由 */
         function getRoute() {
           var hash = location.hash;
           if (!hash || hash === "#" || hash === "#/") return "/";
@@ -923,7 +945,7 @@
           }
         }
 
-        /* ======================= 页面渲染 ======================= */
+        /* 页面渲染 */
         var appEl;
 
         function renderHome() {
@@ -932,7 +954,7 @@
             "<h1>🎨 p5.js 脚本生成器</h1>" +
             "<p>所有数据保存在本地浏览器中，无需服务器。</p>" +
             "<p>编写 p5.js 脚本，上传图片素材，生成独立的 HTML 页面。</p>" +
-            "<p>支持预览、导出 ZIP、删除和重命名作品。</p>" +
+            "<p>支持下载单页 HTML、导出 ZIP、删除和重命名作品。</p>" +
             "<p>点击左上角 ☰ 菜单查看所有作品。</p>" +
             "<p style='color:#888;font-size:.9em;margin-top:1em'>" +
             "点击侧边栏中的作品名称即可全屏运行；" +
@@ -946,7 +968,7 @@
             "<h1>📖 关于</h1>" +
             "<p>纯前端工具，基于 localStorage 存储，无需后端。</p>" +
             "<p>使用 CodeMirror 实现代码高亮，支持亮色 / 暗色主题。</p>" +
-            "<p>所有脚本均可导出为 ZIP 包。</p>";
+            "<p>所有脚本均可导出为 ZIP 包，也可单独下载为 HTML。</p>";
           return wrap;
         }
         function renderGenerator() {
@@ -1055,11 +1077,15 @@
             var btnContainer = document.createElement("div");
             btnContainer.className = "action-buttons";
 
-            var previewBtn = document.createElement("button");
-            previewBtn.className = "preview";
-            previewBtn.textContent = "▶️ 预览";
-            previewBtn.addEventListener("click", function () {
-              enterPreview(newId);
+            /* ⬇️ 用「下载单页 HTML」替代原来的「预览」按钮 */
+            var downloadBtn = document.createElement("button");
+            downloadBtn.className = "download";
+            downloadBtn.textContent = "⬇️ 下载单页 HTML";
+            downloadBtn.addEventListener("click", function () {
+              downloadSingleHtml(
+                "p5_" + safeFileName(title) + "_" + newId + ".html",
+                htmlContent
+              );
             });
 
             var zipBtn = document.createElement("button");
@@ -1067,7 +1093,7 @@
             zipBtn.textContent = "📦 导出所有脚本 (ZIP)";
             zipBtn.addEventListener("click", exportZip);
 
-            btnContainer.appendChild(previewBtn);
+            btnContainer.appendChild(downloadBtn);
             btnContainer.appendChild(zipBtn);
             resultEl.replaceChildren(msg, btnContainer);
 
@@ -1166,6 +1192,7 @@
             });
           });
 
+          /* 侧边栏作品：点击标题依然是「打开预览」，行为保持不变 */
           sidebarPagesEl.addEventListener("click", function (e) {
             var btn = e.target.closest("[data-action]");
             if (!btn) return;
