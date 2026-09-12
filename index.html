@@ -41,7 +41,7 @@
       }
       body.dark-mode { background: var(--bg-dark); color: var(--text-dark); }
 
-      /* ============ 预览锁：body 完全冻结，禁滚动、禁手势 ============ */
+      /* 预览锁：body 冻结，禁滚动、禁手势 */
       body.preview-lock {
         position: fixed;
         top: 0;
@@ -70,15 +70,19 @@
         padding: 4px 8px;
         line-height: 1;
         user-select: none;
-        transition: color 0.3s, opacity 0.22s ease, transform 0.22s ease;
+        transition: color 0.3s, background 0.3s, opacity 0.22s ease, transform 0.22s ease;
       }
       .hamburger-btn:hover { transform: scale(1.1); }
       body.dark-mode .hamburger-btn { color: #fff; }
-      /* 预览时汉堡保持可见，改为白色便于在深色 canvas 上辨认 */
+
+      /* 预览时改为半透明黑底白字，在任何 canvas 背景上都可见 */
       body.preview-lock .hamburger-btn {
         color: #fff;
-        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+        background: rgba(0, 0, 0, 0.45);
+        border-radius: 6px;
+        backdrop-filter: blur(4px);
       }
+
       body.sidebar-open .hamburger-btn {
         opacity: 0;
         transform: scale(0.6);
@@ -211,10 +215,7 @@
         margin: 0 auto;
       }
 
-      /* ============ 全屏脚本模式 ============
-       * 位置、宽高由 JS 用内联 px 一次性锁死（lockPreviewSize）。
-       * 这里只负责视觉与 iframe 填满。
-       */
+      /* 全屏脚本模式：位置 / 宽高由 JS 用内联 px 锁死 */
       #app.preview-mode {
         padding: 0 !important;
         margin: 0 !important;
@@ -408,15 +409,13 @@
       (function () {
         "use strict";
 
-        /* =====================================================================
-         * 常量与状态
-         * ===================================================================== */
+        /* ===================== 常量与状态 ===================== */
         var STORAGE_KEY = "p5_pages";
         var THEME_KEY = "p5_theme";
         var MAX_IMAGE_BYTES = 1.5 * 1024 * 1024;
 
-        var currentPageId = null;   // 首页当前运行脚本的 id（null = 显示欢迎文本）
-        var sizeLocked = false;     // 尺寸是否已锁定
+        var currentPageId = null;
+        var sizeLocked = false;
 
         var appEl, sidebarEl, overlayEl, hamburgerBtn;
         var sidebarPagesEl, modalBackdrop, modalBox;
@@ -425,9 +424,7 @@
         var lastFocused = null;
         var initialized = false;
 
-        /* =====================================================================
-         * 工具
-         * ===================================================================== */
+        /* ===================== 工具 ===================== */
         function $(sel, root) { return (root || document).querySelector(sel); }
         function $$(sel, root) {
           return Array.prototype.slice.call((root || document).querySelectorAll(sel));
@@ -444,9 +441,7 @@
           return String(str).replace(/<\/script/gi, "<\\/script");
         }
 
-        /* =====================================================================
-         * 本地存储
-         * ===================================================================== */
+        /* ===================== 本地存储 ===================== */
         function getPages() {
           try {
             var raw = localStorage.getItem(STORAGE_KEY);
@@ -468,9 +463,7 @@
           }
         }
 
-        /* =====================================================================
-         * 模态框
-         * ===================================================================== */
+        /* ===================== 模态框 ===================== */
         function openModal(builder) {
           lastFocused = document.activeElement;
           modalBox.innerHTML = "";
@@ -512,6 +505,7 @@
             a.appendChild(cancel); a.appendChild(ok);
             box.appendChild(h); box.appendChild(p); box.appendChild(a);
           });
+);
         }
         function showPrompt(title, defaultValue, onOk) {
           openModal(function (box) {
@@ -533,16 +527,10 @@
               if (e.key === "Enter") ok.click();
             });
             a.appendChild(cancel); a.appendChild(ok);
-            box.appendChild(h); box.appendChild(input); box.appendChild(a);
-          });
+            box.appendChild(h); box.appendChild(input); box.appendChild(a          });
         }
 
-        /* =====================================================================
-         * 生成独立 HTML
-         * ---------------------------------------------------------------------
-         * 关键：给 html/body/canvas 加 touch-action: none，
-         * 阻止移动端拖拽时的默认手势（滚动 / 缩放），保证 p5 连续收到事件。
-         * ===================================================================== */
+        /* ===================== 生成独立 HTML ===================== */
         function generatePageHtml(title, script, imageDataUrl) {
           var safeTitle = escapeHtml(title || "未命名页面");
           var imgVar = imageDataUrl
@@ -581,9 +569,7 @@
           );
         }
 
-        /* =====================================================================
-         * 导出 ZIP
-         * ===================================================================== */
+        /* ===================== 导出 ZIP ===================== */
         function exportZip() {
           var pages = getPages();
           if (!pages.length) {
@@ -611,9 +597,7 @@
             });
         }
 
-        /* =====================================================================
-         * 侧边栏列表
-         * ===================================================================== */
+        /* ===================== 侧边栏列表 ===================== */
         function updateSidebarPages() {
           var pages = getPages();
           if (!pages.length) {
@@ -658,9 +642,7 @@
           sidebarPagesEl.replaceChildren(frag);
         }
 
-        /* =====================================================================
-         * 事件代理：父 → iframe canvas
-         * ===================================================================== */
+        /* ===================== 事件代理 ===================== */
         function bindIframeProxy(iframe) {
           var iwin, idoc;
           try {
@@ -739,22 +721,24 @@
         }
 
         /* =====================================================================
-         * 尺寸锁定 —— 全屏运行 p5 的核心
+         * 尺寸锁定
          * ---------------------------------------------------------------------
-         * 进入时用 window.innerWidth/innerHeight 一次性写入像素值，
-         * 之后不再随 window resize / 地址栏收放 / 滚动条出现而变化。
-         * p5 的 createCanvas(windowWidth, windowHeight) 因此得到稳定尺寸，
-         * 拖拽时 mouseX/mouseY 的坐标系不会跳动。
+         * 关键顺序：
+         *   1) 先加 preview-lock，让 body 冻结、滚动条消失
+         *   2) 用 documentElement.clientWidth/Height 读视口尺寸（不含滚动条）
+         *   3) 用 px 写入 appEl 内联样式，之后永不改动
          * ===================================================================== */
         function lockPreviewSize() {
           if (sizeLocked) return;
 
-          // 1. 冻结 body，禁止滚动 / 手势
+          // 1. 冻结 body（滚动条消失）
           document.body.classList.add("preview-lock");
 
-          // 2. 用像素值硬锁 appEl
-          var w = window.innerWidth;
-          var h = window.innerHeight;
+          // 2. 读视口尺寸（此时滚动条已消失，得到的是完整视口）
+          var w = document.documentElement.clientWidth || window.innerWidth;
+          var h = document.documentElement.clientHeight || window.innerHeight;
+
+          // 3. 硬锁像素尺寸
           appEl.style.position = "fixed";
           appEl.style.top = "0";
           appEl.style.left = "0";
@@ -788,6 +772,10 @@
 
         /* =====================================================================
          * 打开 / 关闭脚本
+         * ---------------------------------------------------------------------
+         * 唯一入口。侧边栏和生成器的「预览」都走这里。
+         * 用 history.replaceState 更新 URL（不触发 hashchange），
+         * 然后同步 render()，完全避免异步时序问题。
          * ===================================================================== */
         function openInHome(id) {
           var page = getPages().find(function (p) { return p.id === id; });
@@ -798,12 +786,18 @@
           currentPageId = id;
           closeSidebar();
 
-          var h = location.hash;
-          if (h === "#/" || h === "" || h === "#") {
-            render();
-          } else {
-            location.hash = "#/";
+          // 同步更新 URL 到 #/，用 replaceState 不触发 hashchange
+          var target = "#/";
+          if (location.hash !== target) {
+            try {
+              history.replaceState(null, "", location.pathname + location.search + target);
+            } catch (e) {
+              // 某些环境（如 file://）不支持 replaceState，忽略
+            }
           }
+
+          // 立即渲染，不依赖任何异步事件
+          render();
         }
 
         function resetHome() {
@@ -852,9 +846,7 @@
           document.body.classList.remove("sidebar-open");
         }
 
-        /* =====================================================================
-         * 主题
-         * ===================================================================== */
+        /* ===================== 主题 ===================== */
         function applyTheme(theme) {
           var lightTheme = $("#cm-theme-light");
           var darkTheme = $("#cm-theme-dark");
@@ -878,9 +870,7 @@
           try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
         }
 
-        /* =====================================================================
-         * 路由
-         * ===================================================================== */
+        /* ===================== 路由 ===================== */
         function getRoute() {
           var hash = location.hash;
           if (!hash || hash === "#" || hash === "#/") return "/";
@@ -902,9 +892,7 @@
           }
         }
 
-        /* =====================================================================
-         * 页面渲染
-         * ===================================================================== */
+        /* ===================== 页面渲染 ===================== */
         function renderWelcome() {
           var wrap = document.createElement("div");
           wrap.innerHTML =
@@ -1031,17 +1019,25 @@
             var btnContainer = document.createElement("div");
             btnContainer.className = "action-buttons";
 
+            // ★ 关键：与侧边栏点击完全一样的路径
             var previewBtn = document.createElement("button");
+            previewBtn.type = "button";
             previewBtn.className = "preview";
             previewBtn.textContent = "▶️ 预览";
-            previewBtn.addEventListener("click", function () {
+            previewBtn.addEventListener("click", function (e) {
+              e.preventDefault();
+              e.stopPropagation();
               openInHome(newId);
             });
 
             var zipBtn = document.createElement("button");
+            zipBtn.type = "button";
             zipBtn.className = "zip";
             zipBtn.textContent = "📦 导出所有脚本 (ZIP)";
-            zipBtn.addEventListener("click", exportZip);
+            zipBtn.addEventListener("click", function (e) {
+              e.preventDefault();
+              exportZip();
+            });
 
             btnContainer.appendChild(previewBtn);
             btnContainer.appendChild(zipBtn);
@@ -1074,9 +1070,7 @@
             return;
           }
 
-          // 关键：先锁定尺寸，再添加 iframe。
-          // 这样 iframe 一加载就拿到固定的 windowWidth / windowHeight，
-          // 后续拖拽时 canvas 尺寸不再变化，mouseX/mouseY 稳定。
+          // 关键：先锁定尺寸（含 body 冻结），再添加 iframe
           lockPreviewSize();
 
           var iframe = document.createElement("iframe");
@@ -1121,9 +1115,7 @@
           }
         }
 
-        /* =====================================================================
-         * 初始化
-         * ===================================================================== */
+        /* ===================== 初始化 ===================== */
         function init() {
           if (initialized) return;
           initialized = true;
@@ -1150,7 +1142,6 @@
             if (e.key !== "Escape") return;
             if (modalBackdrop.classList.contains("show")) { closeModal(); return; }
             if (sidebarEl.classList.contains("open")) { closeSidebar(); return; }
-            // 首页正在运行脚本 → 退出到欢迎页
             if (getRoute() === "/" && currentPageId !== null) {
               resetHome();
             }
@@ -1190,8 +1181,6 @@
             closeSidebar();
           });
 
-          // 旋转屏幕：脚本运行中则保持锁定不变（不做任何 resize），
-          // 只刷新 CodeMirror
           window.addEventListener("orientationchange", function () {
             if (editor) editor.refresh();
           });
