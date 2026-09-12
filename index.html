@@ -192,7 +192,7 @@
         font-style: italic;
       }
 
-      /* ⬇️ 侧边栏底部：导出 ZIP 与切换主题「同一行左右并排」，中间竖线分隔 */
+      /* 侧边栏底部：导出 ZIP 与切换主题「同一行左右并排」，中间竖线分隔 */
       .sidebar-footer {
         margin-top: auto;
         border-top: 1px solid var(--line-light);
@@ -450,7 +450,7 @@
         <div class="no-pages">暂无生成的脚本</div>
       </div>
 
-      <!-- ⬇️ 底部：导出 ZIP 与切换主题同一行左右并排，中间竖线分隔 -->
+      <!-- 底部：导出 ZIP 与切换主题同一行左右并排，中间竖线分隔 -->
       <div class="sidebar-footer">
         <div class="footer-row">
           <div class="nav-item footer-item" id="exportZipSidebar" role="button" tabindex="0">
@@ -996,7 +996,7 @@
             "<h1>🎨 p5.js 脚本生成器</h1>" +
             "<p>所有数据保存在本地浏览器中，无需服务器。</p>" +
             "<p>编写 p5.js 脚本，上传图片素材，生成独立的 HTML 页面。</p>" +
-            "<p>支持下载单页 HTML、导出 ZIP、删除和重命名作品。</p>" +
+            "<p>支持预览、下载单页 HTML、导出 ZIP、删除和重命名作品。</p>" +
             "<p>点击左上角 ☰ 菜单查看所有作品。</p>" +
             "<p style='color:#888;font-size:.9em;margin-top:1em'>" +
             "点击侧边栏中的作品名称即可全屏运行；" +
@@ -1145,6 +1145,14 @@
             var btnContainer = document.createElement("div");
             btnContainer.className = "action-buttons";
 
+            /* ⬇️ 新增：预览按钮，行为与左侧栏点击脚本名称完全一致 */
+            var previewBtn = document.createElement("button");
+            previewBtn.className = "preview";
+            previewBtn.textContent = "▶️ 预览";
+            previewBtn.addEventListener("click", function () {
+              enterPreview(newId);
+            });
+
             var downloadBtn = document.createElement("button");
             downloadBtn.className = "download";
             downloadBtn.textContent = "⬇️ 下载单页 HTML";
@@ -1155,6 +1163,7 @@
               );
             });
 
+            btnContainer.appendChild(previewBtn);
             btnContainer.appendChild(downloadBtn);
             resultEl.replaceChildren(msg, btnContainer);
 
@@ -1262,7 +1271,7 @@
             }
           });
 
-          /* ⬇️ 侧边栏底部：导出 ZIP 入口（与切换主题同一行） */
+          /* 侧边栏底部：导出 ZIP 入口（与切换主题同一行） */
           var exportZipBtn = $("#exportZipSidebar");
           if (exportZipBtn) {
             var runExport = function () {
