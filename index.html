@@ -5,23 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>randomArt 创意脚本编辑</title>
 
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/default.min.css"
-      id="cm-theme-light"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css"
-      id="cm-theme-dark"
-      disabled
-    />
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/default.min.css" id="cm-theme-light" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css" id="cm-theme-dark" disabled />
 
     <style>
       :root {
@@ -53,17 +39,11 @@
       }
       body.dark-mode { background: var(--bg-dark); color: var(--text-dark); }
 
-      /* 预览时锁定 body，防止任何滚动 / 位移影响 iframe 尺寸 */
+      /* 预览锁：禁止滚动 / 手势 */
       body.preview-lock {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        width: 100%;
-        height: 100%;
         overflow: hidden;
         overscroll-behavior: none;
+        touch-action: none;
       }
 
       /* ===================== 汉堡按钮 ===================== */
@@ -81,16 +61,20 @@
         padding: 4px 8px;
         line-height: 1;
         user-select: none;
-        transition: color 0.3s, opacity 0.22s ease, transform 0.22s ease;
+        transition: color 0.3s, background 0.3s, opacity 0.22s ease, transform 0.22s ease;
       }
       .hamburger-btn:hover { transform: scale(1.1); }
       body.dark-mode .hamburger-btn { color: #fff; }
-      /* 预览时保持汉堡可见、颜色可读 */
+
+      /* 预览时：半透明黑底白字，任何背景上都可见 */
       body.preview-lock .hamburger-btn {
         color: #fff;
-        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+        background: rgba(0, 0, 0, 0.45);
+        border-radius: 6px;
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
       }
-      /* 侧边栏打开时隐藏汉堡 */
+
       body.sidebar-open .hamburger-btn {
         opacity: 0;
         transform: scale(0.6);
@@ -129,7 +113,6 @@
           inset 0 -22px 28px -26px rgba(0, 0, 0, 0.9);
         border-right-color: var(--line-dark);
       }
-
       .sidebar .nav-item {
         padding: 12px clamp(16px, 4vw, 20px);
         border-bottom: 1px solid var(--line-light);
@@ -141,10 +124,8 @@
       body.dark-mode .sidebar .nav-item:hover { background: var(--hover-dark); }
       .sidebar .nav-item[aria-current="page"] { background: var(--hover-light); }
       body.dark-mode .sidebar .nav-item[aria-current="page"] { background: var(--hover-dark); }
-
       .sidebar .divider { border-top: 1px solid var(--line-light); margin: 10px 0; }
       body.dark-mode .sidebar .divider { border-top-color: var(--line-dark); }
-
       .sidebar .section-title {
         padding: 8px clamp(16px, 4vw, 20px);
         font-size: 0.85rem;
@@ -152,7 +133,6 @@
         font-weight: bold;
       }
       body.dark-mode .sidebar .section-title { color: #999; }
-
       .sidebar .page-item {
         display: flex;
         justify-content: space-between;
@@ -163,7 +143,6 @@
       body.dark-mode .sidebar .page-item { border-bottom-color: var(--line-dark); }
       .sidebar .page-item:hover { background: var(--hover-light); }
       body.dark-mode .sidebar .page-item:hover { background: var(--hover-dark); }
-
       .sidebar .page-item .page-title {
         flex: 1;
         color: inherit;
@@ -183,13 +162,11 @@
       }
       .sidebar .page-item .actions .rename:hover { color: #5bc0de; }
       .sidebar .page-item .actions .del:hover { color: #d9534f; }
-
       .sidebar .no-pages {
         padding: 12px clamp(16px, 4vw, 20px);
         color: #888;
         font-style: italic;
       }
-
       .sidebar-footer {
         margin-top: auto;
         border-top: 1px solid var(--line-light);
@@ -230,11 +207,21 @@
         margin: 0 auto;
       }
 
-      /* ============ 预览模式 ============
-       * 宽高由 JS 用内联像素锁定（见 lockAppSize），这里只处理排版
+      /* ============ 全屏脚本模式 ============
+       * 用 CSS 的 position: fixed + inset: 0 让 #app 铺满 viewport，
+       * 不再依赖 JS 计算像素。iframe 用 100%/100% 填满。
+       * 拖拽时窗口尺寸不变 → p5 的 mouseX/mouseY 稳定。
        */
       #app.preview-mode {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: auto;
+        height: auto;
         padding: 0;
+        margin: 0;
         max-width: none;
         min-height: 0;
         background: #000;
@@ -242,11 +229,12 @@
         z-index: 100;
       }
       #app.preview-mode iframe {
+        display: block;
         width: 100%;
         height: 100%;
         border: none;
-        display: block;
         background: #fff;
+        touch-action: none;
       }
 
       #app h1 {
@@ -389,13 +377,7 @@
     </style>
   </head>
   <body>
-    <button
-      class="hamburger-btn"
-      id="hamburgerBtn"
-      aria-label="打开菜单"
-      aria-expanded="false"
-      aria-controls="sidebar"
-    >☰</button>
+    <button class="hamburger-btn" id="hamburgerBtn" aria-label="打开菜单">☰</button>
 
     <nav class="sidebar" id="sidebar" aria-label="主导航">
       <div class="nav-item" data-path="#/" role="button" tabindex="0">🏠 首页</div>
@@ -420,17 +402,31 @@
       <div class="modal" id="modalBox"></div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+    <!-- CDN 脚本用 defer，不阻塞 HTML 解析与 DOMContentLoaded -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js" defer></script>
 
     <script>
       (function () {
         "use strict";
 
+        /* ===================== 常量与状态 ===================== */
         var STORAGE_KEY = "p5_pages";
         var THEME_KEY = "p5_theme";
         var MAX_IMAGE_BYTES = 1.5 * 1024 * 1024;
 
+        var currentPageId = null;   // 首页当前运行脚本的 id（null = 显示欢迎文本）
+        var previewLocked = false;  // 是否已进入全屏模式
+
+        var appEl, sidebarEl, overlayEl, hamburgerBtn;
+        var sidebarPagesEl, modalBackdrop, modalBox;
+        var editor = null;
+        var uploadedImageDataUrl = null;
+        var lastFocused = null;
+        var initialized = false;
+
+        /* ===================== 工具 ===================== */
         function $(sel, root) { return (root || document).querySelector(sel); }
         function $$(sel, root) {
           return Array.prototype.slice.call((root || document).querySelectorAll(sel));
@@ -447,7 +443,7 @@
           return String(str).replace(/<\/script/gi, "<\\/script");
         }
 
-        /* ======================= 本地存储 ======================= */
+        /* ===================== 本地存储 ===================== */
         function getPages() {
           try {
             var raw = localStorage.getItem(STORAGE_KEY);
@@ -469,9 +465,7 @@
           }
         }
 
-        /* ======================= 模态框 ======================= */
-        var modalBackdrop, modalBox, lastFocused;
-
+        /* ===================== 模态框 ===================== */
         function openModal(builder) {
           lastFocused = document.activeElement;
           modalBox.innerHTML = "";
@@ -538,9 +532,7 @@
           });
         }
 
-        /* =====================================================================
-         * 生成独立 HTML —— CSS 保持极简
-         * ===================================================================== */
+        /* ===================== 生成独立 HTML ===================== */
         function generatePageHtml(title, script, imageDataUrl) {
           var safeTitle = escapeHtml(title || "未命名页面");
           var imgVar = imageDataUrl
@@ -554,11 +546,18 @@
             '<html lang="zh-CN">\n' +
             "<head>\n" +
             '  <meta charset="UTF-8">\n' +
-            '  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n' +
+            '  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">\n' +
             "  <title>" + safeTitle + "</title>\n" +
             "  <style>\n" +
-            "    html, body { margin: 0; padding: 0; }\n" +
-            "    canvas { display: block; }\n" +
+            "    html, body {\n" +
+            "      margin: 0; padding: 0;\n" +
+            "      touch-action: none;\n" +
+            "      overscroll-behavior: none;\n" +
+            "      -webkit-user-select: none;\n" +
+            "      user-select: none;\n" +
+            "      -webkit-touch-callout: none;\n" +
+            "    }\n" +
+            "    canvas { display: block; touch-action: none; }\n" +
             "  </style>\n" +
             '  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"><\/script>\n' +
             "</head>\n" +
@@ -572,14 +571,18 @@
           );
         }
 
-        /* ======================= 导出 ZIP ======================= */
+        /* ===================== 导出 ZIP ===================== */
         function exportZip() {
+          if (!window.JSZip) {
+            showAlert("无法导出", "ZIP 组件尚未加载完成，请稍后重试。", true);
+            return;
+          }
           var pages = getPages();
           if (!pages.length) {
             showAlert("无法导出", "当前没有可导出的作品。");
             return;
           }
-          var zip = new JSZip();
+          var zip = new window.JSZip();
           pages.forEach(function (page, idx) {
             var base = (page.title || "untitled").replace(/[\\/:*?"<>|]/g, "_");
             zip.file("p5_" + base + "_" + (idx + 1) + ".html", page.html);
@@ -600,9 +603,7 @@
             });
         }
 
-        /* ======================= 侧边栏 ======================= */
-        var sidebarPagesEl, sidebarEl, overlayEl, hamburgerBtn;
-
+        /* ===================== 侧边栏列表 ===================== */
         function updateSidebarPages() {
           var pages = getPages();
           if (!pages.length) {
@@ -647,27 +648,19 @@
           sidebarPagesEl.replaceChildren(frag);
         }
 
-        /* =====================================================================
-         * 事件代理：父页面 → iframe 内 canvas
-         * ===================================================================== */
+        /* ===================== 事件代理 ===================== */
         function bindIframeProxy(iframe) {
           var iwin, idoc;
           try {
             iwin = iframe.contentWindow;
             idoc = iframe.contentDocument;
-          } catch (e) {
-            console.warn("无法访问 iframe 内部文档：", e);
-            return;
-          }
+          } catch (e) { return; }
           if (!iwin || !idoc) return;
 
           var tries = 0;
           function tryFindCanvas() {
             var canvas = idoc.querySelector("canvas");
-            if (canvas) {
-              attachProxy(canvas, iwin, idoc);
-              return;
-            }
+            if (canvas) { attachProxy(canvas, iwin, idoc); return; }
             if (++tries < 80) setTimeout(tryFindCanvas, 100);
           }
           tryFindCanvas();
@@ -683,30 +676,21 @@
           function relayMouse(e) {
             if (e.target === canvas) return;
             if (
-              (e.type === "mousedown" ||
-                e.type === "mouseup" ||
-                e.type === "click" ||
-                e.type === "dblclick") &&
+              (e.type === "mousedown" || e.type === "mouseup" ||
+               e.type === "click" || e.type === "dblclick") &&
               e.button !== 0
             ) return;
 
             var ev;
             try {
               ev = new iwin.MouseEvent(e.type, {
-                bubbles: true,
-                cancelable: true,
-                view: iwin,
+                bubbles: true, cancelable: true, view: iwin,
                 detail: e.detail || 1,
-                screenX: e.screenX,
-                screenY: e.screenY,
-                clientX: e.clientX,
-                clientY: e.clientY,
-                ctrlKey: e.ctrlKey,
-                shiftKey: e.shiftKey,
-                altKey: e.altKey,
-                metaKey: e.metaKey,
-                button: e.button,
-                buttons: e.buttons,
+                screenX: e.screenX, screenY: e.screenY,
+                clientX: e.clientX, clientY: e.clientY,
+                ctrlKey: e.ctrlKey, shiftKey: e.shiftKey,
+                altKey: e.altKey, metaKey: e.metaKey,
+                button: e.button, buttons: e.buttons,
                 relatedTarget: null,
               });
             } catch (err) { return; }
@@ -725,15 +709,10 @@
             var ev;
             try {
               ev = new iwin.MouseEvent(type, {
-                bubbles: true,
-                cancelable: true,
-                view: iwin,
-                clientX: t.clientX,
-                clientY: t.clientY,
-                screenX: t.screenX,
-                screenY: t.screenY,
-                button: 0,
-                buttons: type === "mouseup" ? 0 : 1,
+                bubbles: true, cancelable: true, view: iwin,
+                clientX: t.clientX, clientY: t.clientY,
+                screenX: t.screenX, screenY: t.screenY,
+                button: 0, buttons: type === "mouseup" ? 0 : 1,
               });
             } catch (err) { return; }
             canvas.dispatchEvent(ev);
@@ -748,84 +727,50 @@
         }
 
         /* =====================================================================
-         * 预览：作为首页的一种模式
-         * ---------------------------------------------------------------------
-         * - enterPreview(id)：把路由切到 #/，render() 检测到 previewingPageId 就全屏运行
-         * - 锁死 appEl 尺寸为「进入预览那一刻的像素值」，
-         *   之后不随 resize / 地址栏 / 滚动条改变，保证 p5 canvas 稳定
-         * - 退出：Esc，或从侧边栏点任意导航项
+         * 全屏锁：只用 class 切换，尺寸完全由 CSS 决定
          * ===================================================================== */
-        var previewingPageId = null;
-
-        function lockAppSize() {
-          // 先锁 body，再测量，避免滚动条影响 innerWidth
+        function lockPreview() {
+          if (previewLocked) return;
           document.body.classList.add("preview-lock");
-          var w = window.innerWidth;
-          var h = window.innerHeight;
-          appEl.style.position = "fixed";
-          appEl.style.top = "0";
-          appEl.style.left = "0";
-          appEl.style.width = w + "px";
-          appEl.style.height = h + "px";
-          appEl.style.overflow = "hidden";
+          appEl.classList.add("preview-mode");
+          previewLocked = true;
         }
 
-        function unlockAppSize() {
+        function unlockPreview() {
+          if (!previewLocked) return;
           document.body.classList.remove("preview-lock");
-          appEl.style.position = "";
-          appEl.style.top = "";
-          appEl.style.left = "";
-          appEl.style.width = "";
-          appEl.style.height = "";
-          appEl.style.overflow = "";
+          appEl.classList.remove("preview-mode");
+          previewLocked = false;
         }
 
-        function enterPreview(id) {
+        /* =====================================================================
+         * 打开脚本 —— 唯一入口
+         * ---------------------------------------------------------------------
+         * 侧边栏点击 & 生成器「预览」按钮都走这里。
+         * 1. 设置 currentPageId
+         * 2. 更新 URL 到 #/（若不在首页）
+         * 3. 同步调用 render()，让预览立即出现
+         * ===================================================================== */
+        function openInHome(id) {
           var page = getPages().find(function (p) { return p.id === id; });
-          if (!page) return;
-          previewingPageId = id;
-          closeSidebar();
-          var h = location.hash;
-          if (h === "#/" || h === "" || h === "#") {
-            render();
-          } else {
-            location.hash = "#/";
+          if (!page) {
+            showAlert("打开失败", "找不到该作品，可能已被删除。", true);
+            return;
           }
-        }
+          currentPageId = id;
+          closeSidebar();
 
-        function exitPreview() {
-          previewingPageId = null;
-          unlockAppSize();
+          var targetHash = "#/";
+          if (location.hash !== targetHash) {
+            // 会异步触发 hashchange，进而 render()，但下面同步 render() 也能立即出效果
+            location.hash = targetHash;
+          }
           render();
         }
 
-        function renderPreview(id) {
-          var page = getPages().find(function (p) { return p.id === id; });
-          if (!page) {
-            previewingPageId = null;
-            unlockAppSize();
-            render();
-            return;
-          }
-
-          destroyEditor();
-          appEl.replaceChildren();
-          setActiveNav("/");
-
-          lockAppSize();
-
-          var iframe = document.createElement("iframe");
-          iframe.setAttribute("title", page.title);
-          iframe.setAttribute("scrolling", "no");
-          iframe.srcdoc = page.html;
-
-          iframe.addEventListener("load", function () {
-            bindIframeProxy(iframe);
-          });
-
-          appEl.appendChild(iframe);
-          appEl.classList.add("preview-mode");
-          appEl.dataset.currentPageId = String(id);
+        function resetHome() {
+          currentPageId = null;
+          render();
         }
 
         function deletePage(id) {
@@ -839,10 +784,7 @@
               var list = getPages().filter(function (p) { return p.id !== id; });
               savePages(list);
               updateSidebarPages();
-              if (previewingPageId === id) {
-                previewingPageId = null;
-                unlockAppSize();
-              }
+              if (currentPageId === id) currentPageId = null;
               render();
             },
             true
@@ -865,19 +807,14 @@
           sidebarEl.classList.add("open");
           overlayEl.classList.add("show");
           document.body.classList.add("sidebar-open");
-          hamburgerBtn.setAttribute("aria-expanded", "true");
         }
         function closeSidebar() {
           sidebarEl.classList.remove("open");
           overlayEl.classList.remove("show");
           document.body.classList.remove("sidebar-open");
-          hamburgerBtn.setAttribute("aria-expanded", "false");
         }
 
-        /* ======================= 主题 ======================= */
-        var editor = null;
-        var uploadedImageDataUrl = null;
-
+        /* ===================== 主题 ===================== */
         function applyTheme(theme) {
           var lightTheme = $("#cm-theme-light");
           var darkTheme = $("#cm-theme-dark");
@@ -901,7 +838,7 @@
           try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
         }
 
-        /* ======================= 路由 ======================= */
+        /* ===================== 路由 ===================== */
         function getRoute() {
           var hash = location.hash;
           if (!hash || hash === "#" || hash === "#/") return "/";
@@ -923,23 +860,21 @@
           }
         }
 
-        /* ======================= 页面渲染 ======================= */
-        var appEl;
-
-        function renderHome() {
+        /* ===================== 页面渲染 ===================== */
+        function renderWelcome() {
           var wrap = document.createElement("div");
           wrap.innerHTML =
             "<h1>🎨 p5.js 脚本生成器</h1>" +
             "<p>所有数据保存在本地浏览器中，无需服务器。</p>" +
             "<p>编写 p5.js 脚本，上传图片素材，生成独立的 HTML 页面。</p>" +
-            "<p>支持预览、导出 ZIP、删除和重命名作品。</p>" +
-            "<p>点击左上角 ☰ 菜单查看所有作品。</p>" +
+            "<p>支持导出 ZIP、删除和重命名作品。</p>" +
+            "<p>从左上角 ☰ 菜单进入「生成脚本」或从「我的脚本」点击运行。</p>" +
             "<p style='color:#888;font-size:.9em;margin-top:1em'>" +
-            "点击侧边栏中的作品名称即可全屏运行；" +
-            "预览时按 Esc 或从菜单切换页面即可退出。" +
+            "运行脚本时按 Esc 或从菜单切换到其它页面即可退出。" +
             "</p>";
           return wrap;
         }
+
         function renderAbout() {
           var wrap = document.createElement("div");
           wrap.innerHTML =
@@ -949,6 +884,7 @@
             "<p>所有脚本均可导出为 ZIP 包。</p>";
           return wrap;
         }
+
         function renderGenerator() {
           var wrap = document.createElement("div");
           wrap.innerHTML =
@@ -960,7 +896,7 @@
             "</div>" +
             '<div class="form-group">' +
             '  <label for="script">p5.js 脚本代码</label>' +
-            '  <textarea id="script" placeholder="例如：&#10;function setup() {&#10;  createCanvas(windowWidth, windowHeight);&#10;  background(102);&#10;}&#10;function draw() {&#10;  variableEllipse(mouseX, mouseY, pmouseX, pmouseY);&#10;}&#10;function variableEllipse(x, y, px, py) {&#10;  let speed = abs(x - px) + abs(y - py);&#10;  stroke(speed);&#10;  ellipse(x, y, speed, speed);&#10;}"></textarea>' +
+            '  <textarea id="script"></textarea>' +
             "</div>" +
             '<div class="form-group">' +
             '  <label for="image">上传图片（可选，脚本可通过 <code>imageUrl</code> 加载）</label>' +
@@ -991,7 +927,6 @@
               theme: themeName,
               tabSize: 2,
               indentUnit: 2,
-              autofocus: true,
             });
             editor.setSize(null, "100%");
           }
@@ -1005,7 +940,7 @@
               return;
             }
             if (file.size > MAX_IMAGE_BYTES) {
-              showAlert("图片太大", "单张图片请小于 1.5MB，以免本地存储空间耗尽。", true);
+              showAlert("图片太大", "单张图片请小于 1.5MB。", true);
               this.value = "";
               return;
             }
@@ -1019,9 +954,6 @@
               img.className = "preview-img";
               img.alt = "上传预览";
               previewEl.replaceChildren(tip, img);
-            };
-            reader.onerror = function () {
-              showAlert("读取失败", "无法读取该图片，请重试。", true);
             };
             reader.readAsDataURL(file);
           });
@@ -1056,16 +988,23 @@
             btnContainer.className = "action-buttons";
 
             var previewBtn = document.createElement("button");
+            previewBtn.type = "button";
             previewBtn.className = "preview";
             previewBtn.textContent = "▶️ 预览";
-            previewBtn.addEventListener("click", function () {
-              enterPreview(newId);
+            previewBtn.addEventListener("click", function (e) {
+              e.preventDefault();
+              e.stopPropagation();
+              openInHome(newId);
             });
 
             var zipBtn = document.createElement("button");
+            zipBtn.type = "button";
             zipBtn.className = "zip";
             zipBtn.textContent = "📦 导出所有脚本 (ZIP)";
-            zipBtn.addEventListener("click", exportZip);
+            zipBtn.addEventListener("click", function (e) {
+              e.preventDefault();
+              exportZip();
+            });
 
             btnContainer.appendChild(previewBtn);
             btnContainer.appendChild(zipBtn);
@@ -1079,29 +1018,79 @@
           });
         }
 
-        function render() {
-          var path = getRoute();
+        /* =====================================================================
+         * render —— 预览优先，与 hash 解耦
+         * ===================================================================== */
+        function renderHome() {
+          destroyEditor();
+          appEl.replaceChildren();
 
-          // 预览模式：路由回到首页时全屏运行
-          if (previewingPageId !== null && (path === "/" || path === "")) {
-            renderPreview(previewingPageId);
+          if (currentPageId === null) {
+            unlockPreview();
+            appEl.appendChild(renderWelcome());
             return;
           }
 
-          // 离开预览：清理样式与锁定的尺寸
-          if (appEl.classList.contains("preview-mode")) {
-            appEl.classList.remove("preview-mode");
-            delete appEl.dataset.currentPageId;
-            unlockAppSize();
+          var page = getPages().find(function (p) { return p.id === currentPageId; });
+          if (!page) {
+            currentPageId = null;
+            unlockPreview();
+            appEl.appendChild(renderWelcome());
+            return;
+          }
+
+          // 先切到全屏，再创建 iframe
+          lockPreview();
+
+          var iframe = document.createElement("iframe");
+          iframe.setAttribute("title", page.title);
+          iframe.setAttribute("scrolling", "no");
+          iframe.srcdoc = page.html;
+          iframe.addEventListener("load", function () {
+            bindIframeProxy(iframe);
+          });
+          appEl.appendChild(iframe);
+        }
+
+        function render() {
+          // 预览优先：不管 hash 是什么，只要 currentPageId 有值就全屏运行
+          if (currentPageId !== null) {
+            destroyEditor();
+            appEl.replaceChildren();
+            lockPreview();
+
+            var page = getPages().find(function (p) { return p.id === currentPageId; });
+            if (!page) {
+              currentPageId = null;
+              unlockPreview();
+              // 继续走正常路由渲染
+            } else {
+              var iframe = document.createElement("iframe");
+              iframe.setAttribute("title", page.title);
+              iframe.setAttribute("scrolling", "no");
+              iframe.srcdoc = page.html;
+              iframe.addEventListener("load", function () {
+                bindIframeProxy(iframe);
+              });
+              appEl.appendChild(iframe);
+              setActiveNav("/");
+              return;
+            }
+          }
+
+          var path = getRoute();
+          setActiveNav(path);
+
+          if (path === "/" || path === "/index.html" || path === "") {
+            renderHome();
+            return;
           }
 
           destroyEditor();
           appEl.replaceChildren();
-          setActiveNav(path);
+          unlockPreview();
 
-          if (path === "/" || path === "/index.html" || path === "") {
-            appEl.appendChild(renderHome());
-          } else if (path === "/about") {
+          if (path === "/about") {
             appEl.appendChild(renderAbout());
           } else if (path === "/generator") {
             appEl.appendChild(renderGenerator());
@@ -1118,15 +1107,18 @@
           }
         }
 
-        /* ======================= 初始化 ======================= */
+        /* ===================== 初始化 ===================== */
         function init() {
-          modalBackdrop = $("#modalBackdrop");
-          modalBox = $("#modalBox");
-          sidebarPagesEl = $("#sidebar-pages");
+          if (initialized) return;
+          initialized = true;
+
+          appEl = $("#app");
           sidebarEl = $("#sidebar");
           overlayEl = $("#overlay");
           hamburgerBtn = $("#hamburgerBtn");
-          appEl = $("#app");
+          sidebarPagesEl = $("#sidebar-pages");
+          modalBackdrop = $("#modalBackdrop");
+          modalBox = $("#modalBox");
 
           var savedTheme = "light";
           try { savedTheme = localStorage.getItem(THEME_KEY) || "light"; } catch (e) {}
@@ -1137,27 +1129,30 @@
           modalBackdrop.addEventListener("click", function (e) {
             if (e.target === modalBackdrop) closeModal();
           });
+
           document.addEventListener("keydown", function (e) {
-            if (e.key === "Escape") {
-              if (modalBackdrop.classList.contains("show")) closeModal();
-              else if (previewingPageId !== null) exitPreview();
-              else closeSidebar();
+            if (e.key !== "Escape") return;
+            if (modalBackdrop.classList.contains("show")) { closeModal(); return; }
+            if (sidebarEl.classList.contains("open")) { closeSidebar(); return; }
+            if (currentPageId !== null) {
+              resetHome();
             }
           });
 
           var themeBtn = $("#themeToggleSidebar");
           if (themeBtn) themeBtn.addEventListener("click", toggleTheme);
 
-          // 侧边栏导航：点击任意导航项都退出预览
           $$(".sidebar .nav-item[data-path]").forEach(function (el) {
             var go = function () {
-              if (previewingPageId !== null) {
-                previewingPageId = null;
-                unlockAppSize();
-              }
+              // 点击导航 → 退出预览
+              currentPageId = null;
+              unlockPreview();
               var path = el.getAttribute("data-path");
-              if (location.hash === path) render();
-              else location.hash = path;
+              if (location.hash === path) {
+                render();
+              } else {
+                location.hash = path;
+              }
               closeSidebar();
             };
             el.addEventListener("click", go);
@@ -1171,12 +1166,20 @@
             if (!btn) return;
             var id = Number(btn.dataset.id);
             var action = btn.dataset.action;
-            if (action === "open") enterPreview(id);
+            if (action === "open") openInHome(id);
             else if (action === "rename") renamePage(id);
             else if (action === "delete") deletePage(id);
           });
 
           window.addEventListener("hashchange", function () {
+            // 用户主动改 hash（比如前进后退） → 退出预览
+            if (currentPageId !== null) {
+              var path = getRoute();
+              if (path !== "/" && path !== "") {
+                currentPageId = null;
+                unlockPreview();
+              }
+            }
             render();
             closeSidebar();
           });
@@ -1185,19 +1188,11 @@
             if (editor) editor.refresh();
           });
 
-          // 屏幕旋转 / 大幅改变时，如果正在预览，同步一次 iframe 尺寸
-          // （不影响拖拽，只在主动旋转设备时触发）
-          window.addEventListener("resize", function () {
-            if (previewingPageId !== null && appEl.classList.contains("preview-mode")) {
-              appEl.style.width = window.innerWidth + "px";
-              appEl.style.height = window.innerHeight + "px";
-            }
-          });
-
           updateSidebarPages();
           render();
         }
 
+        // 主脚本用 DOMContentLoaded / readyState 判断，避免与 defer 脚本竞争
         if (document.readyState === "loading") {
           document.addEventListener("DOMContentLoaded", init);
         } else {
