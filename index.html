@@ -41,6 +41,20 @@
       }
       body.dark-mode { background: var(--bg-dark); color: var(--text-dark); }
 
+      /* ============ 预览锁：body 完全冻结，禁滚动、禁手势 ============ */
+      body.preview-lock {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        overscroll-behavior: none;
+        touch-action: none;
+      }
+
       /* ===================== 汉堡按钮 ===================== */
       .hamburger-btn {
         position: fixed;
@@ -60,8 +74,8 @@
       }
       .hamburger-btn:hover { transform: scale(1.1); }
       body.dark-mode .hamburger-btn { color: #fff; }
-      /* 全屏运行 p5 时汉堡改为白色，仍然可见可点 */
-      body.preview-mode .hamburger-btn {
+      /* 预览时汉堡保持可见，改为白色便于在深色 canvas 上辨认 */
+      body.preview-lock .hamburger-btn {
         color: #fff;
         text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
       }
@@ -197,20 +211,15 @@
         margin: 0 auto;
       }
 
-      /* 全屏 p5 模式：铺满设备视口，尺寸稳定 */
+      /* ============ 全屏脚本模式 ============
+       * 位置、宽高由 JS 用内联 px 一次性锁死（lockPreviewSize）。
+       * 这里只负责视觉与 iframe 填满。
+       */
       #app.preview-mode {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        width: 100vw;
-        height: 100vh;
-        height: 100dvh;
-        padding: 0;
-        margin: 0;
-        max-width: none;
-        min-height: 0;
+        padding: 0 !important;
+        margin: 0 !important;
+        max-width: none !important;
+        min-height: 0 !important;
         background: #000;
         overflow: hidden;
         z-index: 100;
@@ -224,6 +233,7 @@
         border: none;
         display: block;
         background: #fff;
+        touch-action: none;
       }
 
       #app h1 {
@@ -309,7 +319,6 @@
       .action-buttons button.preview { background: #28a745; }
       .action-buttons button.zip { background: #17a2b8; }
 
-      /* ===================== 模态框 ===================== */
       .modal-backdrop {
         display: none;
         position: fixed;
@@ -400,14 +409,14 @@
         "use strict";
 
         /* =====================================================================
-         * 状态与常量
+         * 常量与状态
          * ===================================================================== */
         var STORAGE_KEY = "p5_pages";
         var THEME_KEY = "p5_theme";
         var MAX_IMAGE_BYTES = 1.5 * 1024 * 1024;
 
-        // 首页当前运行的脚本 id（null = 显示欢迎文本）
-        var currentPageId = null;
+        var currentPageId = null;   // 首页当前运行脚本的 id（null = 显示欢迎文本）
+        var sizeLocked = false;     // 尺寸是否已锁定
 
         var appEl, sidebarEl, overlayEl, hamburgerBtn;
         var sidebarPagesEl, modalBackdrop, modalBox;
@@ -530,6 +539,9 @@
 
         /* =====================================================================
          * 生成独立 HTML
+         * ---------------------------------------------------------------------
+         * 关键：给 html/body/canvas 加 touch-action: none，
+         * 阻止移动端拖拽时的默认手势（滚动 / 缩放），保证 p5 连续收到事件。
          * ===================================================================== */
         function generatePageHtml(title, script, imageDataUrl) {
           var safeTitle = escapeHtml(title || "未命名页面");
@@ -544,11 +556,18 @@
             '<html lang="zh-CN">\n' +
             "<head>\n" +
             '  <meta charset="UTF-8">\n' +
-            '  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n' +
+            '  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">\n' +
             "  <title>" + safeTitle + "</title>\n" +
             "  <style>\n" +
-            "    html, body { margin: 0; padding: 0; }\n" +
-            "    canvas { display: block; }\n" +
+            "    html, body {\n" +
+            "      margin: 0; padding: 0;\n" +
+            "      touch-action: none;\n" +
+            "      overscroll-behavior: none;\n" +
+            "      -webkit-user-select: none;\n" +
+            "      user-select: none;\n" +
+            "      -webkit-touch-callout: none;\n" +
+            "    }\n" +
+            "    canvas { display: block; touch-action: none; }\n" +
             "  </style>\n" +
             '  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"><\/script>\n' +
             "</head>\n" +
@@ -640,7 +659,7 @@
         }
 
         /* =====================================================================
-         * 事件代理（父 → iframe canvas）
+         * 事件代理：父 → iframe canvas
          * ===================================================================== */
         function bindIframeProxy(iframe) {
           var iwin, idoc;
@@ -720,7 +739,55 @@
         }
 
         /* =====================================================================
-         * 打开脚本 —— 唯一的入口
+         * 尺寸锁定 —— 全屏运行 p5 的核心
+         * ---------------------------------------------------------------------
+         * 进入时用 window.innerWidth/innerHeight 一次性写入像素值，
+         * 之后不再随 window resize / 地址栏收放 / 滚动条出现而变化。
+         * p5 的 createCanvas(windowWidth, windowHeight) 因此得到稳定尺寸，
+         * 拖拽时 mouseX/mouseY 的坐标系不会跳动。
+         * ===================================================================== */
+        function lockPreviewSize() {
+          if (sizeLocked) return;
+
+          // 1. 冻结 body，禁止滚动 / 手势
+          document.body.classList.add("preview-lock");
+
+          // 2. 用像素值硬锁 appEl
+          var w = window.innerWidth;
+          var h = window.innerHeight;
+          appEl.style.position = "fixed";
+          appEl.style.top = "0";
+          appEl.style.left = "0";
+          appEl.style.right = "auto";
+          appEl.style.bottom = "auto";
+          appEl.style.width = w + "px";
+          appEl.style.height = h + "px";
+          appEl.style.overflow = "hidden";
+          appEl.classList.add("preview-mode");
+
+          sizeLocked = true;
+        }
+
+        function unlockPreviewSize() {
+          if (!sizeLocked) return;
+
+          document.body.classList.remove("preview-lock");
+          appEl.classList.remove("preview-mode");
+
+          appEl.style.position = "";
+          appEl.style.top = "";
+          appEl.style.left = "";
+          appEl.style.right = "";
+          appEl.style.bottom = "";
+          appEl.style.width = "";
+          appEl.style.height = "";
+          appEl.style.overflow = "";
+
+          sizeLocked = false;
+        }
+
+        /* =====================================================================
+         * 打开 / 关闭脚本
          * ===================================================================== */
         function openInHome(id) {
           var page = getPages().find(function (p) { return p.id === id; });
@@ -836,11 +903,7 @@
         }
 
         /* =====================================================================
-         * 渲染
-         * ---------------------------------------------------------------------
-         * 「首页」由 currentPageId 决定：
-         *   null → 欢迎文本
-         *   有值 → 全屏运行该 p5 脚本
+         * 页面渲染
          * ===================================================================== */
         function renderWelcome() {
           var wrap = document.createElement("div");
@@ -968,7 +1031,6 @@
             var btnContainer = document.createElement("div");
             btnContainer.className = "action-buttons";
 
-            // 「预览」按钮：直接调用 openInHome，与侧边栏点击完全一致
             var previewBtn = document.createElement("button");
             previewBtn.className = "preview";
             previewBtn.textContent = "▶️ 预览";
@@ -996,25 +1058,26 @@
         function renderHome() {
           destroyEditor();
           appEl.replaceChildren();
-          appEl.classList.remove("preview-mode");
-          document.body.classList.remove("preview-mode");
 
           // currentPageId 为 null → 显示欢迎文本
           if (currentPageId === null) {
+            unlockPreviewSize();
             appEl.appendChild(renderWelcome());
             return;
           }
 
-          // currentPageId 有值 → 全屏运行
           var page = getPages().find(function (p) { return p.id === currentPageId; });
           if (!page) {
             currentPageId = null;
+            unlockPreviewSize();
             appEl.appendChild(renderWelcome());
             return;
           }
 
-          appEl.classList.add("preview-mode");
-          document.body.classList.add("preview-mode");
+          // 关键：先锁定尺寸，再添加 iframe。
+          // 这样 iframe 一加载就拿到固定的 windowWidth / windowHeight，
+          // 后续拖拽时 canvas 尺寸不再变化，mouseX/mouseY 稳定。
+          lockPreviewSize();
 
           var iframe = document.createElement("iframe");
           iframe.setAttribute("title", page.title);
@@ -1035,21 +1098,18 @@
           } else if (path === "/about") {
             destroyEditor();
             appEl.replaceChildren();
-            appEl.classList.remove("preview-mode");
-            document.body.classList.remove("preview-mode");
+            unlockPreviewSize();
             appEl.appendChild(renderAbout());
           } else if (path === "/generator") {
             destroyEditor();
             appEl.replaceChildren();
-            appEl.classList.remove("preview-mode");
-            document.body.classList.remove("preview-mode");
+            unlockPreviewSize();
             appEl.appendChild(renderGenerator());
             bindGenerator();
           } else {
             destroyEditor();
             appEl.replaceChildren();
-            appEl.classList.remove("preview-mode");
-            document.body.classList.remove("preview-mode");
+            unlockPreviewSize();
             var wrap = document.createElement("div");
             var h = document.createElement("h1");
             h.textContent = "📄 页面 " + path;
@@ -1076,34 +1136,29 @@
           modalBackdrop = $("#modalBackdrop");
           modalBox = $("#modalBox");
 
-          // 恢复主题
           var savedTheme = "light";
           try { savedTheme = localStorage.getItem(THEME_KEY) || "light"; } catch (e) {}
           applyTheme(savedTheme);
 
-          // 汉堡 / 遮罩
           hamburgerBtn.addEventListener("click", openSidebar);
           overlayEl.addEventListener("click", closeSidebar);
           modalBackdrop.addEventListener("click", function (e) {
             if (e.target === modalBackdrop) closeModal();
           });
 
-          // Esc 键
           document.addEventListener("keydown", function (e) {
             if (e.key !== "Escape") return;
             if (modalBackdrop.classList.contains("show")) { closeModal(); return; }
             if (sidebarEl.classList.contains("open")) { closeSidebar(); return; }
-            // 首页正在运行脚本 → 清空 currentPageId 回到欢迎页
+            // 首页正在运行脚本 → 退出到欢迎页
             if (getRoute() === "/" && currentPageId !== null) {
               resetHome();
             }
           });
 
-          // 主题切换
           var themeBtn = $("#themeToggleSidebar");
           if (themeBtn) themeBtn.addEventListener("click", toggleTheme);
 
-          // 侧边栏导航项
           $$(".sidebar .nav-item[data-path]").forEach(function (el) {
             var go = function () {
               var path = el.getAttribute("data-path");
@@ -1120,7 +1175,6 @@
             });
           });
 
-          // 作品列表（事件委托）
           sidebarPagesEl.addEventListener("click", function (e) {
             var btn = e.target.closest("[data-action]");
             if (!btn) return;
@@ -1131,26 +1185,23 @@
             else if (action === "delete") deletePage(id);
           });
 
-          // hashchange
           window.addEventListener("hashchange", function () {
             render();
             closeSidebar();
           });
 
-          // 旋转屏幕后刷新 CodeMirror
+          // 旋转屏幕：脚本运行中则保持锁定不变（不做任何 resize），
+          // 只刷新 CodeMirror
           window.addEventListener("orientationchange", function () {
             if (editor) editor.refresh();
           });
 
-          // 首次渲染
           updateSidebarPages();
           render();
         }
 
-        // DOM 就绪即初始化；若已就绪则立刻执行
         if (document.readyState === "loading") {
           document.addEventListener("DOMContentLoaded", init);
-          // 兜底：如果 DOMContentLoaded 由于某种原因没触发，load 时再试一次
           window.addEventListener("load", init);
         } else {
           init();
