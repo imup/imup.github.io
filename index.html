@@ -2,12 +2,26 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>randomArt 创意脚本编辑</title>
 
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/default.min.css" id="cm-theme-light" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css" id="cm-theme-dark" disabled />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/default.min.css"
+      id="cm-theme-light"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css"
+      id="cm-theme-dark"
+      disabled
+    />
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
     <style>
       :root {
@@ -39,11 +53,19 @@
       }
       body.dark-mode { background: var(--bg-dark); color: var(--text-dark); }
 
-      /* 预览锁：禁止滚动 / 手势 */
+      /* [修复] 模态框打开时禁用背景滚动 */
+      body.modal-open { overflow: hidden; }
+
       body.preview-lock {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        height: 100%;
         overflow: hidden;
         overscroll-behavior: none;
-        touch-action: none;
       }
 
       /* ===================== 汉堡按钮 ===================== */
@@ -61,24 +83,77 @@
         padding: 4px 8px;
         line-height: 1;
         user-select: none;
-        transition: color 0.3s, background 0.3s, opacity 0.22s ease, transform 0.22s ease;
+        transition: color 0.3s, opacity 0.22s ease, transform 0.22s ease;
       }
       .hamburger-btn:hover { transform: scale(1.1); }
       body.dark-mode .hamburger-btn { color: #fff; }
-
-      /* 预览时：半透明黑底白字，任何背景上都可见 */
       body.preview-lock .hamburger-btn {
         color: #fff;
-        background: rgba(0, 0, 0, 0.45);
-        border-radius: 6px;
-        backdrop-filter: blur(4px);
-        -webkit-backdrop-filter: blur(4px);
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
       }
-
       body.sidebar-open .hamburger-btn {
         opacity: 0;
         transform: scale(0.6);
         pointer-events: none;
+      }
+
+      /* [修复] 预览退出按钮 —— 解决移动端无 Esc 无法退出的问题 */
+      .preview-exit-btn {
+        position: fixed;
+        top: clamp(10px, 2vw, 14px);
+        right: clamp(10px, 3vw, 18px);
+        z-index: 320;
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.55);
+        color: #fff;
+        border: none;
+        font-size: 1.1rem;
+        font-weight: bold;
+        cursor: pointer;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+        transition: transform 0.15s, background 0.2s;
+      }
+      .preview-exit-btn.show { display: flex; }
+      .preview-exit-btn:hover { background: rgba(0, 0, 0, 0.75); transform: scale(1.06); }
+
+      /* [修复] 预览运行时错误提示条 */
+      .preview-error {
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 250;
+        background: rgba(180, 40, 40, 0.96);
+        color: #fff;
+        padding: 10px 16px 12px;
+        font-family: ui-monospace, Menlo, Consolas, monospace;
+        font-size: 0.82rem;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-break: break-word;
+        max-height: 40vh;
+        overflow-y: auto;
+        display: none;
+        box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.35);
+      }
+      .preview-error.show { display: block; }
+      .preview-error .close {
+        position: absolute;
+        top: 6px;
+        right: 10px;
+        background: none;
+        border: none;
+        color: #fff;
+        font-size: 1.1rem;
+        cursor: pointer;
+        padding: 2px 6px;
       }
 
       /* ===================== 侧边栏 ===================== */
@@ -113,6 +188,7 @@
           inset 0 -22px 28px -26px rgba(0, 0, 0, 0.9);
         border-right-color: var(--line-dark);
       }
+
       .sidebar .nav-item {
         padding: 12px clamp(16px, 4vw, 20px);
         border-bottom: 1px solid var(--line-light);
@@ -124,8 +200,10 @@
       body.dark-mode .sidebar .nav-item:hover { background: var(--hover-dark); }
       .sidebar .nav-item[aria-current="page"] { background: var(--hover-light); }
       body.dark-mode .sidebar .nav-item[aria-current="page"] { background: var(--hover-dark); }
+
       .sidebar .divider { border-top: 1px solid var(--line-light); margin: 10px 0; }
       body.dark-mode .sidebar .divider { border-top-color: var(--line-dark); }
+
       .sidebar .section-title {
         padding: 8px clamp(16px, 4vw, 20px);
         font-size: 0.85rem;
@@ -133,6 +211,7 @@
         font-weight: bold;
       }
       body.dark-mode .sidebar .section-title { color: #999; }
+
       .sidebar .page-item {
         display: flex;
         justify-content: space-between;
@@ -143,6 +222,7 @@
       body.dark-mode .sidebar .page-item { border-bottom-color: var(--line-dark); }
       .sidebar .page-item:hover { background: var(--hover-light); }
       body.dark-mode .sidebar .page-item:hover { background: var(--hover-dark); }
+
       .sidebar .page-item .page-title {
         flex: 1;
         color: inherit;
@@ -162,11 +242,13 @@
       }
       .sidebar .page-item .actions .rename:hover { color: #5bc0de; }
       .sidebar .page-item .actions .del:hover { color: #d9534f; }
+
       .sidebar .no-pages {
         padding: 12px clamp(16px, 4vw, 20px);
         color: #888;
         font-style: italic;
       }
+
       .sidebar-footer {
         margin-top: auto;
         border-top: 1px solid var(--line-light);
@@ -207,21 +289,8 @@
         margin: 0 auto;
       }
 
-      /* ============ 全屏脚本模式 ============
-       * 用 CSS 的 position: fixed + inset: 0 让 #app 铺满 viewport，
-       * 不再依赖 JS 计算像素。iframe 用 100%/100% 填满。
-       * 拖拽时窗口尺寸不变 → p5 的 mouseX/mouseY 稳定。
-       */
       #app.preview-mode {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        width: auto;
-        height: auto;
         padding: 0;
-        margin: 0;
         max-width: none;
         min-height: 0;
         background: #000;
@@ -229,12 +298,13 @@
         z-index: 100;
       }
       #app.preview-mode iframe {
-        display: block;
         width: 100%;
         height: 100%;
         border: none;
+        display: block;
         background: #fff;
-        touch-action: none;
+        /* [修复] 用 CSS 替代已废弃的 scrolling="no" 属性 */
+        overflow: hidden;
       }
 
       #app h1 {
@@ -377,7 +447,16 @@
     </style>
   </head>
   <body>
-    <button class="hamburger-btn" id="hamburgerBtn" aria-label="打开菜单">☰</button>
+    <button
+      class="hamburger-btn"
+      id="hamburgerBtn"
+      aria-label="打开菜单"
+      aria-expanded="false"
+      aria-controls="sidebar"
+    >☰</button>
+
+    <!-- [修复] 预览退出按钮 -->
+    <button class="preview-exit-btn" id="previewExitBtn" aria-label="退出预览" title="退出预览 (Esc)">✕</button>
 
     <nav class="sidebar" id="sidebar" aria-label="主导航">
       <div class="nav-item" data-path="#/" role="button" tabindex="0">🏠 首页</div>
@@ -398,35 +477,33 @@
 
     <main id="app">加载中…</main>
 
+    <!-- [修复] 预览错误提示条 -->
+    <div class="preview-error" id="previewError" role="alert">
+      <button class="close" id="previewErrorClose" aria-label="关闭错误提示">✕</button>
+      <div id="previewErrorBody"></div>
+    </div>
+
     <div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true">
       <div class="modal" id="modalBox"></div>
     </div>
 
-    <!-- CDN 脚本用 defer，不阻塞 HTML 解析与 DOMContentLoaded -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js" defer></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
 
     <script>
       (function () {
         "use strict";
 
-        /* ===================== 常量与状态 ===================== */
         var STORAGE_KEY = "p5_pages";
         var THEME_KEY = "p5_theme";
-        var MAX_IMAGE_BYTES = 1.5 * 1024 * 1024;
+        var DRAFT_KEY = "p5_draft"; // [修复] 编辑器草稿
 
-        var currentPageId = null;   // 首页当前运行脚本的 id（null = 显示欢迎文本）
-        var previewLocked = false;  // 是否已进入全屏模式
+        // [修复] 上传原图上限放宽（压缩前），存库大小另行校验
+        var MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+        var MAX_STORED_BYTES = 1.2 * 1024 * 1024;
+        var IMG_MAX_DIM = 1400;      // 压缩后最长边
+        var IMG_QUALITY = 0.82;      // JPEG 压缩质量
 
-        var appEl, sidebarEl, overlayEl, hamburgerBtn;
-        var sidebarPagesEl, modalBackdrop, modalBox;
-        var editor = null;
-        var uploadedImageDataUrl = null;
-        var lastFocused = null;
-        var initialized = false;
-
-        /* ===================== 工具 ===================== */
         function $(sel, root) { return (root || document).querySelector(sel); }
         function $$(sel, root) {
           return Array.prototype.slice.call((root || document).querySelectorAll(sel));
@@ -439,11 +516,15 @@
             .replace(/"/g, "&quot;")
             .replace(/'/g, "&#39;");
         }
+        // [修复] 补全 <!-- 与 <script 的转义，避免 HTML 解析提前结束脚本块
         function escapeScriptClose(str) {
-          return String(str).replace(/<\/script/gi, "<\\/script");
+          return String(str)
+            .replace(/<!--/g, "<\\!--")
+            .replace(/<script/gi, "<\\script")
+            .replace(/<\/script/gi, "<\\/script");
         }
 
-        /* ===================== 本地存储 ===================== */
+        /* ======================= 本地存储 ======================= */
         function getPages() {
           try {
             var raw = localStorage.getItem(STORAGE_KEY);
@@ -465,20 +546,108 @@
           }
         }
 
-        /* ===================== 模态框 ===================== */
+        // [修复] 编辑器草稿，防止路由切换丢失输入
+        function loadDraft() {
+          try {
+            var raw = sessionStorage.getItem(DRAFT_KEY);
+            return raw ? JSON.parse(raw) : null;
+          } catch (e) { return null; }
+        }
+        function saveDraft(draft) {
+          try {
+            if (draft === null) sessionStorage.removeItem(DRAFT_KEY);
+            else sessionStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+          } catch (e) {}
+        }
+
+        /* ======================= 图片压缩 ======================= */
+        // [修复] 上传图片自动降采样并转 JPEG，避免 base64 撑爆 localStorage
+        function compressImage(file, callback) {
+          var reader = new FileReader();
+          reader.onload = function (e) {
+            var dataUrl = e.target.result;
+            var img = new Image();
+            img.onload = function () {
+              var w = img.naturalWidth || img.width;
+              var h = img.naturalHeight || img.height;
+              var scale = Math.min(1, IMG_MAX_DIM / Math.max(w, h));
+              // 尺寸本身很小 + 文件也不大 → 原样返回
+              if (scale >= 1 && file.size <= 400 * 1024) {
+                callback(dataUrl);
+                return;
+              }
+              var cw = Math.max(1, Math.round(w * scale));
+              var ch = Math.max(1, Math.round(h * scale));
+              var canvas = document.createElement("canvas");
+              canvas.width = cw;
+              canvas.height = ch;
+              var ctx = canvas.getContext("2d");
+              try {
+                ctx.drawImage(img, 0, 0, cw, ch);
+              } catch (err) {
+                callback(dataUrl);
+                return;
+              }
+              // PNG 保留透明通道，其余转 JPEG
+              var mime = file.type === "image/png" ? "image/png" : "image/jpeg";
+              var out;
+              try {
+                out = canvas.toDataURL(mime, IMG_QUALITY);
+              } catch (err) {
+                out = dataUrl;
+              }
+              // 压缩反而变大 → 用原图
+              if (!out || out.length >= dataUrl.length) out = dataUrl;
+              callback(out);
+            };
+            img.onerror = function () { callback(null); };
+            img.src = dataUrl;
+          };
+          reader.onerror = function () { callback(null); };
+          reader.readAsDataURL(file);
+        }
+
+        /* ======================= 模态框 ======================= */
+        var modalBackdrop, modalBox, lastFocused;
+
         function openModal(builder) {
           lastFocused = document.activeElement;
           modalBox.innerHTML = "";
           builder(modalBox);
           modalBackdrop.classList.add("show");
+          document.body.classList.add("modal-open"); // [修复]
           var f = $("input, button", modalBox);
-          if (f && f.focus) f.focus();
+          // [修复] 等 DOM 挂载后再聚焦
+          if (f && f.focus) setTimeout(function () { try { f.focus(); } catch (e) {} }, 0);
         }
         function closeModal() {
           modalBackdrop.classList.remove("show");
           modalBox.innerHTML = "";
-          if (lastFocused && lastFocused.focus) lastFocused.focus();
+          document.body.classList.remove("modal-open"); // [修复]
+          if (lastFocused && lastFocused.focus) {
+            try { lastFocused.focus(); } catch (e) {}
+          }
         }
+        // [修复] 模态框内 Tab 焦点陷阱
+        function trapModalFocus(e) {
+          if (!modalBackdrop.classList.contains("show")) return;
+          if (e.key !== "Tab") return;
+          var focusables = $$("button, input, [tabindex]:not([tabindex='-1'])", modalBox)
+            .filter(function (el) {
+              return !el.disabled && el.offsetParent !== null;
+            });
+          if (!focusables.length) return;
+          var first = focusables[0];
+          var last = focusables[focusables.length - 1];
+          if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+          } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+
         function showAlert(title, message, isError) {
           openModal(function (box) {
             var h = document.createElement("h3"); h.textContent = title;
@@ -532,7 +701,9 @@
           });
         }
 
-        /* ===================== 生成独立 HTML ===================== */
+        /* =====================================================================
+         * 生成独立 HTML
+         * ===================================================================== */
         function generatePageHtml(title, script, imageDataUrl) {
           var safeTitle = escapeHtml(title || "未命名页面");
           var imgVar = imageDataUrl
@@ -541,28 +712,43 @@
           var safeImgVar = escapeScriptClose(imgVar);
           var safeScript = escapeScriptClose(script);
 
+          // [修复] 注入错误上报，让父页面能显示运行时错误
+          var errorBridge =
+            "    (function(){\n" +
+            "      function report(msg, line, col){\n" +
+            "        try { parent.postMessage({ type: 'p5-error', message: String(msg), lineno: line || 0, colno: col || 0 }, '*'); } catch(e){}\n" +
+            "      }\n" +
+            "      window.onerror = function(m, s, l, c){ report(m, l, c); };\n" +
+            "      window.addEventListener('unhandledrejection', function(e){\n" +
+            "        var r = e.reason;\n" +
+            "        report('Unhandled rejection: ' + (r && r.message ? r.message : String(r)));\n" +
+            "      });\n" +
+            "      window.addEventListener('load', function(){\n" +
+            "        setTimeout(function(){\n" +
+            "          if (typeof window.setup !== 'function' && typeof window.draw !== 'function' && !window.__p5_ok) {\n" +
+            "            var hasP5 = !!(window.p5);\n" +
+            "            if (!hasP5) report('p5.js 未能加载，请检查网络连接。');\n" +
+            "          }\n" +
+            "        }, 2000);\n" +
+            "      });\n" +
+            "    })();\n";
+
           return (
             "<!DOCTYPE html>\n" +
             '<html lang="zh-CN">\n' +
             "<head>\n" +
             '  <meta charset="UTF-8">\n' +
-            '  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">\n' +
+            '  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n' +
             "  <title>" + safeTitle + "</title>\n" +
             "  <style>\n" +
-            "    html, body {\n" +
-            "      margin: 0; padding: 0;\n" +
-            "      touch-action: none;\n" +
-            "      overscroll-behavior: none;\n" +
-            "      -webkit-user-select: none;\n" +
-            "      user-select: none;\n" +
-            "      -webkit-touch-callout: none;\n" +
-            "    }\n" +
-            "    canvas { display: block; touch-action: none; }\n" +
+            "    html, body { margin: 0; padding: 0; overflow: hidden; background: #fff; }\n" +
+            "    canvas { display: block; }\n" +
             "  </style>\n" +
             '  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"><\/script>\n' +
             "</head>\n" +
             "<body>\n" +
             "  <script>\n" +
+            errorBridge +
             "    " + safeImgVar + "\n" +
             "    " + safeScript + "\n" +
             "  <\/script>\n" +
@@ -571,18 +757,14 @@
           );
         }
 
-        /* ===================== 导出 ZIP ===================== */
+        /* ======================= 导出 ZIP ======================= */
         function exportZip() {
-          if (!window.JSZip) {
-            showAlert("无法导出", "ZIP 组件尚未加载完成，请稍后重试。", true);
-            return;
-          }
           var pages = getPages();
           if (!pages.length) {
             showAlert("无法导出", "当前没有可导出的作品。");
             return;
           }
-          var zip = new window.JSZip();
+          var zip = new JSZip();
           pages.forEach(function (page, idx) {
             var base = (page.title || "untitled").replace(/[\\/:*?"<>|]/g, "_");
             zip.file("p5_" + base + "_" + (idx + 1) + ".html", page.html);
@@ -603,7 +785,9 @@
             });
         }
 
-        /* ===================== 侧边栏列表 ===================== */
+        /* ======================= 侧边栏 ======================= */
+        var sidebarPagesEl, sidebarEl, overlayEl, hamburgerBtn;
+
         function updateSidebarPages() {
           var pages = getPages();
           if (!pages.length) {
@@ -648,49 +832,73 @@
           sidebarPagesEl.replaceChildren(frag);
         }
 
-        /* ===================== 事件代理 ===================== */
+        /* =====================================================================
+         * 事件代理：父页面 → iframe 内 canvas
+         * ---------------------------------------------------------------------
+         * [修复] 监听器挂到 document 上，处理函数动态查询当前 canvas，
+         *        以应对 p5 在 windowResized 中重建 canvas 的情况；
+         *        轮询定时器在 iframe 脱离文档后自动停止。
+         * ===================================================================== */
         function bindIframeProxy(iframe) {
           var iwin, idoc;
           try {
             iwin = iframe.contentWindow;
             idoc = iframe.contentDocument;
-          } catch (e) { return; }
+          } catch (e) {
+            console.warn("无法访问 iframe 内部文档：", e);
+            return;
+          }
           if (!iwin || !idoc) return;
 
-          var tries = 0;
-          function tryFindCanvas() {
-            var canvas = idoc.querySelector("canvas");
-            if (canvas) { attachProxy(canvas, iwin, idoc); return; }
-            if (++tries < 80) setTimeout(tryFindCanvas, 100);
+          if (!idoc.__proxyListeners) {
+            idoc.__proxyListeners = true;
+            attachDocListeners(idoc, iwin);
           }
-          tryFindCanvas();
+
+          var tries = 0;
+          (function tryFindCanvas() {
+            // [修复] iframe 已被移除 → 停止轮询
+            if (!iframe.isConnected) return;
+            var canvas = idoc.querySelector("canvas");
+            if (canvas) return; // 监听器已在 document 上，无需再绑
+            if (++tries < 80) setTimeout(tryFindCanvas, 100);
+          })();
         }
 
-        function attachProxy(canvas, iwin, idoc) {
-          if (canvas.__proxyAttached) return;
-          canvas.__proxyAttached = true;
-
+        function attachDocListeners(idoc, iwin) {
           var MOUSE_TYPES = ["mousemove", "mousedown", "mouseup", "click", "dblclick"];
           var TOUCH_TYPES = ["touchstart", "touchmove", "touchend", "touchcancel"];
 
+          function getCanvas() { return idoc.querySelector("canvas"); }
+
           function relayMouse(e) {
-            if (e.target === canvas) return;
+            var canvas = getCanvas();
+            if (!canvas || e.target === canvas) return;
             if (
-              (e.type === "mousedown" || e.type === "mouseup" ||
-               e.type === "click" || e.type === "dblclick") &&
+              (e.type === "mousedown" ||
+                e.type === "mouseup" ||
+                e.type === "click" ||
+                e.type === "dblclick") &&
               e.button !== 0
             ) return;
 
             var ev;
             try {
               ev = new iwin.MouseEvent(e.type, {
-                bubbles: true, cancelable: true, view: iwin,
+                bubbles: true,
+                cancelable: true,
+                view: iwin,
                 detail: e.detail || 1,
-                screenX: e.screenX, screenY: e.screenY,
-                clientX: e.clientX, clientY: e.clientY,
-                ctrlKey: e.ctrlKey, shiftKey: e.shiftKey,
-                altKey: e.altKey, metaKey: e.metaKey,
-                button: e.button, buttons: e.buttons,
+                screenX: e.screenX,
+                screenY: e.screenY,
+                clientX: e.clientX,
+                clientY: e.clientY,
+                ctrlKey: e.ctrlKey,
+                shiftKey: e.shiftKey,
+                altKey: e.altKey,
+                metaKey: e.metaKey,
+                button: e.button,
+                buttons: e.buttons,
                 relatedTarget: null,
               });
             } catch (err) { return; }
@@ -698,7 +906,8 @@
           }
 
           function relayTouch(e) {
-            if (e.target === canvas) return;
+            var canvas = getCanvas();
+            if (!canvas || e.target === canvas) return;
             if (!e.touches || !e.touches.length) return;
             var t = e.touches[0];
             var type =
@@ -709,10 +918,15 @@
             var ev;
             try {
               ev = new iwin.MouseEvent(type, {
-                bubbles: true, cancelable: true, view: iwin,
-                clientX: t.clientX, clientY: t.clientY,
-                screenX: t.screenX, screenY: t.screenY,
-                button: 0, buttons: type === "mouseup" ? 0 : 1,
+                bubbles: true,
+                cancelable: true,
+                view: iwin,
+                clientX: t.clientX,
+                clientY: t.clientY,
+                screenX: t.screenX,
+                screenY: t.screenY,
+                button: 0,
+                buttons: type === "mouseup" ? 0 : 1,
               });
             } catch (err) { return; }
             canvas.dispatchEvent(ev);
@@ -727,64 +941,126 @@
         }
 
         /* =====================================================================
-         * 全屏锁：只用 class 切换，尺寸完全由 CSS 决定
+         * 预览模式
          * ===================================================================== */
-        function lockPreview() {
-          if (previewLocked) return;
+        var previewingPageId = null;
+        var previewExitBtn;
+        var previewErrorEl, previewErrorBody;
+        // [修复] 判断是否为触屏设备（用于决定 resize 是否重新测量）
+        var isCoarsePointer = (function () {
+          try {
+            return window.matchMedia("(hover: none) and (pointer: coarse)").matches;
+          } catch (e) { return false; }
+        })();
+
+        function lockAppSize() {
           document.body.classList.add("preview-lock");
-          appEl.classList.add("preview-mode");
-          previewLocked = true;
+          var w = window.innerWidth;
+          var h = window.innerHeight;
+          appEl.style.position = "fixed";
+          appEl.style.top = "0";
+          appEl.style.left = "0";
+          appEl.style.width = w + "px";
+          appEl.style.height = h + "px";
+          appEl.style.overflow = "hidden";
         }
 
-        function unlockPreview() {
-          if (!previewLocked) return;
+        function unlockAppSize() {
           document.body.classList.remove("preview-lock");
-          appEl.classList.remove("preview-mode");
-          previewLocked = false;
+          appEl.style.position = "";
+          appEl.style.top = "";
+          appEl.style.left = "";
+          appEl.style.width = "";
+          appEl.style.height = "";
+          appEl.style.overflow = "";
         }
 
-        /* =====================================================================
-         * 打开脚本 —— 唯一入口
-         * ---------------------------------------------------------------------
-         * 侧边栏点击 & 生成器「预览」按钮都走这里。
-         * 1. 设置 currentPageId
-         * 2. 更新 URL 到 #/（若不在首页）
-         * 3. 同步调用 render()，让预览立即出现
-         * ===================================================================== */
-        function openInHome(id) {
+        // [修复] 旋转屏幕后重新测量（移动端）
+        function relockAppSize() {
+          if (previewingPageId === null) return;
+          appEl.style.width = window.innerWidth + "px";
+          appEl.style.height = window.innerHeight + "px";
+        }
+
+        function enterPreview(id) {
+          var page = getPages().find(function (p) { return p.id === id; });
+          if (!page) return;
+          previewingPageId = id;
+          closeSidebar();
+          var h = location.hash;
+          if (h === "#/" || h === "" || h === "#") {
+            render();
+          } else {
+            location.hash = "#/";
+          }
+        }
+
+        function exitPreview() {
+          previewingPageId = null;
+          unlockAppSize();
+          hidePreviewError();
+          render();
+        }
+
+        function showPreviewError(msg, line, col) {
+          var text = String(msg || "未知错误");
+          if (line) text += "\n位置：第 " + line + " 行" + (col ? "，第 " + col + " 列" : "");
+          previewErrorBody.textContent = text;
+          previewErrorEl.classList.add("show");
+        }
+        function hidePreviewError() {
+          if (previewErrorEl) previewErrorEl.classList.remove("show");
+          if (previewErrorBody) previewErrorBody.textContent = "";
+        }
+
+        function renderPreview(id) {
           var page = getPages().find(function (p) { return p.id === id; });
           if (!page) {
-            showAlert("打开失败", "找不到该作品，可能已被删除。", true);
+            previewingPageId = null;
+            unlockAppSize();
+            render();
             return;
           }
-          currentPageId = id;
-          closeSidebar();
 
-          var targetHash = "#/";
-          if (location.hash !== targetHash) {
-            // 会异步触发 hashchange，进而 render()，但下面同步 render() 也能立即出效果
-            location.hash = targetHash;
-          }
-          render();
-        }
+          destroyEditor();
+          appEl.replaceChildren();
+          setActiveNav("/");
+          hidePreviewError();
 
-        function resetHome() {
-          currentPageId = null;
-          render();
+          lockAppSize();
+
+          var iframe = document.createElement("iframe");
+          iframe.setAttribute("title", page.title);
+          iframe.srcdoc = page.html;
+          // [修复] 去掉 scrolling="no"（已废弃），用 CSS 控制
+
+          iframe.addEventListener("load", function () {
+            bindIframeProxy(iframe);
+            hidePreviewError(); // 重新加载后清掉旧错误
+          });
+
+          appEl.appendChild(iframe);
+          appEl.classList.add("preview-mode");
+          appEl.dataset.currentPageId = String(id);
+          previewExitBtn.classList.add("show");
         }
 
         function deletePage(id) {
-          var pages = getPages();
-          var page = pages.find(function (p) { return p.id === id; });
+          var page = getPages().find(function (p) { return p.id === id; });
           if (!page) return;
           showConfirm(
             "删除作品",
             '确定要删除「' + page.title + '」吗？此操作不可恢复。',
             function () {
               var list = getPages().filter(function (p) { return p.id !== id; });
-              savePages(list);
+              if (!savePages(list)) return;
               updateSidebarPages();
-              if (currentPageId === id) currentPageId = null;
+              if (previewingPageId === id) {
+                previewingPageId = null;
+                unlockAppSize();
+                hidePreviewError();
+                previewExitBtn.classList.remove("show");
+              }
               render();
             },
             true
@@ -792,12 +1068,15 @@
         }
 
         function renamePage(id) {
-          var pages = getPages();
-          var page = pages.find(function (p) { return p.id === id; });
+          var page = getPages().find(function (p) { return p.id === id; });
           if (!page) return;
           showPrompt("重命名作品", page.title, function (newTitle) {
-            page.title = newTitle;
-            savePages(pages);
+            // [修复] 从最新快照操作，且只在保存成功后更新 UI
+            var fresh = getPages();
+            var target = fresh.find(function (p) { return p.id === id; });
+            if (!target) return;
+            target.title = newTitle;
+            if (!savePages(fresh)) return;
             updateSidebarPages();
             render();
           });
@@ -807,14 +1086,19 @@
           sidebarEl.classList.add("open");
           overlayEl.classList.add("show");
           document.body.classList.add("sidebar-open");
+          hamburgerBtn.setAttribute("aria-expanded", "true");
         }
         function closeSidebar() {
           sidebarEl.classList.remove("open");
           overlayEl.classList.remove("show");
           document.body.classList.remove("sidebar-open");
+          hamburgerBtn.setAttribute("aria-expanded", "false");
         }
 
-        /* ===================== 主题 ===================== */
+        /* ======================= 主题 ======================= */
+        var editor = null;
+        var uploadedImageDataUrl = null;
+
         function applyTheme(theme) {
           var lightTheme = $("#cm-theme-light");
           var darkTheme = $("#cm-theme-dark");
@@ -838,11 +1122,14 @@
           try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
         }
 
-        /* ===================== 路由 ===================== */
+        /* ======================= 路由 ======================= */
         function getRoute() {
           var hash = location.hash;
           if (!hash || hash === "#" || hash === "#/") return "/";
-          return hash.replace(/^#/, "") || "/";
+          var p = hash.replace(/^#/, "") || "/";
+          // [修复] 归一化 index.html，避免导航高亮失效
+          if (p === "/index.html") return "/";
+          return p;
         }
         function setActiveNav(path) {
           $$(".sidebar .nav-item[data-path]").forEach(function (el) {
@@ -860,21 +1147,23 @@
           }
         }
 
-        /* ===================== 页面渲染 ===================== */
-        function renderWelcome() {
+        /* ======================= 页面渲染 ======================= */
+        var appEl;
+
+        function renderHome() {
           var wrap = document.createElement("div");
           wrap.innerHTML =
             "<h1>🎨 p5.js 脚本生成器</h1>" +
             "<p>所有数据保存在本地浏览器中，无需服务器。</p>" +
             "<p>编写 p5.js 脚本，上传图片素材，生成独立的 HTML 页面。</p>" +
-            "<p>支持导出 ZIP、删除和重命名作品。</p>" +
-            "<p>从左上角 ☰ 菜单进入「生成脚本」或从「我的脚本」点击运行。</p>" +
+            "<p>支持预览、导出 ZIP、删除和重命名作品。</p>" +
+            "<p>点击左上角 ☰ 菜单查看所有作品。</p>" +
             "<p style='color:#888;font-size:.9em;margin-top:1em'>" +
-            "运行脚本时按 Esc 或从菜单切换到其它页面即可退出。" +
+            "点击侧边栏中的作品名称即可全屏运行；" +
+            "预览时按 Esc、点击右上角 ✕ 或从菜单切换页面即可退出。" +
             "</p>";
           return wrap;
         }
-
         function renderAbout() {
           var wrap = document.createElement("div");
           wrap.innerHTML =
@@ -884,7 +1173,6 @@
             "<p>所有脚本均可导出为 ZIP 包。</p>";
           return wrap;
         }
-
         function renderGenerator() {
           var wrap = document.createElement("div");
           wrap.innerHTML =
@@ -896,7 +1184,7 @@
             "</div>" +
             '<div class="form-group">' +
             '  <label for="script">p5.js 脚本代码</label>' +
-            '  <textarea id="script"></textarea>' +
+            '  <textarea id="script" placeholder="例如：&#10;function setup() {&#10;  createCanvas(windowWidth, windowHeight);&#10;  background(102);&#10;}&#10;function draw() {&#10;  variableEllipse(mouseX, mouseY, pmouseX, pmouseY);&#10;}&#10;function variableEllipse(x, y, px, py) {&#10;  let speed = abs(x - px) + abs(y - py);&#10;  stroke(speed);&#10;  ellipse(x, y, speed, speed);&#10;}"></textarea>' +
             "</div>" +
             '<div class="form-group">' +
             '  <label for="image">上传图片（可选，脚本可通过 <code>imageUrl</code> 加载）</label>' +
@@ -916,7 +1204,23 @@
           var resultEl = $("#result");
           var buildBtn = $("#buildBtn");
 
-          uploadedImageDataUrl = null;
+          // [修复] 从 sessionStorage 恢复草稿
+          var draft = loadDraft();
+          uploadedImageDataUrl = draft && draft.image ? draft.image : null;
+
+          if (draft) {
+            titleInput.value = draft.title || "";
+            textarea.value = draft.script || "";
+            if (draft.image) {
+              var tip = document.createElement("p");
+              tip.textContent = "✅ 已恢复上次上传的图片";
+              var img = document.createElement("img");
+              img.src = draft.image;
+              img.className = "preview-img";
+              img.alt = "上传预览";
+              previewEl.replaceChildren(tip, img);
+            }
+          }
 
           destroyEditor();
           if (window.CodeMirror) {
@@ -927,9 +1231,20 @@
               theme: themeName,
               tabSize: 2,
               indentUnit: 2,
+              autofocus: !draft, // 恢复草稿时不抢焦点
             });
             editor.setSize(null, "100%");
           }
+
+          function persistDraft() {
+            saveDraft({
+              title: titleInput.value,
+              script: editor ? editor.getValue() : textarea.value,
+              image: uploadedImageDataUrl || "",
+            });
+          }
+          titleInput.addEventListener("input", persistDraft);
+          if (editor) editor.on("change", persistDraft);
 
           fileInput.addEventListener("change", function () {
             var file = this.files && this.files[0];
@@ -939,23 +1254,39 @@
               this.value = "";
               return;
             }
-            if (file.size > MAX_IMAGE_BYTES) {
-              showAlert("图片太大", "单张图片请小于 1.5MB。", true);
+            if (file.size > MAX_UPLOAD_BYTES) {
+              showAlert("图片太大", "单张图片请小于 10MB。", true);
               this.value = "";
               return;
             }
-            var reader = new FileReader();
-            reader.onload = function (e) {
-              uploadedImageDataUrl = e.target.result;
+            // [修复] 自动压缩
+            compressImage(file, function (dataUrl) {
+              if (!dataUrl) {
+                showAlert("处理失败", "无法处理该图片，请重试。", true);
+                fileInput.value = "";
+                return;
+              }
+              var approxBytes = dataUrl.length * 0.75;
+              if (approxBytes > MAX_STORED_BYTES) {
+                showAlert(
+                  "图片仍然过大",
+                  "压缩后约 " + (approxBytes / 1024 / 1024).toFixed(2) +
+                    "MB，超过 1.2MB 上限，请换一张更小的图片。",
+                  true
+                );
+                fileInput.value = "";
+                return;
+              }
+              uploadedImageDataUrl = dataUrl;
               var tip = document.createElement("p");
-              tip.textContent = "✅ 图片上传成功";
+              tip.textContent = "✅ 图片上传成功（已自动优化尺寸）";
               var img = document.createElement("img");
-              img.src = e.target.result;
+              img.src = dataUrl;
               img.className = "preview-img";
               img.alt = "上传预览";
               previewEl.replaceChildren(tip, img);
-            };
-            reader.readAsDataURL(file);
+              persistDraft();
+            });
           });
 
           buildBtn.addEventListener("click", function () {
@@ -988,23 +1319,16 @@
             btnContainer.className = "action-buttons";
 
             var previewBtn = document.createElement("button");
-            previewBtn.type = "button";
             previewBtn.className = "preview";
             previewBtn.textContent = "▶️ 预览";
-            previewBtn.addEventListener("click", function (e) {
-              e.preventDefault();
-              e.stopPropagation();
-              openInHome(newId);
+            previewBtn.addEventListener("click", function () {
+              enterPreview(newId);
             });
 
             var zipBtn = document.createElement("button");
-            zipBtn.type = "button";
             zipBtn.className = "zip";
             zipBtn.textContent = "📦 导出所有脚本 (ZIP)";
-            zipBtn.addEventListener("click", function (e) {
-              e.preventDefault();
-              exportZip();
-            });
+            zipBtn.addEventListener("click", exportZip);
 
             btnContainer.appendChild(previewBtn);
             btnContainer.appendChild(zipBtn);
@@ -1015,82 +1339,36 @@
             uploadedImageDataUrl = "";
             previewEl.replaceChildren();
             fileInput.value = "";
+            saveDraft(null); // [修复] 提交成功后清空草稿
           });
-        }
-
-        /* =====================================================================
-         * render —— 预览优先，与 hash 解耦
-         * ===================================================================== */
-        function renderHome() {
-          destroyEditor();
-          appEl.replaceChildren();
-
-          if (currentPageId === null) {
-            unlockPreview();
-            appEl.appendChild(renderWelcome());
-            return;
-          }
-
-          var page = getPages().find(function (p) { return p.id === currentPageId; });
-          if (!page) {
-            currentPageId = null;
-            unlockPreview();
-            appEl.appendChild(renderWelcome());
-            return;
-          }
-
-          // 先切到全屏，再创建 iframe
-          lockPreview();
-
-          var iframe = document.createElement("iframe");
-          iframe.setAttribute("title", page.title);
-          iframe.setAttribute("scrolling", "no");
-          iframe.srcdoc = page.html;
-          iframe.addEventListener("load", function () {
-            bindIframeProxy(iframe);
-          });
-          appEl.appendChild(iframe);
         }
 
         function render() {
-          // 预览优先：不管 hash 是什么，只要 currentPageId 有值就全屏运行
-          if (currentPageId !== null) {
-            destroyEditor();
-            appEl.replaceChildren();
-            lockPreview();
-
-            var page = getPages().find(function (p) { return p.id === currentPageId; });
-            if (!page) {
-              currentPageId = null;
-              unlockPreview();
-              // 继续走正常路由渲染
-            } else {
-              var iframe = document.createElement("iframe");
-              iframe.setAttribute("title", page.title);
-              iframe.setAttribute("scrolling", "no");
-              iframe.srcdoc = page.html;
-              iframe.addEventListener("load", function () {
-                bindIframeProxy(iframe);
-              });
-              appEl.appendChild(iframe);
-              setActiveNav("/");
-              return;
-            }
-          }
-
           var path = getRoute();
-          setActiveNav(path);
 
-          if (path === "/" || path === "/index.html" || path === "") {
-            renderHome();
+          var isPreview = previewingPageId !== null && (path === "/" || path === "");
+          if (isPreview) {
+            previewExitBtn.classList.add("show");
+            renderPreview(previewingPageId);
             return;
           }
 
+          // 离开预览：彻底清理
+          previewExitBtn.classList.remove("show");
+          hidePreviewError();
+          if (appEl.classList.contains("preview-mode")) {
+            appEl.classList.remove("preview-mode");
+            unlockAppSize();
+          }
+          delete appEl.dataset.currentPageId; // [修复] 无论何种路径都清理
+
           destroyEditor();
           appEl.replaceChildren();
-          unlockPreview();
+          setActiveNav(path);
 
-          if (path === "/about") {
+          if (path === "/" || path === "") {
+            appEl.appendChild(renderHome());
+          } else if (path === "/about") {
             appEl.appendChild(renderAbout());
           } else if (path === "/generator") {
             appEl.appendChild(renderGenerator());
@@ -1107,18 +1385,18 @@
           }
         }
 
-        /* ===================== 初始化 ===================== */
+        /* ======================= 初始化 ======================= */
         function init() {
-          if (initialized) return;
-          initialized = true;
-
-          appEl = $("#app");
+          modalBackdrop = $("#modalBackdrop");
+          modalBox = $("#modalBox");
+          sidebarPagesEl = $("#sidebar-pages");
           sidebarEl = $("#sidebar");
           overlayEl = $("#overlay");
           hamburgerBtn = $("#hamburgerBtn");
-          sidebarPagesEl = $("#sidebar-pages");
-          modalBackdrop = $("#modalBackdrop");
-          modalBox = $("#modalBox");
+          appEl = $("#app");
+          previewExitBtn = $("#previewExitBtn");
+          previewErrorEl = $("#previewError");
+          previewErrorBody = $("#previewErrorBody");
 
           var savedTheme = "light";
           try { savedTheme = localStorage.getItem(THEME_KEY) || "light"; } catch (e) {}
@@ -1126,33 +1404,52 @@
 
           hamburgerBtn.addEventListener("click", openSidebar);
           overlayEl.addEventListener("click", closeSidebar);
+          previewExitBtn.addEventListener("click", exitPreview);
+          $("#previewErrorClose").addEventListener("click", hidePreviewError);
+
           modalBackdrop.addEventListener("click", function (e) {
             if (e.target === modalBackdrop) closeModal();
           });
 
           document.addEventListener("keydown", function (e) {
-            if (e.key !== "Escape") return;
-            if (modalBackdrop.classList.contains("show")) { closeModal(); return; }
-            if (sidebarEl.classList.contains("open")) { closeSidebar(); return; }
-            if (currentPageId !== null) {
-              resetHome();
+            // [修复] 优先处理模态框焦点陷阱
+            trapModalFocus(e);
+            if (e.key === "Escape") {
+              if (modalBackdrop.classList.contains("show")) closeModal();
+              else if (previewingPageId !== null) exitPreview();
+              else closeSidebar();
             }
           });
 
+          // [修复] 接收 iframe 内的错误上报
+          window.addEventListener("message", function (e) {
+            if (!e.data || e.data.type !== "p5-error") return;
+            if (previewingPageId === null) return;
+            showPreviewError(e.data.message, e.data.lineno, e.data.colno);
+          });
+
           var themeBtn = $("#themeToggleSidebar");
-          if (themeBtn) themeBtn.addEventListener("click", toggleTheme);
+          if (themeBtn) {
+            themeBtn.addEventListener("click", toggleTheme);
+            themeBtn.addEventListener("keydown", function (e) {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                toggleTheme();
+              }
+            });
+          }
 
           $$(".sidebar .nav-item[data-path]").forEach(function (el) {
             var go = function () {
-              // 点击导航 → 退出预览
-              currentPageId = null;
-              unlockPreview();
-              var path = el.getAttribute("data-path");
-              if (location.hash === path) {
-                render();
-              } else {
-                location.hash = path;
+              if (previewingPageId !== null) {
+                previewingPageId = null;
+                unlockAppSize();
+                hidePreviewError();
+                previewExitBtn.classList.remove("show");
               }
+              var path = el.getAttribute("data-path");
+              if (location.hash === path) render();
+              else location.hash = path;
               closeSidebar();
             };
             el.addEventListener("click", go);
@@ -1166,33 +1463,38 @@
             if (!btn) return;
             var id = Number(btn.dataset.id);
             var action = btn.dataset.action;
-            if (action === "open") openInHome(id);
+            if (action === "open") enterPreview(id);
             else if (action === "rename") renamePage(id);
             else if (action === "delete") deletePage(id);
           });
 
           window.addEventListener("hashchange", function () {
-            // 用户主动改 hash（比如前进后退） → 退出预览
-            if (currentPageId !== null) {
-              var path = getRoute();
-              if (path !== "/" && path !== "") {
-                currentPageId = null;
-                unlockPreview();
-              }
-            }
             render();
             closeSidebar();
           });
 
           window.addEventListener("orientationchange", function () {
             if (editor) editor.refresh();
+            if (previewingPageId !== null) {
+              // 等布局稳定后再测量
+              setTimeout(relockAppSize, 250);
+            }
+          });
+
+          // [修复] 桌面端窗口变化时同步预览尺寸；
+          //        移动端忽略 resize（地址栏抖动），避免 iframe 反复缩放。
+          var resizeTimer = null;
+          window.addEventListener("resize", function () {
+            if (previewingPageId === null) return;
+            if (isCoarsePointer) return;
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(relockAppSize, 150);
           });
 
           updateSidebarPages();
           render();
         }
 
-        // 主脚本用 DOMContentLoaded / readyState 判断，避免与 defer 脚本竞争
         if (document.readyState === "loading") {
           document.addEventListener("DOMContentLoaded", init);
         } else {
