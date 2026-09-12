@@ -5,21 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>randomArt 创意脚本编辑</title>
 
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/default.min.css"
-      id="cm-theme-light"
-    />
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css"
-      id="cm-theme-dark"
-      disabled
-    />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/default.min.css" id="cm-theme-light" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css" id="cm-theme-dark" disabled />
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
@@ -53,6 +41,7 @@
       }
       body.dark-mode { background: var(--bg-dark); color: var(--text-dark); }
 
+      /* ===================== 汉堡按钮 ===================== */
       .hamburger-btn {
         position: fixed;
         top: clamp(8px, 2vw, 14px);
@@ -71,12 +60,18 @@
       }
       .hamburger-btn:hover { transform: scale(1.1); }
       body.dark-mode .hamburger-btn { color: #fff; }
+      /* 全屏运行 p5 时汉堡改为白色，仍然可见可点 */
+      body.preview-mode .hamburger-btn {
+        color: #fff;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+      }
       body.sidebar-open .hamburger-btn {
         opacity: 0;
         transform: scale(0.6);
         pointer-events: none;
       }
 
+      /* ===================== 侧边栏 ===================== */
       .sidebar {
         position: fixed;
         top: 0;
@@ -108,7 +103,6 @@
           inset 0 -22px 28px -26px rgba(0, 0, 0, 0.9);
         border-right-color: var(--line-dark);
       }
-
       .sidebar .nav-item {
         padding: 12px clamp(16px, 4vw, 20px);
         border-bottom: 1px solid var(--line-light);
@@ -120,10 +114,8 @@
       body.dark-mode .sidebar .nav-item:hover { background: var(--hover-dark); }
       .sidebar .nav-item[aria-current="page"] { background: var(--hover-light); }
       body.dark-mode .sidebar .nav-item[aria-current="page"] { background: var(--hover-dark); }
-
       .sidebar .divider { border-top: 1px solid var(--line-light); margin: 10px 0; }
       body.dark-mode .sidebar .divider { border-top-color: var(--line-dark); }
-
       .sidebar .section-title {
         padding: 8px clamp(16px, 4vw, 20px);
         font-size: 0.85rem;
@@ -131,7 +123,6 @@
         font-weight: bold;
       }
       body.dark-mode .sidebar .section-title { color: #999; }
-
       .sidebar .page-item {
         display: flex;
         justify-content: space-between;
@@ -142,7 +133,6 @@
       body.dark-mode .sidebar .page-item { border-bottom-color: var(--line-dark); }
       .sidebar .page-item:hover { background: var(--hover-light); }
       body.dark-mode .sidebar .page-item:hover { background: var(--hover-dark); }
-
       .sidebar .page-item .page-title {
         flex: 1;
         color: inherit;
@@ -162,13 +152,11 @@
       }
       .sidebar .page-item .actions .rename:hover { color: #5bc0de; }
       .sidebar .page-item .actions .del:hover { color: #d9534f; }
-
       .sidebar .no-pages {
         padding: 12px clamp(16px, 4vw, 20px);
         color: #888;
         font-style: italic;
       }
-
       .sidebar-footer {
         margin-top: auto;
         border-top: 1px solid var(--line-light);
@@ -188,6 +176,7 @@
       }
       .overlay.show { display: block; opacity: 1; }
 
+      /* ===================== 主内容 ===================== */
       #app {
         width: 100%;
         min-height: 100vh;
@@ -208,15 +197,16 @@
         margin: 0 auto;
       }
 
-      /* 全屏预览：铺满设备视口，固定尺寸稳定 */
+      /* 全屏 p5 模式：铺满设备视口，尺寸稳定 */
       #app.preview-mode {
         position: fixed;
         top: 0;
         left: 0;
         right: 0;
         bottom: 0;
-        width: 100%;
-        height: 100%;
+        width: 100vw;
+        height: 100vh;
+        height: 100dvh;
         padding: 0;
         margin: 0;
         max-width: none;
@@ -319,6 +309,7 @@
       .action-buttons button.preview { background: #28a745; }
       .action-buttons button.zip { background: #17a2b8; }
 
+      /* ===================== 模态框 ===================== */
       .modal-backdrop {
         display: none;
         position: fixed;
@@ -408,17 +399,26 @@
       (function () {
         "use strict";
 
+        /* =====================================================================
+         * 状态与常量
+         * ===================================================================== */
         var STORAGE_KEY = "p5_pages";
         var THEME_KEY = "p5_theme";
         var MAX_IMAGE_BYTES = 1.5 * 1024 * 1024;
+
+        // 首页当前运行的脚本 id（null = 显示欢迎文本）
+        var currentPageId = null;
 
         var appEl, sidebarEl, overlayEl, hamburgerBtn;
         var sidebarPagesEl, modalBackdrop, modalBox;
         var editor = null;
         var uploadedImageDataUrl = null;
-        var previewingPageId = null;
         var lastFocused = null;
+        var initialized = false;
 
+        /* =====================================================================
+         * 工具
+         * ===================================================================== */
         function $(sel, root) { return (root || document).querySelector(sel); }
         function $$(sel, root) {
           return Array.prototype.slice.call((root || document).querySelectorAll(sel));
@@ -435,7 +435,9 @@
           return String(str).replace(/<\/script/gi, "<\\/script");
         }
 
-        /* ============= 本地存储 ============= */
+        /* =====================================================================
+         * 本地存储
+         * ===================================================================== */
         function getPages() {
           try {
             var raw = localStorage.getItem(STORAGE_KEY);
@@ -457,7 +459,9 @@
           }
         }
 
-        /* ============= 模态框 ============= */
+        /* =====================================================================
+         * 模态框
+         * ===================================================================== */
         function openModal(builder) {
           lastFocused = document.activeElement;
           modalBox.innerHTML = "";
@@ -524,7 +528,9 @@
           });
         }
 
-        /* ============= 生成独立 HTML ============= */
+        /* =====================================================================
+         * 生成独立 HTML
+         * ===================================================================== */
         function generatePageHtml(title, script, imageDataUrl) {
           var safeTitle = escapeHtml(title || "未命名页面");
           var imgVar = imageDataUrl
@@ -556,7 +562,9 @@
           );
         }
 
-        /* ============= 导出 ZIP ============= */
+        /* =====================================================================
+         * 导出 ZIP
+         * ===================================================================== */
         function exportZip() {
           var pages = getPages();
           if (!pages.length) {
@@ -584,7 +592,9 @@
             });
         }
 
-        /* ============= 侧边栏列表 ============= */
+        /* =====================================================================
+         * 侧边栏列表
+         * ===================================================================== */
         function updateSidebarPages() {
           var pages = getPages();
           if (!pages.length) {
@@ -629,7 +639,9 @@
           sidebarPagesEl.replaceChildren(frag);
         }
 
-        /* ============= 事件代理 ============= */
+        /* =====================================================================
+         * 事件代理（父 → iframe canvas）
+         * ===================================================================== */
         function bindIframeProxy(iframe) {
           var iwin, idoc;
           try {
@@ -707,56 +719,29 @@
           });
         }
 
-        /* ============= 预览 ============= */
-        function enterPreview(id) {
+        /* =====================================================================
+         * 打开脚本 —— 唯一的入口
+         * ===================================================================== */
+        function openInHome(id) {
           var page = getPages().find(function (p) { return p.id === id; });
           if (!page) {
             showAlert("打开失败", "找不到该作品，可能已被删除。", true);
             return;
           }
-          previewingPageId = id;
+          currentPageId = id;
           closeSidebar();
 
-          // 直接把 URL 改成首页（若已在首页则不触发 hashchange）
-          if (location.hash === "#/" || location.hash === "" || location.hash === "#") {
+          var h = location.hash;
+          if (h === "#/" || h === "" || h === "#") {
             render();
           } else {
             location.hash = "#/";
           }
         }
 
-        function exitPreview() {
-          if (previewingPageId === null) return;
-          previewingPageId = null;
+        function resetHome() {
+          currentPageId = null;
           render();
-        }
-
-        function renderPreview(id) {
-          var page = getPages().find(function (p) { return p.id === id; });
-          if (!page) {
-            previewingPageId = null;
-            render();
-            return;
-          }
-          destroyEditor();
-          appEl.replaceChildren();
-          appEl.classList.add("preview-mode");
-          setActiveNav("/");
-
-          var iframe = document.createElement("iframe");
-          iframe.setAttribute("title", page.title);
-          iframe.setAttribute("scrolling", "no");
-          iframe.srcdoc = page.html;
-          iframe.addEventListener("load", function () {
-            bindIframeProxy(iframe);
-          });
-          appEl.appendChild(iframe);
-          appEl.dataset.currentPageId = String(id);
-        }
-
-        function leavePreviewUI() {
-          appEl.classList.remove("preview-mode");
-          delete appEl.dataset.currentPageId;
         }
 
         function deletePage(id) {
@@ -770,7 +755,7 @@
               var list = getPages().filter(function (p) { return p.id !== id; });
               savePages(list);
               updateSidebarPages();
-              if (previewingPageId === id) previewingPageId = null;
+              if (currentPageId === id) currentPageId = null;
               render();
             },
             true
@@ -800,7 +785,9 @@
           document.body.classList.remove("sidebar-open");
         }
 
-        /* ============= 主题 ============= */
+        /* =====================================================================
+         * 主题
+         * ===================================================================== */
         function applyTheme(theme) {
           var lightTheme = $("#cm-theme-light");
           var darkTheme = $("#cm-theme-dark");
@@ -824,7 +811,9 @@
           try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
         }
 
-        /* ============= 路由 ============= */
+        /* =====================================================================
+         * 路由
+         * ===================================================================== */
         function getRoute() {
           var hash = location.hash;
           if (!hash || hash === "#" || hash === "#/") return "/";
@@ -846,17 +835,27 @@
           }
         }
 
-        /* ============= 页面渲染 ============= */
-        function renderHome() {
+        /* =====================================================================
+         * 渲染
+         * ---------------------------------------------------------------------
+         * 「首页」由 currentPageId 决定：
+         *   null → 欢迎文本
+         *   有值 → 全屏运行该 p5 脚本
+         * ===================================================================== */
+        function renderWelcome() {
           var wrap = document.createElement("div");
           wrap.innerHTML =
             "<h1>🎨 p5.js 脚本生成器</h1>" +
             "<p>所有数据保存在本地浏览器中，无需服务器。</p>" +
             "<p>编写 p5.js 脚本，上传图片素材，生成独立的 HTML 页面。</p>" +
-            "<p>支持预览、导出 ZIP、删除和重命名作品。</p>" +
-            "<p>点击左上角 ☰ 菜单查看所有作品。</p>";
+            "<p>支持导出 ZIP、删除和重命名作品。</p>" +
+            "<p>从左上角 ☰ 菜单进入「生成脚本」或从「我的脚本」点击运行。</p>" +
+            "<p style='color:#888;font-size:.9em;margin-top:1em'>" +
+            "运行脚本时按 Esc 或从菜单切换到其它页面即可退出。" +
+            "</p>";
           return wrap;
         }
+
         function renderAbout() {
           var wrap = document.createElement("div");
           wrap.innerHTML =
@@ -866,6 +865,7 @@
             "<p>所有脚本均可导出为 ZIP 包。</p>";
           return wrap;
         }
+
         function renderGenerator() {
           var wrap = document.createElement("div");
           wrap.innerHTML =
@@ -877,7 +877,7 @@
             "</div>" +
             '<div class="form-group">' +
             '  <label for="script">p5.js 脚本代码</label>' +
-            '  <textarea id="script" placeholder=""></textarea>' +
+            '  <textarea id="script"></textarea>' +
             "</div>" +
             '<div class="form-group">' +
             '  <label for="image">上传图片（可选，脚本可通过 <code>imageUrl</code> 加载）</label>' +
@@ -968,11 +968,12 @@
             var btnContainer = document.createElement("div");
             btnContainer.className = "action-buttons";
 
+            // 「预览」按钮：直接调用 openInHome，与侧边栏点击完全一致
             var previewBtn = document.createElement("button");
             previewBtn.className = "preview";
             previewBtn.textContent = "▶️ 预览";
             previewBtn.addEventListener("click", function () {
-              enterPreview(newId);
+              openInHome(newId);
             });
 
             var zipBtn = document.createElement("button");
@@ -992,31 +993,63 @@
           });
         }
 
-        function render() {
-          // 预览优先级最高：只要 previewingPageId 有值就全屏运行脚本
-          if (previewingPageId !== null) {
-            renderPreview(previewingPageId);
+        function renderHome() {
+          destroyEditor();
+          appEl.replaceChildren();
+          appEl.classList.remove("preview-mode");
+          document.body.classList.remove("preview-mode");
+
+          // currentPageId 为 null → 显示欢迎文本
+          if (currentPageId === null) {
+            appEl.appendChild(renderWelcome());
             return;
           }
 
-          // 非预览态：清理预览样式
-          if (appEl.classList.contains("preview-mode")) {
-            leavePreviewUI();
+          // currentPageId 有值 → 全屏运行
+          var page = getPages().find(function (p) { return p.id === currentPageId; });
+          if (!page) {
+            currentPageId = null;
+            appEl.appendChild(renderWelcome());
+            return;
           }
 
+          appEl.classList.add("preview-mode");
+          document.body.classList.add("preview-mode");
+
+          var iframe = document.createElement("iframe");
+          iframe.setAttribute("title", page.title);
+          iframe.setAttribute("scrolling", "no");
+          iframe.srcdoc = page.html;
+          iframe.addEventListener("load", function () {
+            bindIframeProxy(iframe);
+          });
+          appEl.appendChild(iframe);
+        }
+
+        function render() {
           var path = getRoute();
-          destroyEditor();
-          appEl.replaceChildren();
           setActiveNav(path);
 
           if (path === "/" || path === "/index.html" || path === "") {
-            appEl.appendChild(renderHome());
+            renderHome();
           } else if (path === "/about") {
+            destroyEditor();
+            appEl.replaceChildren();
+            appEl.classList.remove("preview-mode");
+            document.body.classList.remove("preview-mode");
             appEl.appendChild(renderAbout());
           } else if (path === "/generator") {
+            destroyEditor();
+            appEl.replaceChildren();
+            appEl.classList.remove("preview-mode");
+            document.body.classList.remove("preview-mode");
             appEl.appendChild(renderGenerator());
             bindGenerator();
           } else {
+            destroyEditor();
+            appEl.replaceChildren();
+            appEl.classList.remove("preview-mode");
+            document.body.classList.remove("preview-mode");
             var wrap = document.createElement("div");
             var h = document.createElement("h1");
             h.textContent = "📄 页面 " + path;
@@ -1028,41 +1061,51 @@
           }
         }
 
-        /* ============= 初始化 ============= */
+        /* =====================================================================
+         * 初始化
+         * ===================================================================== */
         function init() {
-          appEl = $("#app
-");
-          sidebarEl = $("#         sidebar");
+          if (initialized) return;
+          initialized = true;
+
+          appEl = $("#app");
+          sidebarEl = $("#sidebar");
           overlayEl = $("#overlay");
- $$          hamburgerBtn = $("#hamburgerBtn");
-(".          sidebarPagesEl = $("#sidebar-pages");
-         sidebar modalBackdrop = $("#modalBackdrop");
-          modal .Box = $("#modalBox");
+          hamburgerBtn = $("#hamburgerBtn");
+          sidebarPagesEl = $("#sidebar-pages");
+          modalBackdrop = $("#modalBackdrop");
+          modalBox = $("#modalBox");
 
-          var savedThemenav = "light";
-          try {-item savedTheme = localStorage.getItem(THEME_KEY) ||[ "light"; } catch (e) {}
-         data applyTheme(savedTheme);
+          // 恢复主题
+          var savedTheme = "light";
+          try { savedTheme = localStorage.getItem(THEME_KEY) || "light"; } catch (e) {}
+          applyTheme(savedTheme);
 
-          hamburgerBtn.addEventListener-path("click", openSidebar);
+          // 汉堡 / 遮罩
+          hamburgerBtn.addEventListener("click", openSidebar);
           overlayEl.addEventListener("click", closeSidebar);
           modalBackdrop.addEventListener("click", function (e) {
             if (e.target === modalBackdrop) closeModal();
           });
+
+          // Esc 键
           document.addEventListener("keydown", function (e) {
-            if (e.key === "Escape") {
-              if (modalBackdrop.classList.contains("show")) closeModal();
-              else if (previewingPageId !== null) exitPreview();
-              else closeSidebar();
+            if (e.key !== "Escape") return;
+            if (modalBackdrop.classList.contains("show")) { closeModal(); return; }
+            if (sidebarEl.classList.contains("open")) { closeSidebar(); return; }
+            // 首页正在运行脚本 → 清空 currentPageId 回到欢迎页
+            if (getRoute() === "/" && currentPageId !== null) {
+              resetHome();
             }
           });
 
+          // 主题切换
           var themeBtn = $("#themeToggleSidebar");
           if (themeBtn) themeBtn.addEventListener("click", toggleTheme);
 
-          // 侧边栏导航项]").forEach(function (el) {
+          // 侧边栏导航项
+          $$(".sidebar .nav-item[data-path]").forEach(function (el) {
             var go = function () {
-              // 点击导航一律先退出预览
-              previewingPageId = null;
               var path = el.getAttribute("data-path");
               if (location.hash === path) {
                 render();
@@ -1077,37 +1120,38 @@
             });
           });
 
-          // 作品列表：事件委托
+          // 作品列表（事件委托）
           sidebarPagesEl.addEventListener("click", function (e) {
             var btn = e.target.closest("[data-action]");
             if (!btn) return;
             var id = Number(btn.dataset.id);
             var action = btn.dataset.action;
-            if (action === "open") enterPreview(id);
+            if (action === "open") openInHome(id);
             else if (action === "rename") renamePage(id);
             else if (action === "delete") deletePage(id);
           });
 
+          // hashchange
           window.addEventListener("hashchange", function () {
-            // 如果正在预览，用户手动改 hash 到非首页 → 退出预览
-            if (previewingPageId !== null) {
-              var path = getRoute();
-              if (path !== "/" && path !== "") previewingPageId = null;
-            }
             render();
             closeSidebar();
           });
 
+          // 旋转屏幕后刷新 CodeMirror
           window.addEventListener("orientationchange", function () {
             if (editor) editor.refresh();
           });
 
+          // 首次渲染
           updateSidebarPages();
           render();
         }
 
+        // DOM 就绪即初始化；若已就绪则立刻执行
         if (document.readyState === "loading") {
           document.addEventListener("DOMContentLoaded", init);
+          // 兜底：如果 DOMContentLoaded 由于某种原因没触发，load 时再试一次
+          window.addEventListener("load", init);
         } else {
           init();
         }
