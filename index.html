@@ -53,6 +53,19 @@
       }
       body.dark-mode { background: var(--bg-dark); color: var(--text-dark); }
 
+      /* 预览时锁定 body，防止任何滚动 / 位移影响 iframe 尺寸 */
+      body.preview-lock {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        overscroll-behavior: none;
+      }
+
       /* ===================== 汉堡按钮 ===================== */
       .hamburger-btn {
         position: fixed;
@@ -72,13 +85,13 @@
       }
       .hamburger-btn:hover { transform: scale(1.1); }
       body.dark-mode .hamburger-btn { color: #fff; }
-      body.sidebar-open .hamburger-btn {
-        opacity: 0;
-        transform: scale(0.6);
-        pointer-events: none;
+      /* 预览时保持汉堡可见、颜色可读 */
+      body.preview-lock .hamburger-btn {
+        color: #fff;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
       }
-      /* 预览模式下也隐藏汉堡按钮 */
-      body.previewing .hamburger-btn {
+      /* 侧边栏打开时隐藏汉堡 */
+      body.sidebar-open .hamburger-btn {
         opacity: 0;
         transform: scale(0.6);
         pointer-events: none;
@@ -217,14 +230,10 @@
         margin: 0 auto;
       }
 
-      /* ============ 预览模式：全屏固定 ============ */
+      /* ============ 预览模式 ============
+       * 宽高由 JS 用内联像素锁定（见 lockAppSize），这里只处理排版
+       */
       #app.preview-mode {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        height: 100dvh;
         padding: 0;
         max-width: none;
         min-height: 0;
@@ -233,36 +242,11 @@
         z-index: 100;
       }
       #app.preview-mode iframe {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        height: 100dvh;
+        width: 100%;
+        height: 100%;
         border: none;
         display: block;
         background: #fff;
-      }
-      /* 预览时的返回按钮：固定在左上角 */
-      .preview-close {
-        position: fixed;
-        top: 12px;
-        left: 12px;
-        z-index: 210;
-        background: rgba(0, 0, 0, 0.55);
-        color: #fff;
-        border: 1px solid rgba(255, 255, 255, 0.25);
-        border-radius: 6px;
-        padding: 8px 12px;
-        font-size: 0.9rem;
-        cursor: pointer;
-        backdrop-filter: blur(6px);
-        transition: background 0.2s, opacity 0.2s;
-        opacity: 0.6;
-      }
-      .preview-close:hover {
-        background: rgba(0, 0, 0, 0.85);
-        opacity: 1;
       }
 
       #app h1 {
@@ -397,7 +381,6 @@
       @media (max-width: 420px) {
         .hamburger-btn { font-size: 28px; }
         .action-buttons button { flex: 1 1 auto; }
-        .preview-close { padding: 6px 10px; font-size: 0.8rem; }
       }
       @media (max-height: 480px) {
         #app { padding-top: 52px; padding-bottom: 20px; }
@@ -765,15 +748,37 @@
         }
 
         /* =====================================================================
-         * 预览：作为「首页」的一种模式渲染
+         * 预览：作为首页的一种模式
          * ---------------------------------------------------------------------
-         * 进入预览时：
-         *   - 记录 previewingPageId；
-         *   - 把路由切到 #/（首页）；
-         *   - render() 检测到 previewingPageId，全屏渲染 iframe。
-         * 退出预览时清空 previewingPageId，回到真正的首页。
+         * - enterPreview(id)：把路由切到 #/，render() 检测到 previewingPageId 就全屏运行
+         * - 锁死 appEl 尺寸为「进入预览那一刻的像素值」，
+         *   之后不随 resize / 地址栏 / 滚动条改变，保证 p5 canvas 稳定
+         * - 退出：Esc，或从侧边栏点任意导航项
          * ===================================================================== */
         var previewingPageId = null;
+
+        function lockAppSize() {
+          // 先锁 body，再测量，避免滚动条影响 innerWidth
+          document.body.classList.add("preview-lock");
+          var w = window.innerWidth;
+          var h = window.innerHeight;
+          appEl.style.position = "fixed";
+          appEl.style.top = "0";
+          appEl.style.left = "0";
+          appEl.style.width = w + "px";
+          appEl.style.height = h + "px";
+          appEl.style.overflow = "hidden";
+        }
+
+        function unlockAppSize() {
+          document.body.classList.remove("preview-lock");
+          appEl.style.position = "";
+          appEl.style.top = "";
+          appEl.style.left = "";
+          appEl.style.width = "";
+          appEl.style.height = "";
+          appEl.style.overflow = "";
+        }
 
         function enterPreview(id) {
           var page = getPages().find(function (p) { return p.id === id; });
@@ -790,6 +795,7 @@
 
         function exitPreview() {
           previewingPageId = null;
+          unlockAppSize();
           render();
         }
 
@@ -797,6 +803,7 @@
           var page = getPages().find(function (p) { return p.id === id; });
           if (!page) {
             previewingPageId = null;
+            unlockAppSize();
             render();
             return;
           }
@@ -804,6 +811,8 @@
           destroyEditor();
           appEl.replaceChildren();
           setActiveNav("/");
+
+          lockAppSize();
 
           var iframe = document.createElement("iframe");
           iframe.setAttribute("title", page.title);
@@ -814,17 +823,8 @@
             bindIframeProxy(iframe);
           });
 
-          var closeBtn = document.createElement("button");
-          closeBtn.type = "button";
-          closeBtn.className = "preview-close";
-          closeBtn.textContent = "← 返回";
-          closeBtn.setAttribute("aria-label", "退出预览");
-          closeBtn.addEventListener("click", exitPreview);
-
           appEl.appendChild(iframe);
-          appEl.appendChild(closeBtn);
           appEl.classList.add("preview-mode");
-          document.body.classList.add("previewing");
           appEl.dataset.currentPageId = String(id);
         }
 
@@ -841,6 +841,7 @@
               updateSidebarPages();
               if (previewingPageId === id) {
                 previewingPageId = null;
+                unlockAppSize();
               }
               render();
             },
@@ -934,7 +935,8 @@
             "<p>支持预览、导出 ZIP、删除和重命名作品。</p>" +
             "<p>点击左上角 ☰ 菜单查看所有作品。</p>" +
             "<p style='color:#888;font-size:.9em;margin-top:1em'>" +
-            "点击侧边栏中的作品名称即可全屏运行该脚本。" +
+            "点击侧边栏中的作品名称即可全屏运行；" +
+            "预览时按 Esc 或从菜单切换页面即可退出。" +
             "</p>";
           return wrap;
         }
@@ -1080,17 +1082,17 @@
         function render() {
           var path = getRoute();
 
-          // 预览模式：只要 previewingPageId 有值且路由回到首页，就全屏渲染
+          // 预览模式：路由回到首页时全屏运行
           if (previewingPageId !== null && (path === "/" || path === "")) {
             renderPreview(previewingPageId);
             return;
           }
 
-          // 若之前处于预览态但 previewingPageId 已被清空，需要清理预览样式
+          // 离开预览：清理样式与锁定的尺寸
           if (appEl.classList.contains("preview-mode")) {
             appEl.classList.remove("preview-mode");
-            document.body.classList.remove("previewing");
             delete appEl.dataset.currentPageId;
+            unlockAppSize();
           }
 
           destroyEditor();
@@ -1146,11 +1148,14 @@
           var themeBtn = $("#themeToggleSidebar");
           if (themeBtn) themeBtn.addEventListener("click", toggleTheme);
 
+          // 侧边栏导航：点击任意导航项都退出预览
           $$(".sidebar .nav-item[data-path]").forEach(function (el) {
             var go = function () {
+              if (previewingPageId !== null) {
+                previewingPageId = null;
+                unlockAppSize();
+              }
               var path = el.getAttribute("data-path");
-              // 手动导航时退出预览态
-              previewingPageId = null;
               if (location.hash === path) render();
               else location.hash = path;
               closeSidebar();
@@ -1178,6 +1183,15 @@
 
           window.addEventListener("orientationchange", function () {
             if (editor) editor.refresh();
+          });
+
+          // 屏幕旋转 / 大幅改变时，如果正在预览，同步一次 iframe 尺寸
+          // （不影响拖拽，只在主动旋转设备时触发）
+          window.addEventListener("resize", function () {
+            if (previewingPageId !== null && appEl.classList.contains("preview-mode")) {
+              appEl.style.width = window.innerWidth + "px";
+              appEl.style.height = window.innerHeight + "px";
+            }
           });
 
           updateSidebarPages();
