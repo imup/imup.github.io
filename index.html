@@ -2,7 +2,11 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- ⬇️ 锁定为设备宽度，禁止用户缩放 -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
     <title>randomArt 创意脚本编辑</title>
 
     <link
@@ -49,11 +53,15 @@
         background: var(--bg-light);
         color: var(--text-light);
         -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+        /* ⬇️ 阻止双指捏合缩放、双击缩放；允许正常平移滚动 */
+        touch-action: pan-x pan-y;
+        overscroll-behavior: none;
         transition: background 0.3s, color 0.3s;
       }
       body.dark-mode { background: var(--bg-dark); color: var(--text-dark); }
 
-      /* 预览时锁定 body，防止任何滚动 / 位移影响 iframe 尺寸 */
+      /* 预览时锁定 body */
       body.preview-lock {
         position: fixed;
         top: 0;
@@ -64,6 +72,7 @@
         height: 100%;
         overflow: hidden;
         overscroll-behavior: none;
+        touch-action: none;
       }
 
       /* 汉堡按钮 */
@@ -85,12 +94,10 @@
       }
       .hamburger-btn:hover { transform: scale(1.1); }
       body.dark-mode .hamburger-btn { color: #fff; }
-      /* 预览时保持汉堡可见、颜色可读 */
       body.preview-lock .hamburger-btn {
         color: #fff;
         text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
       }
-      /* 侧边栏打开时隐藏汉堡 */
       body.sidebar-open .hamburger-btn {
         opacity: 0;
         transform: scale(0.6);
@@ -229,9 +236,12 @@
         max-width: 940px;
         margin: 0 auto;
       }
+      /* ⬇️ 生成脚本页面：宽度固定为设备宽度（占满可用宽度，不再限制 940px） */
+      #app > div.generator-page {
+        max-width: none;
+      }
 
-      /* 预览模式：宽高由 JS 用内联像素锁定（见 lockAppSize），这里只处理排版
-       */
+      /* 预览模式 */
       #app.preview-mode {
         padding: 0;
         max-width: none;
@@ -274,7 +284,8 @@
         border: 1px solid #ccc;
         border-radius: 4px;
         font-family: ui-monospace, Menlo, Consolas, monospace;
-        font-size: 0.9rem;
+        /* ⬇️ 关键：≥16px 可避免 iOS 聚焦输入框时自动放大页面 */
+        font-size: 16px;
       }
       body.dark-mode .form-group input,
       body.dark-mode .form-group textarea {
@@ -289,6 +300,24 @@
         font-size: 14px;
       }
       body.dark-mode .form-group .CodeMirror { border-color: #555; }
+
+      /* CodeMirror 自定义占位符 */
+      .cm-placeholder-overlay {
+        position: absolute;
+        top: 5px;
+        right: 8px;
+        color: #9aa0a6;
+        pointer-events: none;
+        font-family: ui-monospace, Menlo, Consolas, monospace;
+        font-size: 13px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-break: break-word;
+        z-index: 5;
+        user-select: none;
+        overflow: hidden;
+      }
+      body.dark-mode .cm-placeholder-overlay { color: #8a8a8a; }
 
       button {
         background: #007bff;
@@ -362,7 +391,7 @@
         border: 1px solid #ccc;
         border-radius: 4px;
         margin-bottom: 16px;
-        font-size: 1rem;
+        font-size: 16px; /* ⬅ 同样 ≥16px */
       }
       body.dark-mode .modal input {
         background: #3a3a3a;
@@ -431,6 +460,21 @@
         var THEME_KEY = "p5_theme";
         var MAX_IMAGE_BYTES = 1.5 * 1024 * 1024;
 
+        var SCRIPT_PLACEHOLDER =
+          "例如：\n" +
+          "function setup() {\n" +
+          "  createCanvas(windowWidth, windowHeight);\n" +
+          "  background(102);\n" +
+          "}\n" +
+          "function draw() {\n" +
+          "  variableEllipse(mouseX, mouseY, pmouseX, pmouseY);\n" +
+          "}\n" +
+          "function variableEllipse(x, y, px, py) {\n" +
+          "  let speed = abs(x - px) + abs(y - py);\n" +
+          "  stroke(speed);\n" +
+          "  ellipse(x, y, speed, speed);\n" +
+          "}";
+
         function $(sel, root) { return (root || document).querySelector(sel); }
         function $$(sel, root) {
           return Array.prototype.slice.call((root || document).querySelectorAll(sel));
@@ -446,13 +490,11 @@
         function escapeScriptClose(str) {
           return String(str).replace(/<\/script/gi, "<\\/script");
         }
-        /* 文件名安全化 */
         function safeFileName(name) {
           var n = String(name || "").replace(/[\\/:*?"<>|]/g, "_").trim();
           return n || "untitled";
         }
 
-        /* 本地存储 */
         function getPages() {
           try {
             var raw = localStorage.getItem(STORAGE_KEY);
@@ -474,7 +516,6 @@
           }
         }
 
-        /* 模态框 */
         var modalBackdrop, modalBox, lastFocused;
 
         function openModal(builder) {
@@ -543,9 +584,6 @@
           });
         }
 
-        /*
-         * 生成独立 HTML —— CSS 保持极简
-          */
         function generatePageHtml(title, script, imageDataUrl) {
           var safeTitle = escapeHtml(title || "未命名页面");
           var imgVar = imageDataUrl
@@ -577,7 +615,6 @@
           );
         }
 
-        /* 下载单个 HTML 文件 */
         function downloadSingleHtml(filename, html) {
           try {
             var blob = new Blob([html], { type: "text/html;charset=utf-8" });
@@ -594,7 +631,6 @@
           }
         }
 
-        /* 导出 ZIP */
         function exportZip() {
           var pages = getPages();
           if (!pages.length) {
@@ -622,7 +658,6 @@
             });
         }
 
-        /* 侧边栏 */
         var sidebarPagesEl, sidebarEl, overlayEl, hamburgerBtn;
 
         function updateSidebarPages() {
@@ -669,9 +704,6 @@
           sidebarPagesEl.replaceChildren(frag);
         }
 
-        /*
-         事件代理：父页面 → iframe 内 canvas
-          */
         function bindIframeProxy(iframe) {
           var iwin, idoc;
           try {
@@ -769,18 +801,9 @@
           });
         }
 
-        /*
-         * 预览：作为首页的一种模式
-         * ---------------------------------------------------------------------
-         * - enterPreview(id)：把路由切到 #/，render() 检测到 previewingPageId 就全屏运行
-         * - 锁死 appEl 尺寸为「进入预览那一刻的像素值」，
-         *   之后不随 resize / 地址栏 / 滚动条改变，保证 p5 canvas 稳定
-         * - 退出：Esc，或从侧边栏点任意导航项
-          */
         var previewingPageId = null;
 
         function lockAppSize() {
-          // 先锁 body，再测量，避免滚动条影响 innerWidth
           document.body.classList.add("preview-lock");
           var w = window.innerWidth;
           var h = window.innerHeight;
@@ -896,7 +919,6 @@
           hamburgerBtn.setAttribute("aria-expanded", "false");
         }
 
-        /* 主题 */
         var editor = null;
         var uploadedImageDataUrl = null;
 
@@ -923,7 +945,6 @@
           try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
         }
 
-        /* 路由 */
         function getRoute() {
           var hash = location.hash;
           if (!hash || hash === "#" || hash === "#/") return "/";
@@ -945,7 +966,6 @@
           }
         }
 
-        /* 页面渲染 */
         var appEl;
 
         function renderHome() {
@@ -973,6 +993,8 @@
         }
         function renderGenerator() {
           var wrap = document.createElement("div");
+          // ⬇️ 生成脚本页面：占满设备宽度（配合上面的 .generator-page 样式）
+          wrap.className = "generator-page";
           wrap.innerHTML =
             "<h1>✏️ 编写 p5.js 脚本</h1>" +
             "<p>输入标题和 p5.js 代码，上传图片（可选），点击提交。</p>" +
@@ -982,7 +1004,7 @@
             "</div>" +
             '<div class="form-group">' +
             '  <label for="script">p5.js 脚本代码</label>' +
-            '  <textarea id="script" placeholder="例如：&#10;function setup() {&#10;  createCanvas(windowWidth, windowHeight);&#10;  background(102);&#10;}&#10;function draw() {&#10;  variableEllipse(mouseX, mouseY, pmouseX, pmouseY);&#10;}&#10;function variableEllipse(x, y, px, py) {&#10;  let speed = abs(x - px) + abs(y - py);&#10;  stroke(speed);&#10;  ellipse(x, y, speed, speed);&#10;}"></textarea>' +
+            '  <textarea id="script"></textarea>' +
             "</div>" +
             '<div class="form-group">' +
             '  <label for="image">上传图片（可选，脚本可通过 <code>imageUrl</code> 加载）</label>' +
@@ -1016,6 +1038,31 @@
               autofocus: true,
             });
             editor.setSize(null, "100%");
+
+            var cmWrapper = editor.getWrapperElement();
+            if (getComputedStyle(cmWrapper).position === "static") {
+              cmWrapper.style.position = "relative";
+            }
+
+            var cmPlaceholderEl = document.createElement("div");
+            cmPlaceholderEl.className = "cm-placeholder-overlay";
+            cmPlaceholderEl.textContent = SCRIPT_PLACEHOLDER;
+            cmWrapper.appendChild(cmPlaceholderEl);
+
+            var gutters = cmWrapper.querySelector(".CodeMirror-gutters");
+            var leftOffset = gutters ? gutters.offsetWidth + 8 : 44;
+            cmPlaceholderEl.style.left = leftOffset + "px";
+
+            function updateCmPlaceholder() {
+              cmPlaceholderEl.style.display =
+                editor.getValue().length === 0 ? "block" : "none";
+            }
+            editor.on("change", updateCmPlaceholder);
+            editor.on("optionChange", function () {
+              var g = cmWrapper.querySelector(".CodeMirror-gutters");
+              if (g) cmPlaceholderEl.style.left = (g.offsetWidth + 8) + "px";
+            });
+            updateCmPlaceholder();
           }
 
           fileInput.addEventListener("change", function () {
@@ -1077,7 +1124,6 @@
             var btnContainer = document.createElement("div");
             btnContainer.className = "action-buttons";
 
-            /* ⬇️ 用「下载单页 HTML」替代原来的「预览」按钮 */
             var downloadBtn = document.createElement("button");
             downloadBtn.className = "download";
             downloadBtn.textContent = "⬇️ 下载单页 HTML";
@@ -1108,13 +1154,11 @@
         function render() {
           var path = getRoute();
 
-          // 预览模式：路由回到首页时全屏运行
           if (previewingPageId !== null && (path === "/" || path === "")) {
             renderPreview(previewingPageId);
             return;
           }
 
-          // 离开预览：清理样式与锁定的尺寸
           if (appEl.classList.contains("preview-mode")) {
             appEl.classList.remove("preview-mode");
             delete appEl.dataset.currentPageId;
@@ -1158,6 +1202,41 @@
           try { savedTheme = localStorage.getItem(THEME_KEY) || "light"; } catch (e) {}
           applyTheme(savedTheme);
 
+          /* ⬇️ 全局禁止缩放（iOS Safari 会忽略 user-scalable=no，这里再兜底） */
+          ["gesturestart", "gesturechange", "gestureend"].forEach(function (type) {
+            document.addEventListener(type, function (e) { e.preventDefault(); }, {
+              passive: false,
+            });
+          });
+          // 双指触摸 = 捏合缩放：阻止默认行为
+          document.addEventListener(
+            "touchmove",
+            function (e) {
+              if (e.touches && e.touches.length > 1) {
+                e.preventDefault();
+              }
+            },
+            { passive: false }
+          );
+          // 双击缩放兜底（部分 Android 浏览器）
+          var lastTouchEnd = 0;
+          document.addEventListener(
+            "touchend",
+            function (e) {
+              var now = Date.now();
+              if (now - lastTouchEnd <= 300) {
+                // 只有落在非交互元素上才拦截，避免影响按钮/输入框
+                var t = e.target;
+                var tag = t && t.tagName ? t.tagName.toLowerCase() : "";
+                if (tag !== "input" && tag !== "textarea" && tag !== "button" && tag !== "select" && tag !== "a") {
+                  e.preventDefault();
+                }
+              }
+              lastTouchEnd = now;
+            },
+            { passive: false }
+          );
+
           hamburgerBtn.addEventListener("click", openSidebar);
           overlayEl.addEventListener("click", closeSidebar);
           modalBackdrop.addEventListener("click", function (e) {
@@ -1174,7 +1253,6 @@
           var themeBtn = $("#themeToggleSidebar");
           if (themeBtn) themeBtn.addEventListener("click", toggleTheme);
 
-          // 侧边栏导航：点击任意导航项都退出预览
           $$(".sidebar .nav-item[data-path]").forEach(function (el) {
             var go = function () {
               if (previewingPageId !== null) {
@@ -1192,7 +1270,6 @@
             });
           });
 
-          /* 侧边栏作品：点击标题依然是「打开预览」，行为保持不变 */
           sidebarPagesEl.addEventListener("click", function (e) {
             var btn = e.target.closest("[data-action]");
             if (!btn) return;
@@ -1212,8 +1289,6 @@
             if (editor) editor.refresh();
           });
 
-          // 屏幕旋转 / 大幅改变时，如果正在预览，同步一次 iframe 尺寸
-          // （不影响拖拽，只在主动旋转设备时触发）
           window.addEventListener("resize", function () {
             if (previewingPageId !== null && appEl.classList.contains("preview-mode")) {
               appEl.style.width = window.innerWidth + "px";
