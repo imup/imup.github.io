@@ -53,16 +53,9 @@
       }
       body.dark-mode { background: var(--bg-dark); color: var(--text-dark); }
 
+      /* 预览时禁用 body 滚动，避免出现滚动条影响 viewport 尺寸 */
       body.preview-lock {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        width: 100%;
-        height: 100%;
         overflow: hidden;
-        overscroll-behavior: none;
       }
 
       .hamburger-btn {
@@ -204,6 +197,7 @@
       }
       .overlay.show { display: block; opacity: 1; }
 
+      /* ===================== 主内容 ===================== */
       #app {
         width: 100%;
         min-height: 100vh;
@@ -224,8 +218,17 @@
         margin: 0 auto;
       }
 
+      /* ============ 预览模式：纯 CSS 全屏铺满，不用 JS 改像素 ============ */
       #app.preview-mode {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        height: 100%;
         padding: 0;
+        margin: 0;
         max-width: none;
         min-height: 0;
         background: #000;
@@ -233,6 +236,9 @@
         z-index: 100;
       }
       #app.preview-mode iframe {
+        position: absolute;
+        top: 0;
+        left: 0;
         width: 100%;
         height: 100%;
         border: none;
@@ -735,39 +741,17 @@
         }
 
         /* =====================================================================
-         * 预览：与侧边栏点击完全一致的同步渲染路径
+         * 预览模式
          * ---------------------------------------------------------------------
-         * 核心改动：
-         *   不论从侧边栏还是从生成器点击，都调用同一个 enterPreview(id)：
-         *     1. 先同步设置 previewingPageId；
-         *     2. 同步调用 render()（不依赖 hashchange）；
-         *     3. 用 history.replaceState 把 URL 更新为首页 #/（不触发 hashchange，避免二次渲染）。
+         * 关键设计：
+         *   - previewingPageId 是唯一状态标志。只要有值，render() 就渲染 iframe，
+         *     无视当前 hash 是什么。
+         *   - 进入预览时把 hash 改成 #/（首页），所以「预览」和「首页」是同一
+         *     个地址，看起来就是「回到首页，首页这次加载脚本而非文本」。
+         *   - 退出预览清空 previewingPageId，回到首页文本。
          * ===================================================================== */
         var previewingPageId = null;
 
-        function lockAppSize() {
-          document.body.classList.add("preview-lock");
-          var w = window.innerWidth;
-          var h = window.innerHeight;
-          appEl.style.position = "fixed";
-          appEl.style.top = "0";
-          appEl.style.left = "0";
-          appEl.style.width = w + "px";
-          appEl.style.height = h + "px";
-          appEl.style.overflow = "hidden";
-        }
-
-        function unlockAppSize() {
-          document.body.classList.remove("preview-lock");
-          appEl.style.position = "";
-          appEl.style.top = "";
-          appEl.style.left = "";
-          appEl.style.width = "";
-          appEl.style.height = "";
-          appEl.style.overflow = "";
-        }
-
-        // 唯一的入口：侧边栏和生成器按钮都走这里
         function enterPreview(id) {
           var page = getPages().find(function (p) { return p.id === id; });
           if (!page) {
@@ -777,23 +761,19 @@
           previewingPageId = id;
           closeSidebar();
 
-          // 同步渲染预览
-          render();
-
-          // 更新 URL 到首页，用 replaceState 不触发 hashchange，避免二次渲染
           var h = location.hash;
-          if (h !== "#/" && h !== "" && h !== "#") {
-            try {
-              history.replaceState(null, "", "#/");
-            } catch (e) {
-              // 某些沙箱环境不支持 replaceState，忽略
-            }
+          if (h === "#/" || h === "" || h === "#") {
+            // 已经在首页，直接渲染（不触发 hashchange）
+            render();
+          } else {
+            // 从别的路由切回首页，交给 hashchange 去 render
+            location.hash = "#/";
           }
         }
 
         function exitPreview() {
+          if (previewingPageId === null) return;
           previewingPageId = null;
-          unlockAppSize();
           render();
         }
 
@@ -801,7 +781,6 @@
           var page = getPages().find(function (p) { return p.id === id; });
           if (!page) {
             previewingPageId = null;
-            unlockAppSize();
             render();
             return;
           }
@@ -809,7 +788,8 @@
           destroyEditor();
           appEl.replaceChildren();
           setActiveNav("/");
-          lockAppSize();
+          appEl.classList.add("preview-mode");
+          document.body.classList.add("preview-lock");
 
           var iframe = document.createElement("iframe");
           iframe.setAttribute("title", page.title);
@@ -821,8 +801,15 @@
           });
 
           appEl.appendChild(iframe);
-          appEl.classList.add("preview-mode");
           appEl.dataset.currentPageId = String(id);
+        }
+
+        function leavePreviewUI() {
+          if (appEl.classList.contains("preview-mode")) {
+            appEl.classList.remove("preview-mode");
+            document.body.classList.remove("preview-lock");
+            delete appEl.dataset.currentPageId;
+          }
         }
 
         function deletePage(id) {
@@ -838,7 +825,7 @@
               updateSidebarPages();
               if (previewingPageId === id) {
                 previewingPageId = null;
-                unlockAppSize();
+                leavePreviewUI();
               }
               render();
             },
@@ -932,8 +919,8 @@
             "<p>支持预览、导出 ZIP、删除和重命名作品。</p>" +
             "<p>点击左上角 ☰ 菜单查看所有作品。</p>" +
             "<p style='color:#888;font-size:.9em;margin-top:1em'>" +
-            "点击侧边栏中的作品名称即可全屏运行；" +
-            "预览时按 Esc 或从菜单切换页面即可退出。" +
+            "点击侧边栏中的作品名称或生成成功后的「预览」按钮，会直接回到首页全屏运行脚本；" +
+            "按 Esc 或从菜单切换到其它页面即可退出。" +
             "</p>";
           return wrap;
         }
@@ -1034,8 +1021,8 @@
             var htmlContent = generatePageHtml(title, script, imageDataUrl);
 
             var newId = Date.now() + Math.floor(Math.random() * 1000);
-            var pages = getPages();
-            pages.push({
+            var pages =            getPages();
+ preview            pages.push({
               id: newId,
               title: title,
               html: htmlContent,
@@ -1052,10 +1039,10 @@
             var btnContainer = document.createElement("div");
             btnContainer.className = "action-buttons";
 
-            // 「预览」按钮：与侧边栏点击使用完全相同的 enterPreview 路径
-            var previewBtn = document.createElement("button");
+            //Btn 「预览」按钮：走 enterPreview，与.text侧边栏点击完全一致
+           Content var previewBtn = document.createElement(" =button");
             previewBtn.className = "preview";
-            previewBtn.textContent = "▶️ 预览";
+ "▶️ 预览";
             previewBtn.addEventListener("click", function () {
               enterPreview(newId);
             });
@@ -1077,26 +1064,24 @@
           });
         }
 
+        /* =====================================================================
+         * 渲染
+         * ---------------------------------------------------------------------
+         * 优先级：
+         *   1. previewingPageId 非 null  →  渲染预览（无论 hash 是什么）
+         *   2. 否则按 hash 渲染首页 / 关于 / 生成器
+         * ===================================================================== */
         function render() {
-          var path = getRoute();
-
-          // 预览模式：路由在首页时全屏运行
-          if (previewingPageId !== null && (path === "/" || path === "")) {
+          // 1. 预览优先
+          if (previewingPageId !== null) {
             renderPreview(previewingPageId);
             return;
           }
 
-          // 如果路由离开了首页，退出预览
-          if (previewingPageId !== null && path !== "/" && path !== "") {
-            previewingPageId = null;
-          }
+          // 2. 退出预览，清理 UI
+          leavePreviewUI();
 
-          if (appEl.classList.contains("preview-mode")) {
-            appEl.classList.remove("preview-mode");
-            delete appEl.dataset.currentPageId;
-            unlockAppSize();
-          }
-
+          var path = getRoute();
           destroyEditor();
           appEl.replaceChildren();
           setActiveNav(path);
@@ -1150,15 +1135,19 @@
           var themeBtn = $("#themeToggleSidebar");
           if (themeBtn) themeBtn.addEventListener("click", toggleTheme);
 
+          // 侧边栏导航：点击任何导航项都先退出预览
           $$(".sidebar .nav-item[data-path]").forEach(function (el) {
             var go = function () {
-              if (previewingPageId !== null) {
-                previewingPageId = null;
-                unlockAppSize();
-              }
+              var wasPreviewing = previewingPageId !== null;
+              previewingPageId = null;
+              if (wasPreviewing) leavePreviewUI();
+
               var path = el.getAttribute("data-path");
-              if (location.hash === path) render();
-              else location.hash = path;
+              if (location.hash === path) {
+                render();
+              } else {
+                location.hash = path;
+              }
               closeSidebar();
             };
             el.addEventListener("click", go);
@@ -1167,7 +1156,7 @@
             });
           });
 
-          // 侧边栏点击「打开」也走同一个 enterPreview
+          // 侧边栏作品列表：点击标题打开预览
           sidebarPagesEl.addEventListener("click", function (e) {
             var btn = e.target.closest("[data-action]");
             if (!btn) return;
@@ -1178,20 +1167,21 @@
             else if (action === "delete") deletePage(id);
           });
 
+          // hash 变化：如果正在预览，并且新 hash 不是首页，说明用户主动导航走了
           window.addEventListener("hashchange", function () {
+            if (previewingPageId !== null) {
+              var path = getRoute();
+              if (path !== "/" && path !== "") {
+                previewingPageId = null;
+                leavePreviewUI();
+              }
+            }
             render();
             closeSidebar();
           });
 
           window.addEventListener("orientationchange", function () {
             if (editor) editor.refresh();
-          });
-
-          window.addEventListener("resize", function () {
-            if (previewingPageId !== null && appEl.classList.contains("preview-mode")) {
-              appEl.style.width = window.innerWidth + "px";
-              appEl.style.height = window.innerHeight + "px";
-            }
           });
 
           updateSidebarPages();
