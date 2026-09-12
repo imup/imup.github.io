@@ -53,7 +53,6 @@
       }
       body.dark-mode { background: var(--bg-dark); color: var(--text-dark); }
 
-      /* 预览时锁定 body，防止任何滚动 / 位移影响 iframe 尺寸 */
       body.preview-lock {
         position: fixed;
         top: 0;
@@ -66,7 +65,6 @@
         overscroll-behavior: none;
       }
 
-      /* ===================== 汉堡按钮 ===================== */
       .hamburger-btn {
         position: fixed;
         top: clamp(8px, 2vw, 14px);
@@ -85,19 +83,16 @@
       }
       .hamburger-btn:hover { transform: scale(1.1); }
       body.dark-mode .hamburger-btn { color: #fff; }
-      /* 预览时保持汉堡可见、颜色可读 */
       body.preview-lock .hamburger-btn {
         color: #fff;
         text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
       }
-      /* 侧边栏打开时隐藏汉堡 */
       body.sidebar-open .hamburger-btn {
         opacity: 0;
         transform: scale(0.6);
         pointer-events: none;
       }
 
-      /* ===================== 侧边栏 ===================== */
       .sidebar {
         position: fixed;
         top: 0;
@@ -209,7 +204,6 @@
       }
       .overlay.show { display: block; opacity: 1; }
 
-      /* ===================== 主内容 ===================== */
       #app {
         width: 100%;
         min-height: 100vh;
@@ -230,9 +224,6 @@
         margin: 0 auto;
       }
 
-      /* ============ 预览模式 ============
-       * 宽高由 JS 用内联像素锁定（见 lockAppSize），这里只处理排版
-       */
       #app.preview-mode {
         padding: 0;
         max-width: none;
@@ -538,9 +529,7 @@
           });
         }
 
-        /* =====================================================================
-         * 生成独立 HTML —— CSS 保持极简
-         * ===================================================================== */
+        /* ======================= 生成独立 HTML ======================= */
         function generatePageHtml(title, script, imageDataUrl) {
           var safeTitle = escapeHtml(title || "未命名页面");
           var imgVar = imageDataUrl
@@ -647,9 +636,7 @@
           sidebarPagesEl.replaceChildren(frag);
         }
 
-        /* =====================================================================
-         * 事件代理：父页面 → iframe 内 canvas
-         * ===================================================================== */
+        /* ======================= 事件代理 ======================= */
         function bindIframeProxy(iframe) {
           var iwin, idoc;
           try {
@@ -748,17 +735,17 @@
         }
 
         /* =====================================================================
-         * 预览：作为首页的一种模式
+         * 预览：与侧边栏点击完全一致的同步渲染路径
          * ---------------------------------------------------------------------
-         * - enterPreview(id)：把路由切到 #/，render() 检测到 previewingPageId 就全屏运行
-         * - 锁死 appEl 尺寸为「进入预览那一刻的像素值」，
-         *   之后不随 resize / 地址栏 / 滚动条改变，保证 p5 canvas 稳定
-         * - 退出：Esc，或从侧边栏点任意导航项
+         * 核心改动：
+         *   不论从侧边栏还是从生成器点击，都调用同一个 enterPreview(id)：
+         *     1. 先同步设置 previewingPageId；
+         *     2. 同步调用 render()（不依赖 hashchange）；
+         *     3. 用 history.replaceState 把 URL 更新为首页 #/（不触发 hashchange，避免二次渲染）。
          * ===================================================================== */
         var previewingPageId = null;
 
         function lockAppSize() {
-          // 先锁 body，再测量，避免滚动条影响 innerWidth
           document.body.classList.add("preview-lock");
           var w = window.innerWidth;
           var h = window.innerHeight;
@@ -780,16 +767,27 @@
           appEl.style.overflow = "";
         }
 
+        // 唯一的入口：侧边栏和生成器按钮都走这里
         function enterPreview(id) {
           var page = getPages().find(function (p) { return p.id === id; });
-          if (!page) return;
+          if (!page) {
+            showAlert("打开失败", "找不到该作品，可能已被删除。", true);
+            return;
+          }
           previewingPageId = id;
           closeSidebar();
+
+          // 同步渲染预览
+          render();
+
+          // 更新 URL 到首页，用 replaceState 不触发 hashchange，避免二次渲染
           var h = location.hash;
-          if (h === "#/" || h === "" || h === "#") {
-            render();
-          } else {
-            location.hash = "#/";
+          if (h !== "#/" && h !== "" && h !== "#") {
+            try {
+              history.replaceState(null, "", "#/");
+            } catch (e) {
+              // 某些沙箱环境不支持 replaceState，忽略
+            }
           }
         }
 
@@ -811,7 +809,6 @@
           destroyEditor();
           appEl.replaceChildren();
           setActiveNav("/");
-
           lockAppSize();
 
           var iframe = document.createElement("iframe");
@@ -1055,6 +1052,7 @@
             var btnContainer = document.createElement("div");
             btnContainer.className = "action-buttons";
 
+            // 「预览」按钮：与侧边栏点击使用完全相同的 enterPreview 路径
             var previewBtn = document.createElement("button");
             previewBtn.className = "preview";
             previewBtn.textContent = "▶️ 预览";
@@ -1082,13 +1080,17 @@
         function render() {
           var path = getRoute();
 
-          // 预览模式：路由回到首页时全屏运行
+          // 预览模式：路由在首页时全屏运行
           if (previewingPageId !== null && (path === "/" || path === "")) {
             renderPreview(previewingPageId);
             return;
           }
 
-          // 离开预览：清理样式与锁定的尺寸
+          // 如果路由离开了首页，退出预览
+          if (previewingPageId !== null && path !== "/" && path !== "") {
+            previewingPageId = null;
+          }
+
           if (appEl.classList.contains("preview-mode")) {
             appEl.classList.remove("preview-mode");
             delete appEl.dataset.currentPageId;
@@ -1148,7 +1150,6 @@
           var themeBtn = $("#themeToggleSidebar");
           if (themeBtn) themeBtn.addEventListener("click", toggleTheme);
 
-          // 侧边栏导航：点击任意导航项都退出预览
           $$(".sidebar .nav-item[data-path]").forEach(function (el) {
             var go = function () {
               if (previewingPageId !== null) {
@@ -1166,6 +1167,7 @@
             });
           });
 
+          // 侧边栏点击「打开」也走同一个 enterPreview
           sidebarPagesEl.addEventListener("click", function (e) {
             var btn = e.target.closest("[data-action]");
             if (!btn) return;
@@ -1185,8 +1187,6 @@
             if (editor) editor.refresh();
           });
 
-          // 屏幕旋转 / 大幅改变时，如果正在预览，同步一次 iframe 尺寸
-          // （不影响拖拽，只在主动旋转设备时触发）
           window.addEventListener("resize", function () {
             if (previewingPageId !== null && appEl.classList.contains("preview-mode")) {
               appEl.style.width = window.innerWidth + "px";
