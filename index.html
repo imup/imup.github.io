@@ -670,6 +670,21 @@
         var THEME_KEY = "p5_theme";
         var MAX_IMAGE_BYTES = 1.5 * 1024 * 1024;
 
+        /* ============================================================
+         * 【重要】p5 脚本文件夹配置
+         * 1) 把 .js 脚本文件放进与本页面同级的 p5/ 文件夹中
+         * 2) 把文件名写进下面的 P5_FILES 数组（含扩展名，不含路径）
+         * 首页会从这个列表里随机挑一个运行
+         * ============================================================ */
+        var P5_DIR = "p5/";
+        var P5_CDN =
+          "https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js";
+        var P5_FILES = [
+          "sketch1.js",
+          "sketch2.js",
+          "sketch3.js",
+        ];
+
         var SCRIPT_PLACEHOLDER =
           "例如：\n" +
           "function setup() {\n" +
@@ -853,7 +868,9 @@
             "    html, body { margin: 0; padding: 0; }\n" +
             "    canvas { display: block; }\n" +
             "  </style>\n" +
-            '  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"><\/script>\n' +
+            '  <script src="' +
+            P5_CDN +
+            '"><\/script>\n' +
             "</head>\n" +
             "<body>\n" +
             "  <script>\n" +
@@ -920,6 +937,58 @@
         var sidebarPagesEl, sidebarEl, overlayEl, hamburgerBtn;
         var sidebarSearchEl;
         var sidebarSearchKeyword = "";
+        var appEl;
+
+        /* ============================================================
+         * 首页运行器状态
+         *   mode === "random"  -> 随机运行 p5/ 文件夹里的脚本
+         *   mode === "page"    -> 运行 localStorage 中指定的作品
+         * ============================================================ */
+        var runner = { mode: "random", pageId: null };
+        var currentRandomFile = null;
+
+        function pickRandomP5File() {
+          if (!P5_FILES || !P5_FILES.length) return null;
+          if (P5_FILES.length === 1) return P5_FILES[0];
+          var pool = P5_FILES.filter(function (f) {
+            return f !== currentRandomFile;
+          });
+          if (!pool.length) pool = P5_FILES.slice();
+          return pool[Math.floor(Math.random() * pool.length)];
+        }
+
+        function encodePath(fileName) {
+          return String(fileName)
+            .split("/")
+            .map(function (seg) {
+              return encodeURIComponent(seg);
+            })
+            .join("/");
+        }
+
+        function buildP5SrcDoc(fileName) {
+          var src = P5_DIR + encodePath(fileName);
+          return (
+            "<!DOCTYPE html>\n" +
+            '<html lang="zh-CN">\n' +
+            "<head>\n" +
+            '  <meta charset="UTF-8">\n' +
+            '  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">\n' +
+            "  <style>\n" +
+            "    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; }\n" +
+            "    canvas { display: block; }\n" +
+            "  </style>\n" +
+            '  <script src="' +
+            P5_CDN +
+            '"><\/script>\n' +
+            '  <script src="' +
+            src +
+            '"><\/script>\n' +
+            "</head>\n" +
+            "<body></body>\n" +
+            "</html>"
+          );
+        }
 
         function updateSidebarPages() {
           var pages = getPages();
@@ -1100,8 +1169,6 @@
           });
         }
 
-        var previewingPageId = null;
-
         function lockAppSize() {
           document.body.classList.add("preview-lock");
           var w = window.innerWidth;
@@ -1124,56 +1191,88 @@
           appEl.style.overflow = "";
         }
 
-        function enterPreview(id) {
-          var page = getPages().find(function (p) {
-            return p.id === id;
-          });
-          if (!page) return;
-          previewingPageId = id;
-          closeSidebar();
-          var h = location.hash;
-          if (h === "#/" || h === "" || h === "#") {
-            render();
-          } else {
-            location.hash = "#/";
-          }
-        }
+        /* ---------------- 首页运行器 ---------------- */
 
-        function exitPreview() {
-          previewingPageId = null;
-          unlockAppSize();
-          render();
-        }
-
-        function renderPreview(id) {
-          var page = getPages().find(function (p) {
-            return p.id === id;
-          });
-          if (!page) {
-            previewingPageId = null;
-            unlockAppSize();
-            render();
-            return;
-          }
-
+        function renderRunner() {
           destroyEditor();
           appEl.replaceChildren();
+          appEl.classList.remove("preview-mode");
           setActiveNav("/");
 
+          var html = null;
+
+          if (runner.mode === "page") {
+            var page = getPages().find(function (p) {
+              return p.id === runner.pageId;
+            });
+            if (page) {
+              html = page.html;
+              appEl.dataset.currentPageId = String(page.id);
+            } else {
+              // 作品已被删除，退回随机
+              runner.mode = "random";
+              runner.pageId = null;
+            }
+          }
+
+          if (html === null) {
+            var file = pickRandomP5File();
+            if (!file) {
+              unlockAppSize();
+              delete appEl.dataset.currentPageId;
+              var wrap = document.createElement("div");
+              wrap.innerHTML =
+                "<h1>还没有可运行的 p5 脚本</h1>" +
+                "<p>请把 .js 脚本放进与本页面同级的 <code>" +
+                P5_DIR +
+                "</code> 文件夹，" +
+                "并在页面代码顶部的 <code>P5_FILES</code> 数组里写上文件名。</p>";
+              appEl.appendChild(wrap);
+              return;
+            }
+            currentRandomFile = file;
+            html = buildP5SrcDoc(file);
+            delete appEl.dataset.currentPageId;
+          }
+
           lockAppSize();
+          appEl.classList.add("preview-mode");
 
           var iframe = document.createElement("iframe");
-          iframe.setAttribute("title", page.title);
+          iframe.setAttribute("title", "p5 运行");
           iframe.setAttribute("scrolling", "no");
-          iframe.srcdoc = page.html;
-
+          iframe.srcdoc = html;
           iframe.addEventListener("load", function () {
             bindIframeProxy(iframe);
           });
-
           appEl.appendChild(iframe);
-          appEl.classList.add("preview-mode");
-          appEl.dataset.currentPageId = String(id);
+        }
+
+        /** 回到“随机运行 p5 文件夹脚本”状态 */
+        function setRandom() {
+          runner.mode = "random";
+          runner.pageId = null;
+          if (getRoute() === "/") render();
+          else location.hash = "#/";
+        }
+
+        /**
+         * 首页运行指定作品（侧边栏点脚本名 / 预览按钮 都走这里）
+         * 若该作品正在运行，则再次点击回到随机状态
+         */
+        function runPage(id) {
+          if (
+            getRoute() === "/" &&
+            runner.mode === "page" &&
+            runner.pageId === id
+          ) {
+            setRandom();
+            return;
+          }
+          runner.mode = "page";
+          runner.pageId = id;
+          if (getRoute() === "/") render();
+          else location.hash = "#/";
         }
 
         function deletePage(id) {
@@ -1191,9 +1290,9 @@
               });
               savePages(list);
               updateSidebarPages();
-              if (previewingPageId === id) {
-                previewingPageId = null;
-                unlockAppSize();
+              if (runner.mode === "page" && runner.pageId === id) {
+                runner.mode = "random";
+                runner.pageId = null;
               }
               render();
             },
@@ -1282,29 +1381,17 @@
           }
         }
 
-        var appEl;
-
-        function renderHome() {
-          var wrap = document.createElement("div");
-          wrap.innerHTML =
-            "<h1>randomArt创意脚本编辑</h1>" +
-            "<p>所有数据保存在本地浏览器中，无需服务器。</p>" +
-            "<p>编写p5.js脚本，上传图片素材，生成独立的HTML页面。</p>" +
-            "<p>支持预览、下载单页 HTML、导出 ZIP、删除和重命名作品。</p>" +
-            "<p>点击左上角 ☰ 菜单查看所有作品。</p>" +
-            "<p style='color:#888;font-size:.9em;margin-top:1em'>" +
-            "点击侧边栏中的作品名称即可全屏运行；" +
-            "预览时按 Esc 或从菜单切换页面即可退出。" +
-            "</p>";
-          return wrap;
-        }
         function renderAbout() {
           var wrap = document.createElement("div");
           wrap.innerHTML =
             "<h1>关于</h1>" +
             "<p>纯前端工具，基于localStorage存储，无需后端。</p>" +
             "<p>使用CodeMirror实现代码高亮，支持亮色 / 暗色主题。</p>" +
-            "<p>所有脚本均可导出为ZIP包，也可单独下载为 HTML。</p>";
+            "<p>所有脚本均可导出为ZIP包，也可单独下载为 HTML。</p>" +
+            "<p>首页会从 <code>" +
+            P5_DIR +
+            "</code> 文件夹中随机运行一个 p5 脚本；" +
+            "点击侧边栏中的脚本名即可直接运行该脚本，再点一次回到随机状态。</p>";
           return wrap;
         }
         function renderGenerator() {
@@ -1443,12 +1530,12 @@
             var btnContainer = document.createElement("div");
             btnContainer.className = "action-buttons";
 
-            /* 预览按钮 */
+            /* 预览按钮：行为与点击左侧栏脚本名完全一致 */
             var previewBtn = document.createElement("button");
             previewBtn.className = "preview";
             previewBtn.textContent = "▶️ 预览";
             previewBtn.addEventListener("click", function () {
-              enterPreview(newId);
+              runPage(newId);
             });
 
             var downloadBtn = document.createElement("button");
@@ -1476,24 +1563,24 @@
         function render() {
           var path = getRoute();
 
-          if (previewingPageId !== null && (path === "/" || path === "")) {
-            renderPreview(previewingPageId);
+          /* 首页 = 全屏 p5 运行器（随机 / 指定脚本） */
+          if (path === "/" || path === "" || path === "/index.html") {
+            renderRunner();
             return;
           }
 
+          /* 离开首页：解除全屏锁定 */
           if (appEl.classList.contains("preview-mode")) {
             appEl.classList.remove("preview-mode");
-            delete appEl.dataset.currentPageId;
-            unlockAppSize();
           }
+          delete appEl.dataset.currentPageId;
+          unlockAppSize();
 
           destroyEditor();
           appEl.replaceChildren();
           setActiveNav(path);
 
-          if (path === "/" || path === "/index.html" || path === "") {
-            appEl.appendChild(renderHome());
-          } else if (path === "/about") {
+          if (path === "/about") {
             appEl.appendChild(renderAbout());
           } else if (path === "/generator") {
             appEl.appendChild(renderGenerator());
@@ -1601,11 +1688,16 @@
           modalBackdrop.addEventListener("click", function (e) {
             if (e.target === modalBackdrop) closeModal();
           });
+
           document.addEventListener("keydown", function (e) {
             if (e.key === "Escape") {
-              if (modalBackdrop.classList.contains("show")) closeModal();
-              else if (previewingPageId !== null) exitPreview();
-              else closeSidebar();
+              if (modalBackdrop.classList.contains("show")) {
+                closeModal();
+              } else if (sidebarEl.classList.contains("open")) {
+                closeSidebar();
+              } else if (runner.mode === "page" && getRoute() === "/") {
+                setRandom();
+              }
             }
           });
 
@@ -1628,16 +1720,17 @@
           var themeBtn = $("#themeToggleSidebar");
           if (themeBtn) themeBtn.addEventListener("click", toggleTheme);
 
+          /* 顶部导航：首页 -> 回到随机状态 */
           $$(".sidebar .nav-item[data-path]").forEach(function (el) {
             var go = function () {
-              if (previewingPageId !== null) {
-                previewingPageId = null;
-                unlockAppSize();
-              }
               var path = el.getAttribute("data-path");
+              closeSidebar();
+              if (path === "#/") {
+                setRandom();
+                return;
+              }
               if (location.hash === path) render();
               else location.hash = path;
-              closeSidebar();
             };
             el.addEventListener("click", go);
             el.addEventListener("keydown", function (e) {
@@ -1648,14 +1741,20 @@
             });
           });
 
+          /* 侧边栏脚本名：点击 -> 首页直接运行；再点一次 -> 回到随机 */
           sidebarPagesEl.addEventListener("click", function (e) {
             var btn = e.target.closest("[data-action]");
             if (!btn) return;
             var id = Number(btn.dataset.id);
             var action = btn.dataset.action;
-            if (action === "open") enterPreview(id);
-            else if (action === "rename") renamePage(id);
-            else if (action === "delete") deletePage(id);
+            if (action === "open") {
+              closeSidebar();
+              runPage(id);
+            } else if (action === "rename") {
+              renamePage(id);
+            } else if (action === "delete") {
+              deletePage(id);
+            }
           });
 
           window.addEventListener("hashchange", function () {
@@ -1668,13 +1767,11 @@
           });
 
           window.addEventListener("resize", function () {
-            if (
-              previewingPageId !== null &&
-              appEl.classList.contains("preview-mode")
-            ) {
+            if (appEl.classList.contains("preview-mode")) {
               appEl.style.width = window.innerWidth + "px";
               appEl.style.height = window.innerHeight + "px";
             }
+            if (editor) editor.refresh();
           });
 
           updateSidebarPages();
