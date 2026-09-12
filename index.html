@@ -589,43 +589,40 @@
         overflow: hidden;
       }
 
+      /* 清除按钮：无底色 */
       .ai-clear-btn {
         position: absolute;
         top: clamp(8px, 2vw, 14px);
         right: clamp(10px, 3vw, 18px);
         z-index: 60;
-        width: 38px;
-        height: 38px;
-        min-width: 38px;
+        width: 40px;
+        height: 40px;
+        min-width: 40px;
         padding: 0;
         border-radius: 50%;
-        background: rgba(0, 0, 0, 0.08);
-        color: inherit;
+        background: transparent;
         border: none;
-        font-size: 24px;
-        font-weight: 700;
+        color: inherit;
+        font-size: 26px;
+        font-weight: 300;
         line-height: 1;
         display: flex;
         align-items: center;
         justify-content: center;
         cursor: pointer;
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
+        opacity: 0.7;
         transition:
-          background 0.15s,
+          opacity 0.15s,
           color 0.15s,
           transform 0.15s;
       }
       .ai-clear-btn:hover {
-        background: rgba(217, 83, 79, 0.18);
+        opacity: 1;
         color: #d9534f;
-        transform: scale(1.06);
+        transform: scale(1.15);
       }
-      body.dark-mode .ai-clear-btn {
-        background: rgba(255, 255, 255, 0.12);
-      }
-      body.dark-mode .ai-clear-btn:hover {
-        background: rgba(217, 83, 79, 0.25);
+      .ai-clear-btn:active {
+        transform: scale(0.95);
       }
 
       .ai-messages {
@@ -679,6 +676,7 @@
         padding: 48px 12px;
         font-size: 0.92rem;
         line-height: 1.8;
+        white-space: pre-line;
       }
       body.dark-mode .ai-empty {
         color: #888;
@@ -739,8 +737,8 @@
         background: transparent;
         color: inherit;
         border: none;
-        font-size: 24px;
-        font-weight: 400;
+        font-size: 26px;
+        font-weight: 300;
         line-height: 1;
         display: flex;
         align-items: center;
@@ -759,6 +757,11 @@
       .ai-model-btn:active {
         transform: scale(0.94);
       }
+      .ai-model-btn.has-model {
+        font-size: 18px;
+        font-weight: bold;
+        background: rgba(0, 123, 255, 0.12);
+      }
 
       .ai-model-menu {
         display: none;
@@ -770,7 +773,7 @@
         border: 1px solid #ccc;
         border-radius: 12px;
         box-shadow: 0 12px 34px rgba(0, 0, 0, 0.32);
-        min-width: 220px;
+        min-width: 250px;
         z-index: 500;
         overflow: hidden;
       }
@@ -785,9 +788,9 @@
       .ai-model-item {
         display: flex;
         align-items: center;
-        padding: 11px 12px;
+        padding: 10px 12px;
         cursor: pointer;
-        gap: 8px;
+        gap: 6px;
         font-size: 0.93rem;
         user-select: none;
       }
@@ -816,19 +819,28 @@
         text-overflow: ellipsis;
         white-space: nowrap;
       }
+      .ai-model-item .ai-key,
       .ai-model-item .ai-dl {
         background: transparent;
         color: #888;
         padding: 3px 7px;
         border-radius: 6px;
-        font-size: 1rem;
+        font-size: 0.95rem;
         line-height: 1;
         cursor: pointer;
         border: none;
+        transition: background 0.15s, color 0.15s;
+      }
+      .ai-model-item .ai-key:hover {
+        background: rgba(240, 173, 78, 0.15);
+        color: #f0ad4e;
       }
       .ai-model-item .ai-dl:hover {
         background: rgba(0, 0, 0, 0.08);
         color: #007bff;
+      }
+      body.dark-mode .ai-model-item .ai-key:hover {
+        background: rgba(240, 173, 78, 0.2);
       }
       body.dark-mode .ai-model-item .ai-dl:hover {
         background: rgba(255, 255, 255, 0.14);
@@ -901,10 +913,10 @@
           padding: 10px 6px;
         }
         .ai-clear-btn {
-          width: 34px;
-          height: 34px;
-          min-width: 34px;
-          font-size: 22px;
+          width: 36px;
+          height: 36px;
+          min-width: 36px;
+          font-size: 24px;
         }
       }
       @media (max-height: 480px) {
@@ -1007,9 +1019,6 @@
 
         /* ============================================================
          * 【重要】p5 脚本文件夹配置
-         * 1) 把 .js 脚本文件放进与本页面同级的 p5/ 文件夹中
-         * 2) 把文件名写进下面的 P5_FILES 数组（含扩展名，不含路径）
-         * 首页会从这个列表里随机挑一个运行
          * ============================================================ */
         var P5_DIR = "p5/";
         var P5_CDN =
@@ -1045,7 +1054,7 @@
         ];
 
         var aiState = {
-          currentModel: "chatgpt",
+          currentModel: null, // 默认不选择模型
           keys: {},
           chats: {},
           busy: false,
@@ -1095,9 +1104,8 @@
           AI_MODELS.forEach(function (m) {
             if (!Array.isArray(aiState.chats[m.id])) aiState.chats[m.id] = [];
           });
-          if (!aiModelConf(aiState.currentModel)) {
-            aiState.currentModel = AI_MODELS[0].id;
-          }
+          /* 默认不选中模型，让用户主动选择并配置 API Key */
+          aiState.currentModel = null;
         }
 
         var SCRIPT_PLACEHOLDER =
@@ -1227,13 +1235,15 @@
             box.appendChild(a);
           });
         }
-        function showPrompt(title, defaultValue, onOk) {
+        function showPrompt(title, defaultValue, onOk, inputType) {
           openModal(function (box) {
             var h = document.createElement("h3");
             h.textContent = title;
             var input = document.createElement("input");
-            input.type = "text";
+            input.type = inputType || "text";
             input.value = defaultValue || "";
+            input.autocomplete = "off";
+            input.spellcheck = false;
             var a = document.createElement("div");
             a.className = "modal-actions";
             var cancel = document.createElement("button");
@@ -1793,7 +1803,8 @@
             "</code> 文件夹中随机运行一个 p5 脚本；" +
             "点击侧边栏中的脚本名即可直接运行该脚本，再点一次仍然运行该脚本；" +
             "点击“首页”“关于”“编写脚本”等其它导航项会回到随机状态。</p>" +
-            "<p>AI 助手支持 ChatGPT / Gemini / DeepSeek，可切换模型、保存对话并导出为 Markdown。</p>";
+            "<p>AI 助手支持 ChatGPT / Gemini / DeepSeek 流式输出，" +
+            "首次进入需点击 + 选择模型并设置 API Key，可下载对话为 Markdown。</p>";
           return wrap;
         }
         function renderGenerator() {
@@ -2001,6 +2012,13 @@
             name.className = "ai-model-name";
             name.textContent = m.name;
 
+            var keyBtn = document.createElement("button");
+            keyBtn.className = "ai-key";
+            keyBtn.type = "button";
+            keyBtn.title = "设置 / 更新 API Key";
+            keyBtn.textContent = "🔑";
+            keyBtn.dataset.key = m.id;
+
             var dl = document.createElement("button");
             dl.className = "ai-dl";
             dl.type = "button";
@@ -2010,6 +2028,7 @@
 
             item.appendChild(check);
             item.appendChild(name);
+            item.appendChild(keyBtn);
             item.appendChild(dl);
             frag.appendChild(item);
           });
@@ -2019,12 +2038,26 @@
         function refreshAIModelUI() {
           var items = $$(".ai-model-item");
           items.forEach(function (el) {
-            if (el.dataset.model === aiState.currentModel) {
+            if (
+              aiState.currentModel &&
+              el.dataset.model === aiState.currentModel
+            ) {
               el.classList.add("active");
             } else {
               el.classList.remove("active");
             }
           });
+          /* 模型选择按钮显示 */
+          var btn = $("#aiModelBtn");
+          if (btn) {
+            if (aiState.currentModel) {
+              btn.classList.add("has-model");
+              btn.textContent = aiModelName(aiState.currentModel).charAt(0);
+            } else {
+              btn.classList.remove("has-model");
+              btn.textContent = "+";
+            }
+          }
         }
 
         function closeAIModelMenu() {
@@ -2041,16 +2074,22 @@
           var box = $("#aiMessages");
           if (!box) return;
           var model = aiState.currentModel;
-          var chat = aiState.chats[model] || [];
 
-          if (!chat.length && !aiState.busy) {
+          if (!model) {
             var empty = document.createElement("div");
             empty.className = "ai-empty";
             empty.textContent =
-              "开始与 " +
-              aiModelName(model) +
-              " 对话吧\n（点击左下角 + 可切换模型并设置 API Key）";
+              "还没有选择模型\n\n点击左下角的 + 选择一个模型\n并输入 API Key 后开始对话";
             box.replaceChildren(empty);
+            return;
+          }
+
+          var chat = aiState.chats[model] || [];
+          if (!chat.length) {
+            var empty2 = document.createElement("div");
+            empty2.className = "ai-empty";
+            empty2.textContent = "开始与 " + aiModelName(model) + " 对话吧";
+            box.replaceChildren(empty2);
             return;
           }
 
@@ -2061,21 +2100,15 @@
               "ai-msg " + (m.role === "assistant" ? "assistant" : "user");
             var b = document.createElement("div");
             b.className = "bubble";
-            b.textContent = m.content;
+            if (m.role === "assistant" && !m.content) {
+              b.textContent = "正在思考…";
+              b.classList.add("pending");
+            } else {
+              b.textContent = m.content;
+            }
             row.appendChild(b);
             frag.appendChild(row);
           });
-
-          if (aiState.busy) {
-            var prow = document.createElement("div");
-            prow.className = "ai-msg assistant pending";
-            var pb = document.createElement("div");
-            pb.className = "bubble";
-            pb.textContent = "正在思考…";
-            prow.appendChild(pb);
-            frag.appendChild(prow);
-          }
-
           box.replaceChildren(frag);
           box.scrollTop = box.scrollHeight;
         }
@@ -2086,124 +2119,159 @@
           btn.disabled = !!aiState.busy;
         }
 
-        /* ---------------- AI 助手 —— 网络请求 ---------------- */
+        function getLastAssistantBubble() {
+          var box = $("#aiMessages");
+          if (!box) return null;
+          var rows = box.querySelectorAll(".ai-msg.assistant");
+          if (!rows.length) return null;
+          var last = rows[rows.length - 1];
+          return last.querySelector(".bubble");
+        }
 
-        function parseJsonResponse(res) {
-          return res.text().then(function (t) {
-            var data = {};
-            if (t) {
+        /* ---------------- AI 助手 —— 流式请求 ---------------- */
+
+        function streamAI(model, key, messages, onDelta) {
+          var conf = aiModelConf(model);
+          var url, options;
+
+          if (model === "gemini") {
+            url =
+              conf.endpoint.replace(
+                ":generateContent",
+                ":streamGenerateContent",
+              ) +
+              "?alt=sse&key=" +
+              encodeURIComponent(key);
+            var contents = messages.map(function (m) {
+              return {
+                role: m.role === "assistant" ? "model" : "user",
+                parts: [{ text: m.content }],
+              };
+            });
+            options = {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ contents: contents }),
+            };
+          } else {
+            url = conf.endpoint;
+            options = {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: "Bearer " + key,
+              },
+              body: JSON.stringify({
+                model: conf.apiModel,
+                messages: messages.map(function (m) {
+                  return { role: m.role, content: m.content };
+                }),
+                stream: true,
+              }),
+            };
+          }
+
+          return fetch(url, options).then(function (res) {
+            if (!res.ok) {
+              return res.text().then(function (t) {
+                var msg = "HTTP " + res.status;
+                try {
+                  var d = JSON.parse(t);
+                  msg =
+                    (d.error && d.error.message) ||
+                    d.message ||
+                    (d.error && d.error.status) ||
+                    msg;
+                } catch (e) {}
+                throw new Error(msg);
+              });
+            }
+            if (!res.body || !res.body.getReader) {
+              throw new Error("当前浏览器不支持流式响应");
+            }
+
+            var reader = res.body.getReader();
+            var decoder = new TextDecoder();
+            var buffer = "";
+
+            function dispatchData(data) {
+              if (!data) return;
+              if (data === "[DONE]") return;
               try {
-                data = JSON.parse(t);
-              } catch (e) {
-                data = {};
+                onDelta(JSON.parse(data));
+              } catch (e) {}
+            }
+
+            function processBuffer(flush) {
+              var sepIndex;
+              while ((sepIndex = buffer.indexOf("\n\n")) !== -1) {
+                var evt = buffer.slice(0, sepIndex);
+                buffer = buffer.slice(sepIndex + 2);
+                var lines = evt.split("\n");
+                for (var i = 0; i < lines.length; i++) {
+                  var line = lines[i].trim();
+                  if (line.indexOf("data:") === 0) {
+                    dispatchData(line.slice(5).trim());
+                  }
+                }
+              }
+              if (flush && buffer.trim()) {
+                var tail = buffer.trim();
+                if (tail.indexOf("data:") === 0) {
+                  dispatchData(tail.slice(5).trim());
+                }
+                buffer = "";
               }
             }
-            if (!res.ok) {
-              var msg =
-                (data && data.error && data.error.message) ||
-                (data && data.message) ||
-                "HTTP " + res.status;
-              throw new Error(msg);
+
+            function pump() {
+              return reader.read().then(function (result) {
+                if (result.done) {
+                  processBuffer(true);
+                  return;
+                }
+                buffer += decoder.decode(result.value, { stream: true });
+                processBuffer(false);
+                return pump();
+              });
             }
-            return data;
+
+            return pump();
           });
-        }
-
-        function callChatGPT(key, messages) {
-          var conf = aiModelConf("chatgpt");
-          return fetch(conf.endpoint, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: "Bearer " + key,
-            },
-            body: JSON.stringify({
-              model: conf.apiModel,
-              messages: messages.map(function (m) {
-                return { role: m.role, content: m.content };
-              }),
-            }),
-          })
-            .then(parseJsonResponse)
-            .then(function (data) {
-              var c = data.choices && data.choices[0];
-              if (!c) throw new Error("API 未返回内容");
-              return (c.message && c.message.content) || "";
-            });
-        }
-
-        function callDeepSeek(key, messages) {
-          var conf = aiModelConf("deepseek");
-          return fetch(conf.endpoint, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: "Bearer " + key,
-            },
-            body: JSON.stringify({
-              model: conf.apiModel,
-              messages: messages.map(function (m) {
-                return { role: m.role, content: m.content };
-              }),
-            }),
-          })
-            .then(parseJsonResponse)
-            .then(function (data) {
-              var c = data.choices && data.choices[0];
-              if (!c) throw new Error("API 未返回内容");
-              return (c.message && c.message.content) || "";
-            });
-        }
-
-        function callGemini(key, messages) {
-          var conf = aiModelConf("gemini");
-          var url = conf.endpoint + "?key=" + encodeURIComponent(key);
-          var contents = messages.map(function (m) {
-            return {
-              role: m.role === "assistant" ? "model" : "user",
-              parts: [{ text: m.content }],
-            };
-          });
-          return fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ contents: contents }),
-          })
-            .then(parseJsonResponse)
-            .then(function (data) {
-              var cand = data.candidates && data.candidates[0];
-              if (!cand) throw new Error("API 未返回内容");
-              var parts = (cand.content && cand.content.parts) || [];
-              return parts
-                .map(function (p) {
-                  return p.text || "";
-                })
-                .join("");
-            });
-        }
-
-        function callAI(model, key, messages) {
-          if (model === "gemini") return callGemini(key, messages);
-          if (model === "deepseek") return callDeepSeek(key, messages);
-          return callChatGPT(key, messages);
         }
 
         /* ---------------- AI 助手 —— 交互 ---------------- */
 
-        function selectAIModel(model) {
-          if (!aiModelConf(model)) return;
+        /** 弹出 API Key 输入框（密码输入，加密显示） */
+        function promptAPIKey(model, onSaved) {
           showPrompt(
             "设置 " + aiModelName(model) + " API Key",
             aiState.keys[model] || "",
             function (v) {
               aiState.keys[model] = v;
               saveAIKeys();
+              if (onSaved) onSaved();
+            },
+            "password",
+          );
+        }
+
+        /** 选择 / 切换模型：无 Key 时先要求输入 Key */
+        function selectAIModel(model) {
+          if (!aiModelConf(model)) return;
+          if (!aiState.keys[model]) {
+            promptAPIKey(model, function () {
               aiState.currentModel = model;
               refreshAIModelUI();
               renderAIMessages();
               updateAISendBtn();
-            },
-          );
+            });
+            return;
+          }
+          aiState.currentModel = model;
+          refreshAIModelUI();
+          renderAIMessages();
+          updateAISendBtn();
         }
 
         function downloadAIChat(model) {
@@ -2240,29 +2308,33 @@
 
         function aiSend() {
           if (aiState.busy) return;
+          var model = aiState.currentModel;
+          if (!model) {
+            showAlert(
+              "请先选择模型",
+              "点击左下角的 + 按钮选择一个 AI 模型并设置 API Key。",
+              true,
+            );
+            return;
+          }
+          var key = aiState.keys[model];
+          if (!key) {
+            promptAPIKey(model, function () {
+              aiSend();
+            });
+            return;
+          }
+
           var inputEl = $("#aiInput");
           if (!inputEl) return;
           var text = (inputEl.value || "").trim();
           if (!text) return;
 
-          var model = aiState.currentModel;
-          var key = aiState.keys[model];
-          if (!key) {
-            showAlert(
-              "缺少 API Key",
-              "请先点击左下角 + 按钮，为 " +
-                aiModelName(model) +
-                " 输入 API Key。",
-              true,
-            );
-            return;
-          }
-
           var chat = aiState.chats[model];
-          if (!Array.isArray(chat)) {
-            chat = aiState.chats[model] = [];
-          }
+          if (!Array.isArray(chat)) chat = aiState.chats[model] = [];
+
           chat.push({ role: "user", content: text });
+          chat.push({ role: "assistant", content: "" }); // 占位
           saveAIChats();
 
           inputEl.value = "";
@@ -2272,14 +2344,44 @@
           updateAISendBtn();
           renderAIMessages();
 
-          var payload = chat.slice();
+          var bubble = getLastAssistantBubble();
+          var accumulated = "";
+          var isGemini = model === "gemini";
+          var box = $("#aiMessages");
 
-          callAI(model, key, payload)
-            .then(function (reply) {
-              chat.push({
-                role: "assistant",
-                content: reply || "(空回复)",
-              });
+          function pushDelta(text2) {
+            if (!text2) return;
+            accumulated += text2;
+            if (bubble) {
+              bubble.classList.remove("pending");
+              bubble.textContent = accumulated;
+            }
+            if (box) box.scrollTop = box.scrollHeight;
+          }
+
+          var onDelta = function (obj) {
+            if (isGemini) {
+              var cand = obj.candidates && obj.candidates[0];
+              if (cand && cand.content && cand.content.parts) {
+                var t = "";
+                for (var i = 0; i < cand.content.parts.length; i++) {
+                  t += cand.content.parts[i].text || "";
+                }
+                pushDelta(t);
+              }
+            } else {
+              var d =
+                obj.choices && obj.choices[0] && obj.choices[0].delta;
+              if (d && d.content) pushDelta(d.content);
+            }
+          };
+
+          /* 注意：发送给 API 的 messages 不含最后那个占位 assistant */
+          var payload = chat.slice(0, -1);
+
+          streamAI(model, key, payload, onDelta)
+            .then(function () {
+              chat[chat.length - 1].content = accumulated || "(空回复)";
               saveAIChats();
               aiState.busy = false;
               updateAISendBtn();
@@ -2288,6 +2390,12 @@
             .catch(function (err) {
               aiState.busy = false;
               updateAISendBtn();
+              if (accumulated) {
+                chat[chat.length - 1].content = accumulated;
+              } else {
+                chat.pop();
+              }
+              saveAIChats();
               renderAIMessages();
               showAlert(
                 "请求失败",
@@ -2300,6 +2408,13 @@
 
         function clearAIChat() {
           var model = aiState.currentModel;
+          if (!model) {
+            showAlert(
+              "无需清除",
+              "还没有选择模型，请点击左下角的 + 选择一个模型。",
+            );
+            return;
+          }
           var chat = aiState.chats[model] || [];
           if (!chat.length) {
             showAlert(
@@ -2341,12 +2456,21 @@
 
           if (modelMenu) {
             modelMenu.addEventListener("click", function (e) {
+              /* 点击 🔑：设置 / 更新 Key */
+              var keyBtn = e.target.closest("[data-key]");
+              if (keyBtn) {
+                e.stopPropagation();
+                promptAPIKey(keyBtn.dataset.key);
+                return;
+              }
+              /* 点击 ⬇：下载该模型对话 */
               var dl = e.target.closest("[data-dl]");
               if (dl) {
                 e.stopPropagation();
                 downloadAIChat(dl.dataset.dl);
                 return;
               }
+              /* 点击模型项：选择模型 */
               var item = e.target.closest(".ai-model-item");
               if (item) {
                 e.stopPropagation();
@@ -2400,7 +2524,7 @@
             }
           }
 
-          /* 首页 = 全屏 p5 运行器（随机 / 指定脚本） */
+          /* 首页 = 全屏 p5 运行器 */
           if (path === "/" || path === "" || path === "/index.html") {
             renderRunner();
             return;
