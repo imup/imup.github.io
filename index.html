@@ -24,79 +24,142 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
     <style>
+      /* ===================== 基础 & 全局变量 ===================== */
+      :root {
+        --bg-light: #f5f5f5;
+        --bg-dark: #1e1e1e;
+        --surface-light: #ffffff;
+        --surface-dark: #2d2d2d;
+        --text-light: #222222;
+        --text-dark: #dddddd;
+        --hover-light: rgba(0, 0, 0, 0.055);
+        --hover-dark: rgba(255, 255, 255, 0.07);
+        --line-light: rgba(0, 0, 0, 0.08);
+        --line-dark: rgba(255, 255, 255, 0.08);
+        --sidebar-w: min(280px, 78vw);
+      }
+
       * { box-sizing: border-box; }
+
       html, body {
         margin: 0;
         padding: 0;
         width: 100%;
         min-height: 100%;
-        font-family: Arial, "Helvetica Neue", sans-serif;
-        background: #f5f5f5;
-        transition: background 0.3s;
+        font-family: Arial, "Helvetica Neue", system-ui, sans-serif;
+        background: var(--bg-light);
+        color: var(--text-light);
+        -webkit-text-size-adjust: 100%;
+        transition: background 0.3s, color 0.3s;
       }
-      body.dark-mode { background: #1e1e1e; color: #ddd; }
+      body.dark-mode {
+        background: var(--bg-dark);
+        color: var(--text-dark);
+      }
 
+      /* ===================== 汉堡按钮 ===================== */
       .hamburger-btn {
         position: fixed;
-        top: 12px;
-        left: 16px;
+        top: clamp(8px, 2vw, 14px);
+        left: clamp(10px, 3vw, 18px);
         z-index: 300;
         background: none;
         border: none;
         color: #333;
-        font-size: 40px;
+        font-size: clamp(30px, 6vw, 40px);
         font-weight: bold;
         cursor: pointer;
         padding: 4px 8px;
         line-height: 1;
         user-select: none;
-        transition: color 0.3s, transform 0.15s;
+        transition: color 0.3s, opacity 0.22s ease, transform 0.22s ease;
       }
       .hamburger-btn:hover { transform: scale(1.1); }
       body.dark-mode .hamburger-btn { color: #fff; }
 
+      /* 侧边栏打开时隐藏汉堡按钮 */
+      body.sidebar-open .hamburger-btn {
+        opacity: 0;
+        transform: scale(0.6);
+        pointer-events: none;
+      }
+
+      /* ===================== 侧边栏（与背景同色 + 内阴影） ===================== */
       .sidebar {
         position: fixed;
         top: 0;
-        left: -280px;
-        width: 280px;
-        height: 100%;
-        background: #2c2c2c;
-        color: #eee;
-        transition: left 0.3s ease;
+        left: 0;
+        width: var(--sidebar-w);
+        height: 100vh;
+        height: 100dvh;
+        /* 底色与页面背景保持一致 */
+        background: var(--bg-light);
+        color: var(--text-light);
+        transform: translateX(-100%);
+        transition: transform 0.3s ease, background 0.3s, color 0.3s;
         z-index: 200;
-        padding: 20px 0;
+        padding: clamp(14px, 3vw, 20px) 0;
         overflow-y: auto;
-        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.5);
         display: flex;
         flex-direction: column;
+        -webkit-overflow-scrolling: touch;
+        /* 关键：用内阴影营造凹陷感，而非外投影 */
+        box-shadow:
+          inset -22px 0 28px -26px rgba(0, 0, 0, 0.55),
+          inset 0 -22px 28px -26px rgba(0, 0, 0, 0.35);
+        border-right: 1px solid var(--line-light);
       }
-      .sidebar.open { left: 0; }
+      .sidebar.open { transform: translateX(0); }
+
+      body.dark-mode .sidebar {
+        background: var(--bg-dark);
+        color: var(--text-dark);
+        box-shadow:
+          inset -22px 0 28px -26px rgba(0, 0, 0, 1),
+          inset 0 -22px 28px -26px rgba(0, 0, 0, 0.9);
+        border-right-color: var(--line-dark);
+      }
+
       .sidebar .nav-item {
-        padding: 12px 20px;
-        border-bottom: 1px solid #444;
+        padding: 12px clamp(16px, 4vw, 20px);
+        border-bottom: 1px solid var(--line-light);
         cursor: pointer;
+        transition: background 0.15s;
       }
-      .sidebar .nav-item:hover { background: #3a3a3a; }
-      .sidebar .nav-item[aria-current="page"] { background: #3a3a3a; }
-      .sidebar .divider { border-top: 2px solid #666; margin: 10px 0; }
+      body.dark-mode .sidebar .nav-item { border-bottom-color: var(--line-dark); }
+      .sidebar .nav-item:hover { background: var(--hover-light); }
+      body.dark-mode .sidebar .nav-item:hover { background: var(--hover-dark); }
+      .sidebar .nav-item[aria-current="page"] { background: var(--hover-light); }
+      body.dark-mode .sidebar .nav-item[aria-current="page"] { background: var(--hover-dark); }
+
+      .sidebar .divider {
+        border-top: 1px solid var(--line-light);
+        margin: 10px 0;
+      }
+      body.dark-mode .sidebar .divider { border-top-color: var(--line-dark); }
+
       .sidebar .section-title {
-        padding: 8px 20px;
-        font-size: 0.9rem;
-        color: #aaa;
+        padding: 8px clamp(16px, 4vw, 20px);
+        font-size: 0.85rem;
+        color: #888;
         font-weight: bold;
       }
+      body.dark-mode .sidebar .section-title { color: #999; }
+
       .sidebar .page-item {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 8px 20px 8px 30px;
-        border-bottom: 1px solid #3a3a3a;
+        padding: 8px clamp(16px, 4vw, 20px) 8px clamp(22px, 6vw, 30px);
+        border-bottom: 1px solid var(--line-light);
       }
-      .sidebar .page-item:hover { background: #3a3a3a; }
+      body.dark-mode .sidebar .page-item { border-bottom-color: var(--line-dark); }
+      .sidebar .page-item:hover { background: var(--hover-light); }
+      body.dark-mode .sidebar .page-item:hover { background: var(--hover-dark); }
+
       .sidebar .page-item .page-title {
         flex: 1;
-        color: #eee;
+        color: inherit;
         cursor: pointer;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -105,67 +168,112 @@
       .sidebar .page-item .actions button {
         background: none;
         border: none;
-        color: #aaa;
+        color: #888;
         cursor: pointer;
         font-size: 0.85rem;
         padding: 2px 5px;
+        transition: color 0.15s;
       }
       .sidebar .page-item .actions .rename:hover { color: #5bc0de; }
       .sidebar .page-item .actions .del:hover { color: #d9534f; }
+
       .sidebar .no-pages {
-        padding: 12px 20px;
+        padding: 12px clamp(16px, 4vw, 20px);
         color: #888;
         font-style: italic;
       }
+
       .sidebar-footer {
         margin-top: auto;
-        border-top: 2px solid #666;
-        padding: 10px 0;
+        border-top: 1px solid var(--line-light);
+        padding: 8px 0;
       }
-      .sidebar-footer .nav-item { padding: 10px 20px; border-bottom: none; }
+      body.dark-mode .sidebar-footer { border-top-color: var(--line-dark); }
+      .sidebar-footer .nav-item { padding: 10px clamp(16px, 4vw, 20px); border-bottom: none; }
 
+      /* ===================== 遮罩层 ===================== */
       .overlay {
         display: none;
         position: fixed;
         inset: 0;
-        background: rgba(0, 0, 0, 0.4);
+        background: rgba(0, 0, 0, 0.35);
         z-index: 150;
+        opacity: 0;
+        transition: opacity 0.3s ease;
       }
-      .overlay.show { display: block; }
+      .overlay.show { display: block; opacity: 1; }
 
+      /* ===================== 主内容（响应式） ===================== */
       #app {
         width: 100%;
         min-height: 100vh;
-        padding: 70px 20px 40px;
-        background: white;
-        transition: background 0.3s;
+        min-height: 100dvh;
+        /* 用 clamp 让内边距随视口宽度自适应 */
+        padding:
+          clamp(56px, 10vw, 78px)
+          clamp(14px, 5vw, 32px)
+          clamp(28px, 7vw, 52px);
+        background: var(--surface-light);
+        color: var(--text-light);
+        transition: background 0.3s, color 0.3s;
+        overflow-x: hidden;
       }
-      body.dark-mode #app { background: #2d2d2d; color: #ddd; }
+      body.dark-mode #app {
+        background: var(--surface-dark);
+        color: var(--text-dark);
+      }
+      /* 内容区在大屏上居中并限制最大宽度 */
+      #app > div {
+        width: 100%;
+        max-width: 940px;
+        margin: 0 auto;
+      }
+
+      /* 预览模式：完全全屏，无内边距 */
       #app.preview-mode {
         padding: 0;
+        max-width: none;
         background: #000;
         min-height: 100vh;
+        min-height: 100dvh;
       }
       #app.preview-mode iframe {
         width: 100%;
         height: 100vh;
+        height: 100dvh;
         border: none;
         display: block;
       }
 
+      /* ===================== 排版自适应 ===================== */
+      #app h1 {
+        font-size: clamp(1.35rem, 4.5vw, 1.9rem);
+        margin: 0 0 0.6em;
+        line-height: 1.25;
+        word-break: break-word;
+      }
+      #app p {
+        font-size: clamp(0.9rem, 2.6vw, 1rem);
+        line-height: 1.6;
+        margin: 0.5em 0;
+      }
+
+      /* ===================== 表单 ===================== */
       .form-group { margin-bottom: 15px; }
       .form-group label {
         display: block;
         font-weight: bold;
         margin-bottom: 5px;
+        font-size: clamp(0.85rem, 2.5vw, 0.95rem);
       }
       .form-group input,
       .form-group textarea {
         width: 100%;
-        padding: 8px;
+        padding: 8px 10px;
         border: 1px solid #ccc;
         border-radius: 4px;
-        font-family: monospace;
+        font-family: ui-monospace, Menlo, Consolas, monospace;
+        font-size: 0.9rem;
       }
       body.dark-mode .form-group input,
       body.dark-mode .form-group textarea {
@@ -176,38 +284,43 @@
       .form-group .CodeMirror {
         border: 1px solid #ccc;
         border-radius: 4px;
-        height: 200px;
+        height: clamp(160px, 32vh, 240px) !important;
         font-size: 14px;
       }
       body.dark-mode .form-group .CodeMirror { border-color: #555; }
 
+      /* ===================== 按钮 ===================== */
       button {
         background: #007bff;
         color: white;
         border: none;
-        padding: 10px 20px;
+        padding: 10px clamp(14px, 4vw, 20px);
         border-radius: 4px;
         cursor: pointer;
         font-size: 0.95rem;
+        transition: background 0.2s;
       }
       button:hover { background: #0056b3; }
       button:disabled { opacity: 0.6; cursor: not-allowed; }
 
       .result {
         margin-top: 20px;
-        padding: 10px;
+        padding: 12px;
         background: #e9f7fe;
         border-radius: 4px;
+        word-break: break-word;
       }
       body.dark-mode .result { background: #2a4a5a; }
+
       .preview-img {
-        max-width: 200px;
+        max-width: min(200px, 60vw);
         max-height: 200px;
         margin-top: 10px;
         border: 1px solid #ccc;
         border-radius: 4px;
         display: block;
       }
+
       .action-buttons {
         display: flex;
         gap: 10px;
@@ -218,6 +331,7 @@
       .action-buttons button.preview { background: #28a745; }
       .action-buttons button.zip { background: #17a2b8; }
 
+      /* ===================== 模态框 ===================== */
       .modal-backdrop {
         display: none;
         position: fixed;
@@ -226,21 +340,25 @@
         z-index: 400;
         align-items: center;
         justify-content: center;
+        padding: 16px;
       }
       .modal-backdrop.show { display: flex; }
       .modal {
         background: #fff;
         color: #222;
         border-radius: 8px;
-        width: min(420px, 90vw);
-        padding: 20px;
+        width: min(440px, 100%);
+        max-height: 88vh;
+        overflow-y: auto;
+        padding: clamp(16px, 4vw, 22px);
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
       }
       body.dark-mode .modal { background: #2d2d2d; color: #ddd; }
-      .modal h3 { margin: 0 0 12px; }
+      .modal h3 { margin: 0 0 12px; font-size: 1.1rem; }
+      .modal p { margin: 0 0 16px; line-height: 1.55; word-break: break-word; }
       .modal input {
         width: 100%;
-        padding: 8px;
+        padding: 8px 10px;
         border: 1px solid #ccc;
         border-radius: 4px;
         margin-bottom: 16px;
@@ -255,14 +373,24 @@
         display: flex;
         justify-content: flex-end;
         gap: 8px;
+        flex-wrap: wrap;
       }
       .modal-actions .cancel { background: #6c757d; }
       .modal-actions .danger { background: #d9534f; }
 
-      @media (max-width: 600px) {
-        .sidebar { width: 240px; left: -240px; }
-        .hamburger-btn { top: 8px; left: 10px; font-size: 34px; }
-        #app { padding: 60px 12px 30px; }
+      /* ===================== 窄屏微调 ===================== */
+      @media (max-width: 420px) {
+        .hamburger-btn { font-size: 28px; }
+        .action-buttons button { flex: 1 1 auto; }
+      }
+
+      /* 横屏矮屏时减少纵向留白 */
+      @media (max-height: 480px) {
+        #app {
+          padding-top: 52px;
+          padding-bottom: 20px;
+        }
+        .form-group .CodeMirror { height: 140px !important; }
       }
     </style>
   </head>
@@ -461,7 +589,7 @@
           });
         }
 
-        /* ======================= 生成独立 HTML ======================= */
+        /* ======================= 生成独立 HTML（含响应式适配） ======================= */
         function generatePageHtml(title, script, imageDataUrl) {
           var safeTitle = escapeHtml(title || "未命名页面");
           var imgVar = imageDataUrl
@@ -470,6 +598,7 @@
           var safeImgVar = escapeScriptClose(imgVar);
           var safeScript = escapeScriptClose(script);
 
+          // 生成页面同样做自适应：canvas 不超出视口，保持宽高比
           return (
             "<!DOCTYPE html>\n" +
             '<html lang="zh-CN">\n' +
@@ -477,6 +606,26 @@
             '  <meta charset="UTF-8">\n' +
             '  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n' +
             "  <title>" + safeTitle + "</title>\n" +
+            "  <style>\n" +
+            "    html, body { margin: 0; padding: 0; width: 100%; min-height: 100%; }\n" +
+            "    body {\n" +
+            "      display: flex;\n" +
+            "      align-items: center;\n" +
+            "      justify-content: center;\n" +
+            "      min-height: 100vh;\n" +
+            "      min-height: 100dvh;\n" +
+            "      background: #ffffff;\n" +
+            "      overflow: hidden;\n" +
+            "    }\n" +
+            "    canvas {\n" +
+            "      display: block;\n" +
+            "      max-width: 100vw;\n" +
+            "      max-height: 100vh;\n" +
+            "      max-height: 100dvh;\n" +
+            "      width: auto;\n" +
+            "      height: auto;\n" +
+            "    }\n" +
+            "  </style>\n" +
             '  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"><\/script>\n' +
             "</head>\n" +
             "<body>\n" +
@@ -632,11 +781,13 @@
         function openSidebar() {
           sidebarEl.classList.add("open");
           overlayEl.classList.add("show");
+          document.body.classList.add("sidebar-open"); // 隐藏汉堡按钮
           hamburgerBtn.setAttribute("aria-expanded", "true");
         }
         function closeSidebar() {
           sidebarEl.classList.remove("open");
           overlayEl.classList.remove("show");
+          document.body.classList.remove("sidebar-open");
           hamburgerBtn.setAttribute("aria-expanded", "false");
         }
 
@@ -763,7 +914,8 @@
               indentUnit: 2,
               autofocus: true,
             });
-            editor.setSize(null, 200);
+            // 让编辑器随容器自适应高度
+            editor.setSize(null, "100%");
           }
 
           fileInput.addEventListener("change", function () {
@@ -896,12 +1048,10 @@
           hamburgerBtn = $("#hamburgerBtn");
           appEl = $("#app");
 
-          // 恢复主题
           var savedTheme = "light";
           try { savedTheme = localStorage.getItem(THEME_KEY) || "light"; } catch (e) {}
           applyTheme(savedTheme);
 
-          // 事件绑定
           hamburgerBtn.addEventListener("click", openSidebar);
           overlayEl.addEventListener("click", closeSidebar);
           modalBackdrop.addEventListener("click", function (e) {
@@ -951,12 +1101,16 @@
             closeSidebar();
           });
 
-          // 首次渲染
+          // 视口高度变化时（移动端地址栏收放），同步 dvh 相关高度
+          window.addEventListener("orientationchange", function () {
+            // 仅需重绘 CodeMirror，尺寸由 CSS 自动处理
+            if (editor) editor.refresh();
+          });
+
           updateSidebarPages();
           render();
         }
 
-        // 关键修复：DOM 已就绪时立即初始化，不再依赖 DOMContentLoaded
         if (document.readyState === "loading") {
           document.addEventListener("DOMContentLoaded", init);
         } else {
