@@ -117,18 +117,16 @@
         display: flex;
         flex-direction: column;
         -webkit-overflow-scrolling: touch;
-        box-shadow:
-          inset -22px 0 28px -26px rgba(0, 0, 0, 0.55),
-          inset 0 -22px 28px -26px rgba(0, 0, 0, 0.35);
+        /* ⬇️ 只保留右侧（打开边）内阴影，去掉上/下/左内阴影 */
+        box-shadow: inset -22px 0 28px -26px rgba(0, 0, 0, 0.55);
         border-right: 1px solid var(--line-light);
       }
       .sidebar.open { transform: translateX(0); }
       body.dark-mode .sidebar {
         background: var(--bg-dark);
         color: var(--text-dark);
-        box-shadow:
-          inset -22px 0 28px -26px rgba(0, 0, 0, 1),
-          inset 0 -22px 28px -26px rgba(0, 0, 0, 0.9);
+        /* ⬇️ 暗色主题同样只保留右侧内阴影 */
+        box-shadow: inset -22px 0 28px -26px rgba(0, 0, 0, 1);
         border-right-color: var(--line-dark);
       }
 
@@ -1145,7 +1143,7 @@
             var btnContainer = document.createElement("div");
             btnContainer.className = "action-buttons";
 
-            /* ⬇️ 新增：预览按钮，行为与左侧栏点击脚本名称完全一致 */
+            /* 预览按钮，行为与左侧栏点击脚本名称完全一致 */
             var previewBtn = document.createElement("button");
             previewBtn.className = "preview";
             previewBtn.textContent = "▶️ 预览";
