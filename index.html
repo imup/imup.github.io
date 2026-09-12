@@ -1209,7 +1209,7 @@
               html = page.html;
               appEl.dataset.currentPageId = String(page.id);
             } else {
-              // 作品已被删除，退回随机
+              /* 作品已被删除，退回随机 */
               runner.mode = "random";
               runner.pageId = null;
             }
@@ -1258,17 +1258,9 @@
 
         /**
          * 首页运行指定作品（侧边栏点脚本名 / 预览按钮 都走这里）
-         * 若该作品正在运行，则再次点击回到随机状态
+         * 注意：再次点击同一个脚本名也会重新运行，不会回到随机状态
          */
         function runPage(id) {
-          if (
-            getRoute() === "/" &&
-            runner.mode === "page" &&
-            runner.pageId === id
-          ) {
-            setRandom();
-            return;
-          }
           runner.mode = "page";
           runner.pageId = id;
           if (getRoute() === "/") render();
@@ -1391,7 +1383,8 @@
             "<p>首页会从 <code>" +
             P5_DIR +
             "</code> 文件夹中随机运行一个 p5 脚本；" +
-            "点击侧边栏中的脚本名即可直接运行该脚本，再点一次回到随机状态。</p>";
+            "点击侧边栏中的脚本名即可直接运行该脚本，再点一次仍然运行该脚本；" +
+            "点击“首页”“关于”“编写脚本”等其它导航项会回到随机状态。</p>";
           return wrap;
         }
         function renderGenerator() {
@@ -1563,6 +1556,14 @@
         function render() {
           var path = getRoute();
 
+          /* 离开首页时，若当前是运行指定脚本状态，则重置为随机状态 */
+          if (path !== "/" && path !== "" && path !== "/index.html") {
+            if (runner.mode === "page") {
+              runner.mode = "random";
+              runner.pageId = null;
+            }
+          }
+
           /* 首页 = 全屏 p5 运行器（随机 / 指定脚本） */
           if (path === "/" || path === "" || path === "/index.html") {
             renderRunner();
@@ -1720,7 +1721,7 @@
           var themeBtn = $("#themeToggleSidebar");
           if (themeBtn) themeBtn.addEventListener("click", toggleTheme);
 
-          /* 顶部导航：首页 -> 回到随机状态 */
+          /* 顶部导航：首页 -> 回到随机状态；其它导航 -> 跳转（render 中会重置 runner） */
           $$(".sidebar .nav-item[data-path]").forEach(function (el) {
             var go = function () {
               var path = el.getAttribute("data-path");
@@ -1741,7 +1742,7 @@
             });
           });
 
-          /* 侧边栏脚本名：点击 -> 首页直接运行；再点一次 -> 回到随机 */
+          /* 侧边栏脚本名：点击 -> 首页直接运行；再次点击仍然运行 */
           sidebarPagesEl.addEventListener("click", function (e) {
             var btn = e.target.closest("[data-action]");
             if (!btn) return;
