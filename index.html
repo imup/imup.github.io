@@ -2,7 +2,6 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <!-- ⬇️ 锁定为设备宽度，禁止用户缩放 -->
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
@@ -54,14 +53,12 @@
         color: var(--text-light);
         -webkit-text-size-adjust: 100%;
         text-size-adjust: 100%;
-        /* ⬇️ 阻止双指捏合缩放、双击缩放；允许正常平移滚动 */
         touch-action: pan-x pan-y;
         overscroll-behavior: none;
         transition: background 0.3s, color 0.3s;
       }
       body.dark-mode { background: var(--bg-dark); color: var(--text-dark); }
 
-      /* 预览时锁定 body */
       body.preview-lock {
         position: fixed;
         top: 0;
@@ -75,7 +72,6 @@
         touch-action: none;
       }
 
-      /* 汉堡按钮 */
       .hamburger-btn {
         position: fixed;
         top: clamp(8px, 2vw, 14px);
@@ -104,7 +100,6 @@
         pointer-events: none;
       }
 
-      /* 侧边栏 */
       .sidebar {
         position: fixed;
         top: 0;
@@ -197,13 +192,25 @@
         font-style: italic;
       }
 
+      /* ⬇️ 侧边栏底部：导出 ZIP 与切换主题并列，中间用线隔开 */
       .sidebar-footer {
         margin-top: auto;
         border-top: 1px solid var(--line-light);
-        padding: 8px 0;
+        padding: 8px 0 0;
       }
       body.dark-mode .sidebar-footer { border-top-color: var(--line-dark); }
-      .sidebar-footer .nav-item { padding: 10px clamp(16px, 4vw, 20px); border-bottom: none; }
+      .sidebar-footer .nav-item {
+        padding: 10px clamp(16px, 4vw, 20px);
+        border-bottom: none;
+      }
+      /* 底部两项之间的分隔线 */
+      .sidebar-footer .footer-divider {
+        border-top: 1px solid var(--line-light);
+        margin: 0;
+      }
+      body.dark-mode .sidebar-footer .footer-divider {
+        border-top-color: var(--line-dark);
+      }
 
       .overlay {
         display: none;
@@ -216,7 +223,6 @@
       }
       .overlay.show { display: block; opacity: 1; }
 
-      /* 主内容 */
       #app {
         width: 100%;
         min-height: 100vh;
@@ -236,12 +242,10 @@
         max-width: 940px;
         margin: 0 auto;
       }
-      /* ⬇️ 生成脚本页面：宽度固定为设备宽度（占满可用宽度，不再限制 940px） */
       #app > div.generator-page {
         max-width: none;
       }
 
-      /* 预览模式 */
       #app.preview-mode {
         padding: 0;
         max-width: none;
@@ -284,7 +288,6 @@
         border: 1px solid #ccc;
         border-radius: 4px;
         font-family: ui-monospace, Menlo, Consolas, monospace;
-        /* ⬇️ 关键：≥16px 可避免 iOS 聚焦输入框时自动放大页面 */
         font-size: 16px;
       }
       body.dark-mode .form-group input,
@@ -301,7 +304,6 @@
       }
       body.dark-mode .form-group .CodeMirror { border-color: #555; }
 
-      /* CodeMirror 自定义占位符 */
       .cm-placeholder-overlay {
         position: absolute;
         top: 5px;
@@ -359,7 +361,6 @@
       .action-buttons button { background: #6c757d; }
       .action-buttons button.preview,
       .action-buttons button.download { background: #28a745; }
-      .action-buttons button.zip { background: #17a2b8; }
 
       .modal-backdrop {
         display: none;
@@ -391,7 +392,7 @@
         border: 1px solid #ccc;
         border-radius: 4px;
         margin-bottom: 16px;
-        font-size: 16px; /* ⬅ 同样 ≥16px */
+        font-size: 16px;
       }
       body.dark-mode .modal input {
         background: #3a3a3a;
@@ -435,7 +436,13 @@
       <div id="sidebar-pages">
         <div class="no-pages">暂无生成的脚本</div>
       </div>
+
+      <!-- ⬇️ 底部：导出 ZIP 与切换主题并列，中间用线隔开 -->
       <div class="sidebar-footer">
+        <div class="nav-item" id="exportZipSidebar" role="button" tabindex="0">
+          📦 导出所有脚本 (ZIP)
+        </div>
+        <div class="footer-divider"></div>
         <div class="nav-item" id="themeToggleSidebar" role="button" tabindex="0">
           🌓 切换主题
         </div>
@@ -993,7 +1000,6 @@
         }
         function renderGenerator() {
           var wrap = document.createElement("div");
-          // ⬇️ 生成脚本页面：占满设备宽度（配合上面的 .generator-page 样式）
           wrap.className = "generator-page";
           wrap.innerHTML =
             "<h1>✏️ 编写 p5.js 脚本</h1>" +
@@ -1134,13 +1140,9 @@
               );
             });
 
-            var zipBtn = document.createElement("button");
-            zipBtn.className = "zip";
-            zipBtn.textContent = "📦 导出所有脚本 (ZIP)";
-            zipBtn.addEventListener("click", exportZip);
+            /* ⬇️ 已移除这里的“导出所有脚本 (ZIP)”按钮，改为侧边栏入口 */
 
             btnContainer.appendChild(downloadBtn);
-            btnContainer.appendChild(zipBtn);
             resultEl.replaceChildren(msg, btnContainer);
 
             titleInput.value = "";
@@ -1202,13 +1204,12 @@
           try { savedTheme = localStorage.getItem(THEME_KEY) || "light"; } catch (e) {}
           applyTheme(savedTheme);
 
-          /* ⬇️ 全局禁止缩放（iOS Safari 会忽略 user-scalable=no，这里再兜底） */
+          /* 全局禁止缩放（iOS Safari 会忽略 user-scalable=no，这里再兜底） */
           ["gesturestart", "gesturechange", "gestureend"].forEach(function (type) {
             document.addEventListener(type, function (e) { e.preventDefault(); }, {
               passive: false,
             });
           });
-          // 双指触摸 = 捏合缩放：阻止默认行为
           document.addEventListener(
             "touchmove",
             function (e) {
@@ -1218,14 +1219,12 @@
             },
             { passive: false }
           );
-          // 双击缩放兜底（部分 Android 浏览器）
           var lastTouchEnd = 0;
           document.addEventListener(
             "touchend",
             function (e) {
               var now = Date.now();
               if (now - lastTouchEnd <= 300) {
-                // 只有落在非交互元素上才拦截，避免影响按钮/输入框
                 var t = e.target;
                 var tag = t && t.tagName ? t.tagName.toLowerCase() : "";
                 if (tag !== "input" && tag !== "textarea" && tag !== "button" && tag !== "select" && tag !== "a") {
@@ -1249,6 +1248,22 @@
               else closeSidebar();
             }
           });
+
+          /* ⬇️ 侧边栏底部：导出 ZIP 入口 */
+          var exportZipBtn = $("#exportZipSidebar");
+          if (exportZipBtn) {
+            var runExport = function () {
+              closeSidebar();
+              exportZip();
+            };
+            exportZipBtn.addEventListener("click", runExport);
+            exportZipBtn.addEventListener("keydown", function (e) {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                runExport();
+              }
+            });
+          }
 
           var themeBtn = $("#themeToggleSidebar");
           if (themeBtn) themeBtn.addEventListener("click", toggleTheme);
