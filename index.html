@@ -53,7 +53,6 @@
       }
       body.dark-mode { background: var(--bg-dark); color: var(--text-dark); }
 
-      /* [修复] 模态框打开时禁用背景滚动 */
       body.modal-open { overflow: hidden; }
 
       body.preview-lock {
@@ -97,7 +96,7 @@
         pointer-events: none;
       }
 
-      /* [修复] 预览退出按钮 —— 解决移动端无 Esc 无法退出的问题 */
+      /* 预览退出按钮 */
       .preview-exit-btn {
         position: fixed;
         top: clamp(10px, 2vw, 14px);
@@ -123,7 +122,7 @@
       .preview-exit-btn.show { display: flex; }
       .preview-exit-btn:hover { background: rgba(0, 0, 0, 0.75); transform: scale(1.06); }
 
-      /* [修复] 预览运行时错误提示条 */
+      /* 预览运行时错误提示条 */
       .preview-error {
         position: fixed;
         left: 0;
@@ -303,7 +302,6 @@
         border: none;
         display: block;
         background: #fff;
-        /* [修复] 用 CSS 替代已废弃的 scrolling="no" 属性 */
         overflow: hidden;
       }
 
@@ -455,7 +453,6 @@
       aria-controls="sidebar"
     >☰</button>
 
-    <!-- [修复] 预览退出按钮 -->
     <button class="preview-exit-btn" id="previewExitBtn" aria-label="退出预览" title="退出预览 (Esc)">✕</button>
 
     <nav class="sidebar" id="sidebar" aria-label="主导航">
@@ -477,7 +474,6 @@
 
     <main id="app">加载中…</main>
 
-    <!-- [修复] 预览错误提示条 -->
     <div class="preview-error" id="previewError" role="alert">
       <button class="close" id="previewErrorClose" aria-label="关闭错误提示">✕</button>
       <div id="previewErrorBody"></div>
@@ -496,13 +492,12 @@
 
         var STORAGE_KEY = "p5_pages";
         var THEME_KEY = "p5_theme";
-        var DRAFT_KEY = "p5_draft"; // [修复] 编辑器草稿
+        var DRAFT_KEY = "p5_draft";
 
-        // [修复] 上传原图上限放宽（压缩前），存库大小另行校验
         var MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
         var MAX_STORED_BYTES = 1.2 * 1024 * 1024;
-        var IMG_MAX_DIM = 1400;      // 压缩后最长边
-        var IMG_QUALITY = 0.82;      // JPEG 压缩质量
+        var IMG_MAX_DIM = 1400;
+        var IMG_QUALITY = 0.82;
 
         function $(sel, root) { return (root || document).querySelector(sel); }
         function $$(sel, root) {
@@ -516,12 +511,18 @@
             .replace(/"/g, "&quot;")
             .replace(/'/g, "&#39;");
         }
-        // [修复] 补全 <!-- 与 <script 的转义，避免 HTML 解析提前结束脚本块
+
+        // =====================================================================
+        // [关键修复] 用十六进制转义构造正则，避免源码出现字面量的
+        //   "<\x21--"  ("<!--")   → 会触发 script data escaped 状态
+        //   "<\x73cript" ("<script") → 会触发 double escaped 状态
+        // 否则 HTML 解析器会吞掉末尾真正的 <\/script>，整段脚本不执行。
+        // =====================================================================
         function escapeScriptClose(str) {
           return String(str)
-            .replace(/<!--/g, "<\\!--")
-            .replace(/<script/gi, "<\\script")
-            .replace(/<\/script/gi, "<\\/script");
+            .replace(/<\x21--/g, "<\\!--")
+            .replace(/<\x73cript/gi, "<\\script")
+            .replace(/<\/\x73cript/gi, "<\\/script");
         }
 
         /* ======================= 本地存储 ======================= */
@@ -546,7 +547,6 @@
           }
         }
 
-        // [修复] 编辑器草稿，防止路由切换丢失输入
         function loadDraft() {
           try {
             var raw = sessionStorage.getItem(DRAFT_KEY);
@@ -561,7 +561,6 @@
         }
 
         /* ======================= 图片压缩 ======================= */
-        // [修复] 上传图片自动降采样并转 JPEG，避免 base64 撑爆 localStorage
         function compressImage(file, callback) {
           var reader = new FileReader();
           reader.onload = function (e) {
@@ -571,7 +570,6 @@
               var w = img.naturalWidth || img.width;
               var h = img.naturalHeight || img.height;
               var scale = Math.min(1, IMG_MAX_DIM / Math.max(w, h));
-              // 尺寸本身很小 + 文件也不大 → 原样返回
               if (scale >= 1 && file.size <= 400 * 1024) {
                 callback(dataUrl);
                 return;
@@ -588,7 +586,6 @@
                 callback(dataUrl);
                 return;
               }
-              // PNG 保留透明通道，其余转 JPEG
               var mime = file.type === "image/png" ? "image/png" : "image/jpeg";
               var out;
               try {
@@ -596,7 +593,6 @@
               } catch (err) {
                 out = dataUrl;
               }
-              // 压缩反而变大 → 用原图
               if (!out || out.length >= dataUrl.length) out = dataUrl;
               callback(out);
             };
@@ -615,20 +611,18 @@
           modalBox.innerHTML = "";
           builder(modalBox);
           modalBackdrop.classList.add("show");
-          document.body.classList.add("modal-open"); // [修复]
+          document.body.classList.add("modal-open");
           var f = $("input, button", modalBox);
-          // [修复] 等 DOM 挂载后再聚焦
           if (f && f.focus) setTimeout(function () { try { f.focus(); } catch (e) {} }, 0);
         }
         function closeModal() {
           modalBackdrop.classList.remove("show");
           modalBox.innerHTML = "";
-          document.body.classList.remove("modal-open"); // [修复]
+          document.body.classList.remove("modal-open");
           if (lastFocused && lastFocused.focus) {
             try { lastFocused.focus(); } catch (e) {}
           }
         }
-        // [修复] 模态框内 Tab 焦点陷阱
         function trapModalFocus(e) {
           if (!modalBackdrop.classList.contains("show")) return;
           if (e.key !== "Tab") return;
@@ -703,6 +697,8 @@
 
         /* =====================================================================
          * 生成独立 HTML
+         * 注意：所有拼接进生成 HTML 的 "<script" 也写成 "<\x3Cscript"，
+         *       确保本文件源码中不出现未转义的字面 "<script"。
          * ===================================================================== */
         function generatePageHtml(title, script, imageDataUrl) {
           var safeTitle = escapeHtml(title || "未命名页面");
@@ -712,7 +708,6 @@
           var safeImgVar = escapeScriptClose(imgVar);
           var safeScript = escapeScriptClose(script);
 
-          // [修复] 注入错误上报，让父页面能显示运行时错误
           var errorBridge =
             "    (function(){\n" +
             "      function report(msg, line, col){\n" +
@@ -744,10 +739,10 @@
             "    html, body { margin: 0; padding: 0; overflow: hidden; background: #fff; }\n" +
             "    canvas { display: block; }\n" +
             "  </style>\n" +
-            '  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"><\/script>\n' +
+            '  \x3Cscript src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"><\/script>\n' +
             "</head>\n" +
             "<body>\n" +
-            "  <script>\n" +
+            "  \x3Cscript>\n" +
             errorBridge +
             "    " + safeImgVar + "\n" +
             "    " + safeScript + "\n" +
@@ -833,11 +828,7 @@
         }
 
         /* =====================================================================
-         * 事件代理：父页面 → iframe 内 canvas
-         * ---------------------------------------------------------------------
-         * [修复] 监听器挂到 document 上，处理函数动态查询当前 canvas，
-         *        以应对 p5 在 windowResized 中重建 canvas 的情况；
-         *        轮询定时器在 iframe 脱离文档后自动停止。
+         * iframe 事件代理（监听器挂 document，动态查 canvas，兼容 p5 重建）
          * ===================================================================== */
         function bindIframeProxy(iframe) {
           var iwin, idoc;
@@ -857,10 +848,9 @@
 
           var tries = 0;
           (function tryFindCanvas() {
-            // [修复] iframe 已被移除 → 停止轮询
             if (!iframe.isConnected) return;
             var canvas = idoc.querySelector("canvas");
-            if (canvas) return; // 监听器已在 document 上，无需再绑
+            if (canvas) return;
             if (++tries < 80) setTimeout(tryFindCanvas, 100);
           })();
         }
@@ -946,7 +936,6 @@
         var previewingPageId = null;
         var previewExitBtn;
         var previewErrorEl, previewErrorBody;
-        // [修复] 判断是否为触屏设备（用于决定 resize 是否重新测量）
         var isCoarsePointer = (function () {
           try {
             return window.matchMedia("(hover: none) and (pointer: coarse)").matches;
@@ -975,7 +964,6 @@
           appEl.style.overflow = "";
         }
 
-        // [修复] 旋转屏幕后重新测量（移动端）
         function relockAppSize() {
           if (previewingPageId === null) return;
           appEl.style.width = window.innerWidth + "px";
@@ -1032,11 +1020,10 @@
           var iframe = document.createElement("iframe");
           iframe.setAttribute("title", page.title);
           iframe.srcdoc = page.html;
-          // [修复] 去掉 scrolling="no"（已废弃），用 CSS 控制
 
           iframe.addEventListener("load", function () {
             bindIframeProxy(iframe);
-            hidePreviewError(); // 重新加载后清掉旧错误
+            hidePreviewError();
           });
 
           appEl.appendChild(iframe);
@@ -1071,7 +1058,6 @@
           var page = getPages().find(function (p) { return p.id === id; });
           if (!page) return;
           showPrompt("重命名作品", page.title, function (newTitle) {
-            // [修复] 从最新快照操作，且只在保存成功后更新 UI
             var fresh = getPages();
             var target = fresh.find(function (p) { return p.id === id; });
             if (!target) return;
@@ -1127,7 +1113,6 @@
           var hash = location.hash;
           if (!hash || hash === "#" || hash === "#/") return "/";
           var p = hash.replace(/^#/, "") || "/";
-          // [修复] 归一化 index.html，避免导航高亮失效
           if (p === "/index.html") return "/";
           return p;
         }
@@ -1204,7 +1189,6 @@
           var resultEl = $("#result");
           var buildBtn = $("#buildBtn");
 
-          // [修复] 从 sessionStorage 恢复草稿
           var draft = loadDraft();
           uploadedImageDataUrl = draft && draft.image ? draft.image : null;
 
@@ -1231,7 +1215,7 @@
               theme: themeName,
               tabSize: 2,
               indentUnit: 2,
-              autofocus: !draft, // 恢复草稿时不抢焦点
+              autofocus: !draft,
             });
             editor.setSize(null, "100%");
           }
@@ -1259,7 +1243,6 @@
               this.value = "";
               return;
             }
-            // [修复] 自动压缩
             compressImage(file, function (dataUrl) {
               if (!dataUrl) {
                 showAlert("处理失败", "无法处理该图片，请重试。", true);
@@ -1339,7 +1322,7 @@
             uploadedImageDataUrl = "";
             previewEl.replaceChildren();
             fileInput.value = "";
-            saveDraft(null); // [修复] 提交成功后清空草稿
+            saveDraft(null);
           });
         }
 
@@ -1353,14 +1336,13 @@
             return;
           }
 
-          // 离开预览：彻底清理
           previewExitBtn.classList.remove("show");
           hidePreviewError();
           if (appEl.classList.contains("preview-mode")) {
             appEl.classList.remove("preview-mode");
             unlockAppSize();
           }
-          delete appEl.dataset.currentPageId; // [修复] 无论何种路径都清理
+          delete appEl.dataset.currentPageId;
 
           destroyEditor();
           appEl.replaceChildren();
@@ -1412,7 +1394,6 @@
           });
 
           document.addEventListener("keydown", function (e) {
-            // [修复] 优先处理模态框焦点陷阱
             trapModalFocus(e);
             if (e.key === "Escape") {
               if (modalBackdrop.classList.contains("show")) closeModal();
@@ -1421,7 +1402,6 @@
             }
           });
 
-          // [修复] 接收 iframe 内的错误上报
           window.addEventListener("message", function (e) {
             if (!e.data || e.data.type !== "p5-error") return;
             if (previewingPageId === null) return;
@@ -1476,13 +1456,10 @@
           window.addEventListener("orientationchange", function () {
             if (editor) editor.refresh();
             if (previewingPageId !== null) {
-              // 等布局稳定后再测量
               setTimeout(relockAppSize, 250);
             }
           });
 
-          // [修复] 桌面端窗口变化时同步预览尺寸；
-          //        移动端忽略 resize（地址栏抖动），避免 iframe 反复缩放。
           var resizeTimer = null;
           window.addEventListener("resize", function () {
             if (previewingPageId === null) return;
