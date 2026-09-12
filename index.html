@@ -55,18 +55,6 @@
 
       body.modal-open { overflow: hidden; }
 
-      body.preview-lock {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        width: 100%;
-        height: 100%;
-        overflow: hidden;
-        overscroll-behavior: none;
-      }
-
       /* ===================== 汉堡按钮 ===================== */
       .hamburger-btn {
         position: fixed;
@@ -86,73 +74,10 @@
       }
       .hamburger-btn:hover { transform: scale(1.1); }
       body.dark-mode .hamburger-btn { color: #fff; }
-      body.preview-lock .hamburger-btn {
-        color: #fff;
-        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
-      }
       body.sidebar-open .hamburger-btn {
         opacity: 0;
         transform: scale(0.6);
         pointer-events: none;
-      }
-
-      /* 预览退出按钮 */
-      .preview-exit-btn {
-        position: fixed;
-        top: clamp(10px, 2vw, 14px);
-        right: clamp(10px, 3vw, 18px);
-        z-index: 320;
-        width: 42px;
-        height: 42px;
-        border-radius: 50%;
-        background: rgba(0, 0, 0, 0.55);
-        color: #fff;
-        border: none;
-        font-size: 1.1rem;
-        font-weight: bold;
-        cursor: pointer;
-        display: none;
-        align-items: center;
-        justify-content: center;
-        backdrop-filter: blur(6px);
-        -webkit-backdrop-filter: blur(6px);
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
-        transition: transform 0.15s, background 0.2s;
-      }
-      .preview-exit-btn.show { display: flex; }
-      .preview-exit-btn:hover { background: rgba(0, 0, 0, 0.75); transform: scale(1.06); }
-
-      /* 预览运行时错误提示条 */
-      .preview-error {
-        position: fixed;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        z-index: 250;
-        background: rgba(180, 40, 40, 0.96);
-        color: #fff;
-        padding: 10px 16px 12px;
-        font-family: ui-monospace, Menlo, Consolas, monospace;
-        font-size: 0.82rem;
-        line-height: 1.5;
-        white-space: pre-wrap;
-        word-break: break-word;
-        max-height: 40vh;
-        overflow-y: auto;
-        display: none;
-        box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.35);
-      }
-      .preview-error.show { display: block; }
-      .preview-error .close {
-        position: absolute;
-        top: 6px;
-        right: 10px;
-        background: none;
-        border: none;
-        color: #fff;
-        font-size: 1.1rem;
-        cursor: pointer;
-        padding: 2px 6px;
       }
 
       /* ===================== 侧边栏 ===================== */
@@ -239,6 +164,7 @@
         padding: 2px 5px;
         transition: color 0.15s;
       }
+      .sidebar .page-item .actions .download:hover { color: #28a745; }
       .sidebar .page-item .actions .rename:hover { color: #5bc0de; }
       .sidebar .page-item .actions .del:hover { color: #d9534f; }
 
@@ -286,23 +212,6 @@
         width: 100%;
         max-width: 940px;
         margin: 0 auto;
-      }
-
-      #app.preview-mode {
-        padding: 0;
-        max-width: none;
-        min-height: 0;
-        background: #000;
-        overflow: hidden;
-        z-index: 100;
-      }
-      #app.preview-mode iframe {
-        width: 100%;
-        height: 100%;
-        border: none;
-        display: block;
-        background: #fff;
-        overflow: hidden;
       }
 
       #app h1 {
@@ -385,7 +294,7 @@
         margin-top: 10px;
       }
       .action-buttons button { background: #6c757d; }
-      .action-buttons button.preview { background: #28a745; }
+      .action-buttons button.download { background: #28a745; }
       .action-buttons button.zip { background: #17a2b8; }
 
       .modal-backdrop {
@@ -410,22 +319,22 @@
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
       }
       body.dark-mode .modal { background: #2d2d2d; color: #ddd; }
-      .modal h3 { margin: 0 0 12px; font-size: 1.1rem; }
-      .modal p { margin: 0 0 16px; line-height: 1.55; word-break: break-word; }
+      .modal h3 {;
+ margin: 0 0 12px; font-size: 1.     1rem; }
+      . }
+modal p { margin: 0 0 16px; line-height: 1.55; word-break: break-word; }
       .modal input {
         width: 100%;
-        padding: 8px 10px;
-        border: 1px solid #ccc;
-        border-radius: 4px;
+        padding: 8px 10     px;
+        border:  .1px solid #ccc;
+modal        border-radius: 4px;
         margin-bottom: 16px;
         font-size: 1rem;
       }
       body.dark-mode .modal input {
         background: #3a3a3a;
         color: #ddd;
-        border-color: #555;
-      }
-      .modal-actions {
+        border-color: #555-actions {
         display: flex;
         justify-content: flex-end;
         gap: 8px;
@@ -453,8 +362,6 @@
       aria-controls="sidebar"
     >☰</button>
 
-    <button class="preview-exit-btn" id="previewExitBtn" aria-label="退出预览" title="退出预览 (Esc)">✕</button>
-
     <nav class="sidebar" id="sidebar" aria-label="主导航">
       <div class="nav-item" data-path="#/" role="button" tabindex="0">🏠 首页</div>
       <div class="nav-item" data-path="#/about" role="button" tabindex="0">📖 关于</div>
@@ -473,11 +380,6 @@
     <div class="overlay" id="overlay"></div>
 
     <main id="app">加载中…</main>
-
-    <div class="preview-error" id="previewError" role="alert">
-      <button class="close" id="previewErrorClose" aria-label="关闭错误提示">✕</button>
-      <div id="previewErrorBody"></div>
-    </div>
 
     <div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true">
       <div class="modal" id="modalBox"></div>
@@ -511,18 +413,17 @@
             .replace(/"/g, "&quot;")
             .replace(/'/g, "&#39;");
         }
-
-        // =====================================================================
-        // [关键修复] 用十六进制转义构造正则，避免源码出现字面量的
-        //   "<\x21--"  ("<!--")   → 会触发 script data escaped 状态
-        //   "<\x73cript" ("<script") → 会触发 double escaped 状态
-        // 否则 HTML 解析器会吞掉末尾真正的 <\/script>，整段脚本不执行。
-        // =====================================================================
+        // 用十六进制转义构造正则，避免源码里出现字面量的 "<!--" / "<script"
         function escapeScriptClose(str) {
           return String(str)
             .replace(/<\x21--/g, "<\\!--")
             .replace(/<\x73cript/gi, "<\\script")
             .replace(/<\/\x73cript/gi, "<\\/script");
+        }
+        function safeFilename(name) {
+          var base = String(name || "untitled").replace(/[\\/:*?"<>|\r\n\t]/g, "_").trim();
+          if (!base) base = "untitled";
+          return base.slice(0, 80);
         }
 
         /* ======================= 本地存储 ======================= */
@@ -697,8 +598,6 @@
 
         /* =====================================================================
          * 生成独立 HTML
-         * 注意：所有拼接进生成 HTML 的 "<script" 也写成 "<\x3Cscript"，
-         *       确保本文件源码中不出现未转义的字面 "<script"。
          * ===================================================================== */
         function generatePageHtml(title, script, imageDataUrl) {
           var safeTitle = escapeHtml(title || "未命名页面");
@@ -707,26 +606,6 @@
             : "var imageUrl = null;";
           var safeImgVar = escapeScriptClose(imgVar);
           var safeScript = escapeScriptClose(script);
-
-          var errorBridge =
-            "    (function(){\n" +
-            "      function report(msg, line, col){\n" +
-            "        try { parent.postMessage({ type: 'p5-error', message: String(msg), lineno: line || 0, colno: col || 0 }, '*'); } catch(e){}\n" +
-            "      }\n" +
-            "      window.onerror = function(m, s, l, c){ report(m, l, c); };\n" +
-            "      window.addEventListener('unhandledrejection', function(e){\n" +
-            "        var r = e.reason;\n" +
-            "        report('Unhandled rejection: ' + (r && r.message ? r.message : String(r)));\n" +
-            "      });\n" +
-            "      window.addEventListener('load', function(){\n" +
-            "        setTimeout(function(){\n" +
-            "          if (typeof window.setup !== 'function' && typeof window.draw !== 'function' && !window.__p5_ok) {\n" +
-            "            var hasP5 = !!(window.p5);\n" +
-            "            if (!hasP5) report('p5.js 未能加载，请检查网络连接。');\n" +
-            "          }\n" +
-            "        }, 2000);\n" +
-            "      });\n" +
-            "    })();\n";
 
           return (
             "<!DOCTYPE html>\n" +
@@ -743,13 +622,38 @@
             "</head>\n" +
             "<body>\n" +
             "  \x3Cscript>\n" +
-            errorBridge +
             "    " + safeImgVar + "\n" +
             "    " + safeScript + "\n" +
             "  <\/script>\n" +
             "</body>\n" +
             "</html>"
           );
+        }
+
+        /* ======================= 下载 ======================= */
+        function downloadHtml(page) {
+          if (!page || !page.html) return;
+          try {
+            var blob = new Blob([page.html], { type: "text/html;charset=utf-8" });
+            var url = URL.createObjectURL(blob);
+            var link = document.createElement("a");
+            link.href = url;
+            link.download = safeFilename(page.title) + ".html";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+          } catch (e) {
+            showAlert("下载失败", String((e && e.message) || e), true);
+          }
+        }
+        function downloadPageById(id) {
+          var page = getPages().find(function (p) { return p.id === id; });
+          if (!page) {
+            showAlert("下载失败", "找不到该作品，可能已被删除。", true);
+            return;
+          }
+          downloadHtml(page);
         }
 
         /* ======================= 导出 ZIP ======================= */
@@ -761,7 +665,7 @@
           }
           var zip = new JSZip();
           pages.forEach(function (page, idx) {
-            var base = (page.title || "untitled").replace(/[\\/:*?"<>|]/g, "_");
+            var base = safeFilename(page.title);
             zip.file("p5_" + base + "_" + (idx + 1) + ".html", page.html);
           });
           zip.generateAsync({ type: "blob" })
@@ -800,11 +704,18 @@
             var titleSpan = document.createElement("span");
             titleSpan.className = "page-title";
             titleSpan.textContent = page.title;
-            titleSpan.dataset.action = "open";
+            titleSpan.title = "点击下载此页 HTML";
+            titleSpan.dataset.action = "download";
             titleSpan.dataset.id = String(page.id);
 
             var actions = document.createElement("div");
             actions.className = "actions";
+
+            var dlBtn = document.createElement("button");
+            dlBtn.className = "download"; dlBtn.title = "下载 HTML";
+            dlBtn.textContent = "⬇️";
+            dlBtn.dataset.action = "download";
+            dlBtn.dataset.id = String(page.id);
 
             var renameBtn = document.createElement("button");
             renameBtn.className = "rename"; renameBtn.title = "重命名";
@@ -818,6 +729,7 @@
             delBtn.dataset.action = "delete";
             delBtn.dataset.id = String(page.id);
 
+            actions.appendChild(dlBtn);
             actions.appendChild(renameBtn);
             actions.appendChild(delBtn);
             item.appendChild(titleSpan);
@@ -825,211 +737,6 @@
             frag.appendChild(item);
           });
           sidebarPagesEl.replaceChildren(frag);
-        }
-
-        /* =====================================================================
-         * iframe 事件代理（监听器挂 document，动态查 canvas，兼容 p5 重建）
-         * ===================================================================== */
-        function bindIframeProxy(iframe) {
-          var iwin, idoc;
-          try {
-            iwin = iframe.contentWindow;
-            idoc = iframe.contentDocument;
-          } catch (e) {
-            console.warn("无法访问 iframe 内部文档：", e);
-            return;
-          }
-          if (!iwin || !idoc) return;
-
-          if (!idoc.__proxyListeners) {
-            idoc.__proxyListeners = true;
-            attachDocListeners(idoc, iwin);
-          }
-
-          var tries = 0;
-          (function tryFindCanvas() {
-            if (!iframe.isConnected) return;
-            var canvas = idoc.querySelector("canvas");
-            if (canvas) return;
-            if (++tries < 80) setTimeout(tryFindCanvas, 100);
-          })();
-        }
-
-        function attachDocListeners(idoc, iwin) {
-          var MOUSE_TYPES = ["mousemove", "mousedown", "mouseup", "click", "dblclick"];
-          var TOUCH_TYPES = ["touchstart", "touchmove", "touchend", "touchcancel"];
-
-          function getCanvas() { return idoc.querySelector("canvas"); }
-
-          function relayMouse(e) {
-            var canvas = getCanvas();
-            if (!canvas || e.target === canvas) return;
-            if (
-              (e.type === "mousedown" ||
-                e.type === "mouseup" ||
-                e.type === "click" ||
-                e.type === "dblclick") &&
-              e.button !== 0
-            ) return;
-
-            var ev;
-            try {
-              ev = new iwin.MouseEvent(e.type, {
-                bubbles: true,
-                cancelable: true,
-                view: iwin,
-                detail: e.detail || 1,
-                screenX: e.screenX,
-                screenY: e.screenY,
-                clientX: e.clientX,
-                clientY: e.clientY,
-                ctrlKey: e.ctrlKey,
-                shiftKey: e.shiftKey,
-                altKey: e.altKey,
-                metaKey: e.metaKey,
-                button: e.button,
-                buttons: e.buttons,
-                relatedTarget: null,
-              });
-            } catch (err) { return; }
-            canvas.dispatchEvent(ev);
-          }
-
-          function relayTouch(e) {
-            var canvas = getCanvas();
-            if (!canvas || e.target === canvas) return;
-            if (!e.touches || !e.touches.length) return;
-            var t = e.touches[0];
-            var type =
-              e.type === "touchstart" ? "mousedown" :
-              e.type === "touchmove" ? "mousemove" :
-              e.type === "touchend" ? "mouseup" : null;
-            if (!type) return;
-            var ev;
-            try {
-              ev = new iwin.MouseEvent(type, {
-                bubbles: true,
-                cancelable: true,
-                view: iwin,
-                clientX: t.clientX,
-                clientY: t.clientY,
-                screenX: t.screenX,
-                screenY: t.screenY,
-                button: 0,
-                buttons: type === "mouseup" ? 0 : 1,
-              });
-            } catch (err) { return; }
-            canvas.dispatchEvent(ev);
-          }
-
-          MOUSE_TYPES.forEach(function (type) {
-            idoc.addEventListener(type, relayMouse, true);
-          });
-          TOUCH_TYPES.forEach(function (type) {
-            idoc.addEventListener(type, relayTouch, { capture: true, passive: true });
-          });
-        }
-
-        /* =====================================================================
-         * 预览模式
-         * ===================================================================== */
-        var previewingPageId = null;
-        var previewExitBtn;
-        var previewErrorEl, previewErrorBody;
-        var isCoarsePointer = (function () {
-          try {
-            return window.matchMedia("(hover: none) and (pointer: coarse)").matches;
-          } catch (e) { return false; }
-        })();
-
-        function lockAppSize() {
-          document.body.classList.add("preview-lock");
-          var w = window.innerWidth;
-          var h = window.innerHeight;
-          appEl.style.position = "fixed";
-          appEl.style.top = "0";
-          appEl.style.left = "0";
-          appEl.style.width = w + "px";
-          appEl.style.height = h + "px";
-          appEl.style.overflow = "hidden";
-        }
-
-        function unlockAppSize() {
-          document.body.classList.remove("preview-lock");
-          appEl.style.position = "";
-          appEl.style.top = "";
-          appEl.style.left = "";
-          appEl.style.width = "";
-          appEl.style.height = "";
-          appEl.style.overflow = "";
-        }
-
-        function relockAppSize() {
-          if (previewingPageId === null) return;
-          appEl.style.width = window.innerWidth + "px";
-          appEl.style.height = window.innerHeight + "px";
-        }
-
-        function enterPreview(id) {
-          var page = getPages().find(function (p) { return p.id === id; });
-          if (!page) return;
-          previewingPageId = id;
-          closeSidebar();
-          var h = location.hash;
-          if (h === "#/" || h === "" || h === "#") {
-            render();
-          } else {
-            location.hash = "#/";
-          }
-        }
-
-        function exitPreview() {
-          previewingPageId = null;
-          unlockAppSize();
-          hidePreviewError();
-          render();
-        }
-
-        function showPreviewError(msg, line, col) {
-          var text = String(msg || "未知错误");
-          if (line) text += "\n位置：第 " + line + " 行" + (col ? "，第 " + col + " 列" : "");
-          previewErrorBody.textContent = text;
-          previewErrorEl.classList.add("show");
-        }
-        function hidePreviewError() {
-          if (previewErrorEl) previewErrorEl.classList.remove("show");
-          if (previewErrorBody) previewErrorBody.textContent = "";
-        }
-
-        function renderPreview(id) {
-          var page = getPages().find(function (p) { return p.id === id; });
-          if (!page) {
-            previewingPageId = null;
-            unlockAppSize();
-            render();
-            return;
-          }
-
-          destroyEditor();
-          appEl.replaceChildren();
-          setActiveNav("/");
-          hidePreviewError();
-
-          lockAppSize();
-
-          var iframe = document.createElement("iframe");
-          iframe.setAttribute("title", page.title);
-          iframe.srcdoc = page.html;
-
-          iframe.addEventListener("load", function () {
-            bindIframeProxy(iframe);
-            hidePreviewError();
-          });
-
-          appEl.appendChild(iframe);
-          appEl.classList.add("preview-mode");
-          appEl.dataset.currentPageId = String(id);
-          previewExitBtn.classList.add("show");
         }
 
         function deletePage(id) {
@@ -1042,12 +749,6 @@
               var list = getPages().filter(function (p) { return p.id !== id; });
               if (!savePages(list)) return;
               updateSidebarPages();
-              if (previewingPageId === id) {
-                previewingPageId = null;
-                unlockAppSize();
-                hidePreviewError();
-                previewExitBtn.classList.remove("show");
-              }
               render();
             },
             true
@@ -1140,12 +841,12 @@
           wrap.innerHTML =
             "<h1>🎨 p5.js 脚本生成器</h1>" +
             "<p>所有数据保存在本地浏览器中，无需服务器。</p>" +
-            "<p>编写 p5.js 脚本，上传图片素材，生成独立的 HTML 页面。</p>" +
-            "<p>支持预览、导出 ZIP、删除和重命名作品。</p>" +
+            "<p>编写 p5.js 脚本，上传图片素材，生成独立的 HTML 页面并下载。</p>" +
+            "<p>支持单页下载、ZIP 批量导出、删除和重命名作品。</p>" +
             "<p>点击左上角 ☰ 菜单查看所有作品。</p>" +
             "<p style='color:#888;font-size:.9em;margin-top:1em'>" +
-            "点击侧边栏中的作品名称即可全屏运行；" +
-            "预览时按 Esc、点击右上角 ✕ 或从菜单切换页面即可退出。" +
+            "点击侧边栏中的作品标题或 ⬇️ 按钮即可下载该页 HTML；" +
+            "下载后双击文件即可在浏览器中运行。" +
             "</p>";
           return wrap;
         }
@@ -1155,7 +856,7 @@
             "<h1>📖 关于</h1>" +
             "<p>纯前端工具，基于 localStorage 存储，无需后端。</p>" +
             "<p>使用 CodeMirror 实现代码高亮，支持亮色 / 暗色主题。</p>" +
-            "<p>所有脚本均可导出为 ZIP 包。</p>";
+            "<p>作品可单独下载为 HTML，也可批量导出为 ZIP 包。</p>";
           return wrap;
         }
         function renderGenerator() {
@@ -1301,11 +1002,11 @@
             var btnContainer = document.createElement("div");
             btnContainer.className = "action-buttons";
 
-            var previewBtn = document.createElement("button");
-            previewBtn.className = "preview";
-            previewBtn.textContent = "▶️ 预览";
-            previewBtn.addEventListener("click", function () {
-              enterPreview(newId);
+            var downloadBtn = document.createElement("button");
+            downloadBtn.className = "download";
+            downloadBtn.textContent = "⬇️ 下载此页 HTML";
+            downloadBtn.addEventListener("click", function () {
+              downloadPageById(newId);
             });
 
             var zipBtn = document.createElement("button");
@@ -1313,7 +1014,7 @@
             zipBtn.textContent = "📦 导出所有脚本 (ZIP)";
             zipBtn.addEventListener("click", exportZip);
 
-            btnContainer.appendChild(previewBtn);
+            btnContainer.appendChild(downloadBtn);
             btnContainer.appendChild(zipBtn);
             resultEl.replaceChildren(msg, btnContainer);
 
@@ -1328,21 +1029,6 @@
 
         function render() {
           var path = getRoute();
-
-          var isPreview = previewingPageId !== null && (path === "/" || path === "");
-          if (isPreview) {
-            previewExitBtn.classList.add("show");
-            renderPreview(previewingPageId);
-            return;
-          }
-
-          previewExitBtn.classList.remove("show");
-          hidePreviewError();
-          if (appEl.classList.contains("preview-mode")) {
-            appEl.classList.remove("preview-mode");
-            unlockAppSize();
-          }
-          delete appEl.dataset.currentPageId;
 
           destroyEditor();
           appEl.replaceChildren();
@@ -1376,9 +1062,6 @@
           overlayEl = $("#overlay");
           hamburgerBtn = $("#hamburgerBtn");
           appEl = $("#app");
-          previewExitBtn = $("#previewExitBtn");
-          previewErrorEl = $("#previewError");
-          previewErrorBody = $("#previewErrorBody");
 
           var savedTheme = "light";
           try { savedTheme = localStorage.getItem(THEME_KEY) || "light"; } catch (e) {}
@@ -1386,8 +1069,6 @@
 
           hamburgerBtn.addEventListener("click", openSidebar);
           overlayEl.addEventListener("click", closeSidebar);
-          previewExitBtn.addEventListener("click", exitPreview);
-          $("#previewErrorClose").addEventListener("click", hidePreviewError);
 
           modalBackdrop.addEventListener("click", function (e) {
             if (e.target === modalBackdrop) closeModal();
@@ -1397,15 +1078,8 @@
             trapModalFocus(e);
             if (e.key === "Escape") {
               if (modalBackdrop.classList.contains("show")) closeModal();
-              else if (previewingPageId !== null) exitPreview();
               else closeSidebar();
             }
-          });
-
-          window.addEventListener("message", function (e) {
-            if (!e.data || e.data.type !== "p5-error") return;
-            if (previewingPageId === null) return;
-            showPreviewError(e.data.message, e.data.lineno, e.data.colno);
           });
 
           var themeBtn = $("#themeToggleSidebar");
@@ -1421,12 +1095,6 @@
 
           $$(".sidebar .nav-item[data-path]").forEach(function (el) {
             var go = function () {
-              if (previewingPageId !== null) {
-                previewingPageId = null;
-                unlockAppSize();
-                hidePreviewError();
-                previewExitBtn.classList.remove("show");
-              }
               var path = el.getAttribute("data-path");
               if (location.hash === path) render();
               else location.hash = path;
@@ -1443,7 +1111,7 @@
             if (!btn) return;
             var id = Number(btn.dataset.id);
             var action = btn.dataset.action;
-            if (action === "open") enterPreview(id);
+            if (action === "download") downloadPageById(id);
             else if (action === "rename") renamePage(id);
             else if (action === "delete") deletePage(id);
           });
@@ -1455,17 +1123,6 @@
 
           window.addEventListener("orientationchange", function () {
             if (editor) editor.refresh();
-            if (previewingPageId !== null) {
-              setTimeout(relockAppSize, 250);
-            }
-          });
-
-          var resizeTimer = null;
-          window.addEventListener("resize", function () {
-            if (previewingPageId === null) return;
-            if (isCoarsePointer) return;
-            clearTimeout(resizeTimer);
-            resizeTimer = setTimeout(relockAppSize, 150);
           });
 
           updateSidebarPages();
