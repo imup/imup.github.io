@@ -24,7 +24,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
     <style>
-      /* ===================== 基础 & 全局变量 ===================== */
       :root {
         --bg-light: #f5f5f5;
         --bg-dark: #1e1e1e;
@@ -52,10 +51,7 @@
         -webkit-text-size-adjust: 100%;
         transition: background 0.3s, color 0.3s;
       }
-      body.dark-mode {
-        background: var(--bg-dark);
-        color: var(--text-dark);
-      }
+      body.dark-mode { background: var(--bg-dark); color: var(--text-dark); }
 
       .hamburger-btn {
         position: fixed;
@@ -81,7 +77,6 @@
         pointer-events: none;
       }
 
-      /* ===================== 侧边栏 ===================== */
       .sidebar {
         position: fixed;
         top: 0;
@@ -126,10 +121,7 @@
       .sidebar .nav-item[aria-current="page"] { background: var(--hover-light); }
       body.dark-mode .sidebar .nav-item[aria-current="page"] { background: var(--hover-dark); }
 
-      .sidebar .divider {
-        border-top: 1px solid var(--line-light);
-        margin: 10px 0;
-      }
+      .sidebar .divider { border-top: 1px solid var(--line-light); margin: 10px 0; }
       body.dark-mode .sidebar .divider { border-top-color: var(--line-dark); }
 
       .sidebar .section-title {
@@ -196,7 +188,6 @@
       }
       .overlay.show { display: block; opacity: 1; }
 
-      /* ===================== 主内容 ===================== */
       #app {
         width: 100%;
         min-height: 100vh;
@@ -210,30 +201,53 @@
         transition: background 0.3s, color 0.3s;
         overflow-x: hidden;
       }
-      body.dark-mode #app {
-        background: var(--surface-dark);
-        color: var(--text-dark);
-      }
+      body.dark-mode #app { background: var(--surface-dark); color: var(--text-dark); }
       #app > div {
         width: 100%;
         max-width: 940px;
         margin: 0 auto;
       }
+
+      /* ============ 预览模式 ============ */
       #app.preview-mode {
         padding: 0;
         max-width: none;
         background: #000;
+        height: 100vh;
+        height: 100dvh;
         min-height: 100vh;
         min-height: 100dvh;
+        overflow: hidden;
+        position: relative;
       }
       #app.preview-mode iframe {
         width: 100%;
-        height: 100vh;
-        height: 100dvh;
+        height: 100%;
         border: none;
         display: block;
         background: #fff;
       }
+      /* 预览态右上角浮标：新窗口打开 + 返回 */
+      .preview-toolbar {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 10;
+        display: flex;
+        gap: 8px;
+      }
+      .preview-toolbar button {
+        background: rgba(0, 0, 0, 0.55);
+        color: #fff;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        border-radius: 6px;
+        padding: 8px 12px;
+        font-size: 0.9rem;
+        cursor: pointer;
+        backdrop-filter: blur(6px);
+        transition: background 0.2s;
+      }
+      .preview-toolbar button:hover { background: rgba(0, 0, 0, 0.8); }
 
       #app h1 {
         font-size: clamp(1.35rem, 4.5vw, 1.9rem);
@@ -369,10 +383,7 @@
         .action-buttons button { flex: 1 1 auto; }
       }
       @media (max-height: 480px) {
-        #app {
-          padding-top: 52px;
-          padding-bottom: 20px;
-        }
+        #app { padding-top: 52px; padding-bottom: 20px; }
         .form-group .CodeMirror { height: 140px !important; }
       }
     </style>
@@ -416,7 +427,7 @@
       (function () {
         "use strict";
 
-        /* ======================= 常量 & 工具 ======================= */
+        /* ======================= 常量 ======================= */
         var STORAGE_KEY = "p5_pages";
         var THEME_KEY = "p5_theme";
         var MAX_IMAGE_BYTES = 1.5 * 1024 * 1024;
@@ -434,7 +445,6 @@
             .replace(/"/g, "&quot;")
             .replace(/'/g, "&#39;");
         }
-
         function escapeScriptClose(str) {
           return String(str).replace(/<\/script/gi, "<\\/script");
         }
@@ -445,10 +455,7 @@
             var raw = localStorage.getItem(STORAGE_KEY);
             var list = raw ? JSON.parse(raw) : [];
             return Array.isArray(list) ? list : [];
-          } catch (e) {
-            console.warn("读取本地存储失败:", e);
-            return [];
-          }
+          } catch (e) { return []; }
         }
 
         function savePages(pages) {
@@ -457,11 +464,7 @@
             return true;
           } catch (e) {
             if (e && (e.name === "QuotaExceededError" || e.code === 22)) {
-              showAlert(
-                "本地存储已满",
-                "请删除部分作品，或上传更小的图片后再试。",
-                true
-              );
+              showAlert("本地存储已满", "请删除部分作品，或上传更小的图片后再试。", true);
             } else {
               showAlert("保存失败", String((e && e.message) || e), true);
             }
@@ -477,111 +480,69 @@
           modalBox.innerHTML = "";
           builder(modalBox);
           modalBackdrop.classList.add("show");
-          var firstInput = $("input, button", modalBox);
-          if (firstInput && firstInput.focus) firstInput.focus();
+          var f = $("input, button", modalBox);
+          if (f && f.focus) f.focus();
         }
         function closeModal() {
           modalBackdrop.classList.remove("show");
           modalBox.innerHTML = "";
           if (lastFocused && lastFocused.focus) lastFocused.focus();
         }
-
         function showAlert(title, message, isError) {
           openModal(function (box) {
-            var h = document.createElement("h3");
-            h.textContent = title;
-            var p = document.createElement("p");
-            p.textContent = message;
-            var actions = document.createElement("div");
-            actions.className = "modal-actions";
+            var h = document.createElement("h3"); h.textContent = title;
+            var p = document.createElement("p"); p.textContent = message;
+            var a = document.createElement("div"); a.className = "modal-actions";
             var ok = document.createElement("button");
             ok.textContent = "知道了";
             if (isError) ok.className = "danger";
             ok.addEventListener("click", closeModal);
-            actions.appendChild(ok);
-            box.appendChild(h);
-            box.appendChild(p);
-            box.appendChild(actions);
+            a.appendChild(ok);
+            box.append(h, p, a);
           });
         }
-
         function showConfirm(title, message, onConfirm, danger) {
           openModal(function (box) {
-            var h = document.createElement("h3");
-            h.textContent = title;
-            var p = document.createElement("p");
-            p.textContent = message;
-            var actions = document.createElement("div");
-            actions.className = "modal-actions";
-
+            var h = document.createElement("h3"); h.textContent = title;
+            var p = document.createElement("p"); p.textContent = message;
+            var a = document.createElement("div"); a.className = "modal-actions";
             var cancel = document.createElement("button");
-            cancel.className = "cancel";
-            cancel.textContent = "取消";
+            cancel.className = "cancel"; cancel.textContent = "取消";
             cancel.addEventListener("click", closeModal);
-
             var ok = document.createElement("button");
             ok.textContent = "确定";
             if (danger) ok.className = "danger";
-            ok.addEventListener("click", function () {
-              closeModal();
-              onConfirm();
-            });
-
-            actions.appendChild(cancel);
-            actions.appendChild(ok);
-            box.appendChild(h);
-            box.appendChild(p);
-            box.appendChild(actions);
+            ok.addEventListener("click", function () { closeModal(); onConfirm(); });
+            a.append(cancel, ok);
+            box.append(h, p, a);
           });
         }
-
         function showPrompt(title, defaultValue, onOk) {
           openModal(function (box) {
-            var h = document.createElement("h3");
-            h.textContent = title;
+            var h = document.createElement("h3"); h.textContent = title;
             var input = document.createElement("input");
-            input.type = "text";
-            input.value = defaultValue || "";
-
-            var actions = document.createElement("div");
-            actions.className = "modal-actions";
-
+            input.type = "text"; input.value = defaultValue || "";
+            var a = document.createElement("div"); a.className = "modal-actions";
             var cancel = document.createElement("button");
-            cancel.className = "cancel";
-            cancel.textContent = "取消";
+            cancel.className = "cancel"; cancel.textContent = "取消";
             cancel.addEventListener("click", closeModal);
-
             var ok = document.createElement("button");
             ok.textContent = "保存";
             ok.addEventListener("click", function () {
-              var value = input.value.trim();
-              if (!value) { input.focus(); return; }
-              closeModal();
-              onOk(value);
+              var v = input.value.trim();
+              if (!v) { input.focus(); return; }
+              closeModal(); onOk(v);
             });
-
             input.addEventListener("keydown", function (e) {
               if (e.key === "Enter") ok.click();
             });
-
-            actions.appendChild(cancel);
-            actions.appendChild(ok);
-            box.appendChild(h);
-            box.appendChild(input);
-            box.appendChild(actions);
+            a.append(cancel, ok);
+            box.append(h, input, a);
           });
         }
 
         /* =====================================================================
-         * 生成独立 HTML
-         * ---------------------------------------------------------------------
-         * 关键点：
-         *  1) 生成的页面保持最简 CSS，让 p5 完全掌控 canvas 布局与事件；
-         *  2) 只加 `canvas { display:block }` 避免 inline 元素基线间隙；
-         *  3) 不再用 flex 居中、不再限制 max-width/max-height，
-         *     否则会干扰 p5 的 mouseX / pmouseX 坐标计算；
-         *  4) 用 Blob URL 加载（在 navigateToPage 中），
-         *     避免 srcdoc + sandbox 造成的 opaque origin 影响事件。
+         * 生成独立 HTML —— 极简 CSS，让 p5 完全掌控 canvas
          * ===================================================================== */
         function generatePageHtml(title, script, imageDataUrl) {
           var safeTitle = escapeHtml(title || "未命名页面");
@@ -599,7 +560,12 @@
             '  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n' +
             "  <title>" + safeTitle + "</title>\n" +
             "  <style>\n" +
-            "    html, body { margin: 0; padding: 0; }\n" +
+            "    html, body {\n" +
+            "      margin: 0; padding: 0;\n" +
+            "      width: 100%; height: 100%;\n" +
+            "      overflow: hidden;\n" +
+            "      background: #ffffff;\n" +
+            "    }\n" +
             "    canvas { display: block; }\n" +
             "  </style>\n" +
             '  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"><\/script>\n' +
@@ -621,7 +587,11 @@
           var win = window.open(url, "_blank", "noopener");
           if (!win) {
             URL.revokeObjectURL(url);
-            showAlert("无法打开预览", "请允许本站弹出新窗口后重试。", true);
+            showAlert(
+              "无法打开新窗口",
+              "浏览器的弹窗拦截可能阻止了新窗口。请允许本站弹出窗口后重试。",
+              true
+            );
             return;
           }
           setTimeout(function () { URL.revokeObjectURL(url); }, 60000);
@@ -655,8 +625,7 @@
         }
 
         /* ======================= 侧边栏 ======================= */
-        var sidebarPagesEl;
-        var sidebarEl, overlayEl, hamburgerBtn;
+        var sidebarPagesEl, sidebarEl, overlayEl, hamburgerBtn;
 
         function updateSidebarPages() {
           var pages = getPages();
@@ -667,12 +636,10 @@
             sidebarPagesEl.replaceChildren(empty);
             return;
           }
-
           var frag = document.createDocumentFragment();
           pages.forEach(function (page) {
             var item = document.createElement("div");
             item.className = "page-item";
-
             var titleSpan = document.createElement("span");
             titleSpan.className = "page-title";
             titleSpan.textContent = page.title;
@@ -683,73 +650,74 @@
             actions.className = "actions";
 
             var renameBtn = document.createElement("button");
-            renameBtn.className = "rename";
-            renameBtn.title = "重命名";
+            renameBtn.className = "rename"; renameBtn.title = "重命名";
             renameBtn.textContent = "✏️";
             renameBtn.dataset.action = "rename";
             renameBtn.dataset.id = String(page.id);
 
             var delBtn = document.createElement("button");
-            delBtn.className = "del";
-            delBtn.title = "删除";
+            delBtn.className = "del"; delBtn.title = "删除";
             delBtn.textContent = "🗑️";
             delBtn.dataset.action = "delete";
             delBtn.dataset.id = String(page.id);
 
-            actions.appendChild(renameBtn);
-            actions.appendChild(delBtn);
-            item.appendChild(titleSpan);
-            item.appendChild(actions);
+            actions.append(renameBtn, delBtn);
+            item.append(titleSpan, actions);
             frag.appendChild(item);
           });
           sidebarPagesEl.replaceChildren(frag);
         }
 
         /* =====================================================================
-         * 打开作品 —— 用 Blob URL 替代 srcdoc + sandbox
+         * 打开作品 —— 用 srcdoc，且不加 sandbox
          * ---------------------------------------------------------------------
-         * 为什么？
-         *   srcdoc + sandbox 会让 iframe 处于 "opaque origin"，
-         *   某些浏览器下 p5 的 mouseX / pmouseX / mousePressed 等事件
-         *   无法正确接收或坐标错位，导致交互失效。
-         *   Blob URL 加载的是同源文档，事件、canvas、键盘等全部正常。
+         * 这是关键：
+         *  - 之前用 sandbox 或 Blob URL 时，iframe 处于 opaque origin，
+         *    在 file:// 下尤为严重 —— 鼠标事件到不了 canvas，p5 交互失效。
+         *  - 用 srcdoc 不加 sandbox，iframe 与父页面同源，事件正常。
          * ===================================================================== */
         function navigateToPage(id) {
           var page = getPages().find(function (p) { return p.id === id; });
           if (!page) return;
+
           var app = $("#app");
           app.innerHTML = "";
 
+          // 工具条（新窗口打开 / 返回）
+          var toolbar = document.createElement("div");
+          toolbar.className = "preview-toolbar";
+
+          var openBtn = document.createElement("button");
+          openBtn.type = "button";
+          openBtn.textContent = "↗ 新窗口打开";
+          openBtn.addEventListener("click", function () {
+            previewPage(page.html);
+          });
+
+          var backBtn = document.createElement("button");
+          backBtn.type = "button";
+          backBtn.textContent = "← 返回";
+          backBtn.addEventListener("click", function () {
+            if (location.hash === "#/" || location.hash === "") {
+              render();
+            } else {
+              location.hash = "#/";
+            }
+          });
+
+          toolbar.append(openBtn, backBtn);
+
           var iframe = document.createElement("iframe");
           iframe.setAttribute("title", page.title);
-          // 允许脚本、同源、指针锁定、弹窗、表单、模态
-          // 注意：这里不加 sandbox，用 Blob URL 天然隔离 document 与父级
-          // 但仍保留 allow 属性以便可能的未来兼容
-          iframe.setAttribute(
-            "allow",
-            "clipboard-read; clipboard-write; fullscreen"
-          );
+          iframe.setAttribute("scrolling", "no");
+          // 关键：不加 sandbox、不加 allow，保持同源
+          iframe.srcdoc = page.html;
 
-          var blob = new Blob([page.html], { type: "text/html;charset=utf-8" });
-          var url = URL.createObjectURL(blob);
-          iframe.src = url;
-
-          // 保留 URL 引用，便于切换时释放
-          iframe.dataset.blobUrl = url;
-
+          app.appendChild(toolbar);
           app.appendChild(iframe);
           app.classList.add("preview-mode");
           app.dataset.currentPageId = String(id);
           closeSidebar();
-        }
-
-        function releaseCurrentIframe() {
-          var app = $("#app");
-          var iframe = app.querySelector("iframe");
-          if (iframe && iframe.dataset.blobUrl) {
-            try { URL.revokeObjectURL(iframe.dataset.blobUrl); } catch (e) {}
-            delete iframe.dataset.blobUrl;
-          }
         }
 
         function deletePage(id) {
@@ -765,7 +733,6 @@
               updateSidebarPages();
               var app = $("#app");
               if (app.classList.contains("preview-mode")) {
-                releaseCurrentIframe();
                 app.classList.remove("preview-mode");
                 delete app.dataset.currentPageId;
               }
@@ -816,9 +783,7 @@
             if (lightTheme) lightTheme.disabled = false;
             if (darkTheme) darkTheme.disabled = true;
           }
-          if (editor) {
-            editor.setOption("theme", theme === "dark" ? "dracula" : "default");
-          }
+          if (editor) editor.setOption("theme", theme === "dark" ? "dracula" : "default");
         }
 
         function currentTheme() {
@@ -865,7 +830,11 @@
             "<p>所有数据保存在本地浏览器中，无需服务器。</p>" +
             "<p>编写 p5.js 脚本，上传图片素材，生成独立的 HTML 页面。</p>" +
             "<p>支持预览、导出 ZIP、删除和重命名作品。</p>" +
-            "<p>点击左上角 ☰ 菜单查看所有作品。</p>";
+            "<p>点击左上角 ☰ 菜单查看所有作品。</p>" +
+            "<p style='color:#888;font-size:.85em;margin-top:1.2em'>" +
+            "提示：在 <code>file://</code> 下双击打开时，预览窗口里的 p5 交互事件可能受限；" +
+            "建议使用本地服务器（<code>npx serve</code> 或 <code>python3 -m http.server</code>）打开本页面。" +
+            "</p>";
           return wrap;
         }
 
@@ -890,7 +859,7 @@
             "</div>" +
             '<div class="form-group">' +
             '  <label for="script">p5.js 脚本代码</label>' +
-            '  <textarea id="script" placeholder="例如：&#10;function setup() {&#10;  createCanvas(400, 400);&#10;  background(220);&#10;}&#10;function draw() {&#10;  ellipse(mouseX, mouseY, 50, 50);&#10;}"></textarea>' +
+            '  <textarea id="script" placeholder="例如：&#10;function setup() {&#10;  createCanvas(windowWidth, windowHeight);&#10;  background(102);&#10;}&#10;function draw() {&#10;  variableEllipse(mouseX, mouseY, pmouseX, pmouseY);&#10;}&#10;function variableEllipse(x, y, px, py) {&#10;  let speed = abs(x - px) + abs(y - py);&#10;  stroke(speed);&#10;  ellipse(x, y, speed, speed);&#10;}"></textarea>' +
             "</div>" +
             '<div class="form-group">' +
             '  <label for="image">上传图片（可选，脚本可通过 <code>imageUrl</code> 加载）</label>' +
@@ -929,22 +898,16 @@
           fileInput.addEventListener("change", function () {
             var file = this.files && this.files[0];
             if (!file) return;
-
             if (!/^image\//.test(file.type)) {
               showAlert("文件类型不支持", "请选择图片文件。", true);
               this.value = "";
               return;
             }
             if (file.size > MAX_IMAGE_BYTES) {
-              showAlert(
-                "图片太大",
-                "单张图片请小于 1.5MB，以免本地存储空间耗尽。",
-                true
-              );
+              showAlert("图片太大", "单张图片请小于 1.5MB，以免本地存储空间耗尽。", true);
               this.value = "";
               return;
             }
-
             var reader = new FileReader();
             reader.onload = function (e) {
               uploadedImageDataUrl = e.target.result;
@@ -969,7 +932,6 @@
               showAlert("缺少脚本", "请填写 p5.js 脚本代码。", true);
               return;
             }
-
             var imageDataUrl = uploadedImageDataUrl || "";
             var htmlContent = generatePageHtml(title, script, imageDataUrl);
 
@@ -980,7 +942,6 @@
               html: htmlContent,
               timestamp: new Date().toISOString(),
             });
-
             if (!savePages(pages)) return;
 
             updateSidebarPages();
@@ -994,9 +955,17 @@
 
             var previewBtn = document.createElement("button");
             previewBtn.className = "preview";
-            previewBtn.textContent = "👁️ 预览";
+            previewBtn.textContent = "👁️ 新窗口预览";
             previewBtn.addEventListener("click", function () {
               previewPage(htmlContent);
+            });
+
+            var inlineBtn = document.createElement("button");
+            inlineBtn.textContent = "🖥️ 内嵌预览";
+            inlineBtn.addEventListener("click", function () {
+              // 找到刚保存的 id
+              var last = getPages().slice(-1)[0];
+              if (last) navigateToPage(last.id);
             });
 
             var zipBtn = document.createElement("button");
@@ -1004,8 +973,7 @@
             zipBtn.textContent = "📦 导出所有脚本 (ZIP)";
             zipBtn.addEventListener("click", exportZip);
 
-            btnContainer.appendChild(previewBtn);
-            btnContainer.appendChild(zipBtn);
+            btnContainer.append(inlineBtn, previewBtn, zipBtn);
             resultEl.replaceChildren(msg, btnContainer);
 
             titleInput.value = "";
@@ -1019,13 +987,10 @@
         function render() {
           var path = getRoute();
 
-          // 离开预览模式前释放上一份 Blob URL
           if (appEl.classList.contains("preview-mode")) {
-            releaseCurrentIframe();
             appEl.classList.remove("preview-mode");
             delete appEl.dataset.currentPageId;
           }
-
           destroyEditor();
           appEl.replaceChildren();
           setActiveNav(path);
@@ -1043,8 +1008,7 @@
             h.textContent = "📄 页面 " + path;
             var p = document.createElement("p");
             p.textContent = "内容未定义。";
-            wrap.appendChild(h);
-            wrap.appendChild(p);
+            wrap.append(h, p);
             appEl.appendChild(wrap);
           }
         }
@@ -1081,19 +1045,13 @@
           $$(".sidebar .nav-item[data-path]").forEach(function (el) {
             var go = function () {
               var path = el.getAttribute("data-path");
-              if (location.hash === path) {
-                render();
-              } else {
-                location.hash = path;
-              }
+              if (location.hash === path) render();
+              else location.hash = path;
               closeSidebar();
             };
             el.addEventListener("click", go);
             el.addEventListener("keydown", function (e) {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                go();
-              }
+              if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); }
             });
           });
 
