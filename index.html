@@ -117,7 +117,7 @@
         display: flex;
         flex-direction: column;
         -webkit-overflow-scrolling: touch;
-        /* ⬇️ 只保留右侧（打开边）内阴影，去掉上/下/左内阴影 */
+        /* 只保留右侧（打开边）内阴影 */
         box-shadow: inset -22px 0 28px -26px rgba(0, 0, 0, 0.55);
         border-right: 1px solid var(--line-light);
       }
@@ -125,9 +125,44 @@
       body.dark-mode .sidebar {
         background: var(--bg-dark);
         color: var(--text-dark);
-        /* ⬇️ 暗色主题同样只保留右侧内阴影 */
         box-shadow: inset -22px 0 28px -26px rgba(0, 0, 0, 1);
         border-right-color: var(--line-dark);
+      }
+
+      /* ⬇️ 脚本搜索框：位于侧边栏最上方（“首页”之上） */
+      .sidebar-search {
+        padding: 0 clamp(14px, 4vw, 18px) 12px;
+        margin-top: -4px; /* 视觉上与顶部内边距平衡 */
+      }
+      .sidebar-search input {
+        width: 100%;
+        padding: 9px 12px;
+        border: 1px solid var(--line-light);
+        border-radius: 6px;
+        background: transparent;
+        color: inherit;
+        font-size: 16px;
+        font-family: inherit;
+        outline: none;
+        transition: border-color 0.15s, background 0.15s;
+      }
+      .sidebar-search input:focus { border-color: #007bff; }
+      body.dark-mode .sidebar-search input {
+        border-color: var(--line-dark);
+        background: rgba(255, 255, 255, 0.05);
+      }
+      body.dark-mode .sidebar-search input:focus { border-color: #4da3ff; }
+      .sidebar-search input::placeholder { color: #999; }
+      body.dark-mode .sidebar-search input::placeholder { color: #777; }
+      .sidebar-search input[type="search"]::-webkit-search-cancel-button {
+        -webkit-appearance: none;
+        appearance: none;
+        height: 14px;
+        width: 14px;
+        background:
+          linear-gradient(45deg, transparent 45%, #888 45%, #888 55%, transparent 55%),
+          linear-gradient(-45deg, transparent 45%, #888 45%, #888 55%, transparent 55%);
+        cursor: pointer;
       }
 
       .sidebar .nav-item {
@@ -439,6 +474,17 @@
     >☰</button>
 
     <nav class="sidebar" id="sidebar" aria-label="主导航">
+      <!-- ⬇️ 脚本搜索框：位于侧边栏最上方 -->
+      <div class="sidebar-search">
+        <input
+          type="search"
+          id="sidebarSearch"
+          placeholder="🔍 搜索脚本..."
+          autocomplete="off"
+          aria-label="搜索脚本"
+        />
+      </div>
+
       <div class="nav-item" data-path="#/" role="button" tabindex="0">🏠 首页</div>
       <div class="nav-item" data-path="#/about" role="button" tabindex="0">📖 关于</div>
       <div class="nav-item" data-path="#/generator" role="button" tabindex="0">✏️ 生成脚本</div>
@@ -679,18 +725,31 @@
         }
 
         var sidebarPagesEl, sidebarEl, overlayEl, hamburgerBtn;
+        var sidebarSearchEl;
+        var sidebarSearchKeyword = "";
 
         function updateSidebarPages() {
           var pages = getPages();
-          if (!pages.length) {
+          var kw = sidebarSearchKeyword.trim().toLowerCase();
+          var filtered = pages;
+          if (kw) {
+            filtered = pages.filter(function (p) {
+              return String(p.title || "").toLowerCase().indexOf(kw) !== -1;
+            });
+          }
+
+          if (!filtered.length) {
             var empty = document.createElement("div");
             empty.className = "no-pages";
-            empty.textContent = "暂无生成的脚本";
+            empty.textContent = kw
+              ? "没有找到匹配的脚本"
+              : "暂无生成的脚本";
             sidebarPagesEl.replaceChildren(empty);
             return;
           }
+
           var frag = document.createDocumentFragment();
-          pages.forEach(function (page) {
+          filtered.forEach(function (page) {
             var item = document.createElement("div");
             item.className = "page-item";
 
@@ -1219,6 +1278,7 @@
           overlayEl = $("#overlay");
           hamburgerBtn = $("#hamburgerBtn");
           appEl = $("#app");
+          sidebarSearchEl = $("#sidebarSearch");
 
           var savedTheme = "light";
           try { savedTheme = localStorage.getItem(THEME_KEY) || "light"; } catch (e) {}
@@ -1255,6 +1315,29 @@
             },
             { passive: false }
           );
+
+          /* 搜索框：输入实时过滤脚本列表 */
+          if (sidebarSearchEl) {
+            sidebarSearchEl.addEventListener("input", function () {
+              sidebarSearchKeyword = this.value || "";
+              updateSidebarPages();
+            });
+            sidebarSearchEl.addEventListener("keydown", function (e) {
+              if (e.key === "Escape") {
+                if (this.value) {
+                  this.value = "";
+                  sidebarSearchKeyword = "";
+                  updateSidebarPages();
+                }
+                e.stopPropagation();
+              } else {
+                e.stopPropagation();
+              }
+            });
+            sidebarSearchEl.addEventListener("click", function (e) {
+              e.stopPropagation();
+            });
+          }
 
           hamburgerBtn.addEventListener("click", openSidebar);
           overlayEl.addEventListener("click", closeSidebar);
