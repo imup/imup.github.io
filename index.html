@@ -53,11 +53,6 @@
       }
       body.dark-mode { background: var(--bg-dark); color: var(--text-dark); }
 
-      /* 预览时禁用 body 滚动，避免出现滚动条影响 viewport 尺寸 */
-      body.preview-lock {
-        overflow: hidden;
-      }
-
       .hamburger-btn {
         position: fixed;
         top: clamp(8px, 2vw, 14px);
@@ -76,10 +71,6 @@
       }
       .hamburger-btn:hover { transform: scale(1.1); }
       body.dark-mode .hamburger-btn { color: #fff; }
-      body.preview-lock .hamburger-btn {
-        color: #fff;
-        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
-      }
       body.sidebar-open .hamburger-btn {
         opacity: 0;
         transform: scale(0.6);
@@ -197,7 +188,6 @@
       }
       .overlay.show { display: block; opacity: 1; }
 
-      /* ===================== 主内容 ===================== */
       #app {
         width: 100%;
         min-height: 100vh;
@@ -218,7 +208,7 @@
         margin: 0 auto;
       }
 
-      /* ============ 预览模式：纯 CSS 全屏铺满，不用 JS 改像素 ============ */
+      /* 全屏预览：铺满设备视口，固定尺寸稳定 */
       #app.preview-mode {
         position: fixed;
         top: 0;
@@ -386,13 +376,7 @@
     </style>
   </head>
   <body>
-    <button
-      class="hamburger-btn"
-      id="hamburgerBtn"
-      aria-label="打开菜单"
-      aria-expanded="false"
-      aria-controls="sidebar"
-    >☰</button>
+    <button class="hamburger-btn" id="hamburgerBtn" aria-label="打开菜单">☰</button>
 
     <nav class="sidebar" id="sidebar" aria-label="主导航">
       <div class="nav-item" data-path="#/" role="button" tabindex="0">🏠 首页</div>
@@ -428,6 +412,13 @@
         var THEME_KEY = "p5_theme";
         var MAX_IMAGE_BYTES = 1.5 * 1024 * 1024;
 
+        var appEl, sidebarEl, overlayEl, hamburgerBtn;
+        var sidebarPagesEl, modalBackdrop, modalBox;
+        var editor = null;
+        var uploadedImageDataUrl = null;
+        var previewingPageId = null;
+        var lastFocused = null;
+
         function $(sel, root) { return (root || document).querySelector(sel); }
         function $$(sel, root) {
           return Array.prototype.slice.call((root || document).querySelectorAll(sel));
@@ -444,7 +435,7 @@
           return String(str).replace(/<\/script/gi, "<\\/script");
         }
 
-        /* ======================= 本地存储 ======================= */
+        /* ============= 本地存储 ============= */
         function getPages() {
           try {
             var raw = localStorage.getItem(STORAGE_KEY);
@@ -466,9 +457,7 @@
           }
         }
 
-        /* ======================= 模态框 ======================= */
-        var modalBackdrop, modalBox, lastFocused;
-
+        /* ============= 模态框 ============= */
         function openModal(builder) {
           lastFocused = document.activeElement;
           modalBox.innerHTML = "";
@@ -535,7 +524,7 @@
           });
         }
 
-        /* ======================= 生成独立 HTML ======================= */
+        /* ============= 生成独立 HTML ============= */
         function generatePageHtml(title, script, imageDataUrl) {
           var safeTitle = escapeHtml(title || "未命名页面");
           var imgVar = imageDataUrl
@@ -567,7 +556,7 @@
           );
         }
 
-        /* ======================= 导出 ZIP ======================= */
+        /* ============= 导出 ZIP ============= */
         function exportZip() {
           var pages = getPages();
           if (!pages.length) {
@@ -595,9 +584,7 @@
             });
         }
 
-        /* ======================= 侧边栏 ======================= */
-        var sidebarPagesEl, sidebarEl, overlayEl, hamburgerBtn;
-
+        /* ============= 侧边栏列表 ============= */
         function updateSidebarPages() {
           var pages = getPages();
           if (!pages.length) {
@@ -642,25 +629,19 @@
           sidebarPagesEl.replaceChildren(frag);
         }
 
-        /* ======================= 事件代理 ======================= */
+        /* ============= 事件代理 ============= */
         function bindIframeProxy(iframe) {
           var iwin, idoc;
           try {
             iwin = iframe.contentWindow;
             idoc = iframe.contentDocument;
-          } catch (e) {
-            console.warn("无法访问 iframe 内部文档：", e);
-            return;
-          }
+          } catch (e) { return; }
           if (!iwin || !idoc) return;
 
           var tries = 0;
           function tryFindCanvas() {
             var canvas = idoc.querySelector("canvas");
-            if (canvas) {
-              attachProxy(canvas, iwin, idoc);
-              return;
-            }
+            if (canvas) { attachProxy(canvas, iwin, idoc); return; }
             if (++tries < 80) setTimeout(tryFindCanvas, 100);
           }
           tryFindCanvas();
@@ -676,30 +657,21 @@
           function relayMouse(e) {
             if (e.target === canvas) return;
             if (
-              (e.type === "mousedown" ||
-                e.type === "mouseup" ||
-                e.type === "click" ||
-                e.type === "dblclick") &&
+              (e.type === "mousedown" || e.type === "mouseup" ||
+               e.type === "click" || e.type === "dblclick") &&
               e.button !== 0
             ) return;
 
             var ev;
             try {
               ev = new iwin.MouseEvent(e.type, {
-                bubbles: true,
-                cancelable: true,
-                view: iwin,
+                bubbles: true, cancelable: true, view: iwin,
                 detail: e.detail || 1,
-                screenX: e.screenX,
-                screenY: e.screenY,
-                clientX: e.clientX,
-                clientY: e.clientY,
-                ctrlKey: e.ctrlKey,
-                shiftKey: e.shiftKey,
-                altKey: e.altKey,
-                metaKey: e.metaKey,
-                button: e.button,
-                buttons: e.buttons,
+                screenX: e.screenX, screenY: e.screenY,
+                clientX: e.clientX, clientY: e.clientY,
+                ctrlKey: e.ctrlKey, shiftKey: e.shiftKey,
+                altKey: e.altKey, metaKey: e.metaKey,
+                button: e.button, buttons: e.buttons,
                 relatedTarget: null,
               });
             } catch (err) { return; }
@@ -718,15 +690,10 @@
             var ev;
             try {
               ev = new iwin.MouseEvent(type, {
-                bubbles: true,
-                cancelable: true,
-                view: iwin,
-                clientX: t.clientX,
-                clientY: t.clientY,
-                screenX: t.screenX,
-                screenY: t.screenY,
-                button: 0,
-                buttons: type === "mouseup" ? 0 : 1,
+                bubbles: true, cancelable: true, view: iwin,
+                clientX: t.clientX, clientY: t.clientY,
+                screenX: t.screenX, screenY: t.screenY,
+                button: 0, buttons: type === "mouseup" ? 0 : 1,
               });
             } catch (err) { return; }
             canvas.dispatchEvent(ev);
@@ -740,18 +707,7 @@
           });
         }
 
-        /* =====================================================================
-         * 预览模式
-         * ---------------------------------------------------------------------
-         * 关键设计：
-         *   - previewingPageId 是唯一状态标志。只要有值，render() 就渲染 iframe，
-         *     无视当前 hash 是什么。
-         *   - 进入预览时把 hash 改成 #/（首页），所以「预览」和「首页」是同一
-         *     个地址，看起来就是「回到首页，首页这次加载脚本而非文本」。
-         *   - 退出预览清空 previewingPageId，回到首页文本。
-         * ===================================================================== */
-        var previewingPageId = null;
-
+        /* ============= 预览 ============= */
         function enterPreview(id) {
           var page = getPages().find(function (p) { return p.id === id; });
           if (!page) {
@@ -761,12 +717,10 @@
           previewingPageId = id;
           closeSidebar();
 
-          var h = location.hash;
-          if (h === "#/" || h === "" || h === "#") {
-            // 已经在首页，直接渲染（不触发 hashchange）
+          // 直接把 URL 改成首页（若已在首页则不触发 hashchange）
+          if (location.hash === "#/" || location.hash === "" || location.hash === "#") {
             render();
           } else {
-            // 从别的路由切回首页，交给 hashchange 去 render
             location.hash = "#/";
           }
         }
@@ -784,32 +738,25 @@
             render();
             return;
           }
-
           destroyEditor();
           appEl.replaceChildren();
-          setActiveNav("/");
           appEl.classList.add("preview-mode");
-          document.body.classList.add("preview-lock");
+          setActiveNav("/");
 
           var iframe = document.createElement("iframe");
           iframe.setAttribute("title", page.title);
           iframe.setAttribute("scrolling", "no");
           iframe.srcdoc = page.html;
-
           iframe.addEventListener("load", function () {
             bindIframeProxy(iframe);
           });
-
           appEl.appendChild(iframe);
           appEl.dataset.currentPageId = String(id);
         }
 
         function leavePreviewUI() {
-          if (appEl.classList.contains("preview-mode")) {
-            appEl.classList.remove("preview-mode");
-            document.body.classList.remove("preview-lock");
-            delete appEl.dataset.currentPageId;
-          }
+          appEl.classList.remove("preview-mode");
+          delete appEl.dataset.currentPageId;
         }
 
         function deletePage(id) {
@@ -823,10 +770,7 @@
               var list = getPages().filter(function (p) { return p.id !== id; });
               savePages(list);
               updateSidebarPages();
-              if (previewingPageId === id) {
-                previewingPageId = null;
-                leavePreviewUI();
-              }
+              if (previewingPageId === id) previewingPageId = null;
               render();
             },
             true
@@ -849,19 +793,14 @@
           sidebarEl.classList.add("open");
           overlayEl.classList.add("show");
           document.body.classList.add("sidebar-open");
-          hamburgerBtn.setAttribute("aria-expanded", "true");
         }
         function closeSidebar() {
           sidebarEl.classList.remove("open");
           overlayEl.classList.remove("show");
           document.body.classList.remove("sidebar-open");
-          hamburgerBtn.setAttribute("aria-expanded", "false");
         }
 
-        /* ======================= 主题 ======================= */
-        var editor = null;
-        var uploadedImageDataUrl = null;
-
+        /* ============= 主题 ============= */
         function applyTheme(theme) {
           var lightTheme = $("#cm-theme-light");
           var darkTheme = $("#cm-theme-dark");
@@ -885,7 +824,7 @@
           try { localStorage.setItem(THEME_KEY, next); } catch (e) {}
         }
 
-        /* ======================= 路由 ======================= */
+        /* ============= 路由 ============= */
         function getRoute() {
           var hash = location.hash;
           if (!hash || hash === "#" || hash === "#/") return "/";
@@ -907,9 +846,7 @@
           }
         }
 
-        /* ======================= 页面渲染 ======================= */
-        var appEl;
-
+        /* ============= 页面渲染 ============= */
         function renderHome() {
           var wrap = document.createElement("div");
           wrap.innerHTML =
@@ -917,11 +854,7 @@
             "<p>所有数据保存在本地浏览器中，无需服务器。</p>" +
             "<p>编写 p5.js 脚本，上传图片素材，生成独立的 HTML 页面。</p>" +
             "<p>支持预览、导出 ZIP、删除和重命名作品。</p>" +
-            "<p>点击左上角 ☰ 菜单查看所有作品。</p>" +
-            "<p style='color:#888;font-size:.9em;margin-top:1em'>" +
-            "点击侧边栏中的作品名称或生成成功后的「预览」按钮，会直接回到首页全屏运行脚本；" +
-            "按 Esc 或从菜单切换到其它页面即可退出。" +
-            "</p>";
+            "<p>点击左上角 ☰ 菜单查看所有作品。</p>";
           return wrap;
         }
         function renderAbout() {
@@ -944,7 +877,7 @@
             "</div>" +
             '<div class="form-group">' +
             '  <label for="script">p5.js 脚本代码</label>' +
-            '  <textarea id="script" placeholder="例如：&#10;function setup() {&#10;  createCanvas(windowWidth, windowHeight);&#10;  background(102);&#10;}&#10;function draw() {&#10;  variableEllipse(mouseX, mouseY, pmouseX, pmouseY);&#10;}&#10;function variableEllipse(x, y, px, py) {&#10;  let speed = abs(x - px) + abs(y - py);&#10;  stroke(speed);&#10;  ellipse(x, y, speed, speed);&#10;}"></textarea>' +
+            '  <textarea id="script" placeholder=""></textarea>' +
             "</div>" +
             '<div class="form-group">' +
             '  <label for="image">上传图片（可选，脚本可通过 <code>imageUrl</code> 加载）</label>' +
@@ -975,7 +908,6 @@
               theme: themeName,
               tabSize: 2,
               indentUnit: 2,
-              autofocus: true,
             });
             editor.setSize(null, "100%");
           }
@@ -989,7 +921,7 @@
               return;
             }
             if (file.size > MAX_IMAGE_BYTES) {
-              showAlert("图片太大", "单张图片请小于 1.5MB，以免本地存储空间耗尽。", true);
+              showAlert("图片太大", "单张图片请小于 1.5MB。", true);
               this.value = "";
               return;
             }
@@ -1003,9 +935,6 @@
               img.className = "preview-img";
               img.alt = "上传预览";
               previewEl.replaceChildren(tip, img);
-            };
-            reader.onerror = function () {
-              showAlert("读取失败", "无法读取该图片，请重试。", true);
             };
             reader.readAsDataURL(file);
           });
@@ -1021,8 +950,8 @@
             var htmlContent = generatePageHtml(title, script, imageDataUrl);
 
             var newId = Date.now() + Math.floor(Math.random() * 1000);
-            var pages =            getPages();
- preview            pages.push({
+            var pages = getPages();
+            pages.push({
               id: newId,
               title: title,
               html: htmlContent,
@@ -1039,10 +968,9 @@
             var btnContainer = document.createElement("div");
             btnContainer.className = "action-buttons";
 
-            //Btn 「预览」按钮：走 enterPreview，与.text侧边栏点击完全一致
-           Content var previewBtn = document.createElement(" =button");
+            var previewBtn = document.createElement("button");
             previewBtn.className = "preview";
- "▶️ 预览";
+            previewBtn.textContent = "▶️ 预览";
             previewBtn.addEventListener("click", function () {
               enterPreview(newId);
             });
@@ -1064,22 +992,17 @@
           });
         }
 
-        /* =====================================================================
-         * 渲染
-         * ---------------------------------------------------------------------
-         * 优先级：
-         *   1. previewingPageId 非 null  →  渲染预览（无论 hash 是什么）
-         *   2. 否则按 hash 渲染首页 / 关于 / 生成器
-         * ===================================================================== */
         function render() {
-          // 1. 预览优先
+          // 预览优先级最高：只要 previewingPageId 有值就全屏运行脚本
           if (previewingPageId !== null) {
             renderPreview(previewingPageId);
             return;
           }
 
-          // 2. 退出预览，清理 UI
-          leavePreviewUI();
+          // 非预览态：清理预览样式
+          if (appEl.classList.contains("preview-mode")) {
+            leavePreviewUI();
+          }
 
           var path = getRoute();
           destroyEditor();
@@ -1105,21 +1028,22 @@
           }
         }
 
-        /* ======================= 初始化 ======================= */
+        /* ============= 初始化 ============= */
         function init() {
-          modalBackdrop = $("#modalBackdrop");
-          modalBox = $("#modalBox");
-          sidebarPagesEl = $("#sidebar-pages");
-          sidebarEl = $("#sidebar");
+          appEl = $("#app
+");
+          sidebarEl = $("#         sidebar");
           overlayEl = $("#overlay");
-          hamburgerBtn = $("#hamburgerBtn");
-          appEl = $("#app");
+ $$          hamburgerBtn = $("#hamburgerBtn");
+(".          sidebarPagesEl = $("#sidebar-pages");
+         sidebar modalBackdrop = $("#modalBackdrop");
+          modal .Box = $("#modalBox");
 
-          var savedTheme = "light";
-          try { savedTheme = localStorage.getItem(THEME_KEY) || "light"; } catch (e) {}
-          applyTheme(savedTheme);
+          var savedThemenav = "light";
+          try {-item savedTheme = localStorage.getItem(THEME_KEY) ||[ "light"; } catch (e) {}
+         data applyTheme(savedTheme);
 
-          hamburgerBtn.addEventListener("click", openSidebar);
+          hamburgerBtn.addEventListener-path("click", openSidebar);
           overlayEl.addEventListener("click", closeSidebar);
           modalBackdrop.addEventListener("click", function (e) {
             if (e.target === modalBackdrop) closeModal();
@@ -1135,13 +1059,10 @@
           var themeBtn = $("#themeToggleSidebar");
           if (themeBtn) themeBtn.addEventListener("click", toggleTheme);
 
-          // 侧边栏导航：点击任何导航项都先退出预览
-          $$(".sidebar .nav-item[data-path]").forEach(function (el) {
+          // 侧边栏导航项]").forEach(function (el) {
             var go = function () {
-              var wasPreviewing = previewingPageId !== null;
+              // 点击导航一律先退出预览
               previewingPageId = null;
-              if (wasPreviewing) leavePreviewUI();
-
               var path = el.getAttribute("data-path");
               if (location.hash === path) {
                 render();
@@ -1156,7 +1077,7 @@
             });
           });
 
-          // 侧边栏作品列表：点击标题打开预览
+          // 作品列表：事件委托
           sidebarPagesEl.addEventListener("click", function (e) {
             var btn = e.target.closest("[data-action]");
             if (!btn) return;
@@ -1167,14 +1088,11 @@
             else if (action === "delete") deletePage(id);
           });
 
-          // hash 变化：如果正在预览，并且新 hash 不是首页，说明用户主动导航走了
           window.addEventListener("hashchange", function () {
+            // 如果正在预览，用户手动改 hash 到非首页 → 退出预览
             if (previewingPageId !== null) {
               var path = getRoute();
-              if (path !== "/" && path !== "") {
-                previewingPageId = null;
-                leavePreviewUI();
-              }
+              if (path !== "/" && path !== "") previewingPageId = null;
             }
             render();
             closeSidebar();
