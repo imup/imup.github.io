@@ -192,24 +192,36 @@
         font-style: italic;
       }
 
-      /* ⬇️ 侧边栏底部：导出 ZIP 与切换主题并列，中间用线隔开 */
+      /* ⬇️ 侧边栏底部：导出 ZIP 与切换主题「同一行左右并排」，中间竖线分隔 */
       .sidebar-footer {
         margin-top: auto;
         border-top: 1px solid var(--line-light);
-        padding: 8px 0 0;
+        padding: 0;
       }
       body.dark-mode .sidebar-footer { border-top-color: var(--line-dark); }
-      .sidebar-footer .nav-item {
-        padding: 10px clamp(16px, 4vw, 20px);
+
+      .sidebar-footer .footer-row {
+        display: flex;
+        align-items: stretch;
+      }
+      .sidebar-footer .footer-item {
+        flex: 1 1 0;
+        min-width: 0;
+        padding: 12px clamp(8px, 2vw, 14px);
         border-bottom: none;
+        text-align: center;
+        font-size: 0.9rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
-      /* 底部两项之间的分隔线 */
-      .sidebar-footer .footer-divider {
-        border-top: 1px solid var(--line-light);
-        margin: 0;
+      .sidebar-footer .footer-vdivider {
+        width: 1px;
+        flex: 0 0 1px;
+        background: var(--line-light);
       }
-      body.dark-mode .sidebar-footer .footer-divider {
-        border-top-color: var(--line-dark);
+      body.dark-mode .sidebar-footer .footer-vdivider {
+        background: var(--line-dark);
       }
 
       .overlay {
@@ -411,6 +423,7 @@
       @media (max-width: 420px) {
         .hamburger-btn { font-size: 28px; }
         .action-buttons button { flex: 1 1 auto; }
+        .sidebar-footer .footer-item { font-size: 0.82rem; padding: 10px 6px; }
       }
       @media (max-height: 480px) {
         #app { padding-top: 52px; padding-bottom: 20px; }
@@ -437,14 +450,16 @@
         <div class="no-pages">暂无生成的脚本</div>
       </div>
 
-      <!-- ⬇️ 底部：导出 ZIP 与切换主题并列，中间用线隔开 -->
+      <!-- ⬇️ 底部：导出 ZIP 与切换主题同一行左右并排，中间竖线分隔 -->
       <div class="sidebar-footer">
-        <div class="nav-item" id="exportZipSidebar" role="button" tabindex="0">
-          📦 导出所有脚本 (ZIP)
-        </div>
-        <div class="footer-divider"></div>
-        <div class="nav-item" id="themeToggleSidebar" role="button" tabindex="0">
-          🌓 切换主题
+        <div class="footer-row">
+          <div class="nav-item footer-item" id="exportZipSidebar" role="button" tabindex="0">
+            📦 导出 ZIP
+          </div>
+          <div class="footer-vdivider"></div>
+          <div class="nav-item footer-item" id="themeToggleSidebar" role="button" tabindex="0">
+            🌓 切换主题
+          </div>
         </div>
       </div>
     </nav>
@@ -1140,8 +1155,6 @@
               );
             });
 
-            /* ⬇️ 已移除这里的“导出所有脚本 (ZIP)”按钮，改为侧边栏入口 */
-
             btnContainer.appendChild(downloadBtn);
             resultEl.replaceChildren(msg, btnContainer);
 
@@ -1249,7 +1262,7 @@
             }
           });
 
-          /* ⬇️ 侧边栏底部：导出 ZIP 入口 */
+          /* ⬇️ 侧边栏底部：导出 ZIP 入口（与切换主题同一行） */
           var exportZipBtn = $("#exportZipSidebar");
           if (exportZipBtn) {
             var runExport = function () {
