@@ -531,7 +531,7 @@
         background: #fff;
         color: #222;
         border-radius: 8px;
-        width: min(440px, 100%);
+        width: min(480px, 100%);
         max-height: 88vh;
         overflow-y: auto;
         padding: clamp(16px, 4vw, 22px);
@@ -563,9 +563,48 @@
         color: #ddd;
         border-color: #555;
       }
+      .modal textarea {
+        width: 100%;
+        padding: 8px 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        margin-bottom: 16px;
+        font-size: 14px;
+        font-family: inherit;
+        line-height: 1.5;
+        resize: vertical;
+        min-height: 120px;
+        outline: none;
+      }
+      .modal textarea:focus {
+        border-color: #007bff;
+      }
+      body.dark-mode .modal textarea {
+        background: #3a3a3a;
+        color: #ddd;
+        border-color: #555;
+      }
+      body.dark-mode .modal textarea:focus {
+        border-color: #4da3ff;
+      }
+      .modal .modal-hint {
+        font-size: 0.82rem;
+        color: #888;
+        margin: -8px 0 12px;
+        line-height: 1.5;
+      }
+      body.dark-mode .modal .modal-hint {
+        color: #999;
+      }
       .modal-actions {
         display: flex;
-        justify-content: flex-end;
+        justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .modal-actions .right-group {
+        display: flex;
         gap: 8px;
         flex-wrap: wrap;
       }
@@ -575,9 +614,24 @@
       .modal-actions .danger {
         background: #d9534f;
       }
+      .modal-actions .link-btn {
+        background: transparent;
+        color: #888;
+        padding: 8px 10px;
+        font-size: 0.88rem;
+        border-radius: 4px;
+        text-decoration: underline;
+      }
+      .modal-actions .link-btn:hover {
+        background: rgba(0, 0, 0, 0.06);
+        color: #d9534f;
+      }
+      body.dark-mode .modal-actions .link-btn:hover {
+        background: rgba(255, 255, 255, 0.08);
+      }
 
       /* ============================================================
-       * AI 助手页面（全屏 / 底部浮动输入栏 / + 号选模型 / - 号清除）
+       * AI 助手页面
        * ============================================================ */
       .ai-page {
         position: relative;
@@ -773,7 +827,7 @@
         border: 1px solid #ccc;
         border-radius: 12px;
         box-shadow: 0 12px 34px rgba(0, 0, 0, 0.32);
-        min-width: 250px;
+        min-width: 280px;
         z-index: 500;
         overflow: hidden;
       }
@@ -788,9 +842,9 @@
       .ai-model-item {
         display: flex;
         align-items: center;
-        padding: 10px 12px;
+        padding: 9px 10px;
         cursor: pointer;
-        gap: 6px;
+        gap: 4px;
         font-size: 0.93rem;
         user-select: none;
       }
@@ -820,20 +874,26 @@
         white-space: nowrap;
       }
       .ai-model-item .ai-key,
+      .ai-model-item .ai-prompt,
       .ai-model-item .ai-dl {
         background: transparent;
         color: #888;
-        padding: 3px 7px;
+        padding: 4px 6px;
         border-radius: 6px;
         font-size: 0.95rem;
         line-height: 1;
         cursor: pointer;
         border: none;
         transition: background 0.15s, color 0.15s;
+        flex: 0 0 auto;
       }
       .ai-model-item .ai-key:hover {
         background: rgba(240, 173, 78, 0.15);
         color: #f0ad4e;
+      }
+      .ai-model-item .ai-prompt:hover {
+        background: rgba(155, 89, 182, 0.15);
+        color: #9b59b6;
       }
       .ai-model-item .ai-dl:hover {
         background: rgba(0, 0, 0, 0.08);
@@ -842,8 +902,20 @@
       body.dark-mode .ai-model-item .ai-key:hover {
         background: rgba(240, 173, 78, 0.2);
       }
+      body.dark-mode .ai-model-item .ai-prompt:hover {
+        background: rgba(155, 89, 182, 0.25);
+      }
       body.dark-mode .ai-model-item .ai-dl:hover {
         background: rgba(255, 255, 255, 0.14);
+      }
+      /* 已设置提示词时显示小圆点标记 */
+      .ai-model-item .ai-prompt.has-prompt {
+        color: #9b59b6;
+      }
+      .ai-model-item .ai-prompt.has-prompt::after {
+        content: "•";
+        margin-left: 1px;
+        color: #9b59b6;
       }
 
       .ai-input-bar textarea {
@@ -917,6 +989,9 @@
           height: 36px;
           min-width: 36px;
           font-size: 24px;
+        }
+        .ai-model-menu {
+          min-width: 260px;
         }
       }
       @media (max-height: 480px) {
@@ -1030,6 +1105,7 @@
          * ============================================================ */
         var AI_KEY_STORAGE = "p5_ai_keys";
         var AI_CHAT_STORAGE = "p5_ai_chats";
+        var AI_PROMPT_STORAGE = "p5_ai_prompts";
 
         var AI_MODELS = [
           {
@@ -1057,6 +1133,7 @@
           currentModel: null, // 默认不选择模型
           keys: {},
           chats: {},
+          prompts: {}, // 每个模型的系统提示词
           busy: false,
         };
 
@@ -1098,11 +1175,32 @@
             localStorage.setItem(AI_CHAT_STORAGE, JSON.stringify(aiState.chats));
           } catch (e) {}
         }
+        function loadAIPrompts() {
+          try {
+            var raw = localStorage.getItem(AI_PROMPT_STORAGE);
+            var o = raw ? JSON.parse(raw) : {};
+            return o && typeof o === "object" ? o : {};
+          } catch (e) {
+            return {};
+          }
+        }
+        function saveAIPrompts() {
+          try {
+            localStorage.setItem(
+              AI_PROMPT_STORAGE,
+              JSON.stringify(aiState.prompts),
+            );
+          } catch (e) {}
+        }
         function initAIState() {
           aiState.keys = loadAIKeys();
           aiState.chats = loadAIChats();
+          aiState.prompts = loadAIPrompts();
           AI_MODELS.forEach(function (m) {
             if (!Array.isArray(aiState.chats[m.id])) aiState.chats[m.id] = [];
+            if (typeof aiState.prompts[m.id] !== "string") {
+              aiState.prompts[m.id] = "";
+            }
           });
           /* 默认不选中模型，让用户主动选择并配置 API Key */
           aiState.currentModel = null;
@@ -1183,7 +1281,7 @@
           modalBox.innerHTML = "";
           builder(modalBox);
           modalBackdrop.classList.add("show");
-          var f = $("input, button", modalBox);
+          var f = $("input, textarea, button", modalBox);
           if (f && f.focus) f.focus();
         }
         function closeModal() {
@@ -1199,11 +1297,14 @@
             p.textContent = message;
             var a = document.createElement("div");
             a.className = "modal-actions";
+            var right = document.createElement("div");
+            right.className = "right-group";
             var ok = document.createElement("button");
             ok.textContent = "知道了";
             if (isError) ok.className = "danger";
             ok.addEventListener("click", closeModal);
-            a.appendChild(ok);
+            right.appendChild(ok);
+            a.appendChild(right);
             box.appendChild(h);
             box.appendChild(p);
             box.appendChild(a);
@@ -1217,6 +1318,8 @@
             p.textContent = message;
             var a = document.createElement("div");
             a.className = "modal-actions";
+            var right = document.createElement("div");
+            right.className = "right-group";
             var cancel = document.createElement("button");
             cancel.className = "cancel";
             cancel.textContent = "取消";
@@ -1228,8 +1331,9 @@
               closeModal();
               onConfirm();
             });
-            a.appendChild(cancel);
-            a.appendChild(ok);
+            right.appendChild(cancel);
+            right.appendChild(ok);
+            a.appendChild(right);
             box.appendChild(h);
             box.appendChild(p);
             box.appendChild(a);
@@ -1246,6 +1350,8 @@
             input.spellcheck = false;
             var a = document.createElement("div");
             a.className = "modal-actions";
+            var right = document.createElement("div");
+            right.className = "right-group";
             var cancel = document.createElement("button");
             cancel.className = "cancel";
             cancel.textContent = "取消";
@@ -1264,10 +1370,77 @@
             input.addEventListener("keydown", function (e) {
               if (e.key === "Enter") ok.click();
             });
-            a.appendChild(cancel);
-            a.appendChild(ok);
+            right.appendChild(cancel);
+            right.appendChild(ok);
+            a.appendChild(right);
             box.appendChild(h);
             box.appendChild(input);
+            box.appendChild(a);
+          });
+        }
+
+        /** 多行文本输入弹窗（用于系统提示词） */
+        function showPromptArea(opts) {
+          openModal(function (box) {
+            var h = document.createElement("h3");
+            h.textContent = opts.title;
+
+            var hint = document.createElement("div");
+            hint.className = "modal-hint";
+            hint.textContent =
+              opts.hint || "提示词会在每次对话时作为系统消息发送给模型。";
+
+            var ta = document.createElement("textarea");
+            ta.value = opts.value || "";
+            ta.placeholder = opts.placeholder || "";
+            ta.rows = 7;
+            ta.spellcheck = false;
+
+            var a = document.createElement("div");
+            a.className = "modal-actions";
+
+            /* 左侧“清除提示词”按钮（仅当已有内容时显示） */
+            var leftWrap = document.createElement("div");
+            if (opts.value && opts.value.trim()) {
+              var clearBtn = document.createElement("button");
+              clearBtn.className = "link-btn";
+              clearBtn.textContent = "清除提示词";
+              clearBtn.addEventListener("click", function () {
+                closeModal();
+                if (opts.onClear) opts.onClear();
+              });
+              leftWrap.appendChild(clearBtn);
+            }
+
+            var rightWrap = document.createElement("div");
+            rightWrap.className = "right-group";
+            var cancel = document.createElement("button");
+            cancel.className = "cancel";
+            cancel.textContent = "取消";
+            cancel.addEventListener("click", closeModal);
+
+            var ok = document.createElement("button");
+            ok.textContent = "保存";
+            ok.addEventListener("click", function () {
+              var v = ta.value; // 保留用户换行，不做 trim
+              closeModal();
+              opts.onOk(v);
+            });
+            ta.addEventListener("keydown", function (e) {
+              // Ctrl/Cmd + Enter 快速保存
+              if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                ok.click();
+              }
+            });
+            rightWrap.appendChild(cancel);
+            rightWrap.appendChild(ok);
+
+            a.appendChild(leftWrap);
+            a.appendChild(rightWrap);
+            box.appendChild(h);
+            box.appendChild(hint);
+            box.appendChild(ta);
             box.appendChild(a);
           });
         }
@@ -1804,7 +1977,7 @@
             "点击侧边栏中的脚本名即可直接运行该脚本，再点一次仍然运行该脚本；" +
             "点击“首页”“关于”“编写脚本”等其它导航项会回到随机状态。</p>" +
             "<p>AI 助手支持 ChatGPT / Gemini / DeepSeek 流式输出，" +
-            "首次进入需点击 + 选择模型并设置 API Key，可下载对话为 Markdown。</p>";
+            "每个模型可单独设置 API Key 与系统提示词，可下载对话为 Markdown。</p>";
           return wrap;
         }
         function renderGenerator() {
@@ -1973,7 +2146,7 @@
         }
 
         /* ============================================================
-         * AI 助手 —— 页面渲染（全屏 / 底部浮动 / + 选模型 / - 清除）
+         * AI 助手 —— 页面渲染
          * ============================================================ */
         function renderAIAssistant() {
           var wrap = document.createElement("div");
@@ -2012,6 +2185,18 @@
             name.className = "ai-model-name";
             name.textContent = m.name;
 
+            /* 系统提示词按钮（🎭） */
+            var promptBtn = document.createElement("button");
+            promptBtn.className = "ai-prompt";
+            promptBtn.type = "button";
+            promptBtn.title = "设置系统提示词";
+            promptBtn.textContent = "🎭";
+            promptBtn.dataset.prompt = m.id;
+            if (aiState.prompts[m.id] && aiState.prompts[m.id].trim()) {
+              promptBtn.classList.add("has-prompt");
+            }
+
+            /* API Key 按钮（🔑） */
             var keyBtn = document.createElement("button");
             keyBtn.className = "ai-key";
             keyBtn.type = "button";
@@ -2019,6 +2204,7 @@
             keyBtn.textContent = "🔑";
             keyBtn.dataset.key = m.id;
 
+            /* 下载按钮（⬇） */
             var dl = document.createElement("button");
             dl.className = "ai-dl";
             dl.type = "button";
@@ -2028,6 +2214,7 @@
 
             item.appendChild(check);
             item.appendChild(name);
+            item.appendChild(promptBtn);
             item.appendChild(keyBtn);
             item.appendChild(dl);
             frag.appendChild(item);
@@ -2047,7 +2234,6 @@
               el.classList.remove("active");
             }
           });
-          /* 模型选择按钮显示 */
           var btn = $("#aiModelBtn");
           if (btn) {
             if (aiState.currentModel) {
@@ -2130,7 +2316,7 @@
 
         /* ---------------- AI 助手 —— 流式请求 ---------------- */
 
-        function streamAI(model, key, messages, onDelta) {
+        function streamAI(model, key, messages, systemPrompt, onDelta) {
           var conf = aiModelConf(model);
           var url, options;
 
@@ -2148,12 +2334,23 @@
                 parts: [{ text: m.content }],
               };
             });
+            var body = { contents: contents };
+            if (systemPrompt) {
+              body.systemInstruction = { parts: [{ text: systemPrompt }] };
+            }
             options = {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ contents: contents }),
+              body: JSON.stringify(body),
             };
           } else {
+            var msgs = [];
+            if (systemPrompt) {
+              msgs.push({ role: "system", content: systemPrompt });
+            }
+            messages.forEach(function (m) {
+              msgs.push({ role: m.role, content: m.content });
+            });
             url = conf.endpoint;
             options = {
               method: "POST",
@@ -2163,9 +2360,7 @@
               },
               body: JSON.stringify({
                 model: conf.apiModel,
-                messages: messages.map(function (m) {
-                  return { role: m.role, content: m.content };
-                }),
+                messages: msgs,
                 stream: true,
               }),
             };
@@ -2256,6 +2451,33 @@
           );
         }
 
+        /** 弹出系统提示词输入框（多行文本） */
+        function promptSystemPrompt(model) {
+          var existing = aiState.prompts[model] || "";
+          showPromptArea({
+            title: "设置 " + aiModelName(model) + " 系统提示词",
+            hint:
+              "这段提示词会作为 system 消息在每次对话时发送给模型，用于设定角色、语气或规则。" +
+              "留空则不发送。Ctrl / Cmd + Enter 可快速保存。",
+            value: existing,
+            placeholder:
+              "例如：你是一位擅长 p5.js 生成艺术的助手，回答简洁专业，代码附注释。",
+            onOk: function (v) {
+              aiState.prompts[model] = v.trim();
+              saveAIPrompts();
+              buildAIModelMenu();
+              refreshAIModelUI();
+              /* 如果当前模型就是它，刷新一次界面即可 */
+            },
+            onClear: function () {
+              aiState.prompts[model] = "";
+              saveAIPrompts();
+              buildAIModelMenu();
+              refreshAIModelUI();
+            },
+          });
+        }
+
         /** 选择 / 切换模型：无 Key 时先要求输入 Key */
         function selectAIModel(model) {
           if (!aiModelConf(model)) return;
@@ -2284,6 +2506,13 @@
             return;
           }
           var lines = ["# " + aiModelName(model) + " 对话记录", ""];
+          var sys = aiState.prompts[model];
+          if (sys && sys.trim()) {
+            lines.push("## 🎭 系统提示词");
+            lines.push("");
+            lines.push(sys);
+            lines.push("");
+          }
           chat.forEach(function (m) {
             lines.push(
               m.role === "user" ? "## 🧑 我" : "## 🤖 " + aiModelName(model),
@@ -2376,10 +2605,12 @@
             }
           };
 
-          /* 注意：发送给 API 的 messages 不含最后那个占位 assistant */
+          /* 发送给 API 的 messages 不含最后那个占位 assistant */
           var payload = chat.slice(0, -1);
+          /* 取该模型的系统提示词 */
+          var systemPrompt = aiState.prompts[model] || "";
 
-          streamAI(model, key, payload, onDelta)
+          streamAI(model, key, payload, systemPrompt, onDelta)
             .then(function () {
               chat[chat.length - 1].content = accumulated || "(空回复)";
               saveAIChats();
@@ -2456,6 +2687,14 @@
 
           if (modelMenu) {
             modelMenu.addEventListener("click", function (e) {
+              /* 点击 🎭：设置系统提示词 */
+              var promptBtn = e.target.closest("[data-prompt]");
+              if (promptBtn) {
+                e.stopPropagation();
+                closeAIModelMenu();
+                promptSystemPrompt(promptBtn.dataset.prompt);
+                return;
+              }
               /* 点击 🔑：设置 / 更新 Key */
               var keyBtn = e.target.closest("[data-key]");
               if (keyBtn) {
