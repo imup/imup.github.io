@@ -383,7 +383,7 @@
         background: #fff;
       }
 
-      /* AI 页面全屏最大化 */
+      /* AI页面全屏最大化 */
       #app.ai-mode {
         padding: 0;
         max-width: none;
@@ -630,7 +630,7 @@
         background: rgba(255, 255, 255, 0.08);
       }
 
-      /* AI 助手页面 */
+      /* AI助手页面 */
       .ai-page {
         position: relative;
         display: flex;
@@ -1054,7 +1054,7 @@
             role="button"
             tabindex="0"
           >
-            📦 导出 ZIP
+            📦 导出ZIP
           </div>
           <div class="footer-vdivider"></div>
           <div
@@ -1098,7 +1098,7 @@
           "https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js";
         var P5_FILES = ["sketch1.js", "sketch2.js", "sketch3.js"];
 
-        /* AI 助手配置 */
+        /* AI助手配置 */
         var AI_KEY_STORAGE = "p5_ai_keys";
         var AI_CHAT_STORAGE = "p5_ai_chats";
         var AI_PROMPT_STORAGE = "p5_ai_prompts";
@@ -1201,7 +1201,7 @@
               aiState.prompts[m.id] = "";
             }
           });
-          /* 默认不选中模型，让用户主动选择并配置 API Key */
+          /* 默认不选中模型 */
           aiState.currentModel = null;
         }
 
@@ -1378,7 +1378,7 @@
           });
         }
 
-        /** 多行文本输入弹窗（用于系统提示词） */
+        /* 多行文本输入弹窗（用于系统提示词） */
         function showPromptArea(opts) {
           openModal(function (box) {
             var h = document.createElement("h3");
@@ -1421,12 +1421,12 @@
             var ok = document.createElement("button");
             ok.textContent = "保存";
             ok.addEventListener("click", function () {
-              var v = ta.value; // 保留用户换行，不做 trim
+              var v = ta.value; // 保留用户换行不做trim
               closeModal();
               opts.onOk(v);
             });
             ta.addEventListener("keydown", function (e) {
-              // Ctrl/Cmd + Enter 快速保存
+              // Ctrl+Enter快速保存
               if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
                 e.preventDefault();
                 ok.click();
@@ -1815,11 +1815,9 @@
               delete appEl.dataset.currentPageId;
               var wrap = document.createElement("div");
               wrap.innerHTML =
-                "<h1>还没有可运行的 p5 脚本</h1>" +
-                "<p>请把脚本放进与本页面同级的 <code>" +
-                P5_DIR +
-                "</code> 文件夹，" +
-                "并在页面代码顶部的 <code>P5_FILES</code> 数组里写上文件名。</p>";
+                "<h1>还没有可运行的脚本</h1>" +
+                "<p>请把脚本放进与本页面同级的文件夹，" +
+                "并在页面代码顶部的数组里写上文件名</p>";
               appEl.appendChild(wrap);
               return;
             }
@@ -1966,15 +1964,11 @@
           wrap.innerHTML =
             "<h1>关于</h1>" +
             "<p>纯前端工具，基于localStorage存储，无需后端。</p>" +
-            "<p>使用CodeMirror实现代码高亮，支持亮色 / 暗色主题。</p>" +
+            "<p>使用CodeMirror实现代码高亮，支持亮色/暗色主题。</p>" +
             "<p>所有脚本均可导出为ZIP包，也可单独下载为HTML。</p>" +
-            "<p>首页会从 <code>" +
-            P5_DIR +
-            "</code> 文件夹中随机运行一个p5脚本；" +
-            "点击侧边栏中的脚本名即可直接运行该脚本，再点一次仍然运行该脚本；" +
-            "点击“首页”“关于”“编写脚本”等其它导航项会回到随机状态。</p>" +
-            "<p>AI助手支持 ChatGPT / Gemini / DeepSeek流式输出，" +
-            "每个模型可单独设置API Key与系统提示词，可下载对话为Markdown </p>";
+            "<p>首页随机运行一个p5脚本，点击侧边栏中的脚本名即可直接运行该脚本，再点击其它导航项会回到随机状态。</p>" +
+            "<p>AI助手支持ChatGPT / Gemini / DeepSeek流式输出，" +
+            "每个模型可单独设置API Key与系统提示词，并可导出对话内容为Markdown格式 </p>";
           return wrap;
         }
         function renderGenerator() {
@@ -1982,7 +1976,7 @@
           wrap.className = "generator-page";
           wrap.innerHTML =
             "<h1>编写p5.js脚本</h1>" +
-            "<p>输入标题和p5.js代码，上传图片（可选），点击提交。</p>" +
+            "<p>输入标题和p5.js代码，上传图片（可选）点击提交脚本。</p>" +
             '<div class="form-group">' +
             '  <label for="title">标题</label>' +
             '  <input type="text" id="title" placeholder="例如：我的创意绘图">' +
@@ -1996,7 +1990,7 @@
             '  <input type="file" id="image" accept="image/*">' +
             '  <div id="image-preview"></div>' +
             "</div>" +
-            '<button id="buildBtn" type="button">提交页面</button>' +
+            '<button id="buildBtn" type="button">提交脚本</button>' +
             '<div id="result" class="result" style="display:none;"></div>';
           return wrap;
         }
@@ -2142,7 +2136,7 @@
           });
         }
 
-        /* AI 助手 —— 页面渲染 */
+        /* AI助手 — 页面渲染 */
         function renderAIAssistant() {
           var wrap = document.createElement("div");
           wrap.className = "ai-page";
@@ -2155,7 +2149,7 @@
             '      <button class="ai-model-btn" id="aiModelBtn" type="button" title="选择模型">+</button>' +
             '      <div class="ai-model-menu" id="aiModelMenu"></div>' +
             "    </div>" +
-            '    <textarea id="aiInput" rows="1" placeholder="输入消息，Enter 发送，Shift+Enter 换行"></textarea>' +
+            '    <textarea id="aiInput" rows="1" placeholder="输入消息回车发送，Shift+回车换行"></textarea>' +
             '    <button class="ai-send-btn" id="aiSendBtn" type="button" title="发送">↑</button>' +
             "  </div>" +
             "</div>";
@@ -2191,7 +2185,7 @@
               promptBtn.classList.add("has-prompt");
             }
 
-            /* API Key 按钮 */
+            /* API Key按钮 */
             var keyBtn = document.createElement("button");
             keyBtn.className = "ai-key";
             keyBtn.type = "button";
@@ -2260,7 +2254,7 @@
             var empty = document.createElement("div");
             empty.className = "ai-empty";
             empty.textContent =
-              "还没有选择模型\n\n点击左下角的 + 选择一个模型\n并输入 API Key 后开始对话";
+              "还没有选择模型\n\n点击左下角的 + 选择一个模型\n并输入API Key后开始对话";
             box.replaceChildren(empty);
             return;
           }
@@ -2430,9 +2424,7 @@
           });
         }
 
-        /* AI 助手 — 交互 */
-
-        /** 弹出 API Key 输入框（密码输入，加密显示） */
+        /* 弹出APIKey输入框（密码输入加密显示） */
         function promptAPIKey(model, onSaved) {
           showPrompt(
             "设置 " + aiModelName(model) + " API Key",
@@ -2452,8 +2444,8 @@
           showPromptArea({
             title: "设置 " + aiModelName(model) + " 系统提示词",
             hint:
-              "这段提示词会作为 system 消息在每次对话时发送给模型，用于设定角色、语气或规则。" +
-              "留空则不发送。Ctrl / Cmd + Enter 可快速保存。",
+              "这段提示词会作为system 消息在每次对话时发送给模型，用于设定角色、语气或规则。" +
+              "留空则不发送。Ctrl+Enter 可快速保存。",
             value: existing,
             placeholder:
               "例如：你是一位擅长p5.js生成艺术的助手，回答简洁专业，代码附注释。",
@@ -2473,7 +2465,7 @@
           });
         }
 
-        /** 选择 / 切换模型：无 Key 时先要求输入 Key */
+        /* 选择和切换模型：无Key时先要求输入Key */
         function selectAIModel(model) {
           if (!aiModelConf(model)) return;
           if (!aiState.keys[model]) {
@@ -2599,7 +2591,7 @@
             }
           };
 
-          /* 发送给 API 的 messages 不含最后那个占位 assistant */
+          /* 发送给API的 messages不含最后那个占位assistant */
           var payload = chat.slice(0, -1);
           /* 取该模型的系统提示词 */
           var systemPrompt = aiState.prompts[model] || "";
@@ -2757,7 +2749,7 @@
             }
           }
 
-          /* 首页 = 全屏p5运行器 */
+          /* 首页全屏p5运行器 */
           if (path === "/" || path === "" || path === "/index.html") {
             renderRunner();
             return;
