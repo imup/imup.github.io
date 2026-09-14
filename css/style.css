@@ -801,6 +801,7 @@ button:disabled {
   color: var(--text-muted);
   padding: 4px 6px;
   border-radius: 6px;
+  border: 1px solid var(--line);
   font-size: 0.95rem;
   line-height: 1;
   cursor: pointer;
