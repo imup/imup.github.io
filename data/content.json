@@ -71,10 +71,10 @@
     "promptSystemTitle": "设置 {model} 系统提示词",
     "promptSystemHint": "这段提示词会作为 system 消息在每次对话时发送给模型，用于设定角色、语气或规则。留空则不发送。Ctrl+Enter 可快速保存。",
     "promptSystemPlaceholder": "例如：你是一位擅长p5.js生成艺术的助手，回答简洁专业，代码附注释。",
-    "downloadHeader": "# {model} 对话记录",
-    "downloadSysSection": "## 🎭 系统提示词",
-    "downloadUserSection": "## 🧑 我",
-    "downloadAssistantSection": "## 🤖 {model}",
+    "downloadHeader": "#{model}对话记录",
+    "downloadSysSection": "## 系统提示词",
+    "downloadUserSection": "## 我",
+    "downloadAssistantSection": "## {model}",
     "filePrefix": "ai_chat_"
   },
   "modal": {
@@ -105,7 +105,7 @@
     "cannotExportDesc": "当前没有可导出的作品。",
     "exportFailedTitle": "导出失败",
     "deleteTitle": "删除作品",
-    "deleteConfirm": "确定要删除「{title}」吗？此操作不可恢复。",
+    "deleteConfirm": "确定要删除{title}吗？此操作不可恢复。",
     "renameTitle": "重命名作品",
     "needModelTitle": "请先选择模型",
     "needModelDesc": "点击左下角的 + 按钮选择一个模型并设置Key。",
@@ -113,10 +113,10 @@
     "requestFailedDesc": "网络错误，请检查 API Key 或稍后重试。",
     "noNeedClearTitle": "无需清除",
     "noNeedClearModelDesc": "还没有选择模型，请点击左下角的 + 选择一个模型。",
-    "noNeedClearChatDesc": "「{model}」当前没有对话内容。",
+    "noNeedClearChatDesc": "{model}当前没有对话内容。",
     "clearChatTitle": "清除对话",
-    "clearChatConfirm": "确定要清除与「{model}」的全部对话内容吗？",
+    "clearChatConfirm": "确定要清除与{model}的全部对话内容吗？",
     "cannotDownloadTitle": "无法下载",
-    "cannotDownloadDesc": "「{model}」还没有对话内容。"
+    "cannotDownloadDesc": "{model}还没有对话内容。"
   }
 }
