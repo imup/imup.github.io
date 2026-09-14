@@ -1150,7 +1150,7 @@
       promptBtn.className = "ai-prompt";
       promptBtn.type = "button";
       promptBtn.title = t("ai.modelPromptTitle");
-      promptBtn.textContent = "🎭";
+      promptBtn.textContent = "#";
       promptBtn.dataset.prompt = m.id;
       if (aiState.prompts[m.id] && aiState.prompts[m.id].trim()) {
         promptBtn.classList.add("has-prompt");
@@ -1160,7 +1160,7 @@
       keyBtn.className = "ai-key";
       keyBtn.type = "button";
       keyBtn.title = t("ai.modelKeyTitle");
-      keyBtn.textContent = "🔑";
+      keyBtn.textContent = "¥";
       keyBtn.dataset.key = m.id;
 
       var dl = document.createElement("button");
