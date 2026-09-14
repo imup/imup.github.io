@@ -1,3 +1,4 @@
+/* 基础重置与全局 */
 html,
 body {
   height: 100%;
@@ -48,6 +49,7 @@ a:active {
   color: #d40047;
 }
 
+/* 标题 */
 h1 {
   font-size: 80px;
   line-height: 1.18;
@@ -66,6 +68,7 @@ h1 {
   }
 }
 
+/* 页面背景 */
 .page-bg {
   position: absolute;
   top: 0;
@@ -77,6 +80,7 @@ h1 {
   z-index: 1;
 }
 
+/* 淡入动画 */
 @-webkit-keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -94,6 +98,7 @@ h1 {
   to { opacity: 1; }
 }
 
+/* 头部区域 */
 .intro {
   position: absolute;
   top: 40px;
@@ -185,6 +190,7 @@ h1 {
   }
 }
 
+/* 首页作品列表 */
 .and-list {
   list-style: none;
   font-size: 0;
@@ -300,6 +306,81 @@ h1 {
   }
 }
 
+/* FAQ模块 */
+.faqs {
+  max-width: 700px;
+  margin: 0 auto;
+}
+.faq {
+  position: relative;
+  margin-bottom: 60px;
+}
+.question {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 180px;
+  padding-right: 40px;
+  margin: 0;
+}
+.answer {
+  padding-left: 180px;
+  line-height: 1.6;
+}
+@media (max-width: 940px) {
+  .faqs {
+    max-width: none;
+    margin: 0;
+    padding: 0 40px;
+  }
+  .faq {
+    margin-bottom: 100px;
+  }
+  .question {
+    position: static;
+    width: auto;
+    padding-right: 0;
+  }
+  .answer {
+    padding-left: 0;
+  }
+}
+@media (max-width: 600px) {
+  .faqs {
+    padding: 0 20px;
+  }
+  .faq {
+    margin-bottom: 80px;
+  }
+}
+@media (max-width: 460px) {
+  .faqs {
+    padding: 0 10px;
+  }
+}
+.answer a {
+  color: #2cefcb;
+  text-decoration: underline;
+}
+
+/* 滚动淡入 */
+.scroll-fade {
+  opacity: 0;
+  -webkit-transition: opacity 1.5s;
+  -o-transition: opacity 1.5s;
+  -moz-transition: opacity 1.5s;
+  transition: opacity 1.5s;
+}
+.scroll-fade--active {
+  opacity: 1;
+}
+
+/* @ 符号邮箱使用）*/
+.at:before {
+  content: "@";
+}
+
+/* andid内容区 */
 .andid__text {
   opacity: 0;
   -webkit-animation: fadeIn 1s 0.4s forwards;
@@ -311,6 +392,8 @@ h1 {
   max-width: 400px;
   margin-bottom: 40px;
 }
+
+/* frontpage页面 */
 .frontpage,
 .frontpage > body {
   overflow-y: auto;
