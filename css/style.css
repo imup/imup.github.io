@@ -167,6 +167,7 @@ body.sidebar-open .hamburger-btn {
   -webkit-overflow-scrolling: touch;
   box-shadow: inset -22px 0 28px -26px var(--sidebar-shadow);
   border-right: 1px solid var(--line);
+  touch-action: pan-y;
 }
 .sidebar.open {
   transform: translateX(0);
@@ -639,6 +640,7 @@ button:disabled {
   -webkit-overflow-scrolling: touch;
   padding: 64px 14px 16px;
   scroll-behavior: smooth;
+  touch-action: pan-y;
 }
 .ai-msg {
   margin-bottom: 12px;
