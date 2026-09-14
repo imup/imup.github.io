@@ -9,7 +9,7 @@
   var P5_DIR = "p5/";
   var P5_CDN =
     "https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js";
-  var P5_FILES = ["sketch1.js", "sketch2.js", "sketch3.js"];
+  var P5_FILES = ["dots.js", "orbit.js", "rotating-square.js"];
 
   /* AI助手配置 */
   var AI_KEY_STORAGE = "p5_ai_keys";
@@ -39,7 +39,7 @@
     },
   ];
 
-  /* ============ 内容（由 data/content.json 填充） ============ */
+  /* 内容调用json */
   var C = {};
 
   function t(key) {
@@ -69,7 +69,7 @@
     });
   }
 
-  /* 将 data-i18n / data-i18n-placeholder / data-i18n-title / data-i18n-aria-label 填充 */
+  /*将data-i18n/data-i18n-placeholder/data-i18n-title/data-i18n-aria-label填充*/
   function applyI18n(root) {
     var r = root || document;
     $$("[data-i18n]", r).forEach(function (el) {
@@ -90,7 +90,7 @@
     });
   }
 
-  /* ============ 通用工具 ============ */
+  /* 通用工具 */
   function $(sel, root) {
     return (root || document).querySelector(sel);
   }
@@ -117,7 +117,7 @@
     return n || "untitled";
   }
 
-  /* ============ 本地存储：作品 ============ */
+  /* 本地存储 */
   function getPages() {
     try {
       var raw = localStorage.getItem(STORAGE_KEY);
@@ -145,7 +145,7 @@
     }
   }
 
-  /* ============ 弹窗 ============ */
+  /* 弹窗 */
   var modalBackdrop, modalBox, lastFocused;
 
   function openModal(builder) {
@@ -251,7 +251,7 @@
     });
   }
 
-  /* 多行文本输入弹窗（用于系统提示词） */
+  /* 多行文本输入弹窗-系统提示词 */
   function showPromptArea(opts) {
     openModal(function (box) {
       var h = document.createElement("h3");
@@ -314,7 +314,7 @@
     });
   }
 
-  /* ============ 生成单个作品 HTML ============ */
+  /* 生成单个HTML */
   function generatePageHtml(title, script, imageDataUrl) {
     var safeTitle = escapeHtml(title || t("generator.defaultPageTitle"));
     var imgVar = imageDataUrl
@@ -403,7 +403,7 @@
       });
   }
 
-  /* ============ AI 状态 ============ */
+  /* AI状态 */
   var aiState = {
     currentModel: null,
     keys: {},
@@ -477,13 +477,13 @@
     aiState.currentModel = null;
   }
 
-  /* ============ 全局 DOM 引用 ============ */
+  /* 全局DOM引用 */
   var sidebarPagesEl, sidebarEl, overlayEl, hamburgerBtn;
   var sidebarSearchEl;
   var sidebarSearchKeyword = "";
   var appEl;
 
-  /* ============ 首页运行器 ============ */
+  /* 首页运行器 */
   var runner = { mode: "random", pageId: null };
   var currentRandomFile = null;
 
@@ -591,7 +591,7 @@
     sidebarPagesEl.replaceChildren(frag);
   }
 
-  /* ============ iframe 事件代理 ============ */
+  /* iframe事件代理 */
   function bindIframeProxy(iframe) {
     var iwin, idoc;
     try {
@@ -907,7 +907,7 @@
     }
   }
 
-  /* ============ 关于页 ============ */
+  /* 关于页 */
   function renderAbout() {
     var wrap = document.createElement("div");
     var h = document.createElement("h1");
@@ -924,7 +924,7 @@
     return wrap;
   }
 
-  /* ============ 编写脚本页 ============ */
+  /* 编写脚本页 */
   function renderGenerator() {
     var wrap = document.createElement("div");
     wrap.className = "generator-page";
@@ -1107,7 +1107,7 @@
     });
   }
 
-  /* ============ AI 助手 — 页面渲染 ============ */
+  /* AI助手—页面渲染 */
   function renderAIAssistant() {
     var wrap = document.createElement("div");
     wrap.className = "ai-page";
@@ -1268,7 +1268,7 @@
     return last.querySelector(".bubble");
   }
 
-  /* ============ AI 助手 — 流式请求 ============ */
+  /* AI助手 — 流式请求 */
   function streamAI(model, key, messages, systemPrompt, onDelta) {
     var conf = aiModelConf(model);
     var url, options;
@@ -1685,7 +1685,7 @@
     }
   }
 
-  /* ============ 路由渲染 ============ */
+  /* 路由渲染 */
   function render() {
     var path = getRoute();
 
@@ -1736,7 +1736,7 @@
     }
   }
 
-  /* ============ 初始化 ============ */
+  /* 初始化 */
   function init() {
     modalBackdrop = $("#modalBackdrop");
     modalBox = $("#modalBox");
@@ -1930,7 +1930,7 @@
     render();
   }
 
-  /* ============ 启动：先加载 content.json ============ */
+  /* 启动先加载json */
   loadContent()
     .then(function (data) {
       C = data || {};
@@ -1949,4 +1949,4 @@
         });
       }
     });
-})();
+})(); 
