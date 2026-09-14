@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "randomArt创意脚本编辑",
+    "title": "而且创意｜可视化编程",
     "loading": "加载中…",
     "contentLoadFailed": "内容加载失败：{msg}。请通过 HTTP 服务器访问（例如：python -m http.server）。"
   },
@@ -24,13 +24,13 @@
     "noScriptsDesc": "请把脚本放进与本页面同级的文件夹，并在页面代码顶部的数组里写上文件名"
   },
   "about": {
-    "title": "关于",
+    "title": "简介",
     "paragraphs": [
-      "纯前端工具，基于localStorage存储，无需后端。",
+      "而且创意｜可视化编程是纯前端工具，基于localStorage存储，无需后端。",
+      "首页随机加载运行脚本，编写p5.js脚本点击“提交脚本”自动添加到左侧栏“我的脚本”列表中，再点击“预览”即可运行该脚本，或打开边侧栏点击选择脚本名即可直接运行该脚本，再次点击其它导航项会回到随机状态。",
+      "AI助手支持ChatGPT / Gemini / DeepSeek流式输出，每个模型可单独设置API Key与系统提示词，并可导出对话内容为Markdown格式。",
       "使用CodeMirror实现代码高亮，支持亮色/暗色主题。",
-      "所有脚本均可导出为ZIP包，也可单独下载为HTML。",
-      "首页随机加载运行p5.js脚本，编写脚本后提交脚本点击预览可运行该脚本，或在侧边栏中选择脚本名点击即可直接运行该脚本，再点击其它导航项会回到随机状态。",
-      "AI助手支持ChatGPT / Gemini / DeepSeek流式输出，每个模型可单独设置API Key与系统提示词，并可导出对话内容为Markdown格式。"
+      "所有编写的脚本均可导出为ZIP包，也可单独下载为HTML。"
     ]
   },
   "generator": {
@@ -60,7 +60,7 @@
     "modelBtnTitle": "选择模型",
     "inputPlaceholder": "输入消息回车发送，Shift+回车换行",
     "sendBtnTitle": "发送",
-    "emptyNoModel": "还没有选择模型\n\n点击左下角的 + 选择一个模型\n并输入API Key后开始对话",
+    "emptyNoModel": "还没有选择模型\n\n点击左下角 + 选择模型并设置Key开始对话",
     "emptyStart": "开始与 {model} 对话吧",
     "thinking": "正在思考…",
     "emptyReply": "(空回复)",
