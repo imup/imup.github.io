@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang=“zh-CN” class="frontpage">
+<html lang="zh-CN" class="frontpage">
 
 <head>
   <meta charset="UTF-8">
@@ -9,14 +9,13 @@
   <meta name="description" content="而且创意（深圳）让科技+艺术感知生命，专注以创意实现国际化资源跨平台整合创新传播，业务包括品牌、房地产广告整合推广、文化旅游创意规划、企业形象为一体化创意企划，为商业品牌提供文化艺术及科技内容定制化运作、通过跨界行销、艺术策展、创意产品三个维度提升品牌价值，为客户提供系统、原创、前瞻性的品牌战略创意服务" />
   <meta name="keywords" content="品牌设计，房地产广告，整合推广，包装设计，企业形象，文化旅游，创意规划，品牌战略，创意设计，而且创意，深圳" />
   <meta name="Copyright" content="Copyright AndiD 2020. All Rights Reserved." />
-  <link rel="stylesheet" href="css/styles.css">
-  <link href="https://fonts.googleapis.com/css?family=Montserrat:400,700" rel="stylesheet">
   <link rel="apple-touch-icon" sizes="180x180" href="img/apple-touch-icon.png">
   <link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32x32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="img/favicon-16x16.png">
-  <link rel="mask-icon" href=“img/safari-pinned-tab.svg" color="#000000">
+  <link rel="mask-icon" href="img/safari-pinned-tab.svg" color="#000000">
   <meta name="msapplication-TileColor" content="#000000">
   <meta name="theme-color" content="#ffffff">
+  <link rel="stylesheet" href="css/style.css">
 </head>
 
 <body>
@@ -34,7 +33,7 @@
   </header>
 
   <div class="page-bg">
-    <img src="img/and.png" srcset="img/bg-mobile.jpg 1126w, img/and.png 2000w" alt=“深圳而且创意” width="100%">
+    <img src="img/and.png" srcset="img/bg-mobile.jpg 1126w, img/and.png 2000w" alt="深圳而且创意" width="100%">
   </div>
 
   <div class="page-fg">
@@ -109,7 +108,42 @@
     </ul>
   </div>
 
-  <script src="js/scripts.js" charset="utf-8"></script>
+  <script>
+(function () {
+  var observer;
+  var images = [].slice.call(document.querySelectorAll(".and-list__image"));
+  var loadImage = function (elem) {
+    var src = elem.getAttribute("data-src");
+    if (!src) return;
+    var image = new Image();
+    image.onload = function () {
+      elem.style.backgroundImage = "url(" + src + ")";
+      elem.className += " and-list__image--loaded";
+    };
+    image.src = src;
+  };
+  if (!("IntersectionObserver" in window)) {
+    images.forEach(function (image) {
+      loadImage(image);
+    });
+  } else {
+    observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.intersectionRatio > 0) {
+          observer.unobserve(entry.target);
+          loadImage(entry.target);
+        }
+      });
+    }, {
+      rootMargin: "50px 0px",
+      threshold: 0.01
+    });
+    images.forEach(function (image) {
+      observer.observe(image);
+    });
+  }
+})();
+  </script>
 </body>
 
 </html>
