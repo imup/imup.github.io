@@ -797,7 +797,7 @@ button:disabled {
 .ai-model-item .ai-key,
 .ai-model-item .ai-prompt,
 .ai-model-item .ai-dl {
-  background: transparent;
+  background: var(--neutral-btn);
   color: var(--text-muted);
   padding: 4px 6px;
   border-radius: 6px;
