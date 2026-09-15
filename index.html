@@ -1370,7 +1370,7 @@
             .replace(/'/g, "&#39;");
         }
 
-        /* 转义<script、<!-- 防止提前闭合或进入注释模式 */
+        /* 转义 防止提前闭合或进入注释模式 */
         function escapeScriptClose(str) {
           return String(str)
             .replace(/<\/script/gi, "<\\/script")
