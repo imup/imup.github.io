@@ -673,43 +673,6 @@
         transform: scale(0.95);
       }
 
-      /* 导入按钮：与清除按钮并排，位于其左侧 */
-      .ai-import-btn {
-        position: absolute;
-        top: clamp(8px, 2vw, 14px);
-        right: calc(clamp(10px, 3vw, 18px) + 36px);
-        z-index: 60;
-        width: 28px;
-        height: 28px;
-        min-width: 28px;
-        padding: 0;
-        border-radius: 50%;
-        background: transparent;
-        border: none;
-        color: inherit;
-        font-size: 24px;
-        font-weight: 300;
-        line-height: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        opacity: 0.7;
-        transition:
-          opacity 0.15s,
-          color 0.15s,
-          transform 0.15s;
-        overflow: visible;
-      }
-      .ai-import-btn:hover {
-        opacity: 1;
-        color: var(--primary);
-        transform: scale(1.15);
-      }
-      .ai-import-btn:active {
-        transform: scale(0.95);
-      }
-
       .ai-messages {
         flex: 1 1 auto;
         min-height: 0;
@@ -834,7 +797,7 @@
         border: 1px solid var(--border-input);
         border-radius: 12px;
         box-shadow: 0 12px 34px rgba(0, 0, 0, 0.32);
-        min-width: 320px;
+        min-width: 280px;
         z-index: 500;
         overflow: hidden;
       }
@@ -982,15 +945,8 @@
           min-width: 26px;
           font-size: 24px;
         }
-        .ai-import-btn {
-          width: 26px;
-          height: 26px;
-          min-width: 26px;
-          font-size: 20px;
-          right: calc(clamp(10px, 3vw, 18px) + 32px);
-        }
         .ai-model-menu {
-          min-width: 300px;
+          min-width: 260px;
         }
       }
 
@@ -1085,7 +1041,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
 
     <script>
-      /* 应用主逻辑（IIFE 包裹，避免污染全局） */
+      /* 应用主逻辑（IIFE 包裹，避免污染全局*/
       (function () {
         "use strict";
 
@@ -1104,13 +1060,13 @@
 
         /* AI 相关存储键 */
         var AI_KEY_STORAGE = "p5_ai_keys"; // 各模型 API Key
-        var AI_CHAT_STORAGE = "p5_ai_chats"; // 各模型对话记录（前缀）
+        var AI_CHAT_STORAGE = "p5_ai_chats"; // 各模型对话记录
         var AI_PROMPT_STORAGE = "p5_ai_prompts"; // 各模型系统提示词
 
-        /* 发送给模型的最大历史消息数 */
+        /* 发送给模型的最大历史消息数（不含当前占位） * 30 = 15 轮对话，超出则只保留最近 30 条 */
         var MAX_CONTEXT_MESSAGES = 30;
 
-        /* 支持的AI模型清单 */
+        /* 支持的 AI 模型清单 */
         var AI_MODELS = [
           {
             id: "chatgpt",
@@ -1133,16 +1089,13 @@
           },
         ];
 
-        /* AI 运行时状态*/
+        /* AI 运行时状态（内存态，持久化到 localStorage） * 每条 assistant 消息结构（结构化字段，替代整帧 raw）： * { * role: "assistant", * content: "...", * id: "chatcmpl-xxx", * model: "deepseek-chat", * created: 1736900000, * finish_reason: "stop", * usage: {...}, * tool_calls: [...] | null * } */
         var aiState = {
           currentModel: null,
           keys: {},
           chats: {},
           prompts: {},
           busy: false,
-          /* 流式控制*/
-          abortController: null,
-          streamToken: 0,
         };
 
         /* AI 状态辅助函数 */
@@ -1179,67 +1132,21 @@
           }
         }
 
-        /* 分模型读取对话 */
         function loadAIChats() {
-          var result = {};
-          AI_MODELS.forEach(function (m) {
-            try {
-              var raw = localStorage.getItem(AI_CHAT_STORAGE + "_" + m.id);
-              var v = raw ? JSON.parse(raw) : [];
-              result[m.id] = Array.isArray(v) ? v : [];
-            } catch (e) {
-              result[m.id] = [];
-            }
-          });
-          /* 迁移老数据 */
           try {
-            var oldRaw = localStorage.getItem(AI_CHAT_STORAGE);
-            if (oldRaw) {
-              var old = JSON.parse(oldRaw);
-              if (old && typeof old === "object") {
-                AI_MODELS.forEach(function (m) {
-                  if (
-                    Array.isArray(old[m.id]) &&
-                    old[m.id].length &&
-                    (!result[m.id] || !result[m.id].length)
-                  ) {
-                    result[m.id] = old[m.id];
-                    try {
-                      localStorage.setItem(
-                        AI_CHAT_STORAGE + "_" + m.id,
-                        JSON.stringify(old[m.id]),
-                      );
-                    } catch (e) {}
-                  }
-                });
-              }
-              localStorage.removeItem(AI_CHAT_STORAGE);
-            }
-          } catch (e) {}
-          return result;
+            var raw = localStorage.getItem(AI_CHAT_STORAGE);
+            var o = raw ? JSON.parse(raw) : {};
+            return o && typeof o === "object" ? o : {};
+          } catch (e) {
+            return {};
+          }
         }
 
-        /* 分模型写入对话 */
-        function saveAIChats(modelId) {
-          if (!modelId) {
-            var ok = true;
-            AI_MODELS.forEach(function (m) {
-              try {
-                localStorage.setItem(
-                  AI_CHAT_STORAGE + "_" + m.id,
-                  JSON.stringify(aiState.chats[m.id] || []),
-                );
-              } catch (e) {
-                handleStorageQuotaError(e, "AI 对话记录");
-                ok = false;
-              }
-            });
-            return ok;
-          }
+        function saveAIChats() {
           try {
             localStorage.setItem(
-              AI_CHAT_STORAGE + "_" + modelId,
-              JSON.stringify(aiState.chats[modelId] || []),
+              AI_CHAT_STORAGE,
+              JSON.stringify(aiState.chats),
             );
             return true;
           } catch (e) {
@@ -1281,6 +1188,7 @@
               aiState.prompts[m.id] = "";
             }
           });
+
           aiState.currentModel = null;
         }
 
@@ -1370,12 +1278,8 @@
             .replace(/'/g, "&#39;");
         }
 
-        /*  转义 - 防止提前闭合或进入注释模式 */
         function escapeScriptClose(str) {
-          return String(str)
-            .replace(/<\/script/gi, "<\\/script")
-            .replace(/\x3C!--/g, "<\\!--")
-            .replace(/<script/gi, "<\\script");
+          return String(str).replace(/<\/script/gi, "<\\/script");
         }
 
         function safeFileName(name) {
@@ -1385,7 +1289,7 @@
           return n || "untitled";
         }
 
-        /* p5页面存储 */
+        /* 作品（p5 页面）存储 */
 
         function getPages() {
           try {
@@ -1407,7 +1311,7 @@
           }
         }
 
-        /* 弹窗组件（Alert / Confirm / Prompt / Textarea） */
+        /* 弹窗组件 */
         var modalBackdrop, modalBox, lastFocused;
 
         function openModal(builder) {
@@ -1580,7 +1484,7 @@
           });
         }
 
-        /* 生成HTML下载 */
+        /* 生成作品 HTML / 下载 */
 
         function generatePageHtml(title, script, imageDataUrl) {
           var safeTitle = escapeHtml(title || "未命名页面");
@@ -1669,12 +1573,13 @@
             });
         }
 
-        /* 全局DOM引用与运行状态 */
+        /* 全局 DOM 引用与运行状态 */
         var sidebarPagesEl, sidebarEl, overlayEl, hamburgerBtn;
         var sidebarSearchEl;
         var sidebarSearchKeyword = "";
         var appEl;
 
+        /* 首页运行器：mode = random（随机脚本）| page（指定作品） */
         var runner = { mode: "random", pageId: null };
         var currentRandomFile = null;
 
@@ -1723,7 +1628,7 @@
           );
         }
 
-        /* 侧边栏脚本列表 */
+        /* 侧边栏：作品列表 */
 
         function updateSidebarPages() {
           var pages = getPages();
@@ -1784,7 +1689,7 @@
           sidebarPagesEl.replaceChildren(frag);
         }
 
-        /* iframe内p5画布的事件代理 */
+        /* iframe 内 p5 画布的事件代理 */
 
         function bindIframeProxy(iframe) {
           var iwin, idoc;
@@ -1906,7 +1811,7 @@
           });
         }
 
-        /* 预览模式 - 锁屏尺寸 */
+        /* 预览模式：锁屏尺寸 */
 
         function lockAppSize() {
           document.body.classList.add("preview-lock");
@@ -1999,7 +1904,7 @@
           else location.hash = "#/";
         }
 
-        /* 脚本操作：删除 - 重命名 */
+        /* 作品操作：删除 / 重命名 */
 
         function deletePage(id) {
           var pages = getPages();
@@ -2059,7 +1964,7 @@
         var uploadedImageDataUrl = null;
         /* 编写脚本页草稿（切路由保留，提交成功后清空） */
         var generatorDraft = { title: "", script: "" };
-        /* AI消息列表增量渲染追踪 */
+        /* AI 消息列表增量渲染追踪 */
         var renderedMsgCount = 0;
         var renderedModelId = null;
 
@@ -2120,7 +2025,7 @@
           }
         }
 
-        /* 页面渲染：关于 - 编写脚本 */
+        /* 页面渲染：关于 / 编写脚本 */
 
         function renderAbout() {
           var wrap = document.createElement("div");
@@ -2130,7 +2035,7 @@
             "<p>使用CodeMirror实现代码高亮，支持亮色/暗色主题。</p>" +
             "<p>所有脚本均可导出为ZIP包，也可单独下载为HTML。</p>" +
             "<p>首页随机加载运行p5.js脚本，编写脚本后提交脚本点击“预览”即可运行该脚本或在侧边栏中选择脚本名运行脚本，再点击其它导航项会回到随机状态。</p>" +
-            "<p>AI助手支持ChatGPT / Gemini / DeepSeek流式输出，每个模型可单独设置API Key与系统提示词，支持 Markdown / JSON 双格式导出，并可从 JSON 文件导入对话继续使用。JSON 导出含结构化响应元数据（finish_reason / usage / tool_calls 等）。</p>";
+            "<p>AI助手支持ChatGPT / Gemini / DeepSeek流式输出，每个模型可单独设置API Key与系统提示词，并可导出含结构化响应元数据（finish_reason / usage / tool_calls 等）的JSON对话记录 </p>";
           return wrap;
         }
 
@@ -2150,24 +2055,10 @@
             "</div>" +
             '<div class="form-group">' +
             "  <label>上传图片（可选，脚本可通过 <code>imageUrl</code> 加载）</label>" +
-            '  <input type="file" id="image" accept="image/*">' +
-            ' <div id="image-preview"></div>' +
-            "</div>" +
-            '<button id="buildBtn" type="button">提交脚本</button>' +
-            '<div id="result" class="result" style="display:none;"></div>';
-          return wrap;
-        }
-        function bindGenerator() {
-          var titleInput = $("#title");
-          var textarea = $("#script");
-          var fileInput = $("#image");
-          var previewEl = $("#image-preview");
-          var resultEl = $("#result");
-          var buildBtn = $("#buildBtn");
-          uploadedImageDataUrl = null; /* 恢复草稿 */
+            '  <input type="file" id="image" accept="image/*">' + ' <div id="image-preview"></div>' + "</div>" + '<button id="buildBtn" type="button">提交脚本</button>' + '<div id="result" class="result" style="display:none;"></div>'; return wrap; } function bindGenerator() { var titleInput = $("#title"); var textarea = $("#script"); var fileInput = $("#image"); var previewEl = $("#image-preview"); var resultEl = $("#result"); var buildBtn = $("#buildBtn"); uploadedImageDataUrl = null; /* 恢复草稿 */
           titleInput.value = generatorDraft.title || "";
 
-          /* 初始化CodeMirror+占位符浮层 */
+          /* 初始化 CodeMirror + 占位符浮层 */
           destroyEditor();
           if (window.CodeMirror) {
             var themeName = currentTheme() === "dark" ? "dracula" : "default";
@@ -2317,15 +2208,13 @@
           });
         }
 
-        /* AI助手 - 视图渲染 */
+        /* AI 助手：视图渲染 */
 
         function renderAIAssistant() {
           var wrap = document.createElement("div");
           wrap.className = "ai-page";
           wrap.innerHTML =
-            '<button class="ai-import-btn" id="aiImportBtn" type="button" title="导入 JSON 对话">↓</button>' +
             '<button class="ai-clear-btn" id="aiClearBtn" type="button" title="清除当前模型的对话内容">−</button>' +
-            '<input type="file" id="aiImportFile" accept=".json,application/json" style="display:none">' +
             '<div class="ai-messages" id="aiMessages"></div>' +
             '<div class="ai-input-wrap">' +
             '  <div class="ai-input-bar">' +
@@ -2358,7 +2247,6 @@
             name.className = "ai-model-name";
             name.textContent = m.name;
 
-            /* P：系统提示词 */
             var promptBtn = document.createElement("button");
             promptBtn.className = "ai-prompt";
             promptBtn.type = "button";
@@ -2369,7 +2257,6 @@
               promptBtn.classList.add("has-prompt");
             }
 
-            /* K：API Key */
             var keyBtn = document.createElement("button");
             keyBtn.className = "ai-key";
             keyBtn.type = "button";
@@ -2377,37 +2264,18 @@
             keyBtn.textContent = "K";
             keyBtn.dataset.key = m.id;
 
-            /* T：测试连接 */
-            var testBtn = document.createElement("button");
-            testBtn.className = "ai-dl";
-            testBtn.type = "button";
-            testBtn.title = "测试连接（验证 API Key 是否有效）";
-            testBtn.textContent = "T";
-            testBtn.dataset.test = m.id;
-
-            /* M：导出Markdown（纯文本 + 标题，人读友好） */
-            var dlMd = document.createElement("button");
-            dlMd.className = "ai-dl";
-            dlMd.type = "button";
-            dlMd.title = "下载对话 (Markdown，人读友好)";
-            dlMd.textContent = "M";
-            dlMd.dataset.md = m.id;
-
-            /* J：导出JSON（含id / usage / finish_reason / tool_calls） */
-            var dlJson = document.createElement("button");
-            dlJson.className = "ai-dl";
-            dlJson.type = "button";
-            dlJson.title = "下载对话 (JSON，含结构化响应元数据)";
-            dlJson.textContent = "J";
-            dlJson.dataset.json = m.id;
+            var dl = document.createElement("button");
+            dl.className = "ai-dl";
+            dl.type = "button";
+            dl.title = "下载该模型的对话 (JSON，含结构化响应元数据)";
+            dl.textContent = "D";
+            dl.dataset.dl = m.id;
 
             item.appendChild(check);
             item.appendChild(name);
             item.appendChild(promptBtn);
             item.appendChild(keyBtn);
-            item.appendChild(testBtn);
-            item.appendChild(dlMd);
-            item.appendChild(dlJson);
+            item.appendChild(dl);
             frag.appendChild(item);
           });
           menu.replaceChildren(frag);
@@ -2447,6 +2315,7 @@
           menu.classList.toggle("show");
         }
 
+        /* 构造一条消息的 DOM 节点 */
         function buildMsgNode(m) {
           var row = document.createElement("div");
           row.className =
@@ -2463,6 +2332,7 @@
           return row;
         }
 
+        /* 构造空状态提示节点 */
         function buildEmptyNode(text) {
           var el = document.createElement("div");
           el.className = "ai-empty";
@@ -2470,11 +2340,13 @@
           return el;
         }
 
+        /* * 增量渲染对话列表： * - 首次进入 / 切换模型 / 被清空 → 全量重建 * - 只新增消息 → 增量追加 DOM * - 已渲染数 > 当前数（清空/pop） → 全量重建 */
         function renderAIMessages() {
           var box = $("#aiMessages");
           if (!box) return;
           var model = aiState.currentModel;
 
+          /* 未选模型 */
           if (!model) {
             if (!box.firstChild || !box.querySelector(".ai-empty")) {
               box.replaceChildren(
@@ -2488,6 +2360,7 @@
             return;
           }
 
+          /* 切换模型：重置计数 */
           if (renderedModelId !== model) {
             renderedModelId = model;
             renderedMsgCount = 0;
@@ -2495,6 +2368,7 @@
 
           var chat = aiState.chats[model] || [];
 
+          /* 空对话 */
           if (!chat.length) {
             if (!box.firstChild || !box.querySelector(".ai-empty")) {
               box.replaceChildren(
@@ -2505,10 +2379,12 @@
             return;
           }
 
+          /* 已渲染数 > 当前（清空 / pop 回退） → 全量重建 */
           if (renderedMsgCount > chat.length) {
             renderedMsgCount = 0;
           }
 
+          /* 全量重建 */
           if (renderedMsgCount === 0) {
             var frag = document.createDocumentFragment();
             for (var i = 0; i < chat.length; i++) {
@@ -2520,7 +2396,9 @@
             return;
           }
 
+          /* 增量追加新消息 */
           if (renderedMsgCount < chat.length) {
+            /* 若当前 DOM 里是空状态提示，先清掉 */
             var emptyEl = box.querySelector(".ai-empty");
             if (emptyEl && box.children.length === 1) {
               box.replaceChildren();
@@ -2548,19 +2426,13 @@
           btn.disabled = !!aiState.busy;
         }
 
-        /* 获取最后一条assistant气泡：O(1)，直接读尾节点 */
         function getLastAssistantBubble() {
           var box = $("#aiMessages");
           if (!box) return null;
-          var last = box.lastElementChild;
-          if (!last || !last.classList.contains("assistant")) return null;
+          var rows = box.querySelectorAll(".ai-msg.assistant");
+          if (!rows.length) return null;
+          var last = rows[rows.length - 1];
           return last.querySelector(".bubble");
-        }
-
-        /* 判断消息容器是否接近底部（用于自动滚动判定） */
-        function isNearBottom(box) {
-          if (!box) return true;
-          return box.scrollHeight - box.scrollTop - box.clientHeight < 80;
         }
 
         /* 流式请求核心 */
@@ -2615,11 +2487,6 @@
             };
           }
 
-          /* 注入abort signal */
-          if (aiState.abortController) {
-            options.signal = aiState.abortController.signal;
-          }
-
           return fetch(url, options).then(function (res) {
             if (!res.ok) {
               return res.text().then(function (t) {
@@ -2656,8 +2523,9 @@
               } catch (e) {}
             }
 
-            /* 按 "\n\n" 或 "\r\n\r\n" 切分SSE事件 */
+            /* 按 "\n\n" 或 "\r\n\r\n" 切分 SSE 事件 */
             function processBuffer(flush) {
+              /* 规范化 CRLF → LF，兼容 \r\n\r\n */
               if (buffer.indexOf("\r") !== -1) {
                 buffer = buffer.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
               }
@@ -2716,6 +2584,7 @@
           function consume(obj) {
             if (!obj || obj === "[DONE]") return;
 
+            /* OpenAI 兼容 */
             if (obj.id && !meta.id) meta.id = obj.id;
             if (obj.model && !meta.model) meta.model = obj.model;
             if (obj.created && !meta.created) meta.created = obj.created;
@@ -2751,6 +2620,7 @@
               }
             }
 
+            /* Gemini */
             var cand = obj.candidates && obj.candidates[0];
             if (cand) {
               if (cand.finishReason && !meta.finish_reason) {
@@ -2800,86 +2670,7 @@
           return { consume: consume, finalize: finalize };
         }
 
-        /* AI：设置Key / 提示词、测试连接 */
-
-        /* 测试模型连接：发一个最小请求验证 API Key 是否有效 */
-        function testAIModelConnection(model) {
-          var conf = aiModelConf(model);
-          if (!conf) return;
-          var key = aiState.keys[model];
-          if (!key) {
-            showAlert(
-              "无法测试",
-              "请先为" + aiModelName(model) + "设置API Key。",
-              true,
-            );
-            return;
-          }
-
-          var url, body, headers;
-          if (model === "gemini") {
-            url = conf.endpoint + "?key=" + encodeURIComponent(key);
-            body = { contents: [{ role: "user", parts: [{ text: "hi" }] }] };
-            headers = { "Content-Type": "application/json" };
-          } else {
-            url = conf.endpoint;
-            body = {
-              model: conf.apiModel,
-              messages: [{ role: "user", content: "hi" }],
-              max_tokens: 1,
-            };
-            headers = {
-              "Content-Type": "application/json",
-              Authorization: "Bearer " + key,
-            };
-          }
-
-          showAlert("测试连接", "正在连接" + aiModelName(model) + "，请稍候…");
-
-          var testAbort = new AbortController();
-          var timeoutId = setTimeout(function () {
-            try {
-              testAbort.abort();
-            } catch (e) {}
-          }, 15000);
-
-          fetch(url, {
-            method: "POST",
-            headers: headers,
-            body: JSON.stringify(body),
-            signal: testAbort.signal,
-          })
-            .then(function (res) {
-              clearTimeout(timeoutId);
-              return res.text().then(function (t) {
-                if (res.ok) {
-                  showAlert(
-                    "连接成功",
-                    "" + aiModelName(model) + "API Key有效，连接正常。",
-                  );
-                } else {
-                  var msg = "HTTP " + res.status;
-                  try {
-                    var d = JSON.parse(t);
-                    msg =
-                      (d.error && d.error.message) ||
-                      d.message ||
-                      (d.error && d.error.status) ||
-                      msg;
-                  } catch (e) {}
-                  showAlert("连接失败", msg, true);
-                }
-              });
-            })
-            .catch(function (err) {
-              clearTimeout(timeoutId);
-              var msg = String((err && err.message) || err);
-              if (err && err.name === "AbortError") {
-                msg = "请求超时（15 秒），请检查网络或 API Key。";
-              }
-              showAlert("连接失败", msg, true);
-            });
-        }
+        /* AI：设置 Key / 提示词、选模型、下载、发送、清空 */
 
         function promptAPIKey(model, onSaved) {
           showPrompt(
@@ -2899,7 +2690,7 @@
           showPromptArea({
             title: "设置 " + aiModelName(model) + " 系统提示词",
             hint:
-              "这段提示词会作System消息在每次对话时发送给模型，用于设定角色、语气或规则。" +
+              "这段提示词会作为system消息在每次对话时发送给模型，用于设定角色、语气或规则。" +
               "留空则不发送。Ctrl+回车可快速保存。",
             value: existing,
             placeholder:
@@ -2919,22 +2710,8 @@
           });
         }
 
-        /* 选择模型：无Key时先弹窗让用户设置 */
         function selectAIModel(model) {
           if (!aiModelConf(model)) return;
-
-          /* 中止当前流式（如果有）并立即释放busy */
-          if (aiState.busy) {
-            if (aiState.abortController) {
-              try {
-                aiState.abortController.abort();
-              } catch (e) {}
-            }
-            aiState.streamToken += 1;
-            aiState.busy = false;
-            updateAISendBtn();
-          }
-
           if (!aiState.keys[model]) {
             promptAPIKey(model, function () {
               aiState.currentModel = model;
@@ -2950,15 +2727,15 @@
           updateAISendBtn();
         }
 
-        /* AI导出Markdown / JSON+导入 */
-
-        /* 通用Blob下载 */
-        function triggerDownload(content, mime, filename) {
-          var blob = new Blob([content], { type: mime });
+        function doDownloadJSON(data, model) {
+          var json = JSON.stringify(data, null, 2);
+          var blob = new Blob([json], {
+            type: "application/json;charset=utf-8",
+          });
           var url = URL.createObjectURL(blob);
           var a = document.createElement("a");
           a.href = url;
-          a.download = filename;
+          a.download = "ai_chat_" + model + "_" + Date.now() + ".json";
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
@@ -2967,50 +2744,18 @@
           }, 1000);
         }
 
-        /* 导出Markdown只包含content */
-        function downloadAIChatMd(model) {
+        function downloadAIChat(model) {
           var chat = aiState.chats[model] || [];
           if (!chat.length) {
-            showAlert("无法下载", "" + aiModelName(model) + "还没有对话内容。");
-            return;
-          }
-
-          var lines = ["# " + aiModelName(model) + " 对话记录", ""];
-          var sys = aiState.prompts[model];
-          if (sys && sys.trim()) {
-            lines.push("## 系统提示词");
-            lines.push("");
-            lines.push(sys);
-            lines.push("");
-          }
-          chat.forEach(function (m) {
-            lines.push(
-              m.role === "user" ? "## 我" : "## " + aiModelName(model),
+            showAlert(
+              "无法下载",
+              "「" + aiModelName(model) + "」还没有对话内容。",
             );
-            lines.push("");
-            lines.push(m.content || "");
-            lines.push("");
-          });
-
-          var md = lines.join("\n");
-          triggerDownload(
-            md,
-            "text/markdown;charset=utf-8",
-            "ai_chat_" + model + "_" + Date.now() + ".md",
-          );
-        }
-
-        /* 导出JSON含结构化响应元数据 */
-        function downloadAIChatJson(model) {
-          var chat = aiState.chats[model] || [];
-          if (!chat.length) {
-            showAlert("无法下载", "" + aiModelName(model) + "还没有对话内容。");
             return;
           }
 
           var sys = aiState.prompts[model];
           var data = {
-            schemaVersion: 1,
             model: model,
             modelName: aiModelName(model),
             exportedAt: new Date().toISOString(),
@@ -3029,195 +2774,8 @@
             }),
           };
 
-          triggerDownload(
-            JSON.stringify(data, null, 2),
-            "application/json;charset=utf-8",
-            "ai_chat_" + model + "_" + Date.now() + ".json",
-          );
+          doDownloadJSON(data, model);
         }
-
-        /* 导入JSON 对话 */
-        function importAIChatFromFile(file) {
-          if (!file) return;
-          var reader = new FileReader();
-          reader.onload = function (e) {
-            var data;
-            try {
-              data = JSON.parse(e.target.result);
-            } catch (err) {
-              showAlert("导入失败", "文件不是合法的 JSON。", true);
-              return;
-            }
-            if (!data || !Array.isArray(data.messages)) {
-              showAlert(
-                "导入失败",
-                "文件结构不正确：缺少 messages 数组。",
-                true,
-              );
-              return;
-            }
-
-            /* 定位目标模型 */
-            var targetModel = data.model;
-            if (!targetModel || !aiModelConf(targetModel)) {
-              var name = String(data.modelName || "").toLowerCase();
-              for (var i = 0; i < AI_MODELS.length; i++) {
-                if (AI_MODELS[i].name.toLowerCase() === name) {
-                  targetModel = AI_MODELS[i].id;
-                  break;
-                }
-              }
-            }
-            if (!targetModel || !aiModelConf(targetModel)) {
-              showAlert(
-                "导入失败",
-                "无法识别文件对应的模型（model 字段为：" +
-                  String(data.model || "未提供") +
-                  "）。",
-                true,
-              );
-              return;
-            }
-
-            /* 清洗消息只保留已知字段 */
-            var cleaned = data.messages
-              .filter(function (m) {
-                return m && typeof m.role === "string";
-              })
-              .map(function (m) {
-                var out = {
-                  role: m.role,
-                  content: typeof m.content === "string" ? m.content : "",
-                };
-                if (m.id) out.id = m.id;
-                if (m.model) out.model = m.model;
-                if (m.created) out.created = m.created;
-                if (m.finish_reason) out.finish_reason = m.finish_reason;
-                if (m.usage) out.usage = m.usage;
-                if (m.tool_calls && m.tool_calls.length) {
-                  out.tool_calls = m.tool_calls;
-                }
-                return out;
-              });
-
-            if (!cleaned.length) {
-              showAlert("导入失败", "文件中没有有效的对话消息。", true);
-              return;
-            }
-
-            /* 应用导入 */
-            var applyImport = function (mode) {
-              var existing = aiState.chats[targetModel] || [];
-              if (mode === "replace") {
-                aiState.chats[targetModel] = cleaned;
-              } else {
-                aiState.chats[targetModel] = existing.concat(cleaned);
-              }
-
-              /* 系统提示词：文件里有且当前为空时，自动填入 */
-              if (
-                data.systemPrompt &&
-                String(data.systemPrompt).trim() &&
-                !(aiState.prompts[targetModel] || "").trim()
-              ) {
-                aiState.prompts[targetModel] = String(data.systemPrompt).trim();
-                saveAIPrompts();
-              }
-
-              saveAIChats(targetModel);
-
-              /* 如果导入的模型就是当前选中模型，刷新列表 */
-              if (aiState.currentModel === targetModel) {
-                renderedMsgCount = 0;
-                renderAIMessages();
-                showAlert(
-                  "导入成功",
-                  "已导入 " +
-                    cleaned.length +
-                    " 条消息到" +
-                    aiModelName(targetModel) +
-                    "。",
-                );
-              } else {
-                showConfirm(
-                  "导入成功",
-                  "已导入 " +
-                    cleaned.length +
-                    " 条消息到" +
-                    aiModelName(targetModel) +
-                    "。是否切换到该模型查看？",
-                  function () {
-                    selectAIModel(targetModel);
-                  },
-                );
-              }
-            };
-
-            var existing = aiState.chats[targetModel] || [];
-            if (!existing.length) {
-              applyImport("replace");
-              return;
-            }
-
-            /* 已有对话：弹三选 */
-            openModal(function (box) {
-              var h = document.createElement("h3");
-              h.textContent = "导入对话";
-              var p = document.createElement("p");
-              p.textContent =
-                "" +
-                aiModelName(targetModel) +
-                "已有 " +
-                existing.length +
-                " 条消息。要如何导入这 " +
-                cleaned.length +
-                " 条消息？";
-              var a = document.createElement("div");
-              a.className = "modal-actions";
-
-              var leftWrap = document.createElement("div");
-              var cancelBtn = document.createElement("button");
-              cancelBtn.className = "link-btn";
-              cancelBtn.textContent = "取消";
-              cancelBtn.addEventListener("click", closeModal);
-              leftWrap.appendChild(cancelBtn);
-
-              var rightWrap = document.createElement("div");
-              rightWrap.className = "right-group";
-
-              var appendBtn = document.createElement("button");
-              appendBtn.className = "cancel";
-              appendBtn.textContent = "追加";
-              appendBtn.addEventListener("click", function () {
-                closeModal();
-                applyImport("append");
-              });
-
-              var replaceBtn = document.createElement("button");
-              replaceBtn.className = "danger";
-              replaceBtn.textContent = "覆盖";
-              replaceBtn.addEventListener("click", function () {
-                closeModal();
-                applyImport("replace");
-              });
-
-              rightWrap.appendChild(appendBtn);
-              rightWrap.appendChild(replaceBtn);
-
-              a.appendChild(leftWrap);
-              a.appendChild(rightWrap);
-              box.appendChild(h);
-              box.appendChild(p);
-              box.appendChild(a);
-            });
-          };
-          reader.onerror = function () {
-            showAlert("导入失败", "无法读取文件，请重试。", true);
-          };
-          reader.readAsText(file);
-        }
-
-        /* AI发送 / 清空 */
 
         function aiSend() {
           if (aiState.busy) return;
@@ -3248,20 +2806,10 @@
 
           chat.push({ role: "user", content: text });
           chat.push({ role: "assistant", content: "" });
-          saveAIChats(model);
+          saveAIChats();
 
           inputEl.value = "";
           inputEl.style.height = "auto";
-
-          /* 中止旧流式生成新令牌 */
-          if (aiState.abortController) {
-            try {
-              aiState.abortController.abort();
-            } catch (e) {}
-          }
-          aiState.streamToken += 1;
-          var myToken = aiState.streamToken;
-          aiState.abortController = new AbortController();
 
           aiState.busy = true;
           updateAISendBtn();
@@ -3279,16 +2827,13 @@
           var acc = createStructuredAccumulator();
 
           function pushDelta(text2) {
-            if (aiState.streamToken !== myToken) return;
             if (!text2) return;
             accumulated += text2;
             if (bubble) {
+              /* 增量追加文本节点，避免每次重写整字符串（O(n²) → O(n)） */
               bubble.appendChild(document.createTextNode(text2));
             }
-            /* 自动滚到最新：只在用户已经靠近底部时跟随 */
-            if (box && isNearBottom(box)) {
-              box.scrollTop = box.scrollHeight;
-            }
+            if (box) box.scrollTop = box.scrollHeight;
           }
 
           var onDelta = function (obj) {
@@ -3307,6 +2852,7 @@
             }
           };
 
+          /* 发给模型的历史：去掉占位 assistant，并裁剪到最近 N 条 */
           var payload = chat.slice(0, -1);
           if (payload.length > MAX_CONTEXT_MESSAGES) {
             payload = payload.slice(-MAX_CONTEXT_MESSAGES);
@@ -3317,7 +2863,6 @@
             acc.consume(raw);
           })
             .then(function () {
-              if (aiState.streamToken !== myToken) return;
               var meta = acc.finalize();
               var msg = chat[chat.length - 1];
               msg.content = accumulated || "(空回复)";
@@ -3327,19 +2872,15 @@
               if (meta.finish_reason) msg.finish_reason = meta.finish_reason;
               if (meta.usage) msg.usage = meta.usage;
               if (meta.tool_calls) msg.tool_calls = meta.tool_calls;
-              saveAIChats(model);
+              saveAIChats();
               aiState.busy = false;
               updateAISendBtn();
               renderAIMessages();
             })
             .catch(function (err) {
-              if (aiState.streamToken !== myToken) return;
               aiState.busy = false;
               updateAISendBtn();
               var meta = acc.finalize();
-              /* 主动切模型/清空不弹错误 */
-              var isAbort =
-                err && (err.name === "AbortError" || err.code === 20);
               if (accumulated) {
                 var msg = chat[chat.length - 1];
                 msg.content = accumulated;
@@ -3352,16 +2893,14 @@
               } else {
                 chat.pop();
               }
-              saveAIChats(model);
+              saveAIChats();
               renderAIMessages();
-              if (!isAbort) {
-                showAlert(
-                  "请求失败",
-                  String((err && err.message) || err) ||
-                    "网络错误，请检查API Key或稍后重试。",
-                  true,
-                );
-              }
+              showAlert(
+                "请求失败",
+                String((err && err.message) || err) ||
+                  "网络错误，请检查API Key或稍后重试。",
+                true,
+              );
             });
         }
 
@@ -3375,7 +2914,7 @@
           if (!chat.length) {
             showAlert(
               "无需清除",
-              "" + aiModelName(model) + "当前没有对话内容。",
+              "「" + aiModelName(model) + "」当前没有对话内容。",
             );
             return;
           }
@@ -3383,20 +2922,8 @@
             "清除对话",
             "确定要清除与" + aiModelName(model) + "的全部对话内容吗？",
             function () {
-              /* 中止当前流式 */
-              if (aiState.busy) {
-                if (aiState.abortController) {
-                  try {
-                    aiState.abortController.abort();
-                  } catch (e) {}
-                }
-                aiState.streamToken += 1;
-                aiState.busy = false;
-                updateAISendBtn();
-              }
               aiState.chats[model] = [];
-              saveAIChats(model);
-              renderedMsgCount = 0;
+              saveAIChats();
               renderAIMessages();
             },
             true,
@@ -3437,23 +2964,10 @@
                 promptAPIKey(keyBtn.dataset.key);
                 return;
               }
-              var testBtn = e.target.closest("[data-test]");
-              if (testBtn) {
+              var dl = e.target.closest("[data-dl]");
+              if (dl) {
                 e.stopPropagation();
-                closeAIModelMenu();
-                testAIModelConnection(testBtn.dataset.test);
-                return;
-              }
-              var mdBtn = e.target.closest("[data-md]");
-              if (mdBtn) {
-                e.stopPropagation();
-                downloadAIChatMd(mdBtn.dataset.md);
-                return;
-              }
-              var jsonBtn = e.target.closest("[data-json]");
-              if (jsonBtn) {
-                e.stopPropagation();
-                downloadAIChatJson(jsonBtn.dataset.json);
+                downloadAIChat(dl.dataset.dl);
                 return;
               }
               var item = e.target.closest(".ai-model-item");
@@ -3489,22 +3003,6 @@
             });
           }
 
-          var importBtn = $("#aiImportBtn");
-          var importFile = $("#aiImportFile");
-
-          if (importBtn && importFile) {
-            importBtn.addEventListener("click", function () {
-              importFile.value = "";
-              importFile.click();
-            });
-            importFile.addEventListener("change", function () {
-              var f = this.files && this.files[0];
-              if (!f) return;
-              importAIChatFromFile(f);
-              this.value = "";
-            });
-          }
-
           if (clearBtn) {
             clearBtn.addEventListener("click", function () {
               clearAIChat();
@@ -3516,6 +3014,7 @@
         function render() {
           var path = getRoute();
 
+          /* 离开首页时，把“指定作品”模式重置回随机 */
           if (path !== "/" && path !== "" && path !== "/index.html") {
             if (runner.mode === "page") {
               runner.mode = "random";
@@ -3523,11 +3022,13 @@
             }
           }
 
+          /* 首页 */
           if (path === "/" || path === "" || path === "/index.html") {
             renderRunner();
             return;
           }
 
+          /* 非首页：清理预览态 / 编辑器 / #app */
           if (appEl.classList.contains("preview-mode")) {
             appEl.classList.remove("preview-mode");
           }
@@ -3539,6 +3040,7 @@
           appEl.replaceChildren();
           setActiveNav(path);
 
+          /* AI 助手 */
           if (path === "/ai") {
             appEl.classList.add("ai-mode");
             appEl.appendChild(renderAIAssistant());
@@ -3546,6 +3048,7 @@
             return;
           }
 
+          /* 关于 / 编写脚本 / 未定义 */
           if (path === "/about") {
             appEl.appendChild(renderAbout());
           } else if (path === "/generator") {
@@ -3582,7 +3085,7 @@
           } catch (e) {}
           applyTheme(savedTheme);
 
-          /* 禁用双指缩放和手势缩放 */
+          /* 禁用双指缩放 / 手势缩放 */
           ["gesturestart", "gesturechange", "gestureend"].forEach(
             function (type) {
               document.addEventListener(
@@ -3590,10 +3093,13 @@
                 function (e) {
                   e.preventDefault();
                 },
-                { passive: false },
+                {
+                  passive: false,
+                },
               );
             },
           );
+          /* 新增：在 touchstart 阶段就拦截多指触摸（双指缩放） * 关键点：iOS Safari 在 touchstart 时就会"预定"pinch 手势， * 只靠 touchmove 的 preventDefault 来不及。 * 安全性：只阻止 touches.length > 1 的情况， * 单指点击、滚动、输入完全不受影响。 */
           document.addEventListener(
             "touchstart",
             function (e) {
@@ -3744,18 +3250,12 @@
             if (editor) editor.refresh();
           });
 
-          var resizeTimer = null;
           window.addEventListener("resize", function () {
-            /* 预览模式尺寸必须实时跟随，不能debounce */
             if (appEl.classList.contains("preview-mode")) {
               appEl.style.width = window.innerWidth + "px";
               appEl.style.height = window.innerHeight + "px";
             }
-            /* 编辑器refresh用debounce避免频繁重排 */
-            if (resizeTimer) clearTimeout(resizeTimer);
-            resizeTimer = setTimeout(function () {
-              if (editor) editor.refresh();
-            }, 100);
+            if (editor) editor.refresh();
           });
 
           updateSidebarPages();
