@@ -603,9 +603,9 @@ button:disabled {
   top: clamp(8px, 2vw, 14px);
   right: clamp(10px, 3vw, 18px);
   z-index: 60;
-  width: 40px;
-  height: 40px;
-  min-width: 40px;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
   padding: 0;
   border-radius: 50%;
   background: transparent;
@@ -623,6 +623,7 @@ button:disabled {
     opacity 0.15s,
     color 0.15s,
     transform 0.15s;
+  overflow: visible;
 }
 .ai-clear-btn:hover {
   opacity: 1;
@@ -901,9 +902,9 @@ button:disabled {
     padding: 10px 6px;
   }
   .ai-clear-btn {
-    width: 36px;
-    height: 36px;
-    min-width: 36px;
+    width: 26px;
+    height: 26px;
+    min-width: 26px;
     font-size: 24px;
   }
   .ai-model-menu {
