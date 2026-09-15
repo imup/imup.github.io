@@ -1374,7 +1374,7 @@
         function escapeScriptClose(str) {
           return String(str)
             .replace(/<\/script/gi, "<\\/script")
-            .replace(/<!--/g, "<\\!--")
+            .replace(/\x3C!--/g, "<\\!--")
             .replace(/<script/gi, "<\\script");
         }
 
