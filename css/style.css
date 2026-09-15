@@ -160,7 +160,7 @@ body.sidebar-open .hamburger-btn {
     background 0.3s,
     color 0.3s;
   z-index: 200;
-  padding: clamp(14px, 3vw, 20px) 0;
+  padding: clamp(14px, 3vw, 20px) 0 env(safe-area-inset-bottom, 0px);
   overflow-y: auto;
   display: flex;
   flex-direction: column;
