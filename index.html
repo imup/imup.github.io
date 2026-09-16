@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
-    <title>而且创意｜可视化编程</title>
+    <title>randomArt可视化创意编程</title>
 
     <link
       rel="stylesheet"
@@ -23,8 +23,6 @@
       id="cm-theme-dark"
       disabled
     />
-
-    <!-- 自定义样式 -->
     <link rel="stylesheet" href="css/style.css" />
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -33,76 +31,67 @@
     <button
       class="hamburger-btn"
       id="hamburgerBtn"
-      data-i18n-aria-label="sidebar.menuAriaLabel"
+      aria-label="打开菜单"
       aria-expanded="false"
       aria-controls="sidebar"
     >
       ☰
     </button>
 
-    <nav
-      class="sidebar"
-      id="sidebar"
-      data-i18n-aria-label="sidebar.navAriaLabel"
-    >
-      <!-- 搜索框 -->
+    <nav class="sidebar" id="sidebar" aria-label="主导航">
       <div class="sidebar-search">
         <input
           type="search"
           id="sidebarSearch"
-          data-i18n-placeholder="sidebar.searchPlaceholder"
-          data-i18n-aria-label="sidebar.searchAriaLabel"
+          placeholder="搜索脚本..."
           autocomplete="off"
+          aria-label="搜索脚本"
+          data-i18n-placeholder="nav.searchPlaceholder"
         />
       </div>
 
       <div
         class="nav-item"
         data-path="#/"
-        data-i18n="sidebar.navHome"
         role="button"
         tabindex="0"
+        data-i18n="nav.home"
       >
-      首页
+        🏠 首页
       </div>
       <div
         class="nav-item"
         data-path="#/about"
-        data-i18n="sidebar.navAbout"
         role="button"
         tabindex="0"
+        data-i18n="nav.about"
       >
-      关于
+        📖 关于
       </div>
       <div
         class="nav-item"
         data-path="#/ai"
-        data-i18n="sidebar.navAI"
         role="button"
         tabindex="0"
+        data-i18n="nav.ai"
       >
-      AI助手
+        🤖 AI助手
       </div>
       <div
         class="nav-item"
         data-path="#/generator"
-        data-i18n="sidebar.navGenerator"
         role="button"
         tabindex="0"
+        data-i18n="nav.generator"
       >
-      编写脚本
+        ✏️ 编写脚本
       </div>
       <div class="divider"></div>
-      <div class="section-title" data-i18n="sidebar.myScripts">
-      我的脚本
-      </div>
+      <div class="section-title" data-i18n="nav.myScripts">📄 我的脚本</div>
       <div id="sidebar-pages">
-        <div class="no-pages" data-i18n="sidebar.emptyPages">
-          暂无编写的脚本
-        </div>
+        <div class="no-pages" data-i18n="nav.noScripts">暂无编写的脚本</div>
       </div>
 
-      <!-- 底部 -->
       <div class="sidebar-footer">
         <div class="footer-row">
           <div
@@ -110,9 +99,9 @@
             id="exportZipSidebar"
             role="button"
             tabindex="0"
-            data-i18n="sidebar.exportZip"
+            data-i18n="nav.exportZip"
           >
-          导出ZIP
+            📦 导出ZIP
           </div>
           <div class="footer-vdivider"></div>
           <div
@@ -120,16 +109,16 @@
             id="themeToggleSidebar"
             role="button"
             tabindex="0"
-            data-i18n="sidebar.themeToggle"
+            data-i18n="nav.themeToggle"
           >
-          切换主题
+            🌓 切换主题
           </div>
         </div>
       </div>
     </nav>
     <div class="overlay" id="overlay"></div>
 
-    <main id="app">加载中…</main>
+    <main id="app" data-i18n="site.loading">加载中…</main>
 
     <div
       class="modal-backdrop"
@@ -143,7 +132,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
 
-    <!-- 主脚本 -->
     <script src="js/script.js"></script>
   </body>
 </html>
