@@ -117,7 +117,7 @@
       "model.deleteOk": "删除成功",
       "model.deleteOkBody": "模型「{name}」已删除。",
       "model.deleteConfirmTitle": "删除模型",
-      "model.deleteConfirmBody": "确定要删除「{name}」吗？\n\n此操作会同时清除该模型的 API Key、系统提示词和全部对话记录，且不可恢复。",
+      "model.deleteConfirmBody": "确定要删除「{name}」吗？\n\n此操作会同时清除该模型的API Key、系统提示词和全部对话记录，且不可恢复。",
       "model.errFormat": "格式错误",
       "model.errFormatBody": "Endpoint 需以 http:// 或 https:// 开头。",
 
@@ -210,10 +210,10 @@
 
       "about.title": "About",
       "about.p1": "randomArt Visual Creative Coding is a pure frontend tool using localStorage; no backend required.",
-      "about.p2": "CodeMirror provides syntax highlighting with light/dark themes.",
-      "about.p3": "All scripts can be exported as a ZIP package, or downloaded individually as HTML.",
-      "about.p4": "The home page randomly runs a p5.js sketch. After writing a script, click Preview to run it, or select it from the sidebar. Switching to another tab returns to random mode.",
-      "about.p5": "The AI assistant supports ChatGPT / Gemini / DeepSeek streaming, plus custom OpenAI-compatible models. Each model has its own API key and system prompt. Supports Markdown / JSON export and JSON import. The JSON export includes structured metadata (finish_reason / usage / tool_calls, etc.).",
+      "about.p2": "The home page randomly runs a p5.js sketch. After writing a script, click Preview to run it, or select it from the sidebar. Switching to another tab returns to random mode.",
+      "about.p3": "The AI assistant supports ChatGPT / Gemini / DeepSeek streaming, plus custom OpenAI-compatible models. Each model has its own API key and system prompt. Supports Markdown / JSON export and JSON import. The JSON export includes structured metadata (finish_reason / usage / tool_calls, etc.).",
+      "about.p4": "CodeMirror provides syntax highlighting with light/dark themes.",
+      "about.p5": "All scripts can be exported as a ZIP package, or downloaded individually as HTML.",
 
       "generator.title": "Write p5.js Script",
       "generator.subtitle": "Enter a title and p5.js code, optionally upload an image, then submit.",
