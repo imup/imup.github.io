@@ -2815,7 +2815,7 @@
   }
   
     /* 同步启动 */
-   /*
+  
    function boot() {
     initStatic();
     initAIState();
@@ -2832,10 +2832,9 @@
       console.warn("[content.json] 加载失败，使用 HTML 默认文案：", e);
       boot();
     });
-    */
 
    /* 异步启动 */
-
+   /*
   function bootSync() {
     initStatic();
     initAIState();
@@ -2868,5 +2867,6 @@
   } else {
     start();
   }
+  */
 
 })();
