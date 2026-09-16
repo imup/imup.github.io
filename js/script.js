@@ -3,13 +3,12 @@
    =========================================================
    依赖：
      - 外部 CDN：CodeMirror、JSZip（在 index.html 中引入）
-     - ./data/content.json（文案 + 模型配置，异步加载）
+     - ./data/content.json（文案 + 模型配置）
      - ./p5/*.js（首页随机运行，列表硬编码在下方 P5_FILES）
 
    设计：
      - HTML 只有骨架；所有动态 DOM 由本文件 createElement 生成
      - 文案与模型配置从 content.json 载入，支持 i18n
-     - 启动时同步 boot 一次，保证 UI 立即可用；content.json 回来后重刷
    ========================================================= */
 (function () {
   "use strict";
@@ -140,7 +139,7 @@
   }
 
   /* ---------------------------------------------------------
-     localStorage 读写
+     localStorage
      --------------------------------------------------------- */
 
   function loadAIKeys() {
@@ -173,7 +172,6 @@
         result[m.id] = [];
       }
     });
-    /* 迁移老数据：单 key → 分模型 key */
     try {
       var oldRaw = localStorage.getItem(AI_CHAT_STORAGE);
       if (oldRaw) {
@@ -301,6 +299,7 @@
       if (!Array.isArray(aiState.chats[m.id])) aiState.chats[m.id] = [];
       if (typeof aiState.prompts[m.id] !== "string") aiState.prompts[m.id] = "";
     });
+    aiState.currentModel = null;
   }
 
   /* ---------------------------------------------------------
@@ -1077,6 +1076,7 @@
     wrap.appendChild(el("h1", null, T("generator.title")));
     wrap.appendChild(el("p", null, T("generator.subtitle")));
 
+    /* 标题输入 */
     var g1 = el("div", "form-group");
     var l1 = el("label", null, T("generator.labelTitle"));
     l1.setAttribute("for", "title");
@@ -1087,6 +1087,7 @@
     g1.appendChild(l1);
     g1.appendChild(titleInput);
 
+    /* 脚本 */
     var g2 = el("div", "form-group");
     var l2 = el("label", null, T("generator.labelScript"));
     l2.setAttribute("for", "script");
@@ -1095,6 +1096,7 @@
     g2.appendChild(l2);
     g2.appendChild(ta);
 
+    /* 图片 */
     var g3 = el("div", "form-group");
     var l3 = el("label");
     l3.textContent = T("generator.labelImage");
@@ -1444,10 +1446,7 @@
      --------------------------------------------------------- */
 
   function buildMsgNode(m) {
-    var row = el(
-      "div",
-      "ai-msg " + (m.role === "assistant" ? "assistant" : "user"),
-    );
+    var row = el("div", "ai-msg " + (m.role === "assistant" ? "assistant" : "user"));
     var b = el("div", "bubble");
     if (m.role === "assistant" && !m.content) {
       b.textContent = T("ai.thinking");
@@ -1801,6 +1800,7 @@
       );
       box.appendChild(hint);
 
+      /* 名称 */
       var l1 = el("label", null, T("model.labelName"));
       l1.style.cssText =
         "display:block;font-weight:bold;font-size:0.9rem;margin:8px 0 4px;";
@@ -1811,6 +1811,7 @@
       nameInput.autocomplete = "off";
       nameInput.spellcheck = false;
 
+      /* Endpoint */
       var l2 = el("label", null, T("model.labelEndpoint"));
       l2.style.cssText = l1.style.cssText;
       var epInput = document.createElement("input");
@@ -1820,6 +1821,7 @@
       epInput.autocomplete = "off";
       epInput.spellcheck = false;
 
+      /* API Model */
       var l3 = el("label", null, T("model.labelApiModel"));
       l3.style.cssText = l1.style.cssText;
       var apiInput = document.createElement("input");
@@ -2865,7 +2867,7 @@
   }
 
   /* ---------------------------------------------------------
-     加载 content.json
+     加载 content.json → 启动
      --------------------------------------------------------- */
 
   function loadContent() {
@@ -2882,44 +2884,20 @@
       });
   }
 
-  /* ---------------------------------------------------------
-     启动流程
-     --------------------------------------------------------- */
-
-  /* 1. DOM 就绪后，同步 init 一次（用默认/空文案先跑起来） */
-  function bootSync() {
+  function boot() {
     initStatic();
     initAIState();
-    updateSidebarPages();
-    render();
-  }
-
-  /* 2. content.json 回来后，重刷文案与模型 */
-  function bootWithContent() {
-    LANG = detectLang();
     applyI18nToStatic();
-    initAIState();
     updateSidebarPages();
     render();
   }
 
-  function start() {
-    /* 立即 boot：保证 UI 可用，不依赖 content.json */
-    bootSync();
-
-    /* 异步加载 content.json，回来后重刷 */
-    loadContent()
-      .then(function () {
-        bootWithContent();
-      })
-      .catch(function (e) {
-        console.warn("[content.json] 加载失败，使用默认文案：", e);
-      });
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", start);
-  } else {
-    start();
-  }
+  loadContent()
+    .then(function () {
+      boot();
+    })
+    .catch(function (e) {
+      console.warn("[content.json] 加载失败，使用 HTML 默认文案：", e);
+      boot();
+    });
 })();
