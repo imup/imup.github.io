@@ -1,8 +1,22 @@
-/* randomArt可视化创意编程 */
+/* =========================================================
+   randomArt可视化创意编程 - 主逻辑
+   =========================================================
+   依赖：
+     - 外部 CDN：CodeMirror、JSZip（在 index.html 中引入）
+     - ./data/content.json（文案 + 模型配置，异步加载）
+     - ./p5/*.js（首页随机运行，列表硬编码在下方 P5_FILES）
+
+   设计：
+     - HTML 只有骨架；所有动态 DOM 由本文件 createElement 生成
+     - 文案与模型配置从 content.json 载入，支持 i18n
+     - 启动时同步 boot 一次，保证 UI 立即可用；content.json 回来后重刷
+   ========================================================= */
 (function () {
   "use strict";
 
-  /* 常量 */
+  /* ---------------------------------------------------------
+     常量
+     --------------------------------------------------------- */
 
   var STORAGE_KEY = "p5_pages";
   var THEME_KEY = "p5_theme";
@@ -23,7 +37,9 @@
 
   var CONTENT_URL = "data/content.json";
 
-  /* 运行时状态 */
+  /* ---------------------------------------------------------
+     运行时状态
+     --------------------------------------------------------- */
 
   var AI_MODELS = [];
   var I18N = {};
@@ -56,7 +72,9 @@
   var renderedMsgCount = 0;
   var renderedModelId = null;
 
-  /* i18n */
+  /* ---------------------------------------------------------
+     i18n
+     --------------------------------------------------------- */
 
   function T(key, params) {
     var pack = I18N[LANG] || I18N.zh || {};
@@ -100,7 +118,9 @@
     } catch (e) {}
   }
 
-  /* 模型访问 */
+  /* ---------------------------------------------------------
+     模型访问
+     --------------------------------------------------------- */
 
   function getAllModels() {
     return AI_MODELS.concat(aiState.customModels || []);
@@ -119,7 +139,9 @@
     return c ? c.name : id;
   }
 
-  /* localStorage */
+  /* ---------------------------------------------------------
+     localStorage 读写
+     --------------------------------------------------------- */
 
   function loadAIKeys() {
     try {
@@ -151,6 +173,7 @@
         result[m.id] = [];
       }
     });
+    /* 迁移老数据：单 key → 分模型 key */
     try {
       var oldRaw = localStorage.getItem(AI_CHAT_STORAGE);
       if (oldRaw) {
@@ -278,10 +301,11 @@
       if (!Array.isArray(aiState.chats[m.id])) aiState.chats[m.id] = [];
       if (typeof aiState.prompts[m.id] !== "string") aiState.prompts[m.id] = "";
     });
-    aiState.currentModel = null;
   }
 
-  /* 存储超限 */
+  /* ---------------------------------------------------------
+     存储超限
+     --------------------------------------------------------- */
 
   function isQuotaError(e) {
     if (!e) return false;
@@ -326,7 +350,9 @@
     );
   }
 
-  /* 通用工具 */
+  /* ---------------------------------------------------------
+     通用工具
+     --------------------------------------------------------- */
 
   function $(sel, root) {
     return (root || document).querySelector(sel);
@@ -358,7 +384,9 @@
     return n || "untitled";
   }
 
-  /* DOM 小工厂 */
+  /* ---------------------------------------------------------
+     DOM 小工厂
+     --------------------------------------------------------- */
 
   function el(tag, className, text) {
     var e = document.createElement(tag);
@@ -371,7 +399,9 @@
     return el("div", "right-group");
   }
 
-  /* 弹窗 */
+  /* ---------------------------------------------------------
+     弹窗
+     --------------------------------------------------------- */
 
   function openModal(builder) {
     lastFocused = document.activeElement;
@@ -499,7 +529,9 @@
     });
   }
 
-  /* 生成作品 HTML */
+  /* ---------------------------------------------------------
+     生成作品 HTML
+     --------------------------------------------------------- */
 
   function generatePageHtml(title, script, imageDataUrl) {
     var safeTitle = escapeHtml(title || T("generator.untitledPage"));
@@ -596,7 +628,9 @@
       });
   }
 
-  /* 首页随机脚本 */
+  /* ---------------------------------------------------------
+     首页随机脚本
+     --------------------------------------------------------- */
 
   function pickRandomP5File() {
     if (!P5_FILES || !P5_FILES.length) return null;
@@ -639,7 +673,9 @@
     );
   }
 
-  /* 侧边栏作品列表 */
+  /* ---------------------------------------------------------
+     侧边栏作品列表
+     --------------------------------------------------------- */
 
   function updateSidebarPages() {
     var pages = getPages();
@@ -690,7 +726,9 @@
     sidebarPagesEl.replaceChildren(frag);
   }
 
-  /* iframe 内 p5 画布事件代理 */
+  /* ---------------------------------------------------------
+     iframe 内 p5 画布事件代理
+     --------------------------------------------------------- */
 
   function bindIframeProxy(iframe) {
     var iwin, idoc;
@@ -806,7 +844,9 @@
     });
   }
 
-  /* 预览锁屏 */
+  /* ---------------------------------------------------------
+     预览锁屏
+     --------------------------------------------------------- */
 
   function lockAppSize() {
     document.body.classList.add("preview-lock");
@@ -829,7 +869,9 @@
     appEl.style.overflow = "";
   }
 
-  /* 首页渲染 */
+  /* ---------------------------------------------------------
+     首页渲染
+     --------------------------------------------------------- */
 
   function renderRunner() {
     destroyEditor();
@@ -896,7 +938,9 @@
     else location.hash = "#/";
   }
 
-  /* 作品操作 */
+  /* ---------------------------------------------------------
+     作品操作
+     --------------------------------------------------------- */
 
   function deletePage(id) {
     var pages = getPages();
@@ -937,7 +981,9 @@
     });
   }
 
-  /* 侧边栏开关 */
+  /* ---------------------------------------------------------
+     侧边栏开关
+     --------------------------------------------------------- */
 
   function openSidebar() {
     sidebarEl.classList.add("open");
@@ -952,7 +998,9 @@
     hamburgerBtn.setAttribute("aria-expanded", "false");
   }
 
-  /* 主题 */
+  /* ---------------------------------------------------------
+     主题
+     --------------------------------------------------------- */
 
   function applyTheme(theme) {
     var lightTheme = $("#cm-theme-light");
@@ -980,7 +1028,9 @@
     } catch (e) {}
   }
 
-  /* 路由 */
+  /* ---------------------------------------------------------
+     路由
+     --------------------------------------------------------- */
 
   function getRoute() {
     var hash = location.hash;
@@ -1005,7 +1055,9 @@
     }
   }
 
-  /* 关于页 */
+  /* ---------------------------------------------------------
+     关于页
+     --------------------------------------------------------- */
 
   function renderAbout() {
     var wrap = document.createElement("div");
@@ -1016,14 +1068,15 @@
     return wrap;
   }
 
-  /* 编写脚本页 */
+  /* ---------------------------------------------------------
+     编写脚本页
+     --------------------------------------------------------- */
 
   function renderGenerator() {
     var wrap = el("div", "generator-page");
     wrap.appendChild(el("h1", null, T("generator.title")));
     wrap.appendChild(el("p", null, T("generator.subtitle")));
 
-    /* 标题输入 */
     var g1 = el("div", "form-group");
     var l1 = el("label", null, T("generator.labelTitle"));
     l1.setAttribute("for", "title");
@@ -1034,7 +1087,6 @@
     g1.appendChild(l1);
     g1.appendChild(titleInput);
 
-    /* 脚本 */
     var g2 = el("div", "form-group");
     var l2 = el("label", null, T("generator.labelScript"));
     l2.setAttribute("for", "script");
@@ -1043,14 +1095,185 @@
     g2.appendChild(l2);
     g2.appendChild(ta);
 
-    /* 图片 */
     var g3 = el("div", "form-group");
     var l3 = el("label");
     l3.textContent = T("generator.labelImage");
     var fileInput = document.createElement("input");
     fileInput.type = "file";
     fileInput.id = "image";
-    fileInput.accept = "image/*"; var previewBox = el("div"); previewBox.id = "image-preview"; g3.appendChild(l3); g3.appendChild(fileInput); g3.appendChild(previewBox); var submit = el("button", null, T("generator.submit")); submit.id = "buildBtn"; submit.type = "button"; var result = el("div", "result"); result.id = "result"; result.style.display = "none"; wrap.appendChild(g1); wrap.appendChild(g2); wrap.appendChild(g3); wrap.appendChild(submit); wrap.appendChild(result); return wrap; } function bindGenerator() { var titleInput = $("#title"); var textarea = $("#script"); var fileInput = $("#image"); var previewEl = $("#image-preview"); var resultEl = $("#result"); var buildBtn = $("#buildBtn"); uploadedImageDataUrl = null; titleInput.value = generatorDraft.title || ""; destroyEditor(); if (window.CodeMirror) { var themeName = currentTheme() === "dark" ? "dracula" : "default"; editor = window.CodeMirror.fromTextArea(textarea, { mode: "javascript", lineNumbers: true, theme: themeName, tabSize: 2, indentUnit: 2, autofocus: true, }); editor.setSize(null, "100%"); if (generatorDraft.script) editor.setValue(generatorDraft.script); var cmWrapper = editor.getWrapperElement(); if (getComputedStyle(cmWrapper).position === "static") { cmWrapper.style.position = "relative"; } var cmPlaceholderEl = el("div", "cm-placeholder-overlay"); cmPlaceholderEl.textContent = T("generator.scriptPlaceholder"); cmWrapper.appendChild(cmPlaceholderEl); var gutters = cmWrapper.querySelector(".CodeMirror-gutters"); var leftOffset = gutters ? gutters.offsetWidth + 8 : 44; cmPlaceholderEl.style.left = leftOffset + "px"; function updateCmPlaceholder() { cmPlaceholderEl.style.display = editor.getValue().length === 0 ? "block" : "none"; } editor.on("change", updateCmPlaceholder); editor.on("optionChange", function () { var g = cmWrapper.querySelector(".CodeMirror-gutters"); if (g) cmPlaceholderEl.style.left = g.offsetWidth + 8 + "px"; }); updateCmPlaceholder(); editor.on("change", function () { generatorDraft.script = editor.getValue(); }); } titleInput.addEventListener("input", function () { generatorDraft.title = this.value; }); fileInput.addEventListener("change", function () { var file = this.files && this.files[0]; if (!file) return; if (!/^image\//.test(file.type)) { showAlert(T("page.badImageTitle"), T("page.badImageBody"), true); this.value = ""; return; } if (file.size > MAX_IMAGE_BYTES) { showAlert( T("page.imageTooLargeTitle"), T("page.imageTooLargeBody"), true, ); this.value = ""; return; } var reader = new FileReader(); reader.onload = function (e) { uploadedImageDataUrl = e.target.result; var tip = el("p", null, T("generator.imageOk")); var img = document.createElement("img"); img.src = e.target.result; img.className = "preview-img"; img.alt = T("generator.imageAlt"); previewEl.replaceChildren(tip, img); }; reader.onerror = function () { showAlert( T("page.imageReadFailTitle"), T("page.imageReadFailBody"), true, ); }; reader.readAsDataURL(file); }); buildBtn.addEventListener("click", function () { var title = titleInput.value.trim() || T("generator.untitled"); var script = (editor ? editor.getValue() : textarea.value).trim(); if (!script) { showAlert(T("page.noScriptTitle"), T("page.noScriptBody"), true); return; } var imageDataUrl = uploadedImageDataUrl || ""; var htmlContent = generatePageHtml(title, script, imageDataUrl); var newId = Date.now() + Math.floor(Math.random() * 1000); var pages = getPages(); pages.push({ id: newId, title: title, html: htmlContent, timestamp: new Date().toISOString(), }); if (!savePages(pages)) return; updateSidebarPages(); resultEl.style.display = "block"; var msg = el("p", null, T("generator.buildOk")); var btnContainer = el("div", "action-buttons"); var previewBtn = el("button", "preview", T("generator.preview")); previewBtn.addEventListener("click", function () { runPage(newId); }); var downloadBtn = el("button", "download", T("generator.download")); downloadBtn.addEventListener("click", function () { downloadSingleHtml( "p5_" + safeFileName(title) + "_" + newId + ".html", htmlContent, ); }); btnContainer.appendChild(previewBtn); btnContainer.appendChild(downloadBtn); resultEl.replaceChildren(msg, btnContainer); titleInput.value = ""; if (editor) editor.setValue(""); generatorDraft.title = ""; generatorDraft.script = ""; uploadedImageDataUrl = ""; previewEl.replaceChildren(); fileInput.value = ""; }); } /* AI 页骨架（JS 生成） */
+    fileInput.accept = "image/*";
+    var previewBox = el("div");
+    previewBox.id = "image-preview";
+    g3.appendChild(l3);
+    g3.appendChild(fileInput);
+    g3.appendChild(previewBox);
+
+    var submit = el("button", null, T("generator.submit"));
+    submit.id = "buildBtn";
+    submit.type = "button";
+
+    var result = el("div", "result");
+    result.id = "result";
+    result.style.display = "none";
+
+    wrap.appendChild(g1);
+    wrap.appendChild(g2);
+    wrap.appendChild(g3);
+    wrap.appendChild(submit);
+    wrap.appendChild(result);
+    return wrap;
+  }
+
+  function bindGenerator() {
+    var titleInput = $("#title");
+    var textarea = $("#script");
+    var fileInput = $("#image");
+    var previewEl = $("#image-preview");
+    var resultEl = $("#result");
+    var buildBtn = $("#buildBtn");
+
+    uploadedImageDataUrl = null;
+    titleInput.value = generatorDraft.title || "";
+
+    destroyEditor();
+    if (window.CodeMirror) {
+      var themeName = currentTheme() === "dark" ? "dracula" : "default";
+      editor = window.CodeMirror.fromTextArea(textarea, {
+        mode: "javascript",
+        lineNumbers: true,
+        theme: themeName,
+        tabSize: 2,
+        indentUnit: 2,
+        autofocus: true,
+      });
+      editor.setSize(null, "100%");
+
+      if (generatorDraft.script) editor.setValue(generatorDraft.script);
+
+      var cmWrapper = editor.getWrapperElement();
+      if (getComputedStyle(cmWrapper).position === "static") {
+        cmWrapper.style.position = "relative";
+      }
+
+      var cmPlaceholderEl = el("div", "cm-placeholder-overlay");
+      cmPlaceholderEl.textContent = T("generator.scriptPlaceholder");
+      cmWrapper.appendChild(cmPlaceholderEl);
+
+      var gutters = cmWrapper.querySelector(".CodeMirror-gutters");
+      var leftOffset = gutters ? gutters.offsetWidth + 8 : 44;
+      cmPlaceholderEl.style.left = leftOffset + "px";
+
+      function updateCmPlaceholder() {
+        cmPlaceholderEl.style.display =
+          editor.getValue().length === 0 ? "block" : "none";
+      }
+      editor.on("change", updateCmPlaceholder);
+      editor.on("optionChange", function () {
+        var g = cmWrapper.querySelector(".CodeMirror-gutters");
+        if (g) cmPlaceholderEl.style.left = g.offsetWidth + 8 + "px";
+      });
+      updateCmPlaceholder();
+
+      editor.on("change", function () {
+        generatorDraft.script = editor.getValue();
+      });
+    }
+
+    titleInput.addEventListener("input", function () {
+      generatorDraft.title = this.value;
+    });
+
+    fileInput.addEventListener("change", function () {
+      var file = this.files && this.files[0];
+      if (!file) return;
+      if (!/^image\//.test(file.type)) {
+        showAlert(T("page.badImageTitle"), T("page.badImageBody"), true);
+        this.value = "";
+        return;
+      }
+      if (file.size > MAX_IMAGE_BYTES) {
+        showAlert(
+          T("page.imageTooLargeTitle"),
+          T("page.imageTooLargeBody"),
+          true,
+        );
+        this.value = "";
+        return;
+      }
+      var reader = new FileReader();
+      reader.onload = function (e) {
+        uploadedImageDataUrl = e.target.result;
+        var tip = el("p", null, T("generator.imageOk"));
+        var img = document.createElement("img");
+        img.src = e.target.result;
+        img.className = "preview-img";
+        img.alt = T("generator.imageAlt");
+        previewEl.replaceChildren(tip, img);
+      };
+      reader.onerror = function () {
+        showAlert(
+          T("page.imageReadFailTitle"),
+          T("page.imageReadFailBody"),
+          true,
+        );
+      };
+      reader.readAsDataURL(file);
+    });
+
+    buildBtn.addEventListener("click", function () {
+      var title = titleInput.value.trim() || T("generator.untitled");
+      var script = (editor ? editor.getValue() : textarea.value).trim();
+      if (!script) {
+        showAlert(T("page.noScriptTitle"), T("page.noScriptBody"), true);
+        return;
+      }
+      var imageDataUrl = uploadedImageDataUrl || "";
+      var htmlContent = generatePageHtml(title, script, imageDataUrl);
+
+      var newId = Date.now() + Math.floor(Math.random() * 1000);
+      var pages = getPages();
+      pages.push({
+        id: newId,
+        title: title,
+        html: htmlContent,
+        timestamp: new Date().toISOString(),
+      });
+      if (!savePages(pages)) return;
+
+      updateSidebarPages();
+
+      resultEl.style.display = "block";
+      var msg = el("p", null, T("generator.buildOk"));
+
+      var btnContainer = el("div", "action-buttons");
+      var previewBtn = el("button", "preview", T("generator.preview"));
+      previewBtn.addEventListener("click", function () {
+        runPage(newId);
+      });
+      var downloadBtn = el("button", "download", T("generator.download"));
+      downloadBtn.addEventListener("click", function () {
+        downloadSingleHtml(
+          "p5_" + safeFileName(title) + "_" + newId + ".html",
+          htmlContent,
+        );
+      });
+      btnContainer.appendChild(previewBtn);
+      btnContainer.appendChild(downloadBtn);
+      resultEl.replaceChildren(msg, btnContainer);
+
+      titleInput.value = "";
+      if (editor) editor.setValue("");
+      generatorDraft.title = "";
+      generatorDraft.script = "";
+      uploadedImageDataUrl = "";
+      previewEl.replaceChildren();
+      fileInput.value = "";
+    });
+  }
+
+  /* ---------------------------------------------------------
+     AI 页骨架（JS 生成）
+     --------------------------------------------------------- */
 
   function renderAIAssistant() {
     var page = el("div", "ai-page");
@@ -1106,7 +1329,9 @@
     return page;
   }
 
-  /* 模型菜单 */
+  /* ---------------------------------------------------------
+     模型菜单
+     --------------------------------------------------------- */
 
   function buildAIModelMenu() {
     var menu = $("#aiModelMenu");
@@ -1214,10 +1439,15 @@
     menu.classList.toggle("show");
   }
 
-  /* AI 消息渲染 */
+  /* ---------------------------------------------------------
+     AI 消息渲染
+     --------------------------------------------------------- */
 
   function buildMsgNode(m) {
-    var row = el("div", "ai-msg " + (m.role === "assistant" ? "assistant" : "user"));
+    var row = el(
+      "div",
+      "ai-msg " + (m.role === "assistant" ? "assistant" : "user"),
+    );
     var b = el("div", "bubble");
     if (m.role === "assistant" && !m.content) {
       b.textContent = T("ai.thinking");
@@ -1319,7 +1549,9 @@
     return box.scrollHeight - box.scrollTop - box.clientHeight < 80;
   }
 
-  /* 流式请求 */
+  /* ---------------------------------------------------------
+     流式请求
+     --------------------------------------------------------- */
 
   function streamAI(model, key, messages, systemPrompt, onDelta, onRaw) {
     var conf = aiModelConf(model);
@@ -1448,7 +1680,9 @@
     });
   }
 
-  /* 结构化累积器 */
+  /* ---------------------------------------------------------
+     结构化累积器
+     --------------------------------------------------------- */
 
   function createStructuredAccumulator() {
     var meta = {
@@ -1547,7 +1781,9 @@
     return { consume: consume, finalize: finalize };
   }
 
-  /* 自定义模型编辑弹窗 */
+  /* ---------------------------------------------------------
+     自定义模型编辑弹窗
+     --------------------------------------------------------- */
 
   function showModelEditor(modelId) {
     var isEdit = !!modelId;
@@ -1565,7 +1801,6 @@
       );
       box.appendChild(hint);
 
-      /* 名称 */
       var l1 = el("label", null, T("model.labelName"));
       l1.style.cssText =
         "display:block;font-weight:bold;font-size:0.9rem;margin:8px 0 4px;";
@@ -1576,7 +1811,6 @@
       nameInput.autocomplete = "off";
       nameInput.spellcheck = false;
 
-      /* Endpoint */
       var l2 = el("label", null, T("model.labelEndpoint"));
       l2.style.cssText = l1.style.cssText;
       var epInput = document.createElement("input");
@@ -1586,7 +1820,6 @@
       epInput.autocomplete = "off";
       epInput.spellcheck = false;
 
-      /* API Model */
       var l3 = el("label", null, T("model.labelApiModel"));
       l3.style.cssText = l1.style.cssText;
       var apiInput = document.createElement("input");
@@ -1718,7 +1951,9 @@
     );
   }
 
-  /* 测试连接 */
+  /* ---------------------------------------------------------
+     测试连接
+     --------------------------------------------------------- */
 
   function testAIModelConnection(model) {
     var conf = aiModelConf(model);
@@ -1796,7 +2031,9 @@
       });
   }
 
-  /* Key / 提示词 */
+  /* ---------------------------------------------------------
+     Key / 提示词
+     --------------------------------------------------------- */
 
   function promptAPIKey(model, onSaved) {
     showPrompt(
@@ -1860,7 +2097,9 @@
     updateAISendBtn();
   }
 
-  /* 导出 / 导入 */
+  /* ---------------------------------------------------------
+     导出 / 导入
+     --------------------------------------------------------- */
 
   function triggerDownload(content, mime, filename) {
     var blob = new Blob([content], { type: mime });
@@ -2087,7 +2326,9 @@
     reader.readAsText(file);
   }
 
-  /* 发送 / 清空 */
+  /* ---------------------------------------------------------
+     发送 / 清空
+     --------------------------------------------------------- */
 
   function aiSend() {
     if (aiState.busy) return;
@@ -2388,7 +2629,9 @@
     }
   }
 
-  /* 总渲染入口 */
+  /* ---------------------------------------------------------
+     总渲染入口
+     --------------------------------------------------------- */
 
   function render() {
     var path = getRoute();
@@ -2436,7 +2679,9 @@
     }
   }
 
-  /* 静态初始化 */
+  /* ---------------------------------------------------------
+     静态初始化
+     --------------------------------------------------------- */
 
   function initStatic() {
     modalBackdrop = $("#modalBackdrop");
@@ -2619,7 +2864,9 @@
     });
   }
 
-  /* 加载 content.json → 启动 */
+  /* ---------------------------------------------------------
+     加载 content.json
+     --------------------------------------------------------- */
 
   function loadContent() {
     return fetch(CONTENT_URL, { cache: "no-cache" })
@@ -2635,23 +2882,44 @@
       });
   }
 
-  function boot() {
+  /* ---------------------------------------------------------
+     启动流程
+     --------------------------------------------------------- */
+
+  /* 1. DOM 就绪后，同步 init 一次（用默认/空文案先跑起来） */
+  function bootSync() {
     initStatic();
     initAIState();
-    applyI18nToStatic();
     updateSidebarPages();
     render();
   }
-  boot();
-  /* 异步加载文案/模型，回来后重刷 */
-  loadContent()
-    .then(function () {
-      LANG = detectLang();
-      initAIState(); /* 用新模型重新初始化 */
-      applyI18nToStatic();
-      updateSidebarPages();
-      render();
-    })
-    .catch(function (e) {
-      console.warn("[content.json] 加载失败，使用 HTML 默认文案：", e);
-    });
+
+  /* 2. content.json 回来后，重刷文案与模型 */
+  function bootWithContent() {
+    LANG = detectLang();
+    applyI18nToStatic();
+    initAIState();
+    updateSidebarPages();
+    render();
+  }
+
+  function start() {
+    /* 立即 boot：保证 UI 可用，不依赖 content.json */
+    bootSync();
+
+    /* 异步加载 content.json，回来后重刷 */
+    loadContent()
+      .then(function () {
+        bootWithContent();
+      })
+      .catch(function (e) {
+        console.warn("[content.json] 加载失败，使用默认文案：", e);
+      });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", start);
+  } else {
+    start();
+  }
+})();
