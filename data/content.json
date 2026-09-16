@@ -70,9 +70,9 @@
       "generator.scriptPlaceholder": "例如：\nfunction setup() {\n  createCanvas(windowWidth, windowHeight);\n  background(102);\n}\nfunction draw() {\n  variableEllipse(mouseX, mouseY, pmouseX, pmouseY);\n}\nfunction variableEllipse(x, y, px, py) {\n  let speed = abs(x - px) + abs(y - py);\n  stroke(speed);\n  ellipse(x, y, speed, speed);\n}",
       "generator.imageOk": "✅ 图片上传成功",
       "generator.imageAlt": "上传预览",
-      "generator.buildOk": "✅ 页面生成成功！已保存到本地存储。",
+      "generator.buildOk": "✅ 脚本提交成功！已保存至左侧栏脚本列表。",
       "generator.preview": "▶️ 预览",
-      "generator.download": "⬇️ 下载HTML",
+      "generator.download": "下载HTML",
       "generator.untitled": "未命名脚本",
       "generator.untitledPage": "未命名页面",
 
