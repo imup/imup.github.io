@@ -2814,6 +2814,8 @@
       });
   }
   
+    /* 同步启动 */
+
    function boot() {
     initStatic();
     initAIState();
@@ -2830,4 +2832,41 @@
       console.warn("[content.json] 加载失败，使用 HTML 默认文案：", e);
       boot();
     });
+    
+
+   /* 异步启动 */
+   /*
+  function bootSync() {
+    initStatic();
+    initAIState();
+    updateSidebarPages();
+    render();
+  }
+  function bootWithContent() {
+    LANG = detectLang();
+    applyI18nToStatic();
+    initAIState();
+    updateSidebarPages();
+    render();
+  }
+
+  function start() {
+
+    bootSync();
+
+    loadContent()
+      .then(function () {
+        bootWithContent();
+      })
+      .catch(function (e) {
+        console.warn("[content.json] 加载失败，使用默认文案：", e);
+      });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", start);
+  } else {
+    start();
+  }
+  */
 })();
