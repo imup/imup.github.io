@@ -2813,16 +2813,7 @@
         LANG = detectLang();
       });
   }
-
-  /* 启动流程 */
-
-  /* 1. DOM就绪后，同步init一次（用默认/空文案先跑起来） */
-  function bootSync() {
-    initStatic();
-    initAIState();
-    updateSidebarPages();
-    render();
-  }
+  
    function boot() {
     initStatic();
     initAIState();
