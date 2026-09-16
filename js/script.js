@@ -1195,7 +1195,51 @@
       if (!savePages(pages)) return;
 
       updateSidebarPages();
+      openModal(function (box) {
+        box.appendChild(el("h3", null, T("generator.buildOk")));
 
+        var actions = el("div", "modal-actions");
+
+        /* 左侧：关闭 */
+        var leftWrap = document.createElement("div");
+        var closeBtn = el("button", "link-btn", T("common.cancel"));
+        closeBtn.addEventListener("click", closeModal);
+        leftWrap.appendChild(closeBtn);
+
+        /* 右侧：预览 + 下载 */
+        var rg = rightGroup();
+
+        var previewBtn = el("button", null, T("generator.preview"));
+        previewBtn.addEventListener("click", function () {
+          closeModal();
+          runPage(newId);
+        });
+
+        var downloadBtn = el("button", "cancel", T("generator.download"));
+        downloadBtn.addEventListener("click", function () {
+          downloadSingleHtml(
+            "p5_" + safeFileName(title) + "_" + newId + ".html",
+            htmlContent,
+          );
+        });
+
+        rg.appendChild(previewBtn);
+        rg.appendChild(downloadBtn);
+
+        actions.appendChild(leftWrap);
+        actions.appendChild(rg);
+        box.appendChild(actions);
+      });
+
+      titleInput.value = "";
+      if (editor) editor.setValue("");
+      generatorDraft.title = "";
+      generatorDraft.script = "";
+      uploadedImageDataUrl = "";
+      previewEl.replaceChildren();
+      fileInput.value = "";
+      
+      /*
       resultEl.style.display = "block";
       var msg = el("p", null, T("generator.buildOk"));
 
@@ -1222,6 +1266,7 @@
       uploadedImageDataUrl = "";
       previewEl.replaceChildren();
       fileInput.value = "";
+      */
     });
   }
 
