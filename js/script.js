@@ -1,96 +1,333 @@
+/* randomArt可视化创意编程 */
 (function () {
   "use strict";
 
+  /* 常量 */
+
   var STORAGE_KEY = "p5_pages";
   var THEME_KEY = "p5_theme";
+  var LANG_KEY = "p5_lang";
   var MAX_IMAGE_BYTES = 1.5 * 1024 * 1024;
 
-  /* p5脚本文件夹配置 */
   var P5_DIR = "p5/";
   var P5_CDN =
     "https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js";
   var P5_FILES = ["sketch1.js", "sketch2.js", "sketch3.js"];
 
-  /* AI助手配置 */
   var AI_KEY_STORAGE = "p5_ai_keys";
   var AI_CHAT_STORAGE = "p5_ai_chats";
   var AI_PROMPT_STORAGE = "p5_ai_prompts";
+  var AI_CUSTOM_MODELS_STORAGE = "p5_ai_custom_models";
+
+  var MAX_CONTEXT_MESSAGES = 30;
+
   var CONTENT_URL = "data/content.json";
 
-  var AI_MODELS = [
-    {
-      id: "chatgpt",
-      name: "ChatGPT",
-      endpoint: "https://api.openai.com/v1/chat/completions",
-      apiModel: "gpt-4o-mini",
-    },
-    {
-      id: "gemini",
-      name: "Gemini",
-      endpoint:
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
-      apiModel: "gemini-2.0-flash",
-    },
-    {
-      id: "deepseek",
-      name: "DeepSeek",
-      endpoint: "https://api.deepseek.com/chat/completions",
-      apiModel: "deepseek-chat",
-    },
-  ];
+  /* 运行时状态 */
 
-  /* 内容调用json */
-  var C = {};
+  var AI_MODELS = [];
+  var I18N = {};
+  var LANG = "zh";
+  var CONTENT = null;
 
-  function t(key) {
-    var parts = String(key).split(".");
-    var cur = C;
-    for (var i = 0; i < parts.length; i++) {
-      if (cur == null) return "";
-      cur = cur[parts[i]];
-    }
-    return cur == null ? "" : cur;
-  }
+  var aiState = {
+    currentModel: null,
+    keys: {},
+    chats: {},
+    prompts: {},
+    customModels: [],
+    busy: false,
+    abortController: null,
+    streamToken: 0,
+  };
 
-  function tpl(key, vars) {
-    var s = String(t(key) || "");
-    if (vars) {
-      Object.keys(vars).forEach(function (k) {
-        s = s.split("{" + k + "}").join(vars[k]);
+  var modalBackdrop, modalBox, lastFocused;
+  var sidebarPagesEl, sidebarEl, overlayEl, hamburgerBtn;
+  var sidebarSearchEl;
+  var sidebarSearchKeyword = "";
+  var appEl;
+
+  var runner = { mode: "random", pageId: null };
+  var currentRandomFile = null;
+
+  var editor = null;
+  var uploadedImageDataUrl = null;
+  var generatorDraft = { title: "", script: "" };
+  var renderedMsgCount = 0;
+  var renderedModelId = null;
+
+  /* i18n */
+
+  function T(key, params) {
+    var pack = I18N[LANG] || I18N.zh || {};
+    var text = pack[key];
+    if (text == null) text = (I18N.zh && I18N.zh[key]) || key;
+    if (params) {
+      text = String(text).replace(/\{(\w+)\}/g, function (m, k) {
+        return params[k] != null ? String(params[k]) : m;
       });
     }
-    return s;
+    return text;
   }
 
-  function loadContent() {
-    return fetch(CONTENT_URL).then(function (res) {
-      if (!res.ok) throw new Error("HTTP " + res.status);
-      return res.json();
-    });
+  function detectLang() {
+    try {
+      var saved = localStorage.getItem(LANG_KEY);
+      if (saved && I18N[saved]) return saved;
+    } catch (e) {}
+    var nav = (navigator.language || "zh").toLowerCase();
+    if (nav.indexOf("zh") === 0) return "zh";
+    return "en";
   }
 
-  /*将data-i18n/data-i18n-placeholder/data-i18n-title/data-i18n-aria-label填充*/
-  function applyI18n(root) {
-    var r = root || document;
-    $$("[data-i18n]", r).forEach(function (el) {
-      var v = t(el.getAttribute("data-i18n"));
-      if (v !== "") el.innerHTML = v;
+  function applyI18nToStatic() {
+    document.querySelectorAll("[data-i18n]").forEach(function (el) {
+      var key = el.getAttribute("data-i18n");
+      el.textContent = T(key);
     });
-    $$("[data-i18n-placeholder]", r).forEach(function (el) {
-      var v = t(el.getAttribute("data-i18n-placeholder"));
-      if (v !== "") el.placeholder = v;
+    document.querySelectorAll("[data-i18n-placeholder]").forEach(function (el) {
+      var key = el.getAttribute("data-i18n-placeholder");
+      el.setAttribute("placeholder", T(key));
+      el.setAttribute("aria-label", T(key));
     });
-    $$("[data-i18n-title]", r).forEach(function (el) {
-      var v = t(el.getAttribute("data-i18n-title"));
-      if (v !== "") el.title = v;
+    document.querySelectorAll("[data-i18n-title]").forEach(function (el) {
+      var key = el.getAttribute("data-i18n-title");
+      el.setAttribute("title", T(key));
     });
-    $$("[data-i18n-aria-label]", r).forEach(function (el) {
-      var v = t(el.getAttribute("data-i18n-aria-label"));
-      if (v !== "") el.setAttribute("aria-label", v);
+    try {
+      document.title = T("site.title");
+      document.documentElement.lang = LANG === "zh" ? "zh-CN" : "en";
+    } catch (e) {}
+  }
+
+  /* 模型访问 */
+
+  function getAllModels() {
+    return AI_MODELS.concat(aiState.customModels || []);
+  }
+
+  function aiModelConf(id) {
+    var all = getAllModels();
+    for (var i = 0; i < all.length; i++) {
+      if (all[i].id === id) return all[i];
+    }
+    return null;
+  }
+
+  function aiModelName(id) {
+    var c = aiModelConf(id);
+    return c ? c.name : id;
+  }
+
+  /* localStorage */
+
+  function loadAIKeys() {
+    try {
+      var raw = localStorage.getItem(AI_KEY_STORAGE);
+      var o = raw ? JSON.parse(raw) : {};
+      return o && typeof o === "object" ? o : {};
+    } catch (e) {
+      return {};
+    }
+  }
+  function saveAIKeys() {
+    try {
+      localStorage.setItem(AI_KEY_STORAGE, JSON.stringify(aiState.keys));
+      return true;
+    } catch (e) {
+      handleStorageQuotaError(e, "storage.ctxKeys");
+      return false;
+    }
+  }
+
+  function loadAIChats() {
+    var result = {};
+    getAllModels().forEach(function (m) {
+      try {
+        var raw = localStorage.getItem(AI_CHAT_STORAGE + "_" + m.id);
+        var v = raw ? JSON.parse(raw) : [];
+        result[m.id] = Array.isArray(v) ? v : [];
+      } catch (e) {
+        result[m.id] = [];
+      }
     });
+    try {
+      var oldRaw = localStorage.getItem(AI_CHAT_STORAGE);
+      if (oldRaw) {
+        var old = JSON.parse(oldRaw);
+        if (old && typeof old === "object") {
+          getAllModels().forEach(function (m) {
+            if (
+              Array.isArray(old[m.id]) &&
+              old[m.id].length &&
+              (!result[m.id] || !result[m.id].length)
+            ) {
+              result[m.id] = old[m.id];
+              try {
+                localStorage.setItem(
+                  AI_CHAT_STORAGE + "_" + m.id,
+                  JSON.stringify(old[m.id]),
+                );
+              } catch (e) {}
+            }
+          });
+        }
+        localStorage.removeItem(AI_CHAT_STORAGE);
+      }
+    } catch (e) {}
+    return result;
+  }
+
+  function saveAIChats(modelId) {
+    if (!modelId) {
+      var ok = true;
+      getAllModels().forEach(function (m) {
+        try {
+          localStorage.setItem(
+            AI_CHAT_STORAGE + "_" + m.id,
+            JSON.stringify(aiState.chats[m.id] || []),
+          );
+        } catch (e) {
+          handleStorageQuotaError(e, "storage.ctxChats");
+          ok = false;
+        }
+      });
+      return ok;
+    }
+    try {
+      localStorage.setItem(
+        AI_CHAT_STORAGE + "_" + modelId,
+        JSON.stringify(aiState.chats[modelId] || []),
+      );
+      return true;
+    } catch (e) {
+      handleStorageQuotaError(e, "storage.ctxChats");
+      return false;
+    }
+  }
+
+  function loadAIPrompts() {
+    try {
+      var raw = localStorage.getItem(AI_PROMPT_STORAGE);
+      var o = raw ? JSON.parse(raw) : {};
+      return o && typeof o === "object" ? o : {};
+    } catch (e) {
+      return {};
+    }
+  }
+  function saveAIPrompts() {
+    try {
+      localStorage.setItem(
+        AI_PROMPT_STORAGE,
+        JSON.stringify(aiState.prompts),
+      );
+      return true;
+    } catch (e) {
+      handleStorageQuotaError(e, "storage.ctxPrompts");
+      return false;
+    }
+  }
+
+  function loadCustomModels() {
+    try {
+      var raw = localStorage.getItem(AI_CUSTOM_MODELS_STORAGE);
+      var list = raw ? JSON.parse(raw) : [];
+      return Array.isArray(list) ? list : [];
+    } catch (e) {
+      return [];
+    }
+  }
+  function saveCustomModels() {
+    try {
+      localStorage.setItem(
+        AI_CUSTOM_MODELS_STORAGE,
+        JSON.stringify(aiState.customModels || []),
+      );
+      return true;
+    } catch (e) {
+      handleStorageQuotaError(e, "storage.ctxCustomModels");
+      return false;
+    }
+  }
+
+  function getPages() {
+    try {
+      var raw = localStorage.getItem(STORAGE_KEY);
+      var list = raw ? JSON.parse(raw) : [];
+      return Array.isArray(list) ? list : [];
+    } catch (e) {
+      return [];
+    }
+  }
+  function savePages(pages) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(pages));
+      return true;
+    } catch (e) {
+      handleStorageQuotaError(e, "storage.ctxPages");
+      return false;
+    }
+  }
+
+  function initAIState() {
+    aiState.keys = loadAIKeys();
+    aiState.customModels = loadCustomModels();
+    aiState.chats = loadAIChats();
+    aiState.prompts = loadAIPrompts();
+    getAllModels().forEach(function (m) {
+      if (!Array.isArray(aiState.chats[m.id])) aiState.chats[m.id] = [];
+      if (typeof aiState.prompts[m.id] !== "string") aiState.prompts[m.id] = "";
+    });
+    aiState.currentModel = null;
+  }
+
+  /* 存储超限 */
+
+  function isQuotaError(e) {
+    if (!e) return false;
+    if (e.name === "QuotaExceededError") return true;
+    if (e.name === "NS_ERROR_DOM_QUOTA_REACHED") return true;
+    if (e.code === 22 || e.code === 1014) return true;
+    return false;
+  }
+
+  function estimateLocalStorageKB() {
+    var total = 0;
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        var v = localStorage.getItem(k) || "";
+        total += k.length + v.length;
+      }
+    } catch (e) {
+      return -1;
+    }
+    return Math.round((total * 2) / 1024);
+  }
+
+  function handleStorageQuotaError(e, contextKey) {
+    if (!isQuotaError(e)) {
+      showAlert(
+        T("storage.saveFailTitle"),
+        String((e && e.message) || e || "?"),
+        true,
+      );
+      return;
+    }
+    var usedKB = estimateLocalStorageKB();
+    var usedText = usedKB >= 0 ? T("storage.used", { kb: usedKB }) : "";
+    showAlert(
+      T("storage.fullTitle"),
+      T("storage.fullBody", {
+        context: contextKey ? T(contextKey) : "?",
+        used: usedText,
+      }),
+      true,
+    );
   }
 
   /* 通用工具 */
+
   function $(sel, root) {
     return (root || document).querySelector(sel);
   }
@@ -108,7 +345,11 @@
       .replace(/'/g, "&#39;");
   }
   function escapeScriptClose(str) {
-    return String(str).replace(/<\/script/gi, "<\\/script");
+    var LT = "\x3C";
+    return String(str)
+      .replace(new RegExp(LT + "/script", "gi"), LT + "\\/script")
+      .replace(new RegExp(LT + "!--", "g"), LT + "\\!--")
+      .replace(new RegExp(LT + "script", "gi"), LT + "\\script");
   }
   function safeFileName(name) {
     var n = String(name || "")
@@ -117,36 +358,20 @@
     return n || "untitled";
   }
 
-  /* 本地存储 */
-  function getPages() {
-    try {
-      var raw = localStorage.getItem(STORAGE_KEY);
-      var list = raw ? JSON.parse(raw) : [];
-      return Array.isArray(list) ? list : [];
-    } catch (e) {
-      return [];
-    }
+  /* DOM 小工厂 */
+
+  function el(tag, className, text) {
+    var e = document.createElement(tag);
+    if (className) e.className = className;
+    if (text != null) e.textContent = text;
+    return e;
   }
-  function savePages(pages) {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(pages));
-      return true;
-    } catch (e) {
-      if (e && (e.name === "QuotaExceededError" || e.code === 22)) {
-        showAlert(
-          t("alerts.storageFullTitle"),
-          t("alerts.storageFullDesc"),
-          true,
-        );
-      } else {
-        showAlert(t("alerts.saveFailedTitle"), String((e && e.message) || e), true);
-      }
-      return false;
-    }
+
+  function rightGroup() {
+    return el("div", "right-group");
   }
 
   /* 弹窗 */
-  var modalBackdrop, modalBox, lastFocused;
 
   function openModal(builder) {
     lastFocused = document.activeElement;
@@ -161,75 +386,54 @@
     modalBox.innerHTML = "";
     if (lastFocused && lastFocused.focus) lastFocused.focus();
   }
+
   function showAlert(title, message, isError) {
     openModal(function (box) {
-      var h = document.createElement("h3");
-      h.textContent = title;
-      var p = document.createElement("p");
-      p.textContent = message;
-      var a = document.createElement("div");
-      a.className = "modal-actions";
-      var right = document.createElement("div");
-      right.className = "right-group";
-      var ok = document.createElement("button");
-      ok.textContent = t("modal.ok");
-      if (isError) ok.className = "danger";
+      box.appendChild(el("h3", null, title));
+      box.appendChild(el("p", null, message));
+      var a = el("div", "modal-actions");
+      var rg = rightGroup();
+      var ok = el("button", isError ? "danger" : null, T("common.know"));
       ok.addEventListener("click", closeModal);
-      right.appendChild(ok);
-      a.appendChild(right);
-      box.appendChild(h);
-      box.appendChild(p);
+      rg.appendChild(ok);
+      a.appendChild(rg);
       box.appendChild(a);
     });
   }
+
   function showConfirm(title, message, onConfirm, danger) {
     openModal(function (box) {
-      var h = document.createElement("h3");
-      h.textContent = title;
-      var p = document.createElement("p");
-      p.textContent = message;
-      var a = document.createElement("div");
-      a.className = "modal-actions";
-      var right = document.createElement("div");
-      right.className = "right-group";
-      var cancel = document.createElement("button");
-      cancel.className = "cancel";
-      cancel.textContent = t("modal.cancel");
+      box.appendChild(el("h3", null, title));
+      box.appendChild(el("p", null, message));
+      var a = el("div", "modal-actions");
+      var rg = rightGroup();
+      var cancel = el("button", "cancel", T("common.cancel"));
       cancel.addEventListener("click", closeModal);
-      var ok = document.createElement("button");
-      ok.textContent = t("modal.confirm");
-      if (danger) ok.className = "danger";
+      var ok = el("button", danger ? "danger" : null, T("common.ok"));
       ok.addEventListener("click", function () {
         closeModal();
         onConfirm();
       });
-      right.appendChild(cancel);
-      right.appendChild(ok);
-      a.appendChild(right);
-      box.appendChild(h);
-      box.appendChild(p);
+      rg.appendChild(cancel);
+      rg.appendChild(ok);
+      a.appendChild(rg);
       box.appendChild(a);
     });
   }
+
   function showPrompt(title, defaultValue, onOk, inputType) {
     openModal(function (box) {
-      var h = document.createElement("h3");
-      h.textContent = title;
+      box.appendChild(el("h3", null, title));
       var input = document.createElement("input");
       input.type = inputType || "text";
       input.value = defaultValue || "";
       input.autocomplete = "off";
       input.spellcheck = false;
-      var a = document.createElement("div");
-      a.className = "modal-actions";
-      var right = document.createElement("div");
-      right.className = "right-group";
-      var cancel = document.createElement("button");
-      cancel.className = "cancel";
-      cancel.textContent = t("modal.cancel");
+      var a = el("div", "modal-actions");
+      var rg = rightGroup();
+      var cancel = el("button", "cancel", T("common.cancel"));
       cancel.addEventListener("click", closeModal);
-      var ok = document.createElement("button");
-      ok.textContent = t("modal.save");
+      var ok = el("button", null, T("common.save"));
       ok.addEventListener("click", function () {
         var v = input.value.trim();
         if (!v) {
@@ -242,55 +446,38 @@
       input.addEventListener("keydown", function (e) {
         if (e.key === "Enter") ok.click();
       });
-      right.appendChild(cancel);
-      right.appendChild(ok);
-      a.appendChild(right);
-      box.appendChild(h);
+      rg.appendChild(cancel);
+      rg.appendChild(ok);
+      a.appendChild(rg);
       box.appendChild(input);
       box.appendChild(a);
     });
   }
 
-  /* 多行文本输入弹窗-系统提示词 */
   function showPromptArea(opts) {
     openModal(function (box) {
-      var h = document.createElement("h3");
-      h.textContent = opts.title;
-
-      var hint = document.createElement("div");
-      hint.className = "modal-hint";
-      hint.textContent = opts.hint || "";
-
+      box.appendChild(el("h3", null, opts.title));
+      var hint = el("div", "modal-hint", opts.hint || T("ai.setPromptHint"));
       var ta = document.createElement("textarea");
       ta.value = opts.value || "";
       ta.placeholder = opts.placeholder || "";
       ta.rows = 7;
       ta.spellcheck = false;
 
-      var a = document.createElement("div");
-      a.className = "modal-actions";
-
+      var a = el("div", "modal-actions");
       var leftWrap = document.createElement("div");
       if (opts.value && opts.value.trim()) {
-        var clearBtn = document.createElement("button");
-        clearBtn.className = "link-btn";
-        clearBtn.textContent = t("modal.clearPrompt");
+        var clearBtn = el("button", "link-btn", T("ai.clearPrompt"));
         clearBtn.addEventListener("click", function () {
           closeModal();
           if (opts.onClear) opts.onClear();
         });
         leftWrap.appendChild(clearBtn);
       }
-
-      var rightWrap = document.createElement("div");
-      rightWrap.className = "right-group";
-      var cancel = document.createElement("button");
-      cancel.className = "cancel";
-      cancel.textContent = t("modal.cancel");
+      var rg = rightGroup();
+      var cancel = el("button", "cancel", T("common.cancel"));
       cancel.addEventListener("click", closeModal);
-
-      var ok = document.createElement("button");
-      ok.textContent = t("modal.save");
+      var ok = el("button", null, T("common.save"));
       ok.addEventListener("click", function () {
         var v = ta.value;
         closeModal();
@@ -302,21 +489,20 @@
           ok.click();
         }
       });
-      rightWrap.appendChild(cancel);
-      rightWrap.appendChild(ok);
-
+      rg.appendChild(cancel);
+      rg.appendChild(ok);
       a.appendChild(leftWrap);
-      a.appendChild(rightWrap);
-      box.appendChild(h);
+      a.appendChild(rg);
       box.appendChild(hint);
       box.appendChild(ta);
       box.appendChild(a);
     });
   }
 
-  /* 生成单个HTML */
+  /* 生成作品 HTML */
+
   function generatePageHtml(title, script, imageDataUrl) {
-    var safeTitle = escapeHtml(title || t("generator.defaultPageTitle"));
+    var safeTitle = escapeHtml(title || T("generator.untitledPage"));
     var imgVar = imageDataUrl
       ? 'var imageUrl = "' + imageDataUrl + '";'
       : "var imageUrl = null;";
@@ -336,19 +522,19 @@
       "    html, body { margin: 0; padding: 0; }\n" +
       "    canvas { display: block; }\n" +
       "  </style>\n" +
-      '  <script src="' +
+      '  \x3Cscript src="' +
       P5_CDN +
-      '"><\/script>\n' +
+      '">\x3C/script>\n' +
       "</head>\n" +
       "<body>\n" +
-      "  <script>\n" +
+      "  \x3Cscript>\n" +
       "    " +
       safeImgVar +
       "\n" +
       "    " +
       safeScript +
       "\n" +
-      "  <\/script>\n" +
+      "  \x3C/script>\n" +
       "</body>\n" +
       "</html>"
     );
@@ -368,21 +554,24 @@
         URL.revokeObjectURL(url);
       }, 1000);
     } catch (err) {
-      showAlert(t("alerts.downloadFailedTitle"), String((err && err.message) || err), true);
+      showAlert(
+        T("page.downloadFailTitle"),
+        String((err && err.message) || err),
+        true,
+      );
     }
   }
 
   function exportZip() {
     var pages = getPages();
     if (!pages.length) {
-      showAlert(t("alerts.cannotExportTitle"), t("alerts.cannotExportDesc"));
+      showAlert(T("page.exportEmptyTitle"), T("page.exportEmptyBody"));
       return;
     }
     var zip = new JSZip();
-    var prefix = t("generator.filePrefix") || "p5_";
     pages.forEach(function (page, idx) {
       var base = (page.title || "untitled").replace(/[\\/:*?"<>|]/g, "_");
-      zip.file(prefix + base + "_" + (idx + 1) + ".html", page.html);
+      zip.file("p5_" + base + "_" + (idx + 1) + ".html", page.html);
     });
     zip
       .generateAsync({ type: "blob" })
@@ -390,7 +579,7 @@
         var url = URL.createObjectURL(blob);
         var link = document.createElement("a");
         link.href = url;
-        link.download = t("generator.zipName") || "p5_works.zip";
+        link.download = "p5_works.zip";
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -399,93 +588,15 @@
         }, 1000);
       })
       .catch(function (err) {
-        showAlert(t("alerts.exportFailedTitle"), String((err && err.message) || err), true);
+        showAlert(
+          T("page.exportFailTitle"),
+          String((err && err.message) || err),
+          true,
+        );
       });
   }
 
-  /* AI状态 */
-  var aiState = {
-    currentModel: null,
-    keys: {},
-    chats: {},
-    prompts: {},
-    busy: false,
-  };
-
-  function aiModelConf(id) {
-    for (var i = 0; i < AI_MODELS.length; i++) {
-      if (AI_MODELS[i].id === id) return AI_MODELS[i];
-    }
-    return null;
-  }
-  function aiModelName(id) {
-    var c = aiModelConf(id);
-    return c ? c.name : id;
-  }
-  function loadAIKeys() {
-    try {
-      var raw = localStorage.getItem(AI_KEY_STORAGE);
-      var o = raw ? JSON.parse(raw) : {};
-      return o && typeof o === "object" ? o : {};
-    } catch (e) {
-      return {};
-    }
-  }
-  function saveAIKeys() {
-    try {
-      localStorage.setItem(AI_KEY_STORAGE, JSON.stringify(aiState.keys));
-    } catch (e) {}
-  }
-  function loadAIChats() {
-    try {
-      var raw = localStorage.getItem(AI_CHAT_STORAGE);
-      var o = raw ? JSON.parse(raw) : {};
-      return o && typeof o === "object" ? o : {};
-    } catch (e) {
-      return {};
-    }
-  }
-  function saveAIChats() {
-    try {
-      localStorage.setItem(AI_CHAT_STORAGE, JSON.stringify(aiState.chats));
-    } catch (e) {}
-  }
-  function loadAIPrompts() {
-    try {
-      var raw = localStorage.getItem(AI_PROMPT_STORAGE);
-      var o = raw ? JSON.parse(raw) : {};
-      return o && typeof o === "object" ? o : {};
-    } catch (e) {
-      return {};
-    }
-  }
-  function saveAIPrompts() {
-    try {
-      localStorage.setItem(AI_PROMPT_STORAGE, JSON.stringify(aiState.prompts));
-    } catch (e) {}
-  }
-  function initAIState() {
-    aiState.keys = loadAIKeys();
-    aiState.chats = loadAIChats();
-    aiState.prompts = loadAIPrompts();
-    AI_MODELS.forEach(function (m) {
-      if (!Array.isArray(aiState.chats[m.id])) aiState.chats[m.id] = [];
-      if (typeof aiState.prompts[m.id] !== "string") {
-        aiState.prompts[m.id] = "";
-      }
-    });
-    aiState.currentModel = null;
-  }
-
-  /* 全局DOM引用 */
-  var sidebarPagesEl, sidebarEl, overlayEl, hamburgerBtn;
-  var sidebarSearchEl;
-  var sidebarSearchKeyword = "";
-  var appEl;
-
-  /* 首页运行器 */
-  var runner = { mode: "random", pageId: null };
-  var currentRandomFile = null;
+  /* 首页随机脚本 */
 
   function pickRandomP5File() {
     if (!P5_FILES || !P5_FILES.length) return null;
@@ -496,7 +607,6 @@
     if (!pool.length) pool = P5_FILES.slice();
     return pool[Math.floor(Math.random() * pool.length)];
   }
-
   function encodePath(fileName) {
     return String(fileName)
       .split("/")
@@ -505,7 +615,6 @@
       })
       .join("/");
   }
-
   function buildP5SrcDoc(fileName) {
     var src = P5_DIR + encodePath(fileName);
     return (
@@ -518,17 +627,19 @@
       "    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; touch-action: none; }\n" +
       "    canvas { display: block; touch-action: none; }\n" +
       "  </style>\n" +
-      '  <script src="' +
+      '  \x3Cscript src="' +
       P5_CDN +
-      '"><\/script>\n' +
-      '  <script src="' +
+      '">\x3C/script>\n' +
+      '  \x3Cscript src="' +
       src +
-      '"><\/script>\n' +
+      '">\x3C/script>\n' +
       "</head>\n" +
       "<body></body>\n" +
       "</html>"
     );
   }
+
+  /* 侧边栏作品列表 */
 
   function updateSidebarPages() {
     var pages = getPages();
@@ -545,60 +656,49 @@
     }
 
     if (!filtered.length) {
-      var empty = document.createElement("div");
-      empty.className = "no-pages";
-      empty.textContent = kw
-        ? t("sidebar.noSearchResult")
-        : t("sidebar.emptyPages");
+      var empty = el("div", "no-pages");
+      empty.textContent = kw ? T("nav.noMatch") : T("nav.noScripts");
       sidebarPagesEl.replaceChildren(empty);
       return;
     }
 
     var frag = document.createDocumentFragment();
     filtered.forEach(function (page) {
-      var item = document.createElement("div");
-      item.className = "page-item";
+      var item = el("div", "page-item");
 
-      var titleSpan = document.createElement("span");
-      titleSpan.className = "page-title";
-      titleSpan.textContent = page.title;
-      titleSpan.dataset.action = "open";
-      titleSpan.dataset.id = String(page.id);
+      var title = el("span", "page-title", page.title);
+      title.dataset.action = "open";
+      title.dataset.id = String(page.id);
 
-      var actions = document.createElement("div");
-      actions.className = "actions";
-
-      var renameBtn = document.createElement("button");
-      renameBtn.className = "rename";
-      renameBtn.title = "重命名";
-      renameBtn.textContent = "✏️";
+      var actions = el("div", "actions");
+      var renameBtn = el("button", "rename", "✏️");
+      renameBtn.title = T("common.rename");
       renameBtn.dataset.action = "rename";
       renameBtn.dataset.id = String(page.id);
 
-      var delBtn = document.createElement("button");
-      delBtn.className = "del";
-      delBtn.title = "删除";
-      delBtn.textContent = "🗑️";
+      var delBtn = el("button", "del", "🗑️");
+      delBtn.title = T("common.delete");
       delBtn.dataset.action = "delete";
       delBtn.dataset.id = String(page.id);
 
       actions.appendChild(renameBtn);
       actions.appendChild(delBtn);
-      item.appendChild(titleSpan);
+      item.appendChild(title);
       item.appendChild(actions);
       frag.appendChild(item);
     });
     sidebarPagesEl.replaceChildren(frag);
   }
 
-  /* iframe事件代理 */
+  /* iframe 内 p5 画布事件代理 */
+
   function bindIframeProxy(iframe) {
     var iwin, idoc;
     try {
       iwin = iframe.contentWindow;
       idoc = iframe.contentDocument;
     } catch (e) {
-      console.warn("无法访问 iframe 内部文档：", e);
+      console.warn("Cannot access iframe document:", e);
       return;
     }
     if (!iwin || !idoc) return;
@@ -626,12 +726,7 @@
       "click",
       "dblclick",
     ];
-    var TOUCH_TYPES = [
-      "touchstart",
-      "touchmove",
-      "touchend",
-      "touchcancel",
-    ];
+    var TOUCH_TYPES = ["touchstart", "touchmove", "touchend", "touchcancel"];
 
     function relayMouse(e) {
       if (e.target === canvas) return;
@@ -643,7 +738,6 @@
         e.button !== 0
       )
         return;
-
       var ev;
       try {
         ev = new iwin.MouseEvent(e.type, {
@@ -712,6 +806,8 @@
     });
   }
 
+  /* 预览锁屏 */
+
   function lockAppSize() {
     document.body.classList.add("preview-lock");
     var w = window.innerWidth;
@@ -723,7 +819,6 @@
     appEl.style.height = h + "px";
     appEl.style.overflow = "hidden";
   }
-
   function unlockAppSize() {
     document.body.classList.remove("preview-lock");
     appEl.style.position = "";
@@ -733,6 +828,8 @@
     appEl.style.height = "";
     appEl.style.overflow = "";
   }
+
+  /* 首页渲染 */
 
   function renderRunner() {
     destroyEditor();
@@ -762,12 +859,8 @@
         unlockAppSize();
         delete appEl.dataset.currentPageId;
         var wrap = document.createElement("div");
-        var h1 = document.createElement("h1");
-        h1.textContent = t("home.noScriptsTitle");
-        var p = document.createElement("p");
-        p.textContent = t("home.noScriptsDesc");
-        wrap.appendChild(h1);
-        wrap.appendChild(p);
+        wrap.appendChild(el("h1", null, T("runner.noScriptTitle")));
+        wrap.appendChild(el("p", null, T("runner.noScriptBody")));
         appEl.appendChild(wrap);
         return;
       }
@@ -780,7 +873,7 @@
     appEl.classList.add("preview-mode");
 
     var iframe = document.createElement("iframe");
-    iframe.setAttribute("title", t("runner.iframeTitle") || "p5 运行");
+    iframe.setAttribute("title", "p5");
     iframe.setAttribute("scrolling", "no");
     iframe.srcdoc = html;
     iframe.addEventListener("load", function () {
@@ -803,6 +896,8 @@
     else location.hash = "#/";
   }
 
+  /* 作品操作 */
+
   function deletePage(id) {
     var pages = getPages();
     var page = pages.find(function (p) {
@@ -810,8 +905,8 @@
     });
     if (!page) return;
     showConfirm(
-      t("alerts.deleteTitle"),
-      tpl("alerts.deleteConfirm", { title: page.title }),
+      T("page.deleteTitle"),
+      T("page.deleteBody", { title: page.title }),
       function () {
         var list = getPages().filter(function (p) {
           return p.id !== id;
@@ -834,13 +929,15 @@
       return p.id === id;
     });
     if (!page) return;
-    showPrompt(t("alerts.renameTitle"), page.title, function (newTitle) {
+    showPrompt(T("page.renameTitle"), page.title, function (newTitle) {
       page.title = newTitle;
       savePages(pages);
       updateSidebarPages();
       render();
     });
   }
+
+  /* 侧边栏开关 */
 
   function openSidebar() {
     sidebarEl.classList.add("open");
@@ -855,8 +952,7 @@
     hamburgerBtn.setAttribute("aria-expanded", "false");
   }
 
-  var editor = null;
-  var uploadedImageDataUrl = null;
+  /* 主题 */
 
   function applyTheme(theme) {
     var lightTheme = $("#cm-theme-light");
@@ -884,6 +980,8 @@
     } catch (e) {}
   }
 
+  /* 路由 */
+
   function getRoute() {
     var hash = location.hash;
     if (!hash || hash === "#" || hash === "#/") return "/";
@@ -908,281 +1006,186 @@
   }
 
   /* 关于页 */
+
   function renderAbout() {
     var wrap = document.createElement("div");
-    var h = document.createElement("h1");
-    h.textContent = t("about.title");
-    wrap.appendChild(h);
-    var paras = t("about.paragraphs");
-    if (Array.isArray(paras)) {
-      paras.forEach(function (text) {
-        var p = document.createElement("p");
-        p.textContent = text;
-        wrap.appendChild(p);
-      });
-    }
+    wrap.appendChild(el("h1", null, T("about.title")));
+    ["p1", "p2", "p3", "p4", "p5"].forEach(function (k) {
+      wrap.appendChild(el("p", null, T("about." + k)));
+    });
     return wrap;
   }
 
   /* 编写脚本页 */
+
   function renderGenerator() {
-    var wrap = document.createElement("div");
-    wrap.className = "generator-page";
-    wrap.innerHTML =
-      '<h1 data-i18n="generator.title"></h1>' +
-      '<p data-i18n="generator.subtitle"></p>' +
-      '<div class="form-group">' +
-      '  <label for="title" data-i18n="generator.labelTitle"></label>' +
-      '  <input type="text" id="title" data-i18n-placeholder="generator.placeholderTitle">' +
-      "</div>" +
-      '<div class="form-group">' +
-      '  <label for="script" data-i18n="generator.labelScript"></label>' +
-      '  <textarea id="script"></textarea>' +
-      "</div>" +
-      '<div class="form-group">' +
-      '  <label data-i18n="generator.labelImage"></label>' +
-      '  <input type="file" id="image" accept="image/*">' +
-      '  <div id="image-preview"></div>' +
-      "</div>" +
-      '<button id="buildBtn" type="button" data-i18n="generator.buildBtn"></button>' +
-      '<div id="result" class="result" style="display:none;"></div>';
-    applyI18n(wrap);
-    return wrap;
-  }
+    var wrap = el("div", "generator-page");
+    wrap.appendChild(el("h1", null, T("generator.title")));
+    wrap.appendChild(el("p", null, T("generator.subtitle")));
 
-  function bindGenerator() {
-    var titleInput = $("#title");
-    var textarea = $("#script");
-    var fileInput = $("#image");
-    var previewEl = $("#image-preview");
-    var resultEl = $("#result");
-    var buildBtn = $("#buildBtn");
+    /* 标题输入 */
+    var g1 = el("div", "form-group");
+    var l1 = el("label", null, T("generator.labelTitle"));
+    l1.setAttribute("for", "title");
+    var titleInput = document.createElement("input");
+    titleInput.type = "text";
+    titleInput.id = "title";
+    titleInput.placeholder = T("generator.titlePlaceholder");
+    g1.appendChild(l1);
+    g1.appendChild(titleInput);
 
-    uploadedImageDataUrl = null;
+    /* 脚本 */
+    var g2 = el("div", "form-group");
+    var l2 = el("label", null, T("generator.labelScript"));
+    l2.setAttribute("for", "script");
+    var ta = document.createElement("textarea");
+    ta.id = "script";
+    g2.appendChild(l2);
+    g2.appendChild(ta);
 
-    destroyEditor();
-    if (window.CodeMirror) {
-      var themeName = currentTheme() === "dark" ? "dracula" : "default";
-      editor = window.CodeMirror.fromTextArea(textarea, {
-        mode: "javascript",
-        lineNumbers: true,
-        theme: themeName,
-        tabSize: 2,
-        indentUnit: 2,
-        autofocus: true,
-      });
-      editor.setSize(null, "100%");
+    /* 图片 */
+    var g3 = el("div", "form-group");
+    var l3 = el("label");
+    l3.textContent = T("generator.labelImage");
+    var fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.id = "image";
+    fileInput.accept = "image/*"; var previewBox = el("div"); previewBox.id = "image-preview"; g3.appendChild(l3); g3.appendChild(fileInput); g3.appendChild(previewBox); var submit = el("button", null, T("generator.submit")); submit.id = "buildBtn"; submit.type = "button"; var result = el("div", "result"); result.id = "result"; result.style.display = "none"; wrap.appendChild(g1); wrap.appendChild(g2); wrap.appendChild(g3); wrap.appendChild(submit); wrap.appendChild(result); return wrap; } function bindGenerator() { var titleInput = $("#title"); var textarea = $("#script"); var fileInput = $("#image"); var previewEl = $("#image-preview"); var resultEl = $("#result"); var buildBtn = $("#buildBtn"); uploadedImageDataUrl = null; titleInput.value = generatorDraft.title || ""; destroyEditor(); if (window.CodeMirror) { var themeName = currentTheme() === "dark" ? "dracula" : "default"; editor = window.CodeMirror.fromTextArea(textarea, { mode: "javascript", lineNumbers: true, theme: themeName, tabSize: 2, indentUnit: 2, autofocus: true, }); editor.setSize(null, "100%"); if (generatorDraft.script) editor.setValue(generatorDraft.script); var cmWrapper = editor.getWrapperElement(); if (getComputedStyle(cmWrapper).position === "static") { cmWrapper.style.position = "relative"; } var cmPlaceholderEl = el("div", "cm-placeholder-overlay"); cmPlaceholderEl.textContent = T("generator.scriptPlaceholder"); cmWrapper.appendChild(cmPlaceholderEl); var gutters = cmWrapper.querySelector(".CodeMirror-gutters"); var leftOffset = gutters ? gutters.offsetWidth + 8 : 44; cmPlaceholderEl.style.left = leftOffset + "px"; function updateCmPlaceholder() { cmPlaceholderEl.style.display = editor.getValue().length === 0 ? "block" : "none"; } editor.on("change", updateCmPlaceholder); editor.on("optionChange", function () { var g = cmWrapper.querySelector(".CodeMirror-gutters"); if (g) cmPlaceholderEl.style.left = g.offsetWidth + 8 + "px"; }); updateCmPlaceholder(); editor.on("change", function () { generatorDraft.script = editor.getValue(); }); } titleInput.addEventListener("input", function () { generatorDraft.title = this.value; }); fileInput.addEventListener("change", function () { var file = this.files && this.files[0]; if (!file) return; if (!/^image\//.test(file.type)) { showAlert(T("page.badImageTitle"), T("page.badImageBody"), true); this.value = ""; return; } if (file.size > MAX_IMAGE_BYTES) { showAlert( T("page.imageTooLargeTitle"), T("page.imageTooLargeBody"), true, ); this.value = ""; return; } var reader = new FileReader(); reader.onload = function (e) { uploadedImageDataUrl = e.target.result; var tip = el("p", null, T("generator.imageOk")); var img = document.createElement("img"); img.src = e.target.result; img.className = "preview-img"; img.alt = T("generator.imageAlt"); previewEl.replaceChildren(tip, img); }; reader.onerror = function () { showAlert( T("page.imageReadFailTitle"), T("page.imageReadFailBody"), true, ); }; reader.readAsDataURL(file); }); buildBtn.addEventListener("click", function () { var title = titleInput.value.trim() || T("generator.untitled"); var script = (editor ? editor.getValue() : textarea.value).trim(); if (!script) { showAlert(T("page.noScriptTitle"), T("page.noScriptBody"), true); return; } var imageDataUrl = uploadedImageDataUrl || ""; var htmlContent = generatePageHtml(title, script, imageDataUrl); var newId = Date.now() + Math.floor(Math.random() * 1000); var pages = getPages(); pages.push({ id: newId, title: title, html: htmlContent, timestamp: new Date().toISOString(), }); if (!savePages(pages)) return; updateSidebarPages(); resultEl.style.display = "block"; var msg = el("p", null, T("generator.buildOk")); var btnContainer = el("div", "action-buttons"); var previewBtn = el("button", "preview", T("generator.preview")); previewBtn.addEventListener("click", function () { runPage(newId); }); var downloadBtn = el("button", "download", T("generator.download")); downloadBtn.addEventListener("click", function () { downloadSingleHtml( "p5_" + safeFileName(title) + "_" + newId + ".html", htmlContent, ); }); btnContainer.appendChild(previewBtn); btnContainer.appendChild(downloadBtn); resultEl.replaceChildren(msg, btnContainer); titleInput.value = ""; if (editor) editor.setValue(""); generatorDraft.title = ""; generatorDraft.script = ""; uploadedImageDataUrl = ""; previewEl.replaceChildren(); fileInput.value = ""; }); } /* AI 页骨架（JS 生成） */
 
-      var cmWrapper = editor.getWrapperElement();
-      if (getComputedStyle(cmWrapper).position === "static") {
-        cmWrapper.style.position = "relative";
-      }
-
-      var cmPlaceholderEl = document.createElement("div");
-      cmPlaceholderEl.className = "cm-placeholder-overlay";
-      cmPlaceholderEl.textContent = t("generator.scriptPlaceholder") || "";
-      cmWrapper.appendChild(cmPlaceholderEl);
-
-      var gutters = cmWrapper.querySelector(".CodeMirror-gutters");
-      var leftOffset = gutters ? gutters.offsetWidth + 8 : 44;
-      cmPlaceholderEl.style.left = leftOffset + "px";
-
-      function updateCmPlaceholder() {
-        cmPlaceholderEl.style.display =
-          editor.getValue().length === 0 ? "block" : "none";
-      }
-      editor.on("change", updateCmPlaceholder);
-      editor.on("optionChange", function () {
-        var g = cmWrapper.querySelector(".CodeMirror-gutters");
-        if (g) cmPlaceholderEl.style.left = g.offsetWidth + 8 + "px";
-      });
-      updateCmPlaceholder();
-    }
-
-    fileInput.addEventListener("change", function () {
-      var file = this.files && this.files[0];
-      if (!file) return;
-      if (!/^image\//.test(file.type)) {
-        showAlert(
-          t("alerts.invalidFileTypeTitle"),
-          t("alerts.invalidFileTypeDesc"),
-          true,
-        );
-        this.value = "";
-        return;
-      }
-      if (file.size > MAX_IMAGE_BYTES) {
-        showAlert(
-          t("alerts.imageTooLargeTitle"),
-          t("alerts.imageTooLargeDesc"),
-          true,
-        );
-        this.value = "";
-        return;
-      }
-      var reader = new FileReader();
-      reader.onload = function (e) {
-        uploadedImageDataUrl = e.target.result;
-        var tip = document.createElement("p");
-        tip.textContent = t("generator.imageSuccess");
-        var img = document.createElement("img");
-        img.src = e.target.result;
-        img.className = "preview-img";
-        img.alt = t("generator.imageAlt");
-        previewEl.replaceChildren(tip, img);
-      };
-      reader.onerror = function () {
-        showAlert(
-          t("alerts.readFailedTitle"),
-          t("alerts.readFailedDesc"),
-          true,
-        );
-      };
-      reader.readAsDataURL(file);
-    });
-
-    buildBtn.addEventListener("click", function () {
-      var title = titleInput.value.trim() || t("generator.defaultTitle");
-      var script = (editor ? editor.getValue() : textarea.value).trim();
-      if (!script) {
-        showAlert(
-          t("alerts.missingScriptTitle"),
-          t("alerts.missingScriptDesc"),
-          true,
-        );
-        return;
-      }
-      var imageDataUrl = uploadedImageDataUrl || "";
-      var htmlContent = generatePageHtml(title, script, imageDataUrl);
-
-      var newId = Date.now() + Math.floor(Math.random() * 1000);
-      var pages = getPages();
-      pages.push({
-        id: newId,
-        title: title,
-        html: htmlContent,
-        timestamp: new Date().toISOString(),
-      });
-      if (!savePages(pages)) return;
-
-      updateSidebarPages();
-
-      resultEl.style.display = "block";
-      var msg = document.createElement("p");
-      msg.textContent = t("generator.resultSuccess");
-
-      var btnContainer = document.createElement("div");
-      btnContainer.className = "action-buttons";
-
-      var previewBtn = document.createElement("button");
-      previewBtn.className = "preview";
-      previewBtn.textContent = t("generator.previewBtn");
-      previewBtn.addEventListener("click", function () {
-        runPage(newId);
-      });
-
-      var downloadBtn = document.createElement("button");
-      downloadBtn.className = "download";
-      downloadBtn.textContent = t("generator.downloadBtn");
-      downloadBtn.addEventListener("click", function () {
-        downloadSingleHtml(
-          (t("generator.filePrefix") || "p5_") +
-            safeFileName(title) +
-            "_" +
-            newId +
-            ".html",
-          htmlContent,
-        );
-      });
-
-      btnContainer.appendChild(previewBtn);
-      btnContainer.appendChild(downloadBtn);
-      resultEl.replaceChildren(msg, btnContainer);
-
-      titleInput.value = "";
-      if (editor) editor.setValue("");
-      uploadedImageDataUrl = "";
-      previewEl.replaceChildren();
-      fileInput.value = "";
-    });
-  }
-
-  /* AI助手—页面渲染 */
   function renderAIAssistant() {
-    var wrap = document.createElement("div");
-    wrap.className = "ai-page";
-    wrap.innerHTML =
-      '<button class="ai-clear-btn" id="aiClearBtn" type="button" data-i18n-title="ai.clearBtnTitle">−</button>' +
-      '<div class="ai-messages" id="aiMessages"></div>' +
-      '<div class="ai-input-wrap">' +
-      '  <div class="ai-input-bar">' +
-      '    <div class="ai-model-picker">' +
-      '      <button class="ai-model-btn" id="aiModelBtn" type="button" data-i18n-title="ai.modelBtnTitle">+</button>' +
-      '      <div class="ai-model-menu" id="aiModelMenu"></div>' +
-      "    </div>" +
-      '    <textarea id="aiInput" rows="1" data-i18n-placeholder="ai.inputPlaceholder"></textarea>' +
-      '    <button class="ai-send-btn" id="aiSendBtn" type="button" data-i18n-title="ai.sendBtnTitle">↑</button>' +
-      "  </div>" +
-      "</div>";
-    applyI18n(wrap);
-    return wrap;
+    var page = el("div", "ai-page");
+
+    var clearBtn = el("button", "ai-clear-btn", "−");
+    clearBtn.id = "aiClearBtn";
+    clearBtn.type = "button";
+    clearBtn.title = T("ai.clearTitle");
+
+    var fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.id = "aiImportFile";
+    fileInput.accept = ".json,application/json";
+    fileInput.style.display = "none";
+
+    var messages = el("div", "ai-messages");
+    messages.id = "aiMessages";
+
+    var inputWrap = el("div", "ai-input-wrap");
+    var bar = el("div", "ai-input-bar");
+    var picker = el("div", "ai-model-picker");
+
+    var modelBtn = el("button", "ai-model-btn", "+");
+    modelBtn.id = "aiModelBtn";
+    modelBtn.type = "button";
+    modelBtn.title = T("ai.modelPickerTitle");
+
+    var menu = el("div", "ai-model-menu");
+    menu.id = "aiModelMenu";
+
+    picker.appendChild(modelBtn);
+    picker.appendChild(menu);
+
+    var input = document.createElement("textarea");
+    input.id = "aiInput";
+    input.rows = 1;
+    input.placeholder = T("ai.inputPlaceholder");
+
+    var sendBtn = el("button", "ai-send-btn", "↑");
+    sendBtn.id = "aiSendBtn";
+    sendBtn.type = "button";
+    sendBtn.title = T("ai.sendTitle");
+
+    bar.appendChild(picker);
+    bar.appendChild(input);
+    bar.appendChild(sendBtn);
+    inputWrap.appendChild(bar);
+
+    page.appendChild(clearBtn);
+    page.appendChild(fileInput);
+    page.appendChild(messages);
+    page.appendChild(inputWrap);
+    return page;
   }
+
+  /* 模型菜单 */
 
   function buildAIModelMenu() {
     var menu = $("#aiModelMenu");
     if (!menu) return;
     var frag = document.createDocumentFragment();
-    AI_MODELS.forEach(function (m) {
-      var item = document.createElement("div");
-      item.className = "ai-model-item";
+
+    /* 顶部：自定义 + 导入 */
+    var topRow = el("div", "ai-model-toprow");
+    var addBtn = el("div", "ai-model-topbtn ai-model-add", T("ai.topRowAdd"));
+    addBtn.dataset.add = "1";
+    var importBtn = el("div", "ai-model-topbtn", T("ai.topRowImport"));
+    importBtn.dataset.import = "1";
+    topRow.appendChild(addBtn);
+    topRow.appendChild(importBtn);
+    frag.appendChild(topRow);
+
+    /* 模型列表 */
+    getAllModels().forEach(function (m) {
+      var item = el("div", "ai-model-item");
       if (aiState.currentModel === m.id) item.classList.add("active");
       item.dataset.model = m.id;
 
-      var check = document.createElement("span");
-      check.className = "ai-check";
-      check.textContent = "✓";
+      item.appendChild(el("span", "ai-check", "✓"));
 
-      var name = document.createElement("span");
-      name.className = "ai-model-name";
-      name.textContent = m.name;
+      var name = el("span", "ai-model-name");
+      var nameText = el("span", "ai-model-name-text", m.name);
+      name.appendChild(nameText);
 
-      var promptBtn = document.createElement("button");
-      promptBtn.className = "ai-prompt";
+      if (!m.builtin) {
+        var editBtn = el("button", "ai-model-edit", "✎");
+        editBtn.type = "button";
+        editBtn.title = T("ai.editModelTitle");
+        editBtn.dataset.edit = m.id;
+        name.appendChild(editBtn);
+      }
+      item.appendChild(name);
+
+      var testBtn = el("button", "ai-dl", "T");
+      testBtn.type = "button";
+      testBtn.title = T("ai.menuTest");
+      testBtn.dataset.test = m.id;
+
+      var keyBtn = el("button", "ai-key", "K");
+      keyBtn.type = "button";
+      keyBtn.title = T("ai.menuKey");
+      keyBtn.dataset.key = m.id;
+
+      var promptBtn = el("button", "ai-prompt", "P");
       promptBtn.type = "button";
-      promptBtn.title = t("ai.modelPromptTitle");
-      promptBtn.textContent = "P";
+      promptBtn.title = T("ai.menuPrompt");
       promptBtn.dataset.prompt = m.id;
       if (aiState.prompts[m.id] && aiState.prompts[m.id].trim()) {
         promptBtn.classList.add("has-prompt");
       }
 
-      var keyBtn = document.createElement("button");
-      keyBtn.className = "ai-key";
-      keyBtn.type = "button";
-      keyBtn.title = t("ai.modelKeyTitle");
-      keyBtn.textContent = "K";
-      keyBtn.dataset.key = m.id;
+      var jsonBtn = el("button", "ai-dl", "J");
+      jsonBtn.type = "button";
+      jsonBtn.title = T("ai.menuDownloadJson");
+      jsonBtn.dataset.json = m.id;
 
-      var dl = document.createElement("button");
-      dl.className = "ai-dl";
-      dl.type = "button";
-      dl.title = t("ai.modelDownloadTitle");
-      dl.textContent = "M";
-      dl.dataset.dl = m.id;
+      var mdBtn = el("button", "ai-dl", "M");
+      mdBtn.type = "button";
+      mdBtn.title = T("ai.menuDownloadMd");
+      mdBtn.dataset.md = m.id;
 
-      item.appendChild(check);
-      item.appendChild(name);
-      item.appendChild(promptBtn);
+      item.appendChild(testBtn);
       item.appendChild(keyBtn);
-      item.appendChild(dl);
+      item.appendChild(promptBtn);
+      item.appendChild(jsonBtn);
+      item.appendChild(mdBtn);
+
       frag.appendChild(item);
     });
+
     menu.replaceChildren(frag);
   }
 
   function refreshAIModelUI() {
-    var items = $$(".ai-model-item");
-    items.forEach(function (el) {
+    $$(".ai-model-item").forEach(function (el) {
       if (aiState.currentModel && el.dataset.model === aiState.currentModel) {
         el.classList.add("active");
       } else {
@@ -1211,46 +1214,90 @@
     menu.classList.toggle("show");
   }
 
+  /* AI 消息渲染 */
+
+  function buildMsgNode(m) {
+    var row = el("div", "ai-msg " + (m.role === "assistant" ? "assistant" : "user"));
+    var b = el("div", "bubble");
+    if (m.role === "assistant" && !m.content) {
+      b.textContent = T("ai.thinking");
+      b.classList.add("pending");
+    } else {
+      b.textContent = m.content;
+    }
+    row.appendChild(b);
+    return row;
+  }
+
+  function buildEmptyNode(text) {
+    return el("div", "ai-empty", text);
+  }
+
   function renderAIMessages() {
     var box = $("#aiMessages");
     if (!box) return;
     var model = aiState.currentModel;
 
     if (!model) {
-      var empty = document.createElement("div");
-      empty.className = "ai-empty";
-      empty.textContent = t("ai.emptyNoModel");
-      box.replaceChildren(empty);
+      if (!box.firstChild || !box.querySelector(".ai-empty")) {
+        box.replaceChildren(buildEmptyNode(T("ai.emptyNoModel")));
+      }
+      renderedModelId = null;
+      renderedMsgCount = 0;
       return;
+    }
+
+    if (renderedModelId !== model) {
+      renderedModelId = model;
+      renderedMsgCount = 0;
+      box.replaceChildren();
     }
 
     var chat = aiState.chats[model] || [];
+
     if (!chat.length) {
-      var empty2 = document.createElement("div");
-      empty2.className = "ai-empty";
-      empty2.textContent = tpl("ai.emptyStart", { model: aiModelName(model) });
-      box.replaceChildren(empty2);
+      if (!box.firstChild || !box.querySelector(".ai-empty")) {
+        box.replaceChildren(
+          buildEmptyNode(T("ai.emptyStart", { model: aiModelName(model) })),
+        );
+      }
+      renderedMsgCount = 0;
       return;
     }
 
-    var frag = document.createDocumentFragment();
-    chat.forEach(function (m) {
-      var row = document.createElement("div");
-      row.className =
-        "ai-msg " + (m.role === "assistant" ? "assistant" : "user");
-      var b = document.createElement("div");
-      b.className = "bubble";
-      if (m.role === "assistant" && !m.content) {
-        b.textContent = t("ai.thinking");
-        b.classList.add("pending");
-      } else {
-        b.textContent = m.content;
+    if (renderedMsgCount > chat.length) renderedMsgCount = 0;
+
+    if (renderedMsgCount === 0) {
+      var frag = document.createDocumentFragment();
+      for (var i = 0; i < chat.length; i++) {
+        frag.appendChild(buildMsgNode(chat[i]));
       }
-      row.appendChild(b);
-      frag.appendChild(row);
-    });
-    box.replaceChildren(frag);
-    box.scrollTop = box.scrollHeight;
+      box.replaceChildren(frag);
+      renderedMsgCount = chat.length;
+      box.scrollTop = box.scrollHeight;
+      return;
+    }
+
+    if (renderedMsgCount < chat.length) {
+      var emptyEl = box.querySelector(".ai-empty");
+      if (emptyEl && box.children.length === 1) {
+        box.replaceChildren();
+        renderedMsgCount = 0;
+        var frag2 = document.createDocumentFragment();
+        for (var k = 0; k < chat.length; k++) {
+          frag2.appendChild(buildMsgNode(chat[k]));
+        }
+        box.replaceChildren(frag2);
+        renderedMsgCount = chat.length;
+        box.scrollTop = box.scrollHeight;
+        return;
+      }
+      for (var j = renderedMsgCount; j < chat.length; j++) {
+        box.appendChild(buildMsgNode(chat[j]));
+      }
+      renderedMsgCount = chat.length;
+      box.scrollTop = box.scrollHeight;
+    }
   }
 
   function updateAISendBtn() {
@@ -1262,18 +1309,23 @@
   function getLastAssistantBubble() {
     var box = $("#aiMessages");
     if (!box) return null;
-    var rows = box.querySelectorAll(".ai-msg.assistant");
-    if (!rows.length) return null;
-    var last = rows[rows.length - 1];
+    var last = box.lastElementChild;
+    if (!last || !last.classList.contains("assistant")) return null;
     return last.querySelector(".bubble");
   }
 
-  /* AI助手 — 流式请求 */
-  function streamAI(model, key, messages, systemPrompt, onDelta) {
+  function isNearBottom(box) {
+    if (!box) return true;
+    return box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+  }
+
+  /* 流式请求 */
+
+  function streamAI(model, key, messages, systemPrompt, onDelta, onRaw) {
     var conf = aiModelConf(model);
     var url, options;
 
-    if (model === "gemini") {
+    if (conf.protocol === "gemini") {
       url =
         conf.endpoint.replace(":generateContent", ":streamGenerateContent") +
         "?alt=sse&key=" +
@@ -1295,9 +1347,7 @@
       };
     } else {
       var msgs = [];
-      if (systemPrompt) {
-        msgs.push({ role: "system", content: systemPrompt });
-      }
+      if (systemPrompt) msgs.push({ role: "system", content: systemPrompt });
       messages.forEach(function (m) {
         msgs.push({ role: m.role, content: m.content });
       });
@@ -1312,16 +1362,21 @@
           model: conf.apiModel,
           messages: msgs,
           stream: true,
+          stream_options: { include_usage: true },
         }),
       };
     }
 
+    if (aiState.abortController) {
+      options.signal = aiState.abortController.signal;
+    }
+
     return fetch(url, options).then(function (res) {
       if (!res.ok) {
-        return res.text().then(function (txt) {
+        return res.text().then(function (t) {
           var msg = "HTTP " + res.status;
           try {
-            var d = JSON.parse(txt);
+            var d = JSON.parse(t);
             msg =
               (d.error && d.error.message) ||
               d.message ||
@@ -1332,7 +1387,7 @@
         });
       }
       if (!res.body || !res.body.getReader) {
-        throw new Error("当前浏览器不支持流式响应");
+        throw new Error(T("chat.errStreamUnsupported"));
       }
 
       var reader = res.body.getReader();
@@ -1341,13 +1396,21 @@
 
       function dispatchData(data) {
         if (!data) return;
-        if (data === "[DONE]") return;
+        if (data === "[DONE]") {
+          if (onRaw) onRaw("[DONE]");
+          return;
+        }
         try {
-          onDelta(JSON.parse(data));
+          var obj = JSON.parse(data);
+          if (onRaw) onRaw(obj);
+          onDelta(obj);
         } catch (e) {}
       }
 
       function processBuffer(flush) {
+        if (buffer.indexOf("\r") !== -1) {
+          buffer = buffer.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+        }
         var sepIndex;
         while ((sepIndex = buffer.indexOf("\n\n")) !== -1) {
           var evt = buffer.slice(0, sepIndex);
@@ -1385,9 +1448,359 @@
     });
   }
 
+  /* 结构化累积器 */
+
+  function createStructuredAccumulator() {
+    var meta = {
+      id: null,
+      model: null,
+      created: null,
+      finish_reason: null,
+      usage: null,
+      tool_calls: null,
+    };
+    var tcBuf = {};
+    var hasToolCall = false;
+
+    function consume(obj) {
+      if (!obj || obj === "[DONE]") return;
+      if (obj.id && !meta.id) meta.id = obj.id;
+      if (obj.model && !meta.model) meta.model = obj.model;
+      if (obj.created && !meta.created) meta.created = obj.created;
+      if (obj.usage) meta.usage = obj.usage;
+
+      var ch = obj.choices && obj.choices[0];
+      if (ch) {
+        if (ch.finish_reason) meta.finish_reason = ch.finish_reason;
+        var delta = ch.delta || {};
+        var tcs = delta.tool_calls;
+        if (tcs && tcs.length) {
+          hasToolCall = true;
+          tcs.forEach(function (t) {
+            var idx = t.index != null ? t.index : 0;
+            if (!tcBuf[idx]) {
+              tcBuf[idx] = {
+                id: "",
+                type: "function",
+                function: { name: "", arguments: "" },
+              };
+            }
+            var buf = tcBuf[idx];
+            if (t.id) buf.id = t.id;
+            if (t.type) buf.type = t.type;
+            if (t.function) {
+              if (t.function.name) buf.function.name += t.function.name;
+              if (t.function.arguments)
+                buf.function.arguments += t.function.arguments;
+            }
+          });
+        }
+      }
+
+      var cand = obj.candidates && obj.candidates[0];
+      if (cand) {
+        if (cand.finishReason && !meta.finish_reason) {
+          meta.finish_reason = cand.finishReason;
+        }
+        if (cand.content && cand.content.parts) {
+          cand.content.parts.forEach(function (p) {
+            if (p.functionCall) {
+              hasToolCall = true;
+              var idx = Object.keys(tcBuf).length;
+              tcBuf[idx] = {
+                id: "call_" + Date.now() + "_" + idx,
+                type: "function",
+                function: {
+                  name: p.functionCall.name || "",
+                  arguments: JSON.stringify(p.functionCall.args || {}),
+                },
+              };
+            }
+          });
+        }
+      }
+      if (obj.usageMetadata) {
+        meta.usage = {
+          prompt_tokens: obj.usageMetadata.promptTokenCount,
+          completion_tokens: obj.usageMetadata.candidatesTokenCount,
+          total_tokens: obj.usageMetadata.totalTokenCount,
+        };
+      }
+    }
+
+    function finalize() {
+      if (hasToolCall) {
+        var arr = [];
+        Object.keys(tcBuf)
+          .sort(function (a, b) {
+            return a - b;
+          })
+          .forEach(function (k) {
+            var t = tcBuf[k];
+            if (t.function && t.function.name) arr.push(t);
+          });
+        if (arr.length) meta.tool_calls = arr;
+      }
+      return meta;
+    }
+
+    return { consume: consume, finalize: finalize };
+  }
+
+  /* 自定义模型编辑弹窗 */
+
+  function showModelEditor(modelId) {
+    var isEdit = !!modelId;
+    var existing = isEdit ? aiModelConf(modelId) : null;
+    if (isEdit && (!existing || existing.builtin)) return;
+
+    openModal(function (box) {
+      box.appendChild(
+        el("h3", null, isEdit ? T("ai.editModelTitle") : T("model.addTitle")),
+      );
+      var hint = el(
+        "div",
+        "modal-hint",
+        T("model.hint", { endpoint: "{endpoint}" }),
+      );
+      box.appendChild(hint);
+
+      /* 名称 */
+      var l1 = el("label", null, T("model.labelName"));
+      l1.style.cssText =
+        "display:block;font-weight:bold;font-size:0.9rem;margin:8px 0 4px;";
+      var nameInput = document.createElement("input");
+      nameInput.type = "text";
+      nameInput.placeholder = T("model.placeholderName");
+      nameInput.value = isEdit ? existing.name : "";
+      nameInput.autocomplete = "off";
+      nameInput.spellcheck = false;
+
+      /* Endpoint */
+      var l2 = el("label", null, T("model.labelEndpoint"));
+      l2.style.cssText = l1.style.cssText;
+      var epInput = document.createElement("input");
+      epInput.type = "text";
+      epInput.placeholder = T("model.placeholderEndpoint");
+      epInput.value = isEdit ? existing.endpoint : "";
+      epInput.autocomplete = "off";
+      epInput.spellcheck = false;
+
+      /* API Model */
+      var l3 = el("label", null, T("model.labelApiModel"));
+      l3.style.cssText = l1.style.cssText;
+      var apiInput = document.createElement("input");
+      apiInput.type = "text";
+      apiInput.placeholder = T("model.placeholderApiModel");
+      apiInput.value = isEdit ? existing.apiModel : "";
+      apiInput.autocomplete = "off";
+      apiInput.spellcheck = false;
+
+      var actions = el("div", "modal-actions");
+
+      var leftWrap = document.createElement("div");
+      if (isEdit) {
+        var delBtn = el("button", "link-btn", T("model.deleteBtn"));
+        delBtn.type = "button";
+        delBtn.addEventListener("click", function () {
+          closeModal();
+          deleteCustomModel(modelId);
+        });
+        leftWrap.appendChild(delBtn);
+      }
+
+      var rg = rightGroup();
+      var cancel = el("button", "cancel", T("common.cancel"));
+      cancel.addEventListener("click", closeModal);
+
+      var ok = el("button", null, isEdit ? T("common.save") : T("common.ok"));
+      ok.addEventListener("click", function () {
+        var name = nameInput.value.trim();
+        var ep = epInput.value.trim();
+        var apiModel = apiInput.value.trim();
+
+        if (!name) {
+          nameInput.focus();
+          return;
+        }
+        if (!ep) {
+          epInput.focus();
+          return;
+        }
+        if (!/^https?:\/\//i.test(ep)) {
+          showAlert(T("model.errFormat"), T("model.errFormatBody"), true);
+          return;
+        }
+        if (!apiModel) {
+          apiInput.focus();
+          return;
+        }
+
+        if (isEdit) {
+          existing.name = name;
+          existing.endpoint = ep;
+          existing.apiModel = apiModel;
+          saveCustomModels();
+          closeModal();
+          buildAIModelMenu();
+          refreshAIModelUI();
+          showAlert(T("model.editOk"), T("model.editOkBody", { name: name }));
+        } else {
+          var newId = "custom_" + Date.now();
+          aiState.customModels.push({
+            id: newId,
+            name: name,
+            endpoint: ep,
+            apiModel: apiModel,
+            protocol: "openai",
+            builtin: false,
+          });
+          aiState.chats[newId] = [];
+          aiState.prompts[newId] = "";
+          saveCustomModels();
+          saveAIPrompts();
+          closeModal();
+          buildAIModelMenu();
+          refreshAIModelUI();
+          showAlert(T("model.addOk"), T("model.addOkBody", { name: name }));
+        }
+      });
+
+      rg.appendChild(cancel);
+      rg.appendChild(ok);
+      actions.appendChild(leftWrap);
+      actions.appendChild(rg);
+
+      box.appendChild(l1);
+      box.appendChild(nameInput);
+      box.appendChild(l2);
+      box.appendChild(epInput);
+      box.appendChild(l3);
+      box.appendChild(apiInput);
+      box.appendChild(actions);
+    });
+  }
+
+  function deleteCustomModel(modelId) {
+    var conf = aiModelConf(modelId);
+    if (!conf || conf.builtin) return;
+    showConfirm(
+      T("model.deleteConfirmTitle"),
+      T("model.deleteConfirmBody", { name: conf.name }),
+      function () {
+        delete aiState.keys[modelId];
+        delete aiState.chats[modelId];
+        delete aiState.prompts[modelId];
+        saveAIKeys();
+        saveAIPrompts();
+        try {
+          localStorage.removeItem(AI_CHAT_STORAGE + "_" + modelId);
+        } catch (e) {}
+        aiState.customModels = aiState.customModels.filter(function (m) {
+          return m.id !== modelId;
+        });
+        saveCustomModels();
+        if (aiState.currentModel === modelId) {
+          aiState.currentModel = null;
+          renderedModelId = null;
+          renderedMsgCount = 0;
+        }
+        buildAIModelMenu();
+        refreshAIModelUI();
+        renderAIMessages();
+        updateAISendBtn();
+        showAlert(
+          T("model.deleteOk"),
+          T("model.deleteOkBody", { name: conf.name }),
+        );
+      },
+      true,
+    );
+  }
+
+  /* 测试连接 */
+
+  function testAIModelConnection(model) {
+    var conf = aiModelConf(model);
+    if (!conf) return;
+    var key = aiState.keys[model];
+    if (!key) {
+      showAlert(
+        T("test.noKeyTitle"),
+        T("test.noKeyBody", { model: aiModelName(model) }),
+        true,
+      );
+      return;
+    }
+
+    var url, body, headers;
+    if (conf.protocol === "gemini") {
+      url = conf.endpoint + "?key=" + encodeURIComponent(key);
+      body = { contents: [{ role: "user", parts: [{ text: "hi" }] }] };
+      headers = { "Content-Type": "application/json" };
+    } else {
+      url = conf.endpoint;
+      body = {
+        model: conf.apiModel,
+        messages: [{ role: "user", content: "hi" }],
+        max_tokens: 1,
+      };
+      headers = {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + key,
+      };
+    }
+
+    showAlert(T("test.title"), T("test.body", { model: aiModelName(model) }));
+
+    var testAbort = new AbortController();
+    var timeoutId = setTimeout(function () {
+      try {
+        testAbort.abort();
+      } catch (e) {}
+    }, 15000);
+
+    fetch(url, {
+      method: "POST",
+      headers: headers,
+      body: JSON.stringify(body),
+      signal: testAbort.signal,
+    })
+      .then(function (res) {
+        clearTimeout(timeoutId);
+        return res.text().then(function (t) {
+          if (res.ok) {
+            showAlert(
+              T("test.okTitle"),
+              T("test.okBody", { model: aiModelName(model) }),
+            );
+          } else {
+            var msg = "HTTP " + res.status;
+            try {
+              var d = JSON.parse(t);
+              msg =
+                (d.error && d.error.message) ||
+                d.message ||
+                (d.error && d.error.status) ||
+                msg;
+            } catch (e) {}
+            showAlert(T("test.failTitle"), msg, true);
+          }
+        });
+      })
+      .catch(function (err) {
+        clearTimeout(timeoutId);
+        var msg = String((err && err.message) || err);
+        if (err && err.name === "AbortError") msg = T("test.timeout");
+        showAlert(T("test.failTitle"), msg, true);
+      });
+  }
+
+  /* Key / 提示词 */
+
   function promptAPIKey(model, onSaved) {
     showPrompt(
-      tpl("ai.promptKeyTitle", { model: aiModelName(model) }),
+      T("ai.setKeyTitle", { model: aiModelName(model) }),
       aiState.keys[model] || "",
       function (v) {
         aiState.keys[model] = v;
@@ -1401,10 +1814,10 @@
   function promptSystemPrompt(model) {
     var existing = aiState.prompts[model] || "";
     showPromptArea({
-      title: tpl("ai.promptSystemTitle", { model: aiModelName(model) }),
-      hint: t("ai.promptSystemHint"),
+      title: T("ai.setPromptTitle", { model: aiModelName(model) }),
+      hint: T("ai.setPromptHint"),
       value: existing,
-      placeholder: t("ai.promptSystemPlaceholder"),
+      placeholder: T("ai.setPromptPlaceholder"),
       onOk: function (v) {
         aiState.prompts[model] = v.trim();
         saveAIPrompts();
@@ -1422,6 +1835,16 @@
 
   function selectAIModel(model) {
     if (!aiModelConf(model)) return;
+    if (aiState.busy) {
+      if (aiState.abortController) {
+        try {
+          aiState.abortController.abort();
+        } catch (e) {}
+      }
+      aiState.streamToken += 1;
+      aiState.busy = false;
+      updateAISendBtn();
+    }
     if (!aiState.keys[model]) {
       promptAPIKey(model, function () {
         aiState.currentModel = model;
@@ -1437,43 +1860,14 @@
     updateAISendBtn();
   }
 
-  function downloadAIChat(model) {
-    var chat = aiState.chats[model] || [];
-    if (!chat.length) {
-      showAlert(
-        t("alerts.cannotDownloadTitle"),
-        tpl("alerts.cannotDownloadDesc", { model: aiModelName(model) }),
-      );
-      return;
-    }
-    var lines = [
-      tpl("ai.downloadHeader", { model: aiModelName(model) }),
-      "",
-    ];
-    var sys = aiState.prompts[model];
-    if (sys && sys.trim()) {
-      lines.push(t("ai.downloadSysSection"));
-      lines.push("");
-      lines.push(sys);
-      lines.push("");
-    }
-    chat.forEach(function (m) {
-      lines.push(
-        m.role === "user"
-          ? t("ai.downloadUserSection")
-          : tpl("ai.downloadAssistantSection", { model: aiModelName(model) }),
-      );
-      lines.push("");
-      lines.push(m.content);
-      lines.push("");
-    });
-    var md = lines.join("\n");
-    var blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
+  /* 导出 / 导入 */
+
+  function triggerDownload(content, mime, filename) {
+    var blob = new Blob([content], { type: mime });
     var url = URL.createObjectURL(blob);
     var a = document.createElement("a");
     a.href = url;
-    a.download =
-      (t("ai.filePrefix") || "ai_chat_") + model + "_" + Date.now() + ".md";
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -1482,11 +1876,224 @@
     }, 1000);
   }
 
+  function downloadAIChatMd(model) {
+    var chat = aiState.chats[model] || [];
+    if (!chat.length) {
+      showAlert(
+        T("chat.errNoDownloadTitle"),
+        T("chat.errNoDownloadBody", { model: aiModelName(model) }),
+      );
+      return;
+    }
+    var lines = ["# " + aiModelName(model), ""];
+    var sys = aiState.prompts[model];
+    if (sys && sys.trim()) {
+      lines.push("## system");
+      lines.push("");
+      lines.push(sys);
+      lines.push("");
+    }
+    chat.forEach(function (m) {
+      lines.push("## " + m.role);
+      lines.push("");
+      lines.push(m.content || "");
+      lines.push("");
+    });
+    triggerDownload(
+      lines.join("\n"),
+      "text/markdown;charset=utf-8",
+      "ai_chat_" + model + "_" + Date.now() + ".md",
+    );
+  }
+
+  function downloadAIChatJson(model) {
+    var chat = aiState.chats[model] || [];
+    if (!chat.length) {
+      showAlert(
+        T("chat.errNoDownloadTitle"),
+        T("chat.errNoDownloadBody", { model: aiModelName(model) }),
+      );
+      return;
+    }
+    var sys = aiState.prompts[model];
+    var data = {
+      schemaVersion: 1,
+      model: model,
+      modelName: aiModelName(model),
+      exportedAt: new Date().toISOString(),
+      systemPrompt: sys && sys.trim() ? sys : null,
+      messages: chat.map(function (m) {
+        var out = { role: m.role, content: m.content };
+        if (m.id) out.id = m.id;
+        if (m.model) out.model = m.model;
+        if (m.created) out.created = m.created;
+        if (m.finish_reason) out.finish_reason = m.finish_reason;
+        if (m.usage) out.usage = m.usage;
+        if (m.tool_calls && m.tool_calls.length) out.tool_calls = m.tool_calls;
+        return out;
+      }),
+    };
+    triggerDownload(
+      JSON.stringify(data, null, 2),
+      "application/json;charset=utf-8",
+      "ai_chat_" + model + "_" + Date.now() + ".json",
+    );
+  }
+
+  function importAIChatFromFile(file) {
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function (e) {
+      var data;
+      try {
+        data = JSON.parse(e.target.result);
+      } catch (err) {
+        showAlert(T("import.failTitle"), T("import.badJson"), true);
+        return;
+      }
+      if (!data || !Array.isArray(data.messages)) {
+        showAlert(T("import.failTitle"), T("import.badShape"), true);
+        return;
+      }
+
+      var targetModel = data.model;
+      if (!targetModel || !aiModelConf(targetModel)) {
+        var name = String(data.modelName || "").toLowerCase();
+        var allModels = getAllModels();
+        for (var i = 0; i < allModels.length; i++) {
+          if (allModels[i].name.toLowerCase() === name) {
+            targetModel = allModels[i].id;
+            break;
+          }
+        }
+      }
+      if (!targetModel || !aiModelConf(targetModel)) {
+        showAlert(
+          T("import.failTitle"),
+          T("import.unknownModel", { model: data.model || "?" }),
+          true,
+        );
+        return;
+      }
+
+      var cleaned = data.messages
+        .filter(function (m) {
+          return m && typeof m.role === "string";
+        })
+        .map(function (m) {
+          var out = {
+            role: m.role,
+            content: typeof m.content === "string" ? m.content : "",
+          };
+          if (m.id) out.id = m.id;
+          if (m.model) out.model = m.model;
+          if (m.created) out.created = m.created;
+          if (m.finish_reason) out.finish_reason = m.finish_reason;
+          if (m.usage) out.usage = m.usage;
+          if (m.tool_calls && m.tool_calls.length) out.tool_calls = m.tool_calls;
+          return out;
+        });
+
+      if (!cleaned.length) {
+        showAlert(T("import.failTitle"), T("import.noMessages"), true);
+        return;
+      }
+
+      var applyImport = function (mode) {
+        var existing = aiState.chats[targetModel] || [];
+        if (mode === "replace") aiState.chats[targetModel] = cleaned;
+        else aiState.chats[targetModel] = existing.concat(cleaned);
+
+        if (
+          data.systemPrompt &&
+          String(data.systemPrompt).trim() &&
+          !(aiState.prompts[targetModel] || "").trim()
+        ) {
+          aiState.prompts[targetModel] = String(data.systemPrompt).trim();
+          saveAIPrompts();
+        }
+        saveAIChats(targetModel);
+
+        if (aiState.currentModel === targetModel) {
+          renderedMsgCount = 0;
+          renderAIMessages();
+          showAlert(
+            T("import.okTitle"),
+            T("import.okBody", {
+              n: cleaned.length,
+              model: aiModelName(targetModel),
+            }),
+          );
+        } else {
+          showConfirm(
+            T("import.okTitle"),
+            T("import.askSwitch", {
+              n: cleaned.length,
+              model: aiModelName(targetModel),
+            }),
+            function () {
+              selectAIModel(targetModel);
+            },
+          );
+        }
+      };
+
+      var existing = aiState.chats[targetModel] || [];
+      if (!existing.length) {
+        applyImport("replace");
+        return;
+      }
+
+      openModal(function (box) {
+        box.appendChild(el("h3", null, T("import.conflictTitle")));
+        box.appendChild(
+          el(
+            "p",
+            null,
+            T("import.conflictBody", {
+              model: aiModelName(targetModel),
+              existing: existing.length,
+              incoming: cleaned.length,
+            }),
+          ),
+        );
+        var actions = el("div", "modal-actions");
+        var leftWrap = document.createElement("div");
+        var cancelBtn = el("button", "link-btn", T("common.cancel"));
+        cancelBtn.addEventListener("click", closeModal);
+        leftWrap.appendChild(cancelBtn);
+
+        var rg = rightGroup();
+        var appendBtn = el("button", "cancel", T("common.append"));
+        appendBtn.addEventListener("click", function () {
+          closeModal();
+          applyImport("append");
+        });
+        var replaceBtn = el("button", "danger", T("common.replace"));
+        replaceBtn.addEventListener("click", function () {
+          closeModal();
+          applyImport("replace");
+        });
+        rg.appendChild(appendBtn);
+        rg.appendChild(replaceBtn);
+        actions.appendChild(leftWrap);
+        actions.appendChild(rg);
+        box.appendChild(actions);
+      });
+    };
+    reader.onerror = function () {
+      showAlert(T("import.failTitle"), T("import.readFail"), true);
+    };
+    reader.readAsText(file);
+  }
+
+  /* 发送 / 清空 */
+
   function aiSend() {
     if (aiState.busy) return;
     var model = aiState.currentModel;
     if (!model) {
-      showAlert(t("alerts.needModelTitle"), t("alerts.needModelDesc"), true);
+      showAlert(T("chat.errNoModelTitle"), T("chat.errNoModelBody"), true);
       return;
     }
     var key = aiState.keys[model];
@@ -1507,39 +2114,52 @@
 
     chat.push({ role: "user", content: text });
     chat.push({ role: "assistant", content: "" });
-    saveAIChats();
+    saveAIChats(model);
 
     inputEl.value = "";
     inputEl.style.height = "auto";
+
+    if (aiState.abortController) {
+      try {
+        aiState.abortController.abort();
+      } catch (e) {}
+    }
+    aiState.streamToken += 1;
+    var myToken = aiState.streamToken;
+    aiState.abortController = new AbortController();
 
     aiState.busy = true;
     updateAISendBtn();
     renderAIMessages();
 
     var bubble = getLastAssistantBubble();
+    if (bubble) {
+      bubble.textContent = "";
+      bubble.classList.remove("pending");
+    }
     var accumulated = "";
-    var isGemini = model === "gemini";
+    var conf = aiModelConf(model);
+    var isGemini = conf && conf.protocol === "gemini";
     var box = $("#aiMessages");
+    var acc = createStructuredAccumulator();
 
     function pushDelta(text2) {
+      if (aiState.streamToken !== myToken) return;
       if (!text2) return;
       accumulated += text2;
-      if (bubble) {
-        bubble.classList.remove("pending");
-        bubble.textContent = accumulated;
-      }
-      if (box) box.scrollTop = box.scrollHeight;
+      if (bubble) bubble.appendChild(document.createTextNode(text2));
+      if (box && isNearBottom(box)) box.scrollTop = box.scrollHeight;
     }
 
     var onDelta = function (obj) {
       if (isGemini) {
         var cand = obj.candidates && obj.candidates[0];
         if (cand && cand.content && cand.content.parts) {
-          var s = "";
+          var t = "";
           for (var i = 0; i < cand.content.parts.length; i++) {
-            s += cand.content.parts[i].text || "";
+            t += cand.content.parts[i].text || "";
           }
-          pushDelta(s);
+          pushDelta(t);
         }
       } else {
         var d = obj.choices && obj.choices[0] && obj.choices[0].delta;
@@ -1548,57 +2168,91 @@
     };
 
     var payload = chat.slice(0, -1);
+    if (payload.length > MAX_CONTEXT_MESSAGES) {
+      payload = payload.slice(-MAX_CONTEXT_MESSAGES);
+    }
     var systemPrompt = aiState.prompts[model] || "";
 
-    streamAI(model, key, payload, systemPrompt, onDelta)
+    streamAI(model, key, payload, systemPrompt, onDelta, function (raw) {
+      acc.consume(raw);
+    })
       .then(function () {
-        chat[chat.length - 1].content = accumulated || t("ai.emptyReply");
-        saveAIChats();
+        if (aiState.streamToken !== myToken) return;
+        var meta = acc.finalize();
+        var msg = chat[chat.length - 1];
+        msg.content = accumulated || T("ai.emptyReply");
+        if (meta.id) msg.id = meta.id;
+        if (meta.model) msg.model = meta.model;
+        if (meta.created) msg.created = meta.created;
+        if (meta.finish_reason) msg.finish_reason = meta.finish_reason;
+        if (meta.usage) msg.usage = meta.usage;
+        if (meta.tool_calls) msg.tool_calls = meta.tool_calls;
+        saveAIChats(model);
         aiState.busy = false;
         updateAISendBtn();
         renderAIMessages();
       })
       .catch(function (err) {
+        if (aiState.streamToken !== myToken) return;
         aiState.busy = false;
         updateAISendBtn();
+        var meta = acc.finalize();
+        var isAbort = err && (err.name === "AbortError" || err.code === 20);
         if (accumulated) {
-          chat[chat.length - 1].content = accumulated;
+          var msg = chat[chat.length - 1];
+          msg.content = accumulated;
+          if (meta.id) msg.id = meta.id;
+          if (meta.model) msg.model = meta.model;
+          if (meta.created) msg.created = meta.created;
+          if (meta.finish_reason) msg.finish_reason = meta.finish_reason;
+          if (meta.usage) msg.usage = meta.usage;
+          if (meta.tool_calls) msg.tool_calls = meta.tool_calls;
         } else {
           chat.pop();
         }
-        saveAIChats();
+        saveAIChats(model);
         renderAIMessages();
-        showAlert(
-          t("alerts.requestFailedTitle"),
-          String((err && err.message) || err) || t("alerts.requestFailedDesc"),
-          true,
-        );
+        if (!isAbort) {
+          showAlert(
+            T("chat.errRequestTitle"),
+            String((err && err.message) || err) || T("chat.errRequestBody"),
+            true,
+          );
+        }
       });
   }
 
   function clearAIChat() {
     var model = aiState.currentModel;
     if (!model) {
-      showAlert(
-        t("alerts.noNeedClearTitle"),
-        t("alerts.noNeedClearModelDesc"),
-      );
+      showAlert(T("chat.errNoClearTitle"), T("chat.errNoClearNoModel"));
       return;
     }
     var chat = aiState.chats[model] || [];
     if (!chat.length) {
       showAlert(
-        t("alerts.noNeedClearTitle"),
-        tpl("alerts.noNeedClearChatDesc", { model: aiModelName(model) }),
+        T("chat.errNoClearTitle"),
+        T("chat.errNoClearNoChat", { model: aiModelName(model) }),
       );
       return;
     }
     showConfirm(
-      t("alerts.clearChatTitle"),
-      tpl("alerts.clearChatConfirm", { model: aiModelName(model) }),
+      T("chat.clearConfirmTitle"),
+      T("chat.clearConfirmBody", { model: aiModelName(model) }),
       function () {
+        if (aiState.busy) {
+          if (aiState.abortController) {
+            try {
+              aiState.abortController.abort();
+            } catch (e) {}
+          }
+          aiState.streamToken += 1;
+          aiState.busy = false;
+          updateAISendBtn();
+        }
         aiState.chats[model] = [];
-        saveAIChats();
+        saveAIChats(model);
+        renderedMsgCount = 0;
         renderAIMessages();
       },
       true,
@@ -1626,6 +2280,32 @@
 
     if (modelMenu) {
       modelMenu.addEventListener("click", function (e) {
+        var importItem = e.target.closest("[data-import]");
+        if (importItem) {
+          e.stopPropagation();
+          closeAIModelMenu();
+          var importFile = $("#aiImportFile");
+          if (importFile) {
+            importFile.value = "";
+            importFile.click();
+          }
+          return;
+        }
+        var addBtn = e.target.closest("[data-add]");
+        if (addBtn) {
+          e.stopPropagation();
+          closeAIModelMenu();
+          showModelEditor();
+          return;
+        }
+        var editBtn = e.target.closest("[data-edit]");
+        if (editBtn) {
+          e.stopPropagation();
+          e.preventDefault();
+          closeAIModelMenu();
+          showModelEditor(editBtn.dataset.edit);
+          return;
+        }
         var promptBtn = e.target.closest("[data-prompt]");
         if (promptBtn) {
           e.stopPropagation();
@@ -1639,10 +2319,23 @@
           promptAPIKey(keyBtn.dataset.key);
           return;
         }
-        var dl = e.target.closest("[data-dl]");
-        if (dl) {
+        var testBtn = e.target.closest("[data-test]");
+        if (testBtn) {
           e.stopPropagation();
-          downloadAIChat(dl.dataset.dl);
+          closeAIModelMenu();
+          testAIModelConnection(testBtn.dataset.test);
+          return;
+        }
+        var mdBtn = e.target.closest("[data-md]");
+        if (mdBtn) {
+          e.stopPropagation();
+          downloadAIChatMd(mdBtn.dataset.md);
+          return;
+        }
+        var jsonBtn = e.target.closest("[data-json]");
+        if (jsonBtn) {
+          e.stopPropagation();
+          downloadAIChatJson(jsonBtn.dataset.json);
           return;
         }
         var item = e.target.closest(".ai-model-item");
@@ -1678,6 +2371,16 @@
       });
     }
 
+    var importFile = $("#aiImportFile");
+    if (importFile) {
+      importFile.addEventListener("change", function () {
+        var f = this.files && this.files[0];
+        if (!f) return;
+        importAIChatFromFile(f);
+        this.value = "";
+      });
+    }
+
     if (clearBtn) {
       clearBtn.addEventListener("click", function () {
         clearAIChat();
@@ -1685,7 +2388,8 @@
     }
   }
 
-  /* 路由渲染 */
+  /* 总渲染入口 */
+
   function render() {
     var path = getRoute();
 
@@ -1726,18 +2430,15 @@
       bindGenerator();
     } else {
       var wrap = document.createElement("div");
-      var h = document.createElement("h1");
-      h.textContent = t("unknown.titlePrefix") + path;
-      var p = document.createElement("p");
-      p.textContent = t("unknown.desc");
-      wrap.appendChild(h);
-      wrap.appendChild(p);
+      wrap.appendChild(el("h1", null, T("page.notFoundTitle", { path: path })));
+      wrap.appendChild(el("p", null, T("page.notFoundBody")));
       appEl.appendChild(wrap);
     }
   }
 
-  /* 初始化 */
-  function init() {
+  /* 静态初始化 */
+
+  function initStatic() {
     modalBackdrop = $("#modalBackdrop");
     modalBox = $("#modalBox");
     sidebarPagesEl = $("#sidebar-pages");
@@ -1747,20 +2448,12 @@
     appEl = $("#app");
     sidebarSearchEl = $("#sidebarSearch");
 
-    // 填充页面标题与静态文本
-    document.title = t("meta.title") || document.title;
-    applyI18n(document);
-    if (!appEl.textContent.trim()) appEl.textContent = t("meta.loading");
-
-    initAIState();
-
     var savedTheme = "light";
     try {
       savedTheme = localStorage.getItem(THEME_KEY) || "light";
     } catch (e) {}
     applyTheme(savedTheme);
 
-    /* 全局禁止缩放 */
     ["gesturestart", "gesturechange", "gestureend"].forEach(function (type) {
       document.addEventListener(
         type,
@@ -1771,11 +2464,16 @@
       );
     });
     document.addEventListener(
+      "touchstart",
+      function (e) {
+        if (e.touches && e.touches.length > 1) e.preventDefault();
+      },
+      { passive: false },
+    );
+    document.addEventListener(
       "touchmove",
       function (e) {
-        if (e.touches && e.touches.length > 1) {
-          e.preventDefault();
-        }
+        if (e.touches && e.touches.length > 1) e.preventDefault();
       },
       { passive: false },
     );
@@ -1785,8 +2483,8 @@
       function (e) {
         var now = Date.now();
         if (now - lastTouchEnd <= 300) {
-          var tgt = e.target;
-          var tag = tgt && tgt.tagName ? tgt.tagName.toLowerCase() : "";
+          var t = e.target;
+          var tag = t && t.tagName ? t.tagName.toLowerCase() : "";
           if (
             tag !== "input" &&
             tag !== "textarea" &&
@@ -1801,18 +2499,13 @@
       },
       { passive: false },
     );
-
-    /* 点击页面空白处关闭AI模型菜单 */
     document.addEventListener("click", function (e) {
       var menu = $("#aiModelMenu");
       if (!menu || !menu.classList.contains("show")) return;
       var picker = menu.parentNode;
-      if (picker && !picker.contains(e.target)) {
-        menu.classList.remove("show");
-      }
+      if (picker && !picker.contains(e.target)) menu.classList.remove("show");
     });
 
-    /* 搜索框 */
     if (sidebarSearchEl) {
       sidebarSearchEl.addEventListener("input", function () {
         sidebarSearchKeyword = this.value || "";
@@ -1853,7 +2546,6 @@
       }
     });
 
-    /* 侧边栏底部 */
     var exportZipBtn = $("#exportZipSidebar");
     if (exportZipBtn) {
       var runExport = function () {
@@ -1872,7 +2564,6 @@
     var themeBtn = $("#themeToggleSidebar");
     if (themeBtn) themeBtn.addEventListener("click", toggleTheme);
 
-    /* 顶部导航 */
     $$(".sidebar .nav-item[data-path]").forEach(function (el) {
       var go = function () {
         var path = el.getAttribute("data-path");
@@ -1893,7 +2584,6 @@
       });
     });
 
-    /* 侧边栏脚本名 */
     sidebarPagesEl.addEventListener("click", function (e) {
       var btn = e.target.closest("[data-action]");
       if (!btn) return;
@@ -1913,40 +2603,51 @@
       render();
       closeSidebar();
     });
-
     window.addEventListener("orientationchange", function () {
       if (editor) editor.refresh();
     });
-
+    var resizeTimer = null;
     window.addEventListener("resize", function () {
       if (appEl.classList.contains("preview-mode")) {
         appEl.style.width = window.innerWidth + "px";
         appEl.style.height = window.innerHeight + "px";
       }
-      if (editor) editor.refresh();
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(function () {
+        if (editor) editor.refresh();
+      }, 100);
     });
+  }
 
+  /* 加载 content.json → 启动 */
+
+  function loadContent() {
+    return fetch(CONTENT_URL, { cache: "no-cache" })
+      .then(function (r) {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      })
+      .then(function (json) {
+        CONTENT = json || {};
+        I18N = CONTENT.i18n || {};
+        AI_MODELS = (CONTENT.models || []).slice();
+        LANG = detectLang();
+      });
+  }
+
+  function boot() {
+    initStatic();
+    initAIState();
+    applyI18nToStatic();
     updateSidebarPages();
     render();
   }
 
-  /* 启动先加载json */
   loadContent()
-    .then(function (data) {
-      C = data || {};
-      if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", init);
-      } else {
-        init();
-      }
+    .then(function () {
+      boot();
     })
-    .catch(function (err) {
-      console.error("加载 content.json 失败：", err);
-      var app = document.getElementById("app");
-      if (app) {
-        app.textContent = tpl("meta.contentLoadFailed", {
-          msg: (err && err.message) || String(err),
-        });
-      }
+    .catch(function (e) {
+      console.warn("[content.json] 加载失败，使用 HTML 默认文案：", e);
+      boot();
     });
-})(); 
