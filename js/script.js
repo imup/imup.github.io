@@ -2,14 +2,13 @@
    randomArt可视化创意编程 - 主逻辑
    =========================================================
    依赖：
-     - 外部 CDN：CodeMirror、JSZip（在 index.html 中引入）
-     - json文案 + 模型配置，异步加载）
+     - 外部CDN：CodeMirror、JSZip在html 中引入
+     - json文案 + 模型配置加载
      - p5.js首页随机运行，列表硬编码在下方 P5_FILES）
 
    设计：
      - HTML只有骨架；所有动态DOM由本文件 createElement生成
      - 文案与模型配置从json载入，支持i18n
-     - 启动时同步boot一次，保证UI立即可用；json回来后重刷
    ========================================================= */
 (function () {
   "use strict";
