@@ -20,7 +20,9 @@ function draw() {
 }
 
 function makeRect(x, y, w, h) {
-  let colors = [0, 255];
+  let c1 = color(0,0,0);
+  let c2 = color(20,10,255);
+  let colors = [c1, c2];
   let r = floor(random(4));
   let n = random([2, 2, 4, 4, 4, 4, 8]);
   switch (r) {
