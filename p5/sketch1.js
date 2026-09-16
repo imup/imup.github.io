@@ -1,21 +1,15 @@
-let angle = 0;
+let str = "而且创意可视化编程";
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
-  background(0);
+  colorMode(HSB,360,100,100,100);
 }
-
 function draw() {
-  background(0, 10);
-  translate(width / 2, height / 2);
-  rotate(angle);
-  noFill();
-  stroke(255, 100, 200);
-  strokeWeight(2);
-  rect(-50, -50, 100, 100);
-  angle += 0.01;
-}
-
-function windowResized() {
-  resizeCanvas(windowWidth, windowHeight);
+  background(0,0,0,5);
+  fill(random(360),100,random(100),100);
+  let n = floor(random(str.length));
+  let str_trim = str.charAt((str.length-1)-frameCount%str.length);
+  textSize(frameCount*10%250);
+  textAlign(CENTER,CENTER);
+text(str_trim,random(width),random(height));
 }
