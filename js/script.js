@@ -1,14 +1,11 @@
 /* =========================================================
    randomArt可视化创意编程 - 主逻辑
    =========================================================
-   依赖：
-     - 外部CDN：CodeMirror、JSZip在html 中引入
-     - json文案 + 模型配置加载
-     - p5.js首页随机运行，列表硬编码在下方 P5_FILES）
-
-   设计：
-     - HTML只有骨架；所有动态DOM由本文件 createElement生成
-     - 文案与模型配置从json载入，支持i18n
+     - 外部依赖CDN：CodeMirror、JSZip在html 中引入
+     - json文案+模型配置加载
+     - p5.js首页随机运行，列表硬编码在P5_FILES
+     - HTML只有骨架；所有动态DOM由createElement生成
+     - 文案与模型配置从json载入支持i18n
    ========================================================= */
 (function () {
   "use strict";
@@ -162,7 +159,7 @@
         result[m.id] = [];
       }
     });
-    /* 迁移老数据：单key → 分模型key */
+    /* 迁移老数据单key到分模型key */
     try {
       var oldRaw = localStorage.getItem(AI_CHAT_STORAGE);
       if (oldRaw) {
@@ -510,7 +507,7 @@
     });
   }
 
-  /* 生成作品HTML */
+  /* 生成脚本HTML */
 
   function generatePageHtml(title, script, imageDataUrl) {
     var safeTitle = escapeHtml(title || T("generator.untitledPage"));
@@ -650,7 +647,7 @@
     );
   }
 
-  /* 侧边栏作品列表 */
+  /* 侧边栏脚本列表 */
 
   function updateSidebarPages() {
     var pages = getPages();
