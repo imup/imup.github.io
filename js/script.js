@@ -2642,12 +2642,16 @@
     updateSidebarPages();
     render();
   }
-
+  boot();
+  /* 异步加载文案/模型，回来后重刷 */
   loadContent()
     .then(function () {
-      boot();
+      LANG = detectLang();
+      initAIState(); /* 用新模型重新初始化 */
+      applyI18nToStatic();
+      updateSidebarPages();
+      render();
     })
     .catch(function (e) {
       console.warn("[content.json] 加载失败，使用 HTML 默认文案：", e);
-      boot();
     });
