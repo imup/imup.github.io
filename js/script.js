@@ -2815,6 +2815,7 @@
   }
 
   /* 启动流程 */
+  /*
 
   /* 1. DOM就绪后，同步init一次（用默认/空文案先跑起来） */
   function bootSync() {
@@ -2823,33 +2824,20 @@
     updateSidebarPages();
     render();
   }
-
-  /* 2. json回来后，重刷文案与模型 */
-  function bootWithContent() {
-    LANG = detectLang();
-    applyI18nToStatic();
+   function boot() {
+    initStatic();
     initAIState();
+    applyI18nToStatic();
     updateSidebarPages();
     render();
   }
 
-  function start() {
-    /* 立即boot保证UI可用，不依赖json */
-    bootSync();
-
-    /* 异步加载json回来后重刷 */
-    loadContent()
-      .then(function () {
-        bootWithContent();
-      })
-      .catch(function (e) {
-        console.warn("[content.json] 加载失败，使用默认文案：", e);
-      });
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", start);
-  } else {
-    start();
-  }
+  loadContent()
+    .then(function () {
+      boot();
+    })
+    .catch(function (e) {
+      console.warn("[content.json] 加载失败，使用 HTML 默认文案：", e);
+      boot();
+    });
 })();
