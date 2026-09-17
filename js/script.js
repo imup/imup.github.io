@@ -16,7 +16,9 @@
 (function () {
   "use strict";
 
-  /* 常量 */
+  /* ---------------------------------------------------------
+     常量
+     --------------------------------------------------------- */
 
   var STORAGE_KEY = "p5_pages";
   var THEME_KEY = "p5_theme";
@@ -141,7 +143,9 @@
     },
   ];
 
-  /* 运行时状态 */
+  /* ---------------------------------------------------------
+     运行时状态
+     --------------------------------------------------------- */
 
   var AI_MODELS = [];
   var I18N = {};
@@ -183,7 +187,9 @@
   var renderedMsgCount = 0;
   var renderedModelId = null;
 
-  /* i18n */
+  /* ---------------------------------------------------------
+     i18n
+     --------------------------------------------------------- */
 
   function T(key, params) {
     var pack = I18N[LANG] || I18N.zh || {};
@@ -227,7 +233,9 @@
     } catch (e) {}
   }
 
-  /* 模型访问 */
+  /* ---------------------------------------------------------
+     模型访问
+     --------------------------------------------------------- */
 
   function getAllModels() {
     return AI_MODELS.concat(aiState.customModels || []);
@@ -252,7 +260,9 @@
     return c ? c.name : id;
   }
 
-  /* localStorage读写 */
+  /* ---------------------------------------------------------
+     localStorage 读写
+     --------------------------------------------------------- */
 
   function loadAIKeys() {
     try {
@@ -413,7 +423,9 @@
     });
   }
 
-  /* 存储超限 */
+  /* ---------------------------------------------------------
+     存储超限
+     --------------------------------------------------------- */
 
   function isQuotaError(e) {
     if (!e) return false;
@@ -458,7 +470,9 @@
     );
   }
 
-  /* 通用工具 */
+  /* ---------------------------------------------------------
+     通用工具
+     --------------------------------------------------------- */
 
   function $(sel, root) {
     return (root || document).querySelector(sel);
@@ -490,7 +504,9 @@
     return n || "untitled";
   }
 
-  /* DOM 小工厂 */
+  /* ---------------------------------------------------------
+     DOM 小工厂
+     --------------------------------------------------------- */
 
   function el(tag, className, text) {
     var e = document.createElement(tag);
@@ -503,7 +519,9 @@
     return el("div", "right-group");
   }
 
-  /* 弹窗 */
+  /* ---------------------------------------------------------
+     弹窗
+     --------------------------------------------------------- */
 
   function openModal(builder) {
     lastFocused = document.activeElement;
@@ -665,7 +683,9 @@
     });
   }
 
-  /* 生成作品 HTML */
+  /* ---------------------------------------------------------
+     生成作品 HTML
+     --------------------------------------------------------- */
 
   function generatePageHtml(title, script, imageDataUrl) {
     var safeTitle = escapeHtml(title || T("generator.untitledPage"));
@@ -762,7 +782,9 @@
       });
   }
 
-  /* 首页随机脚本 */
+  /* ---------------------------------------------------------
+     首页随机脚本
+     --------------------------------------------------------- */
 
   function pickRandomP5File() {
     if (!P5_FILES || !P5_FILES.length) return null;
@@ -805,7 +827,9 @@
     );
   }
 
-  /* 侧边栏作品列表 */
+  /* ---------------------------------------------------------
+     侧边栏作品列表
+     --------------------------------------------------------- */
 
   function updateSidebarPages() {
     var pages = getPages();
@@ -856,7 +880,9 @@
     sidebarPagesEl.replaceChildren(frag);
   }
 
-  /* iframe内 p5 画布事件代理 */
+  /* ---------------------------------------------------------
+     iframe 内 p5 画布事件代理
+     --------------------------------------------------------- */
 
   function bindIframeProxy(iframe) {
     var iwin, idoc;
@@ -972,7 +998,9 @@
     });
   }
 
-  /* 预览锁屏 */
+  /* ---------------------------------------------------------
+     预览锁屏
+     --------------------------------------------------------- */
 
   function lockAppSize() {
     document.body.classList.add("preview-lock");
@@ -995,7 +1023,9 @@
     appEl.style.overflow = "";
   }
 
-  /* 首页渲染 */
+  /* ---------------------------------------------------------
+     首页渲染
+     --------------------------------------------------------- */
 
   function renderRunner() {
     destroyEditor();
@@ -1062,7 +1092,9 @@
     else location.hash = "#/";
   }
 
-  /* 作品操作 */
+  /* ---------------------------------------------------------
+     作品操作
+     --------------------------------------------------------- */
 
   function deletePage(id) {
     var pages = getPages();
@@ -1103,7 +1135,9 @@
     });
   }
 
-  /* 侧边栏开关 */
+  /* ---------------------------------------------------------
+     侧边栏开关
+     --------------------------------------------------------- */
 
   function openSidebar() {
     sidebarEl.classList.add("open");
@@ -1118,7 +1152,9 @@
     hamburgerBtn.setAttribute("aria-expanded", "false");
   }
 
-  /* 主题 */
+  /* ---------------------------------------------------------
+     主题
+     --------------------------------------------------------- */
 
   function applyTheme(theme) {
     var lightTheme = $("#cm-theme-light");
@@ -1146,7 +1182,9 @@
     } catch (e) {}
   }
 
-  /* 路由 */
+  /* ---------------------------------------------------------
+     路由
+     --------------------------------------------------------- */
 
   function getRoute() {
     var hash = location.hash;
@@ -1171,19 +1209,22 @@
     }
   }
 
-  /* 关于页 */
+  /* ---------------------------------------------------------
+     关于页
+     --------------------------------------------------------- */
 
   function renderAbout() {
     var wrap = document.createElement("div");
     wrap.appendChild(el("h1", null, T("about.title")));
-");
-    ["p1", "p2", "p3   ", "p4", "p5", "p6"].forEach(function ( vark) {
-      wrap.appendChild(el("p", null pick, T("about." + k)));
-   er });
+    ["p1", "p2", "p3", "p4", "p5", "p6"].forEach(function (k) {
+      wrap.appendChild(el("p", null, T("about." + k)));
+    });
     return wrap;
   }
 
-  /* 编写脚本页 */
+  /* ---------------------------------------------------------
+     编写脚本页
+     --------------------------------------------------------- */
 
   function renderGenerator() {
     var wrap = el("div", "generator-page");
@@ -1235,19 +1276,22 @@
     wrap.appendChild(submit);
     wrap.appendChild(result);
 
-    /* AI生成面板 */
+    /* AI 生成面板 */
     wrap.appendChild(buildGeneratorAIPanel());
 
     return wrap;
   }
 
-  /* 编写页 AI 面板 */
+  /* ---------------------------------------------------------
+     编写页 AI 面板
+     --------------------------------------------------------- */
 
   function buildGeneratorAIPanel() {
     var panel = el("div", "gen-ai-panel");
     panel.appendChild(el("div", "gen-ai-heading", T("gen.title")));
 
-    var bar = el("div", "gen-ai-bar("div", "ai-model-picker");
+    var bar = el("div", "gen-ai-bar");
+    var picker = el("div", "ai-model-picker");
 
     var modelBtn = el("button", "ai-model-btn", "+");
     modelBtn.id = "genModelBtn";
@@ -1362,7 +1406,9 @@
     if (btn) btn.disabled = !!busy;
   }
 
-  /* 工具注册表 */
+  /* ---------------------------------------------------------
+     工具注册表
+     --------------------------------------------------------- */
 
   function executeToolCall(toolName, args) {
     try {
@@ -1406,7 +1452,9 @@
     }
   }
 
-  /* 从文本提取代码（降级） */
+  /* ---------------------------------------------------------
+     从文本提取代码（降级）
+     --------------------------------------------------------- */
 
   function extractCodeFromText(text) {
     if (!text) return null;
@@ -1428,7 +1476,9 @@
     return null;
   }
 
-  /* 内部消息 → Gemini 消息 转换 */
+  /* ---------------------------------------------------------
+     内部消息 → Gemini 消息 转换
+     --------------------------------------------------------- */
 
   function findToolCallName(msgs, toolCallId) {
     for (var i = 0; i < msgs.length; i++) {
@@ -1503,7 +1553,9 @@
     return { systemInstruction: systemInstruction, contents: contents };
   }
 
-  /* 流式请求 */
+  /* ---------------------------------------------------------
+     流式请求
+     --------------------------------------------------------- */
 
   function streamAI(model, key, messages, systemPrompt, onDelta, onRaw, opts) {
     var conf = aiModelConf(model);
@@ -1640,7 +1692,9 @@
     });
   }
 
-  /* 结构化累积器 */
+  /* ---------------------------------------------------------
+     结构化累积器
+     --------------------------------------------------------- */
 
   function createStructuredAccumulator() {
     var meta = {
@@ -1739,7 +1793,9 @@
     return { consume: consume, finalize: finalize };
   }
 
-  /* 编写页 AI 主流程 */
+  /* ---------------------------------------------------------
+     编写页 AI 主流程
+     --------------------------------------------------------- */
 
   function genApplyCode(code, intent) {
     if (!editor || !code) return;
@@ -2031,7 +2087,9 @@
     refreshGenModelBtn();
   }
 
-  /* 编写脚本页：原有交互 */
+  /* ---------------------------------------------------------
+     编写脚本页：原有交互
+     --------------------------------------------------------- */
 
   function bindGenerator() {
     var titleInput = $("#title");
@@ -2183,7 +2241,9 @@
     bindGeneratorAIPanel();
   }
 
-  /* AI 页骨架 */
+  /* ---------------------------------------------------------
+     AI 页骨架
+     --------------------------------------------------------- */
 
   function renderAIAssistant() {
     var page = el("div", "ai-page");
@@ -2239,7 +2299,9 @@
     return page;
   }
 
-  /* 模型菜单（AI 聊天页） */
+  /* ---------------------------------------------------------
+     模型菜单（AI 聊天页）
+     --------------------------------------------------------- */
 
   function buildAIModelMenu() {
     var menu = $("#aiModelMenu");
@@ -2347,7 +2409,9 @@
     menu.classList.toggle("show");
   }
 
-  /* AI 消息渲染 */
+  /* ---------------------------------------------------------
+     AI 消息渲染
+     --------------------------------------------------------- */
 
   function buildMsgNode(m) {
     var row = el(
@@ -2455,7 +2519,9 @@
     return box.scrollHeight - box.scrollTop - box.clientHeight < 80;
   }
 
-  /* 自定义模型编辑弹窗 */
+  /* ---------------------------------------------------------
+     自定义模型编辑弹窗
+     --------------------------------------------------------- */
 
   function showModelEditor(modelId) {
     var isEdit = !!modelId;
@@ -2640,7 +2706,9 @@
     );
   }
 
-  /* 测试连接 */
+  /* ---------------------------------------------------------
+     测试连接
+     --------------------------------------------------------- */
 
   function testAIModelConnection(model) {
     var conf = aiModelConf(model);
@@ -2718,7 +2786,9 @@
       });
   }
 
-  /* Key / 提示词 */
+  /* ---------------------------------------------------------
+     Key / 提示词
+     --------------------------------------------------------- */
 
   function promptAPIKey(model, onSaved) {
     showPrompt(
@@ -2782,7 +2852,9 @@
     updateAISendBtn();
   }
 
-  /* 导出 / 导入 */
+  /* ---------------------------------------------------------
+     导出 / 导入
+     --------------------------------------------------------- */
 
   function triggerDownload(content, mime, filename) {
     var blob = new Blob([content], { type: mime });
@@ -3009,7 +3081,9 @@
     reader.readAsText(file);
   }
 
-  /* AI 聊天页：发送 / 清空 */
+  /* ---------------------------------------------------------
+     AI 聊天页：发送 / 清空
+     --------------------------------------------------------- */
 
   function aiSend() {
     if (aiState.busy) return;
@@ -3318,7 +3392,9 @@
     }
   }
 
-  /* 总渲染入口 */
+  /* ---------------------------------------------------------
+     总渲染入口
+     --------------------------------------------------------- */
 
   function render() {
     var path = getRoute();
@@ -3377,7 +3453,9 @@
     }
   }
 
-  /* 静态初始化 */
+  /* ---------------------------------------------------------
+     静态初始化
+     --------------------------------------------------------- */
 
   function initStatic() {
     modalBackdrop = $("#modalBackdrop");
@@ -3572,7 +3650,9 @@
     });
   }
 
-  /* 加载 content.json */
+  /* ---------------------------------------------------------
+     加载 content.json
+     --------------------------------------------------------- */
 
   function loadContent() {
     return fetch(CONTENT_URL, { cache: "no-cache" })
@@ -3588,7 +3668,6 @@
       });
   }
 
-/*
   function boot() {
     initStatic();
     initAIState();
@@ -3596,39 +3675,13 @@
     updateSidebarPages();
     render();
   }
-  */
-  /* 启动 */
-  /* 1. 同步启动：用空文案先跑起来 */
-  function bootSync() {
-    initStatic();
-    initAIState();
-    updateSidebarPages();
-    render();
-  }
-  /* 2. json回来后：重刷文案 + 模型 */
-  function bootWithContent() {
-    LANG = detectLang();
-    applyI18nToStatic();
-    initAIState();
-    updateSidebarPages();
-    render();
-  }
 
-  function start() {
-    bootSync();
-
-    loadContent()
-      .then(function () {
-        bootWithContent();
-      })
-      .catch(function (e) {
-        console.warn("[content.json] 加载失败，使用默认文案：", e);
-      });
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", start);
-  } else {
-    start();
-  }
+  loadContent()
+    .then(function () {
+      boot();
+    })
+    .catch(function (e) {
+      console.warn("[content.json] 加载失败，使用默认文案：", e);
+      boot();
+    });
 })();
