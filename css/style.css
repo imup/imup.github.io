@@ -979,3 +979,78 @@ button:disabled {
     padding-top: 54px;
   }
 }
+
+
+/* AI生成面板（编写脚本页） */
+.gen-ai-panel {
+  margin-top: 24px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.gen-ai-panel .gen-ai-heading {
+  font-weight: bold;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+}
+
+.gen-ai-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 6px;
+}
+
+.gen-ai-bar textarea {
+  flex: 1 1 auto;
+  min-width: 0;
+  resize: none;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  min-height: 34px;
+  max-height: 120px;
+  padding: 7px 6px;
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1.45;
+  overflow-y: auto;
+}
+.gen-ai-bar textarea::placeholder {
+  color: var(--text-placeholder);
+}
+
+.gen-status {
+  margin-top: 10px;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  max-height: 160px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.gen-status:empty {
+  display: none;
+}
+.gen-status .gen-status-line {
+  padding: 2px 0;
+}
+.gen-status .gen-status-line.error {
+  color: var(--danger);
+}
+.gen-status .gen-status-line.warn {
+  color: var(--warn);
+}
+.gen-status .gen-status-line.ok {
+  color: var(--success);
+}
