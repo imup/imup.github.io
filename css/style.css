@@ -1082,3 +1082,10 @@ button:disabled {
   flex: 0 0 auto;
   white-space: nowrap;
 }
+.form-group label.image-label-below {
+  margin-top: 6px;
+  margin-bottom: 0;
+  font-weight: normal;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
