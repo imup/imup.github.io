@@ -3588,6 +3588,7 @@
       });
   }
 
+/*
   function boot() {
     initStatic();
     initAIState();
@@ -3595,16 +3596,8 @@
     updateSidebarPages();
     render();
   }
-
-/* ---------------------------------------------------------
-     启动
-     ---------------------------------------------------------
-     同步先 boot 一次：保证 UI（汉堡、路由、事件）立即可用，
-     即使 content.json 加载失败或挂起也不影响。
-
-     然后异步加载 content.json，回来后重刷文案与模型。
-     --------------------------------------------------------- */
-
+  */
+  /* 启动 */
   /* 1. 同步启动：用空文案先跑起来 */
   function bootSync() {
     initStatic();
@@ -3612,8 +3605,7 @@
     updateSidebarPages();
     render();
   }
-
-  /* 2. content.json 回来后：重刷文案 + 模型 */
+  /* 2. json回来后：重刷文案 + 模型 */
   function bootWithContent() {
     LANG = detectLang();
     applyI18nToStatic();
