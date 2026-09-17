@@ -1,16 +1,24 @@
 /* =========================================================
    randomArt可视化创意编程 - 主逻辑
    =========================================================
-     - 外部依赖CDN：CodeMirror、JSZip在html 中引入
-     - json文案+模型配置加载
-     - p5.js首页随机运行，列表硬编码在P5_FILES
-     - HTML只有骨架；所有动态DOM由createElement生成
-     - 文案与模型配置从json载入支持i18n
+   依赖：
+     - 外部 CDN：CodeMirror、JSZip（在 index.html 中引入）
+     - ./data/content.json（文案 + 模型配置，异步加载）
+     - ./p5/*.js（首页随机运行，列表硬编码在下方 P5_FILES）
+
+   设计：
+     - HTML 只有骨架；所有动态 DOM 由本文件 createElement 生成
+     - 文案与模型配置从 content.json 载入，支持 i18n
+     - 启动时同步 boot 一次，保证 UI 立即可用；content.json 回来后重刷
+     - 编写脚本页支持 AI 生成代码（函数调用：insert_code / append_code /
+       get_current_code），支持 OpenAI 与 Gemini 双协议
    ========================================================= */
 (function () {
   "use strict";
 
-  /* 常量 */
+  /* ---------------------------------------------------------
+     常量
+     --------------------------------------------------------- */
 
   var STORAGE_KEY = "p5_pages";
   var THEME_KEY = "p5_theme";
@@ -28,10 +36,116 @@
   var AI_CUSTOM_MODELS_STORAGE = "p5_ai_custom_models";
 
   var MAX_CONTEXT_MESSAGES = 30;
+  var MAX_TOOL_LOOP = 5;
 
   var CONTENT_URL = "data/content.json";
 
-  /* 运行时状态 */
+  /* AI 编程工具声明（OpenAI 格式） */
+  var TOOL_DECLARATIONS_OPENAI = [
+    {
+      type: "function",
+      function: {
+        name: "insert_code",
+        description:
+          "用新代码完全替换编辑器中的内容。适用于：从零开始写、要求重写、修改较大时。",
+        parameters: {
+          type: "object",
+          properties: {
+            code: {
+              type: "string",
+              description:
+                "完整的 p5.js 代码（含 setup / draw 等），不要加 markdown 代码块标记",
+            },
+          },
+          required: ["code"],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "append_code",
+        description:
+          "在编辑器现有内容末尾追加代码。适用于：用户明确说“追加”“再加一段”“在末尾添加”时。",
+        parameters: {
+          type: "object",
+          properties: {
+            code: {
+              type: "string",
+              description:
+                "要追加的 p5.js 代码片段，不要加 markdown 代码块标记",
+            },
+          },
+          required: ["code"],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_current_code",
+        description:
+          "读取编辑器当前内容。适用于：需要在已有代码基础上修改时，先读取再决定怎么改。",
+        parameters: {
+          type: "object",
+          properties: {},
+        },
+      },
+    },
+  ];
+
+  /* AI 编程工具声明（Gemini 格式） */
+  var TOOL_DECLARATIONS_GEMINI = [
+    {
+      functionDeclarations: [
+        {
+          name: "insert_code",
+          description:
+            "用新代码完全替换编辑器中的内容。适用于：从零开始写、要求重写、修改较大时。",
+          parameters: {
+            type: "OBJECT",
+            properties: {
+              code: {
+                type: "STRING",
+                description:
+                  "完整的 p5.js 代码（含 setup / draw 等），不要加 markdown 代码块标记",
+              },
+            },
+            required: ["code"],
+          },
+        },
+        {
+          name: "append_code",
+          description:
+            "在编辑器现有内容末尾追加代码。适用于：用户明确说“追加”“再加一段”“在末尾添加”时。",
+          parameters: {
+            type: "OBJECT",
+            properties: {
+              code: {
+                type: "STRING",
+                description:
+                  "要追加的 p5.js 代码片段，不要加 markdown 代码块标记",
+              },
+            },
+            required: ["code"],
+          },
+        },
+        {
+          name: "get_current_code",
+          description:
+            "读取编辑器当前内容。适用于：需要在已有代码基础上修改时，先读取再决定怎么改。",
+          parameters: {
+            type: "OBJECT",
+            properties: {},
+          },
+        },
+      ],
+    },
+  ];
+
+  /* ---------------------------------------------------------
+     运行时状态
+     --------------------------------------------------------- */
 
   var AI_MODELS = [];
   var I18N = {};
@@ -49,6 +163,15 @@
     streamToken: 0,
   };
 
+  /* 编写页 AI 面板（与 AI 聊天页独立） */
+  var genState = {
+    messages: [], // 内部统一 OpenAI 格式
+    busy: false,
+    abortController: null,
+    streamToken: 0,
+    menuOpen: false,
+  };
+
   var modalBackdrop, modalBox, lastFocused;
   var sidebarPagesEl, sidebarEl, overlayEl, hamburgerBtn;
   var sidebarSearchEl;
@@ -64,7 +187,9 @@
   var renderedMsgCount = 0;
   var renderedModelId = null;
 
-  /* i18n */
+  /* ---------------------------------------------------------
+     i18n
+     --------------------------------------------------------- */
 
   function T(key, params) {
     var pack = I18N[LANG] || I18N.zh || {};
@@ -108,10 +233,18 @@
     } catch (e) {}
   }
 
-  /* 模型访问 */
+  /* ---------------------------------------------------------
+     模型访问
+     --------------------------------------------------------- */
 
   function getAllModels() {
     return AI_MODELS.concat(aiState.customModels || []);
+  }
+
+  function getToolModels() {
+    return getAllModels().filter(function (m) {
+      return m.supportsTools === true;
+    });
   }
 
   function aiModelConf(id) {
@@ -127,7 +260,9 @@
     return c ? c.name : id;
   }
 
-  /* localStorage读写 */
+  /* ---------------------------------------------------------
+     localStorage 读写
+     --------------------------------------------------------- */
 
   function loadAIKeys() {
     try {
@@ -159,7 +294,6 @@
         result[m.id] = [];
       }
     });
-    /* 迁移老数据单key到分模型key */
     try {
       var oldRaw = localStorage.getItem(AI_CHAT_STORAGE);
       if (oldRaw) {
@@ -289,7 +423,9 @@
     });
   }
 
-  /* 存储超限 */
+  /* ---------------------------------------------------------
+     存储超限
+     --------------------------------------------------------- */
 
   function isQuotaError(e) {
     if (!e) return false;
@@ -334,7 +470,9 @@
     );
   }
 
-  /* 通用工具 */
+  /* ---------------------------------------------------------
+     通用工具
+     --------------------------------------------------------- */
 
   function $(sel, root) {
     return (root || document).querySelector(sel);
@@ -366,7 +504,9 @@
     return n || "untitled";
   }
 
-  /* DOM小工厂 */
+  /* ---------------------------------------------------------
+     DOM 小工厂
+     --------------------------------------------------------- */
 
   function el(tag, className, text) {
     var e = document.createElement(tag);
@@ -379,7 +519,9 @@
     return el("div", "right-group");
   }
 
-  /* 弹窗 */
+  /* ---------------------------------------------------------
+     弹窗
+     --------------------------------------------------------- */
 
   function openModal(builder) {
     lastFocused = document.activeElement;
@@ -507,7 +649,43 @@
     });
   }
 
-  /* 生成脚本HTML */
+  /* 三选弹窗：覆盖 / 追加 / 取消 */
+  function showIntentChoice(title, message, onOverwrite, onAppend) {
+    openModal(function (box) {
+      box.appendChild(el("h3", null, title));
+      box.appendChild(el("p", null, message));
+      var a = el("div", "modal-actions");
+
+      var leftWrap = document.createElement("div");
+      var cancel = el("button", "link-btn", T("common.cancel"));
+      cancel.addEventListener("click", function () {
+        closeModal();
+      });
+      leftWrap.appendChild(cancel);
+
+      var rg = rightGroup();
+      var appendBtn = el("button", "cancel", T("gen.intentAppend"));
+      appendBtn.addEventListener("click", function () {
+        closeModal();
+        onAppend();
+      });
+      var overwriteBtn = el("button", "danger", T("gen.intentOverwrite"));
+      overwriteBtn.addEventListener("click", function () {
+        closeModal();
+        onOverwrite();
+      });
+      rg.appendChild(appendBtn);
+      rg.appendChild(overwriteBtn);
+
+      a.appendChild(leftWrap);
+      a.appendChild(rg);
+      box.appendChild(a);
+    });
+  }
+
+  /* ---------------------------------------------------------
+     生成作品 HTML
+     --------------------------------------------------------- */
 
   function generatePageHtml(title, script, imageDataUrl) {
     var safeTitle = escapeHtml(title || T("generator.untitledPage"));
@@ -604,7 +782,9 @@
       });
   }
 
-  /* 首页随机脚本 */
+  /* ---------------------------------------------------------
+     首页随机脚本
+     --------------------------------------------------------- */
 
   function pickRandomP5File() {
     if (!P5_FILES || !P5_FILES.length) return null;
@@ -647,7 +827,9 @@
     );
   }
 
-  /* 侧边栏脚本列表 */
+  /* ---------------------------------------------------------
+     侧边栏作品列表
+     --------------------------------------------------------- */
 
   function updateSidebarPages() {
     var pages = getPages();
@@ -698,7 +880,9 @@
     sidebarPagesEl.replaceChildren(frag);
   }
 
-  /* iframe内p5画布事件代理 */
+  /* ---------------------------------------------------------
+     iframe 内 p5 画布事件代理
+     --------------------------------------------------------- */
 
   function bindIframeProxy(iframe) {
     var iwin, idoc;
@@ -814,7 +998,9 @@
     });
   }
 
-  /* 预览锁屏 */
+  /* ---------------------------------------------------------
+     预览锁屏
+     --------------------------------------------------------- */
 
   function lockAppSize() {
     document.body.classList.add("preview-lock");
@@ -837,7 +1023,9 @@
     appEl.style.overflow = "";
   }
 
-  /* 首页渲染 */
+  /* ---------------------------------------------------------
+     首页渲染
+     --------------------------------------------------------- */
 
   function renderRunner() {
     destroyEditor();
@@ -904,7 +1092,9 @@
     else location.hash = "#/";
   }
 
-  /* 作品操作 */
+  /* ---------------------------------------------------------
+     作品操作
+     --------------------------------------------------------- */
 
   function deletePage(id) {
     var pages = getPages();
@@ -945,7 +1135,9 @@
     });
   }
 
-  /* 侧边栏开关 */
+  /* ---------------------------------------------------------
+     侧边栏开关
+     --------------------------------------------------------- */
 
   function openSidebar() {
     sidebarEl.classList.add("open");
@@ -960,7 +1152,9 @@
     hamburgerBtn.setAttribute("aria-expanded", "false");
   }
 
-  /* 主题 */
+  /* ---------------------------------------------------------
+     主题
+     --------------------------------------------------------- */
 
   function applyTheme(theme) {
     var lightTheme = $("#cm-theme-light");
@@ -988,7 +1182,9 @@
     } catch (e) {}
   }
 
-  /* 路由 */
+  /* ---------------------------------------------------------
+     路由
+     --------------------------------------------------------- */
 
   function getRoute() {
     var hash = location.hash;
@@ -1013,18 +1209,23 @@
     }
   }
 
-  /* 关于页 */
+  /* ---------------------------------------------------------
+     关于页
+     --------------------------------------------------------- */
 
   function renderAbout() {
     var wrap = document.createElement("div");
     wrap.appendChild(el("h1", null, T("about.title")));
-    ["p1", "p2", "p3", "p4", "p5"].forEach(function (k) {
-      wrap.appendChild(el("p", null, T("about." + k)));
-    });
+");
+    ["p1", "p2", "p3   ", "p4", "p5", "p6"].forEach(function ( vark) {
+      wrap.appendChild(el("p", null pick, T("about." + k)));
+   er });
     return wrap;
   }
 
-  /* 编写脚本页 */
+  /* --------------------------------------------------------- =
+     编写脚本页
+     --------------------------------------------------------- el */
 
   function renderGenerator() {
     var wrap = el("div", "generator-page");
@@ -1075,8 +1276,820 @@
     wrap.appendChild(g3);
     wrap.appendChild(submit);
     wrap.appendChild(result);
+
+    /* AI 生成面板 */
+    wrap.appendChild(buildGeneratorAIPanel());
+
     return wrap;
   }
+
+  /* ---------------------------------------------------------
+     编写页 AI 面板
+     --------------------------------------------------------- */
+
+  function buildGeneratorAIPanel() {
+    var panel = el("div", "gen-ai-panel");
+    panel.appendChild(el("div", "gen-ai-heading", T("gen.title")));
+
+    var bar = el("div", "gen-ai-bar("div", "ai-model-picker");
+
+    var modelBtn = el("button", "ai-model-btn", "+");
+    modelBtn.id = "genModelBtn";
+    modelBtn.type = "button";
+    modelBtn.title = T("gen.modelPickerTitle");
+
+    var menu = el("div", "ai-model-menu");
+    menu.id = "genModelMenu";
+
+    picker.appendChild(modelBtn);
+    picker.appendChild(menu);
+
+    var input = document.createElement("textarea");
+    input.id = "genInput";
+    input.rows = 1;
+    input.placeholder = T("gen.placeholder");
+
+    var sendBtn = el("button", "ai-send-btn", "↑");
+    sendBtn.id = "genSendBtn";
+    sendBtn.type = "button";
+    sendBtn.title = T("gen.sendTitle");
+
+    bar.appendChild(picker);
+    bar.appendChild(input);
+    bar.appendChild(sendBtn);
+
+    var status = el("div", "gen-status");
+    status.id = "genStatus";
+
+    panel.appendChild(bar);
+    panel.appendChild(status);
+    return panel;
+  }
+
+  function refreshGenModelBtn() {
+    var btn = $("#genModelBtn");
+    if (!btn) return;
+    var cur = aiState.currentModel;
+    var conf = cur ? aiModelConf(cur) : null;
+    if (cur && conf && conf.supportsTools) {
+      btn.classList.add("has-model");
+      btn.textContent = conf.name.charAt(0);
+    } else {
+      btn.classList.remove("has-model");
+      btn.textContent = "+";
+    }
+  }
+
+  function buildGenModelMenu() {
+    var menu = $("#genModelMenu");
+    if (!menu) return;
+    var frag = document.createDocumentFragment();
+
+    var models = getToolModels();
+    if (!models.length) {
+      var empty = el("div", "ai-model-item");
+      empty.style.cursor = "default";
+      empty.style.color = "var(--text-muted)";
+      empty.textContent = T("gen.menuNoToolsModels");
+      frag.appendChild(empty);
+      menu.replaceChildren(frag);
+      return;
+    }
+
+    models.forEach(function (m) {
+      var item = el("div", "ai-model-item");
+      if (aiState.currentModel === m.id) item.classList.add("active");
+      item.dataset.model = m.id;
+
+      item.appendChild(el("span", "ai-check", "✓"));
+      item.appendChild(el("span", "ai-model-name-text", m.name));
+
+      frag.appendChild(item);
+    });
+
+    menu.replaceChildren(frag);
+  }
+
+  function closeGenMenu() {
+    var menu = $("#genModelMenu");
+    if (menu) menu.classList.remove("show");
+    genState.menuOpen = false;
+  }
+
+  function toggleGenMenu() {
+    var menu = $("#genModelMenu");
+    if (!menu) return;
+    var willShow = !menu.classList.contains("show");
+    menu.classList.toggle("show");
+    genState.menuOpen = willShow;
+    if (willShow) buildGenModelMenu();
+  }
+
+  function genStatusClear() {
+    var box = $("#genStatus");
+    if (box) box.replaceChildren();
+  }
+
+  function genStatusLine(text, kind) {
+    var box = $("#genStatus");
+    if (!box) return;
+    var line = el("div", "gen-status-line" + (kind ? " " + kind : ""), text);
+    box.appendChild(line);
+    /* 只保留最近 12 行 */
+    while (box.children.length > 12) box.removeChild(box.firstChild);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function genSetBusy(busy) {
+    genState.busy = busy;
+    var btn = $("#genSendBtn");
+    if (btn) btn.disabled = !!busy;
+  }
+
+  /* ---------------------------------------------------------
+     工具注册表
+     --------------------------------------------------------- */
+
+  function executeToolCall(toolName, args) {
+    try {
+      if (toolName === "insert_code") {
+        var code = args && typeof args.code === "string" ? args.code : "";
+        if (!editor) throw new Error("编辑器不存在");
+        editor.setValue(code);
+        return {
+          ok: true,
+          text: T("gen.toolInsert", { n: code.length }),
+        };
+      }
+      if (toolName === "append_code") {
+        var code2 = args && typeof args.code === "string" ? args.code : "";
+        if (!editor) throw new Error("编辑器不存在");
+        var cur = editor.getValue() || "";
+        var next =
+          cur.trim().length === 0 ? code2 : cur + "\n\n" + code2;
+        editor.setValue(next);
+        return {
+          ok: true,
+          text: T("gen.toolAppend", { n: code2.length }),
+        };
+      }
+      if (toolName === "get_current_code") {
+        if (!editor) throw new Error("编辑器不存在");
+        var v = editor.getValue() || "";
+        return {
+          ok: true,
+          text: v.length ? v : "(空)",
+          raw: true,
+          displayText: T("gen.toolRead", { n: v.length }),
+        };
+      }
+      return { ok: false, text: T("gen.toolUnknown", { name: toolName }) };
+    } catch (e) {
+      return {
+        ok: false,
+        text: T("gen.toolError", { msg: String((e && e.message) || e) }),
+      };
+    }
+  }
+
+  /* ---------------------------------------------------------
+     从文本提取代码（降级）
+     --------------------------------------------------------- */
+
+  function extractCodeFromText(text) {
+    if (!text) return null;
+    var t = String(text);
+
+    /* ```js ... ``` 或 ```javascript ... ``` */
+    var m = t.match(/```(?:js|javascript)\s*\n([\s\S]*?)```/i);
+    if (m && m[1]) return m[1].replace(/\s+$/, "");
+
+    /* ``` ... ``` 通用 */
+    m = t.match(/```\s*\n([\s\S]*?)```/);
+    if (m && m[1]) return m[1].replace(/\s+$/, "");
+
+    /* 看起来像 p5 代码 */
+    if (/function\s+setup\s*\(/.test(t) || /function\s+draw\s*\(/.test(t)) {
+      return t.trim();
+    }
+
+    return null;
+  }
+
+  /* ---------------------------------------------------------
+     内部消息 → Gemini 消息 转换
+     --------------------------------------------------------- */
+
+  function findToolCallName(msgs, toolCallId) {
+    for (var i = 0; i < msgs.length; i++) {
+      var m = msgs[i];
+      if (m.role === "assistant" && m.tool_calls) {
+        for (var j = 0; j < m.tool_calls.length; j++) {
+          if (m.tool_calls[j].id === toolCallId) {
+            return m.tool_calls[j].function.name;
+          }
+        }
+      }
+    }
+    return "unknown";
+  }
+
+  function convertToGeminiMessages(internalMsgs) {
+    var systemInstruction = null;
+    var contents = [];
+
+    for (var i = 0; i < internalMsgs.length; i++) {
+      var m = internalMsgs[i];
+      if (m.role === "system") {
+        systemInstruction = { parts: [{ text: m.content || "" }] };
+      } else if (m.role === "user") {
+        contents.push({
+          role: "user",
+          parts: [{ text: m.content || "" }],
+        });
+      } else if (m.role === "assistant") {
+        if (m.tool_calls && m.tool_calls.length) {
+          var parts = [];
+          m.tool_calls.forEach(function (tc) {
+            var argsObj = {};
+            try {
+              argsObj =
+                typeof tc.function.arguments === "string"
+                  ? JSON.parse(tc.function.arguments)
+                  : tc.function.arguments || {};
+            } catch (e) {
+              argsObj = {};
+            }
+            parts.push({
+              functionCall: {
+                name: tc.function.name,
+                args: argsObj,
+              },
+            });
+          });
+          contents.push({ role: "model", parts: parts });
+        } else {
+          contents.push({
+            role: "model",
+            parts: [{ text: m.content || "" }],
+          });
+        }
+      } else if (m.role === "tool") {
+        var tcName = findToolCallName(internalMsgs, m.tool_call_id);
+        contents.push({
+          role: "function",
+          parts: [
+            {
+              functionResponse: {
+                name: tcName,
+                response: { result: m.content || "" },
+              },
+            },
+          ],
+        });
+      }
+    }
+
+    return { systemInstruction: systemInstruction, contents: contents };
+  }
+
+  /* ---------------------------------------------------------
+     流式请求
+     --------------------------------------------------------- */
+
+  function streamAI(model, key, messages, systemPrompt, onDelta, onRaw, opts) {
+    var conf = aiModelConf(model);
+    var url, options;
+    var enableTools = opts && opts.tools;
+
+    if (conf.protocol === "gemini") {
+      /* 内部 OpenAI 格式 → Gemini 格式 */
+      var conv = convertToGeminiMessages(messages);
+      var body = { contents: conv.contents };
+      if (systemPrompt) {
+        body.systemInstruction = { parts: [{ text: systemPrompt }] };
+      } else if (conv.systemInstruction) {
+        body.systemInstruction = conv.systemInstruction;
+      }
+      if (enableTools) {
+        body.tools = TOOL_DECLARATIONS_GEMINI;
+      }
+      url =
+        conf.endpoint.replace(":generateContent", ":streamGenerateContent") +
+        "?alt=sse&key=" +
+        encodeURIComponent(key);
+      options = {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      };
+    } else {
+      var msgs = [];
+      if (systemPrompt) {
+        msgs.push({ role: "system", content: systemPrompt });
+      }
+      messages.forEach(function (m) {
+        msgs.push(m);
+      });
+      url = conf.endpoint;
+      var reqBody = {
+        model: conf.apiModel,
+        messages: msgs,
+        stream: true,
+        stream_options: { include_usage: true },
+      };
+      if (enableTools) reqBody.tools = TOOL_DECLARATIONS_OPENAI;
+      options = {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + key,
+        },
+        body: JSON.stringify(reqBody),
+      };
+    }
+
+    if (opts && opts.signal) {
+      options.signal = opts.signal;
+    } else if (aiState.abortController && !opts) {
+      options.signal = aiState.abortController.signal;
+    }
+
+    return fetch(url, options).then(function (res) {
+      if (!res.ok) {
+        return res.text().then(function (t) {
+          var msg = "HTTP " + res.status;
+          try {
+            var d = JSON.parse(t);
+            msg =
+              (d.error && d.error.message) ||
+              d.message ||
+              (d.error && d.error.status) ||
+              msg;
+          } catch (e) {}
+          throw new Error(msg);
+        });
+      }
+      if (!res.body || !res.body.getReader) {
+        throw new Error(T("chat.errStreamUnsupported"));
+      }
+
+      var reader = res.body.getReader();
+      var decoder = new TextDecoder();
+      var buffer = "";
+
+      function dispatchData(data) {
+        if (!data) return;
+        if (data === "[DONE]") {
+          if (onRaw) onRaw("[DONE]");
+          return;
+        }
+        try {
+          var obj = JSON.parse(data);
+          if (onRaw) onRaw(obj);
+          onDelta(obj);
+        } catch (e) {}
+      }
+
+      function processBuffer(flush) {
+        if (buffer.indexOf("\r") !== -1) {
+          buffer = buffer.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+        }
+        var sepIndex;
+        while ((sepIndex = buffer.indexOf("\n\n")) !== -1) {
+          var evt = buffer.slice(0, sepIndex);
+          buffer = buffer.slice(sepIndex + 2);
+          var lines = evt.split("\n");
+          for (var i = 0; i < lines.length; i++) {
+            var line = lines[i].trim();
+            if (line.indexOf("data:") === 0) {
+              dispatchData(line.slice(5).trim());
+            }
+          }
+        }
+        if (flush && buffer.trim()) {
+          var tail = buffer.trim();
+          if (tail.indexOf("data:") === 0) {
+            dispatchData(tail.slice(5).trim());
+          }
+          buffer = "";
+        }
+      }
+
+      function pump() {
+        return reader.read().then(function (result) {
+          if (result.done) {
+            processBuffer(true);
+            return;
+          }
+          buffer += decoder.decode(result.value, { stream: true });
+          processBuffer(false);
+          return pump();
+        });
+      }
+
+      return pump();
+    });
+  }
+
+  /* ---------------------------------------------------------
+     结构化累积器
+     --------------------------------------------------------- */
+
+  function createStructuredAccumulator() {
+    var meta = {
+      id: null,
+      model: null,
+      created: null,
+      finish_reason: null,
+      usage: null,
+      tool_calls: null,
+    };
+    var tcBuf = {};
+    var hasToolCall = false;
+
+    function consume(obj) {
+      if (!obj || obj === "[DONE]") return;
+      if (obj.id && !meta.id) meta.id = obj.id;
+      if (obj.model && !meta.model) meta.model = obj.model;
+      if (obj.created && !meta.created) meta.created = obj.created;
+      if (obj.usage) meta.usage = obj.usage;
+
+      var ch = obj.choices && obj.choices[0];
+      if (ch) {
+        if (ch.finish_reason) meta.finish_reason = ch.finish_reason;
+        var delta = ch.delta || {};
+        var tcs = delta.tool_calls;
+        if (tcs && tcs.length) {
+          hasToolCall = true;
+          tcs.forEach(function (t) {
+            var idx = t.index != null ? t.index : 0;
+            if (!tcBuf[idx]) {
+              tcBuf[idx] = {
+                id: "",
+                type: "function",
+                function: { name: "", arguments: "" },
+              };
+            }
+            var buf = tcBuf[idx];
+            if (t.id) buf.id = t.id;
+            if (t.type) buf.type = t.type;
+            if (t.function) {
+              if (t.function.name) buf.function.name += t.function.name;
+              if (t.function.arguments)
+                buf.function.arguments += t.function.arguments;
+            }
+          });
+        }
+      }
+
+      var cand = obj.candidates && obj.candidates[0];
+      if (cand) {
+        if (cand.finishReason && !meta.finish_reason) {
+          meta.finish_reason = cand.finishReason;
+        }
+        if (cand.content && cand.content.parts) {
+          cand.content.parts.forEach(function (p) {
+            if (p.functionCall) {
+              hasToolCall = true;
+              var idx = Object.keys(tcBuf).length;
+              tcBuf[idx] = {
+                id: "call_" + Date.now() + "_" + idx,
+                type: "function",
+                function: {
+                  name: p.functionCall.name || "",
+                  arguments: JSON.stringify(p.functionCall.args || {}),
+                },
+              };
+            }
+          });
+        }
+      }
+      if (obj.usageMetadata) {
+        meta.usage = {
+          prompt_tokens: obj.usageMetadata.promptTokenCount,
+          completion_tokens: obj.usageMetadata.candidatesTokenCount,
+          total_tokens: obj.usageMetadata.totalTokenCount,
+        };
+      }
+    }
+
+    function finalize() {
+      if (hasToolCall) {
+        var arr = [];
+        Object.keys(tcBuf)
+          .sort(function (a, b) {
+            return a - b;
+          })
+          .forEach(function (k) {
+            var t = tcBuf[k];
+            if (t.function && t.function.name) arr.push(t);
+          });
+        if (arr.length) meta.tool_calls = arr;
+      }
+      return meta;
+    }
+
+    return { consume: consume, finalize: finalize };
+  }
+
+  /* ---------------------------------------------------------
+     编写页 AI 主流程
+     --------------------------------------------------------- */
+
+  function genApplyCode(code, intent) {
+    if (!editor || !code) return;
+    if (intent === "append") {
+      var cur = editor.getValue() || "";
+      editor.setValue(cur.trim() ? cur + "\n\n" + code : code);
+    } else {
+      editor.setValue(code);
+    }
+    generatorDraft.script = editor.getValue();
+  }
+
+  function genRunLoop(userIntent, userText) {
+    var model = aiState.currentModel;
+    var key = aiState.keys[model];
+    var conf = aiModelConf(model);
+
+    if (!conf || !conf.supportsTools) {
+      genStatusLine(T("gen.statusModelNoTools"), "error");
+      genSetBusy(false);
+      return;
+    }
+
+    /* 清空并初始化消息（OpenAI 内部格式） */
+    genState.messages = [];
+    genState.messages.push({
+      role: "system",
+      content: T("gen.systemPrompt"),
+    });
+    genState.messages.push({
+      role: "user",
+      content:
+        "[intent: " +
+        userIntent +
+        "] " +
+        userText,
+    });
+
+    genStatusClear();
+    genStatusLine(T("gen.statusRequest", { model: aiModelName(model) }));
+
+    genState.streamToken += 1;
+    var myToken = genState.streamToken;
+
+    if (genState.abortController) {
+      try {
+        genState.abortController.abort();
+      } catch (e) {}
+    }
+    genState.abortController = new AbortController();
+    var mySignal = genState.abortController.signal;
+
+    var loopCount = 0;
+
+    function runOne() {
+      loopCount += 1;
+      if (loopCount > MAX_TOOL_LOOP) {
+        genStatusLine(T("gen.statusMaxLoop"), "warn");
+        genSetBusy(false);
+        return;
+      }
+
+      var accumulated = "";
+      var acc = createStructuredAccumulator();
+
+      var onDelta = function (obj) {
+        if (conf.protocol === "gemini") {
+          var cand = obj.candidates && obj.candidates[0];
+          if (cand && cand.content && cand.content.parts) {
+            for (var i = 0; i < cand.content.parts.length; i++) {
+              var p = cand.content.parts[i];
+              if (p && typeof p.text === "string") {
+                accumulated += p.text;
+              }
+            }
+          }
+        } else {
+          var ch = obj.choices && obj.choices[0];
+          if (ch && ch.delta && typeof ch.delta.content === "string") {
+            accumulated += ch.delta.content;
+          }
+        }
+      };
+
+      var onRaw = function (obj) {
+        acc.consume(obj);
+      };
+
+      streamAI(
+        model,
+        key,
+        genState.messages.slice(),
+        null,
+        onDelta,
+        onRaw,
+        { tools: true, signal: mySignal },
+      )
+        .then(function () {
+          if (genState.streamToken !== myToken) return;
+          var meta = acc.finalize();
+
+          if (meta.tool_calls && meta.tool_calls.length) {
+            /* 有工具调用：执行 + 回填 + 继续 */
+            genState.messages.push({
+              role: "assistant",
+              content: accumulated || null,
+              tool_calls: meta.tool_calls,
+            });
+
+            meta.tool_calls.forEach(function (tc) {
+              var name = tc.function.name;
+              var args = {};
+              try {
+                args =
+                  typeof tc.function.arguments === "string"
+                    ? JSON.parse(tc.function.arguments)
+                    : tc.function.arguments || {};
+              } catch (e) {
+                args = {};
+              }
+
+              genStatusLine(
+                T("gen.statusToolCall", { name: name }),
+              );
+
+              var res = executeToolCall(name, args);
+              var display = res.displayText
+                ? res.displayText
+                : res.text;
+              genStatusLine(
+                T("gen.statusToolDone", { result: display }),
+                res.ok ? "ok" : "error",
+              );
+
+              /* 回填给模型的是完整内容（get_current_code 返回原始代码） */
+              genState.messages.push({
+                role: "tool",
+                tool_call_id: tc.id,
+                content: res.text,
+              });
+            });
+
+            genStatusLine(T("gen.statusSummary"));
+            runOne();
+            return;
+          }
+
+          /* 没有工具调用 */
+          if (accumulated && accumulated.trim()) {
+            var code = extractCodeFromText(accumulated);
+            if (code) {
+              genStatusLine(T("gen.statusDegrade"), "warn");
+              genApplyCode(code, userIntent);
+              genStatusLine(T("gen.statusDone"), "ok");
+            } else {
+              /* 只是普通回复，不写代码 */
+              genStatusLine(accumulated.trim(), "ok");
+              genStatusLine(T("gen.statusNoCode"), "warn");
+            }
+          } else {
+            genStatusLine(T("gen.statusNoCode"), "warn");
+          }
+
+          genSetBusy(false);
+        })
+        .catch(function (err) {
+          if (genState.streamToken !== myToken) return;
+          var msg = String((err && err.message) || err);
+          if (err && err.name === "AbortError") return;
+          genStatusLine(T("gen.statusError", { msg: msg }), "error");
+          genSetBusy(false);
+        });
+    }
+
+    runOne();
+  }
+
+  function genSend() {
+    if (genState.busy) return;
+
+    var model = aiState.currentModel;
+    if (!model || !aiModelConf(model)) {
+      genStatusClear();
+      genStatusLine(T("gen.statusNoModel"), "error");
+      return;
+    }
+
+    var conf = aiModelConf(model);
+    if (!conf.supportsTools) {
+      genStatusClear();
+      genStatusLine(T("gen.statusModelNoTools"), "error");
+      return;
+    }
+
+    var key = aiState.keys[model];
+    if (!key) {
+      promptAPIKey(model, function () {
+        /* 设置后继续 */
+        if (aiState.keys[model]) genSend();
+      });
+      return;
+    }
+
+    var input = $("#genInput");
+    if (!input) return;
+    var userText = (input.value || "").trim();
+    if (!userText) {
+      genStatusClear();
+      genStatusLine(T("gen.statusEmptyInput"), "warn");
+      return;
+    }
+
+    var currentCode = editor ? editor.getValue() || "" : "";
+    var hasContent = currentCode.trim().length > 0;
+
+    var doSend = function (intent) {
+      input.value = "";
+      input.style.height = "auto";
+      genSetBusy(true);
+      genRunLoop(intent, userText);
+    };
+
+    if (!hasContent) {
+      doSend("overwrite");
+    } else {
+      showIntentChoice(
+        T("gen.editorNotEmptyTitle"),
+        T("gen.editorNotEmptyBody"),
+        function () {
+          doSend("overwrite");
+        },
+        function () {
+          doSend("append");
+        },
+      );
+    }
+  }
+
+  function bindGeneratorAIPanel() {
+    var modelBtn = $("#genModelBtn");
+    var menu = $("#genModelMenu");
+    var input = $("#genInput");
+    var sendBtn = $("#genSendBtn");
+
+    if (modelBtn) {
+      modelBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        toggleGenMenu();
+      });
+    }
+
+    if (menu) {
+      menu.addEventListener("click", function (e) {
+        var item = e.target.closest(".ai-model-item");
+        if (!item || !item.dataset.model) return;
+        e.stopPropagation();
+        closeGenMenu();
+        aiState.currentModel = item.dataset.model;
+        refreshGenModelBtn();
+        refreshAIModelUI();
+      });
+    }
+
+    if (input) {
+      input.addEventListener("input", function () {
+        this.style.height = "auto";
+        this.style.height = Math.min(this.scrollHeight, 120) + "px";
+      });
+      input.addEventListener("keydown", function (e) {
+        if (
+          e.key === "Enter" &&
+          !e.shiftKey &&
+          !e.isComposing &&
+          e.keyCode !== 229
+        ) {
+          e.preventDefault();
+          genSend();
+        }
+      });
+    }
+
+    if (sendBtn) {
+      sendBtn.addEventListener("click", function () {
+        genSend();
+      });
+    }
+
+    /* 初始刷新按钮态 */
+    refreshGenModelBtn();
+  }
+
+  /* ---------------------------------------------------------
+     编写脚本页：原有交互
+     --------------------------------------------------------- */
 
   function bindGenerator() {
     var titleInput = $("#title");
@@ -1195,51 +2208,7 @@
       if (!savePages(pages)) return;
 
       updateSidebarPages();
-      openModal(function (box) {
-        box.appendChild(el("h3", null, T("generator.buildOk")));
 
-        var actions = el("div", "modal-actions");
-
-        /* 左侧：关闭 */
-        var leftWrap = document.createElement("div");
-        var closeBtn = el("button", "link-btn", T("common.cancel"));
-        closeBtn.addEventListener("click", closeModal);
-        leftWrap.appendChild(closeBtn);
-
-        /* 右侧：预览 + 下载 */
-        var rg = rightGroup();
-
-        var previewBtn = el("button", null, T("generator.preview"));
-        previewBtn.addEventListener("click", function () {
-          closeModal();
-          runPage(newId);
-        });
-
-        var downloadBtn = el("button", "cancel", T("generator.download"));
-        downloadBtn.addEventListener("click", function () {
-          downloadSingleHtml(
-            "p5_" + safeFileName(title) + "_" + newId + ".html",
-            htmlContent,
-          );
-        });
-
-        rg.appendChild(previewBtn);
-        rg.appendChild(downloadBtn);
-
-        actions.appendChild(leftWrap);
-        actions.appendChild(rg);
-        box.appendChild(actions);
-      });
-
-      titleInput.value = "";
-      if (editor) editor.setValue("");
-      generatorDraft.title = "";
-      generatorDraft.script = "";
-      uploadedImageDataUrl = "";
-      previewEl.replaceChildren();
-      fileInput.value = "";
-      
-      /*
       resultEl.style.display = "block";
       var msg = el("p", null, T("generator.buildOk"));
 
@@ -1266,11 +2235,15 @@
       uploadedImageDataUrl = "";
       previewEl.replaceChildren();
       fileInput.value = "";
-      */
     });
+
+    /* AI 面板绑定 */
+    bindGeneratorAIPanel();
   }
 
-  /* AI页骨架（JS生成） */
+  /* ---------------------------------------------------------
+     AI 页骨架
+     --------------------------------------------------------- */
 
   function renderAIAssistant() {
     var page = el("div", "ai-page");
@@ -1326,14 +2299,15 @@
     return page;
   }
 
-  /* 模型菜单 */
+  /* ---------------------------------------------------------
+     模型菜单（AI 聊天页）
+     --------------------------------------------------------- */
 
   function buildAIModelMenu() {
     var menu = $("#aiModelMenu");
     if (!menu) return;
     var frag = document.createDocumentFragment();
 
-    /* 顶部自定义 + 导入 */
     var topRow = el("div", "ai-model-toprow");
     var addBtn = el("div", "ai-model-topbtn ai-model-add", T("ai.topRowAdd"));
     addBtn.dataset.add = "1";
@@ -1343,7 +2317,6 @@
     topRow.appendChild(importBtn);
     frag.appendChild(topRow);
 
-    /* 模型列表 */
     getAllModels().forEach(function (m) {
       var item = el("div", "ai-model-item");
       if (aiState.currentModel === m.id) item.classList.add("active");
@@ -1422,6 +2395,8 @@
         btn.textContent = "+";
       }
     }
+    /* 同步刷新编写页按钮 */
+    refreshGenModelBtn();
   }
 
   function closeAIModelMenu() {
@@ -1434,7 +2409,9 @@
     menu.classList.toggle("show");
   }
 
-  /* AI消息渲染 */
+  /* ---------------------------------------------------------
+     AI 消息渲染
+     --------------------------------------------------------- */
 
   function buildMsgNode(m) {
     var row = el(
@@ -1542,235 +2519,9 @@
     return box.scrollHeight - box.scrollTop - box.clientHeight < 80;
   }
 
-  /* 流式请求 */
-
-  function streamAI(model, key, messages, systemPrompt, onDelta, onRaw) {
-    var conf = aiModelConf(model);
-    var url, options;
-
-    if (conf.protocol === "gemini") {
-      url =
-        conf.endpoint.replace(":generateContent", ":streamGenerateContent") +
-        "?alt=sse&key=" +
-        encodeURIComponent(key);
-      var contents = messages.map(function (m) {
-        return {
-          role: m.role === "assistant" ? "model" : "user",
-          parts: [{ text: m.content }],
-        };
-      });
-      var body = { contents: contents };
-      if (systemPrompt) {
-        body.systemInstruction = { parts: [{ text: systemPrompt }] };
-      }
-      options = {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      };
-    } else {
-      var msgs = [];
-      if (systemPrompt) msgs.push({ role: "system", content: systemPrompt });
-      messages.forEach(function (m) {
-        msgs.push({ role: m.role, content: m.content });
-      });
-      url = conf.endpoint;
-      options = {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + key,
-        },
-        body: JSON.stringify({
-          model: conf.apiModel,
-          messages: msgs,
-          stream: true,
-          stream_options: { include_usage: true },
-        }),
-      };
-    }
-
-    if (aiState.abortController) {
-      options.signal = aiState.abortController.signal;
-    }
-
-    return fetch(url, options).then(function (res) {
-      if (!res.ok) {
-        return res.text().then(function (t) {
-          var msg = "HTTP " + res.status;
-          try {
-            var d = JSON.parse(t);
-            msg =
-              (d.error && d.error.message) ||
-              d.message ||
-              (d.error && d.error.status) ||
-              msg;
-          } catch (e) {}
-          throw new Error(msg);
-        });
-      }
-      if (!res.body || !res.body.getReader) {
-        throw new Error(T("chat.errStreamUnsupported"));
-      }
-
-      var reader = res.body.getReader();
-      var decoder = new TextDecoder();
-      var buffer = "";
-
-      function dispatchData(data) {
-        if (!data) return;
-        if (data === "[DONE]") {
-          if (onRaw) onRaw("[DONE]");
-          return;
-        }
-        try {
-          var obj = JSON.parse(data);
-          if (onRaw) onRaw(obj);
-          onDelta(obj);
-        } catch (e) {}
-      }
-
-      function processBuffer(flush) {
-        if (buffer.indexOf("\r") !== -1) {
-          buffer = buffer.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-        }
-        var sepIndex;
-        while ((sepIndex = buffer.indexOf("\n\n")) !== -1) {
-          var evt = buffer.slice(0, sepIndex);
-          buffer = buffer.slice(sepIndex + 2);
-          var lines = evt.split("\n");
-          for (var i = 0; i < lines.length; i++) {
-            var line = lines[i].trim();
-            if (line.indexOf("data:") === 0) {
-              dispatchData(line.slice(5).trim());
-            }
-          }
-        }
-        if (flush && buffer.trim()) {
-          var tail = buffer.trim();
-          if (tail.indexOf("data:") === 0) {
-            dispatchData(tail.slice(5).trim());
-          }
-          buffer = "";
-        }
-      }
-
-      function pump() {
-        return reader.read().then(function (result) {
-          if (result.done) {
-            processBuffer(true);
-            return;
-          }
-          buffer += decoder.decode(result.value, { stream: true });
-          processBuffer(false);
-          return pump();
-        });
-      }
-
-      return pump();
-    });
-  }
-
-  /* 结构化累积器 */
-
-  function createStructuredAccumulator() {
-    var meta = {
-      id: null,
-      model: null,
-      created: null,
-      finish_reason: null,
-      usage: null,
-      tool_calls: null,
-    };
-    var tcBuf = {};
-    var hasToolCall = false;
-
-    function consume(obj) {
-      if (!obj || obj === "[DONE]") return;
-      if (obj.id && !meta.id) meta.id = obj.id;
-      if (obj.model && !meta.model) meta.model = obj.model;
-      if (obj.created && !meta.created) meta.created = obj.created;
-      if (obj.usage) meta.usage = obj.usage;
-
-      var ch = obj.choices && obj.choices[0];
-      if (ch) {
-        if (ch.finish_reason) meta.finish_reason = ch.finish_reason;
-        var delta = ch.delta || {};
-        var tcs = delta.tool_calls;
-        if (tcs && tcs.length) {
-          hasToolCall = true;
-          tcs.forEach(function (t) {
-            var idx = t.index != null ? t.index : 0;
-            if (!tcBuf[idx]) {
-              tcBuf[idx] = {
-                id: "",
-                type: "function",
-                function: { name: "", arguments: "" },
-              };
-            }
-            var buf = tcBuf[idx];
-            if (t.id) buf.id = t.id;
-            if (t.type) buf.type = t.type;
-            if (t.function) {
-              if (t.function.name) buf.function.name += t.function.name;
-              if (t.function.arguments)
-                buf.function.arguments += t.function.arguments;
-            }
-          });
-        }
-      }
-
-      var cand = obj.candidates && obj.candidates[0];
-      if (cand) {
-        if (cand.finishReason && !meta.finish_reason) {
-          meta.finish_reason = cand.finishReason;
-        }
-        if (cand.content && cand.content.parts) {
-          cand.content.parts.forEach(function (p) {
-            if (p.functionCall) {
-              hasToolCall = true;
-              var idx = Object.keys(tcBuf).length;
-              tcBuf[idx] = {
-                id: "call_" + Date.now() + "_" + idx,
-                type: "function",
-                function: {
-                  name: p.functionCall.name || "",
-                  arguments: JSON.stringify(p.functionCall.args || {}),
-                },
-              };
-            }
-          });
-        }
-      }
-      if (obj.usageMetadata) {
-        meta.usage = {
-          prompt_tokens: obj.usageMetadata.promptTokenCount,
-          completion_tokens: obj.usageMetadata.candidatesTokenCount,
-          total_tokens: obj.usageMetadata.totalTokenCount,
-        };
-      }
-    }
-
-    function finalize() {
-      if (hasToolCall) {
-        var arr = [];
-        Object.keys(tcBuf)
-          .sort(function (a, b) {
-            return a - b;
-          })
-          .forEach(function (k) {
-            var t = tcBuf[k];
-            if (t.function && t.function.name) arr.push(t);
-          });
-        if (arr.length) meta.tool_calls = arr;
-      }
-      return meta;
-    }
-
-    return { consume: consume, finalize: finalize };
-  }
-
-  /* 自定义模型编辑弹窗 */
+  /* ---------------------------------------------------------
+     自定义模型编辑弹窗
+     --------------------------------------------------------- */
 
   function showModelEditor(modelId) {
     var isEdit = !!modelId;
@@ -1816,8 +2567,20 @@
       apiInput.autocomplete = "off";
       apiInput.spellcheck = false;
 
-      var actions = el("div", "modal-actions");
+      /* 支持函数调用勾选框 */
+      var toolsRow = document.createElement("label");
+      toolsRow.style.cssText =
+        "display:flex;align-items:center;gap:8px;margin:8px 0 4px;font-weight:bold;font-size:0.9rem;cursor:pointer;";
+      var toolsCb = document.createElement("input");
+      toolsCb.type = "checkbox";
+      toolsCb.style.cssText = "width:auto;margin:0;";
+      toolsCb.checked = isEdit ? !!existing.supportsTools : false;
+      toolsRow.appendChild(toolsCb);
+      toolsRow.appendChild(
+        document.createTextNode("支持函数调用（Tools）"),
+      );
 
+      var actions = el("div", "modal-actions");
       var leftWrap = document.createElement("div");
       if (isEdit) {
         var delBtn = el("button", "link-btn", T("model.deleteBtn"));
@@ -1856,10 +2619,13 @@
           return;
         }
 
+        var supportsTools = !!toolsCb.checked;
+
         if (isEdit) {
           existing.name = name;
           existing.endpoint = ep;
           existing.apiModel = apiModel;
+          existing.supportsTools = supportsTools;
           saveCustomModels();
           closeModal();
           buildAIModelMenu();
@@ -1874,6 +2640,7 @@
             apiModel: apiModel,
             protocol: "openai",
             builtin: false,
+            supportsTools: supportsTools,
           });
           aiState.chats[newId] = [];
           aiState.prompts[newId] = "";
@@ -1897,6 +2664,7 @@
       box.appendChild(epInput);
       box.appendChild(l3);
       box.appendChild(apiInput);
+      box.appendChild(toolsRow);
       box.appendChild(actions);
     });
   }
@@ -1938,7 +2706,9 @@
     );
   }
 
-  /* 测试连接 */
+  /* ---------------------------------------------------------
+     测试连接
+     --------------------------------------------------------- */
 
   function testAIModelConnection(model) {
     var conf = aiModelConf(model);
@@ -2016,7 +2786,9 @@
       });
   }
 
-  /* Key-提示词 */
+  /* ---------------------------------------------------------
+     Key / 提示词
+     --------------------------------------------------------- */
 
   function promptAPIKey(model, onSaved) {
     showPrompt(
@@ -2080,7 +2852,9 @@
     updateAISendBtn();
   }
 
-  /* 导出 - 导入 */
+  /* ---------------------------------------------------------
+     导出 / 导入
+     --------------------------------------------------------- */
 
   function triggerDownload(content, mime, filename) {
     var blob = new Blob([content], { type: mime });
@@ -2307,7 +3081,9 @@
     reader.readAsText(file);
   }
 
-  /* 发送 - 清空 */
+  /* ---------------------------------------------------------
+     AI 聊天页：发送 / 清空
+     --------------------------------------------------------- */
 
   function aiSend() {
     if (aiState.busy) return;
@@ -2387,7 +3163,15 @@
       }
     };
 
-    var payload = chat.slice(0, -1);
+    /* 聊天页保留原有：历史消息构造成纯文本 */
+    var payload = chat
+      .slice(0, -1)
+      .filter(function (m) {
+        return m.role === "user" || m.role === "assistant";
+      })
+      .map(function (m) {
+        return { role: m.role, content: m.content || "" };
+      });
     if (payload.length > MAX_CONTEXT_MESSAGES) {
       payload = payload.slice(-MAX_CONTEXT_MESSAGES);
     }
@@ -2608,10 +3392,23 @@
     }
   }
 
-  /* 总渲染入口 */
+  /* ---------------------------------------------------------
+     总渲染入口
+     --------------------------------------------------------- */
 
   function render() {
     var path = getRoute();
+
+    /* 切页时中止编写页 AI */
+    if (genState.busy) {
+      if (genState.abortController) {
+        try {
+          genState.abortController.abort();
+        } catch (e) {}
+      }
+      genState.streamToken += 1;
+      genSetBusy(false);
+    }
 
     if (path !== "/" && path !== "" && path !== "/index.html") {
       if (runner.mode === "page") {
@@ -2656,7 +3453,9 @@
     }
   }
 
-  /* 静态初始化 */
+  /* ---------------------------------------------------------
+     静态初始化
+     --------------------------------------------------------- */
 
   function initStatic() {
     modalBackdrop = $("#modalBackdrop");
@@ -2719,11 +3518,23 @@
       },
       { passive: false },
     );
+
+    /* 关闭各菜单：点击空白 */
     document.addEventListener("click", function (e) {
-      var menu = $("#aiModelMenu");
-      if (!menu || !menu.classList.contains("show")) return;
-      var picker = menu.parentNode;
-      if (picker && !picker.contains(e.target)) menu.classList.remove("show");
+      var aiMenu = $("#aiModelMenu");
+      if (aiMenu && aiMenu.classList.contains("show")) {
+        var picker = aiMenu.parentNode;
+        if (picker && !picker.contains(e.target)) {
+          aiMenu.classList.remove("show");
+        }
+      }
+      var genMenu = $("#genModelMenu");
+      if (genMenu && genMenu.classList.contains("show")) {
+        var gPicker = genMenu.parentNode;
+        if (gPicker && !gPicker.contains(e.target)) {
+          closeGenMenu();
+        }
+      }
     });
 
     if (sidebarSearchEl) {
@@ -2839,7 +3650,9 @@
     });
   }
 
-  /* 加载json */
+  /* ---------------------------------------------------------
+     加载 content.json
+     --------------------------------------------------------- */
 
   function loadContent() {
     return fetch(CONTENT_URL, { cache: "no-cache" })
@@ -2854,10 +3667,8 @@
         LANG = detectLang();
       });
   }
-  
-    /* 同步启动 */
-  
-   function boot() {
+
+  function boot() {
     initStatic();
     initAIState();
     applyI18nToStatic();
@@ -2870,44 +3681,7 @@
       boot();
     })
     .catch(function (e) {
-      console.warn("[content.json] 加载失败，使用 HTML 默认文案：", e);
+      console.warn("[content.json] 加载失败，使用默认文案：", e);
       boot();
     });
-
-   /* 异步启动 */
-   /*
-  function bootSync() {
-    initStatic();
-    initAIState();
-    updateSidebarPages();
-    render();
-  }
-  function bootWithContent() {
-    LANG = detectLang();
-    applyI18nToStatic();
-    initAIState();
-    updateSidebarPages();
-    render();
-  }
-
-  function start() {
-
-    bootSync();
-
-    loadContent()
-      .then(function () {
-        bootWithContent();
-      })
-      .catch(function (e) {
-        console.warn("[content.json] 加载失败，使用默认文案：", e);
-      });
-  }
-
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", start);
-  } else {
-    start();
-  }
-  */
-
 })();
