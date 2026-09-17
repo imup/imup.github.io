@@ -1029,7 +1029,8 @@ button:disabled {
 }
 
 .gen-status {
-  margin-top: 12px;
+  margin-top: 10px;
+  mergin-bottom: 10px;
   font-family: ui-monospace, Menlo, Consolas, monospace;
   font-size: 0.82rem;
   line-height: 1.6;
