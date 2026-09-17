@@ -8,7 +8,8 @@
       "endpoint": "https://api.openai.com/v1/chat/completions",
       "apiModel": "gpt-4o-mini",
       "protocol": "openai",
-      "builtin": true
+      "builtin": true,
+      "supportsTools": true
     },
     {
       "id": "gemini",
@@ -16,7 +17,8 @@
       "endpoint": "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent",
       "apiModel": "gemini-2.0-flash",
       "protocol": "gemini",
-      "builtin": true
+      "builtin": true,
+      "supportsTools": true
     },
     {
       "id": "deepseek",
@@ -24,7 +26,8 @@
       "endpoint": "https://api.deepseek.com/chat/completions",
       "apiModel": "deepseek-chat",
       "protocol": "openai",
-      "builtin": true
+      "builtin": true,
+      "supportsTools": true
     }
   ],
   "i18n": {
@@ -182,7 +185,35 @@
       "storage.ctxChats": "AI 对话记录",
       "storage.ctxPrompts": "系统提示词",
       "storage.ctxCustomModels": "自定义模型",
-      "storage.ctxPages": "脚本作品"
+      "storage.ctxPages": "脚本作品",
+
+      "gen.title": "AI 生成代码",
+      "gen.placeholder": "描述你想要的 p5.js 效果…",
+      "gen.modelPickerTitle": "选择模型",
+      "gen.sendTitle": "发送",
+      "gen.systemPrompt": "你是一位 p5.js 代码助手。请通过调用工具把代码写入编辑器，不要在回复中直接输出完整代码。工具选择规则：从零开始写或要求重写用 insert_code；用户明确说追加时用 append_code；需要查看已有代码时先调 get_current_code。代码应包含 setup 和 draw 等必要部分，除用户特别说明。生成完成后用一句话总结，不要再重复代码。",
+      "gen.statusRequest": "正在请求 {model}…",
+      "gen.statusToolCall": "调用 {name}",
+      "gen.statusToolDone": "✅ {result}",
+      "gen.statusSummary": "正在总结…",
+      "gen.statusDone": "已完成",
+      "gen.statusMaxLoop": "已达最大循环次数，已停止",
+      "gen.statusDegrade": "模型未返回工具调用，已尝试从文本提取代码",
+      "gen.statusNoCode": "模型未生成代码，请重试或换个模型",
+      "gen.statusNoModel": "请先选择模型",
+      "gen.statusModelNoTools": "当前模型不支持函数调用，请从菜单选择其它模型",
+      "gen.statusEmptyInput": "请输入描述",
+      "gen.statusError": "请求失败：{msg}",
+      "gen.editorNotEmptyTitle": "编辑器已有内容",
+      "gen.editorNotEmptyBody": "AI 生成的代码要如何写入？",
+      "gen.intentOverwrite": "覆盖",
+      "gen.intentAppend": "追加",
+      "gen.menuNoToolsModels": "没有支持函数调用的模型，请先添加",
+      "gen.toolInsert": "已覆盖编辑器 ({n} 字符)",
+      "gen.toolAppend": "已追加到末尾 ({n} 字符)",
+      "gen.toolRead": "已读取 ({n} 字符)",
+      "gen.toolUnknown": "未知工具：{name}",
+      "gen.toolError": "工具执行出错：{msg}"
     },
     "en": {
       "site.title": "randomArt Visual Creative Coding",
@@ -338,7 +369,35 @@
       "storage.ctxChats": "AI Conversations",
       "storage.ctxPrompts": "System Prompts",
       "storage.ctxCustomModels": "Custom Models",
-      "storage.ctxPages": "Scripts"
+      "storage.ctxPages": "Scripts",
+
+      "gen.title": "AI Code Generation",
+      "gen.placeholder": "Describe the p5.js effect you want…",
+      "gen.modelPickerTitle": "Select model",
+      "gen.sendTitle": "Send",
+      "gen.systemPrompt": "You are a p5.js coding assistant. Write code into the editor by calling tools; do not output the full code in your reply. Tool rules: use insert_code when starting fresh or rewriting; use append_code when the user explicitly asks to append; call get_current_code first when you need to inspect existing code. Code should include setup and draw unless the user says otherwise. After generating, reply with a one-line summary only.",
+      "gen.statusRequest": "Requesting {model}…",
+      "gen.statusToolCall": "Calling {name}",
+      "gen.statusToolDone": "✅ {result}",
+      "gen.statusSummary": "Summarizing…",
+      "gen.statusDone": "Done",
+      "gen.statusMaxLoop": "Max loop reached, stopped",
+      "gen.statusDegrade": "Model returned no tool call; tried to extract code from text",
+      "gen.statusNoCode": "No code generated. Try again or switch model.",
+      "gen.statusNoModel": "Please select a model first",
+      "gen.statusModelNoTools": "This model does not support function calling. Pick another from the menu.",
+      "gen.statusEmptyInput": "Please enter a prompt",
+      "gen.statusError": "Request failed: {msg}",
+      "gen.editorNotEmptyTitle": "Editor not empty",
+      "gen.editorNotEmptyBody": "How should the AI-generated code be written?",
+      "gen.intentOverwrite": "Overwrite",
+      "gen.intentAppend": "Append",
+      "gen.menuNoToolsModels": "No function-calling models available",
+      "gen.toolInsert": "Overwrote editor ({n} chars)",
+      "gen.toolAppend": "Appended to end ({n} chars)",
+      "gen.toolRead": "Read ({n} chars)",
+      "gen.toolUnknown": "Unknown tool: {name}",
+      "gen.toolError": "Tool error: {msg}"
     }
   }
 }
