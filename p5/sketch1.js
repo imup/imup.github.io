@@ -1,4 +1,4 @@
-let str = "而且创意可视化编程";
+let str = "randomArt可视化创意编程";
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
