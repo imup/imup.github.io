@@ -1003,7 +1003,7 @@ button:disabled {
   gap: 6px;
   width: 100%;
   background: var(--surface);
-  border: 1px solid var(--line);
+  border: 1px solid var(--border-input);
   border-radius: 4px;
   padding: 6px;
 }
@@ -1095,4 +1095,19 @@ button:disabled {
   padding-left: 0;
   padding-right: 0;
   background: transparent;
+}
+/* 编写页AI发送按钮：去掉蓝底，改用边框 */
+.gen-ai-bar .ai-send-btn {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border-input);
+}
+.gen-ai-bar .ai-send-btn:hover {
+  background: var(--hover);
+  color: var(--primary);
+  border-color: var(--primary-focus);
+}
+.gen-ai-bar .ai-send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
