@@ -1090,3 +1090,9 @@ button:disabled {
   font-size: 0.85rem;
   color: var(--text-secondary);
 }
+.form-group input[type="file"] {
+  border: none;
+  padding-left: 0;
+  padding-right: 0;
+  background: transparent;
+}
