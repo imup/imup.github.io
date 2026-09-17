@@ -1273,8 +1273,8 @@
     var status = el("div", "gen-status");
     status.id = "genStatus";
 
-    frag.appendChild(bar);
     frag.appendChild(status);
+    frag.appendChild(bar);
     return frag;
   }
 
