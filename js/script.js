@@ -1,19 +1,24 @@
 /* =========================================================
    randomArt可视化创意编程 - 主逻辑
    =========================================================
-     - 外部依赖CDN：CodeMirror、JSZip在html 中引入
-     - json文案 + 模型配置，异步加载
-     - p5.js首页随机运行，列表硬编码在下方 P5_FILES
-     - HTML只有骨架；所有动态DOM由本文件createElement生成
-     - 文案与模型配置从json载入支持i18n
-     - 启动时同步boot一次，保证UI立即可用json回来后重刷
-     - 编写脚本页支持AI生成代码（函数调用：insert_code / append_code /
-       get_current_code），支持OpenAI与Gemini双协议
+   依赖：
+     - 外部 CDN：CodeMirror、JSZip（在 index.html 中引入）
+     - ./data/content.json（文案 + 模型配置，异步加载）
+     - ./p5/*.js（首页随机运行，列表硬编码在下方 P5_FILES）
+
+   设计：
+     - HTML 只有骨架；所有动态 DOM 由本文件 createElement 生成
+     - 文案与模型配置从 content.json 载入，支持 i18n
+     - 启动时同步 boot 一次，保证 UI 立即可用
+     - 编写脚本页支持 AI 生成代码（insert_code / append_code /
+       get_current_code），OpenAI 与 Gemini 双协议
    ========================================================= */
 (function () {
   "use strict";
 
-  /* 常量 */
+  /* ---------------------------------------------------------
+     常量
+     --------------------------------------------------------- */
 
   var STORAGE_KEY = "p5_pages";
   var THEME_KEY = "p5_theme";
@@ -35,7 +40,7 @@
 
   var CONTENT_URL = "data/content.json";
 
-  /* AI编程工具声明（OpenAI 格式） */
+  /* AI 编程工具声明（OpenAI 格式） */
   var TOOL_DECLARATIONS_OPENAI = [
     {
       type: "function",
@@ -89,7 +94,7 @@
     },
   ];
 
-  /* AI编程工具声明（Gemini格式） */
+  /* AI 编程工具声明（Gemini 格式） */
   var TOOL_DECLARATIONS_GEMINI = [
     {
       functionDeclarations: [
@@ -138,7 +143,9 @@
     },
   ];
 
-  /* 运行时状态 */
+  /* ---------------------------------------------------------
+     运行时状态
+     --------------------------------------------------------- */
 
   var AI_MODELS = [];
   var I18N = {};
@@ -156,9 +163,9 @@
     streamToken: 0,
   };
 
-  /* 编写页AI面板（与AI聊天页独立） */
+  /* 编写页 AI 面板（独立于 AI 聊天页） */
   var genState = {
-    messages: [], // 内部统一 OpenAI 格式
+    messages: [],
     busy: false,
     abortController: null,
     streamToken: 0,
@@ -180,7 +187,9 @@
   var renderedMsgCount = 0;
   var renderedModelId = null;
 
-  /* i18n */
+  /* ---------------------------------------------------------
+     i18n
+     --------------------------------------------------------- */
 
   function T(key, params) {
     var pack = I18N[LANG] || I18N.zh || {};
@@ -224,7 +233,9 @@
     } catch (e) {}
   }
 
-  /* 模型访问 */
+  /* ---------------------------------------------------------
+     模型访问
+     --------------------------------------------------------- */
 
   function getAllModels() {
     return AI_MODELS.concat(aiState.customModels || []);
@@ -249,7 +260,9 @@
     return c ? c.name : id;
   }
 
-  /* localStorage读写  */
+  /* ---------------------------------------------------------
+     localStorage 读写
+     --------------------------------------------------------- */
 
   function loadAIKeys() {
     try {
@@ -410,7 +423,9 @@
     });
   }
 
-  /* 存储超限 */
+  /* ---------------------------------------------------------
+     存储超限
+     --------------------------------------------------------- */
 
   function isQuotaError(e) {
     if (!e) return false;
@@ -455,7 +470,9 @@
     );
   }
 
-  /* 通用工具 */
+  /* ---------------------------------------------------------
+     通用工具
+     --------------------------------------------------------- */
 
   function $(sel, root) {
     return (root || document).querySelector(sel);
@@ -487,7 +504,9 @@
     return n || "untitled";
   }
 
-  /* DOM小工厂 */
+  /* ---------------------------------------------------------
+     DOM 小工厂
+     --------------------------------------------------------- */
 
   function el(tag, className, text) {
     var e = document.createElement(tag);
@@ -500,7 +519,9 @@
     return el("div", "right-group");
   }
 
-  /* 弹窗 */
+  /* ---------------------------------------------------------
+     弹窗
+     --------------------------------------------------------- */
 
   function openModal(builder) {
     lastFocused = document.activeElement;
@@ -519,7 +540,9 @@
   function showAlert(title, message, isError) {
     openModal(function (box) {
       box.appendChild(el("h3", null, title));
-      box.appendChild(el("p", null, message));
+      if (message) {
+        box.appendChild(el("p", null, message));
+      }
       var a = el("div", "modal-actions");
       var rg = rightGroup();
       var ok = el("button", isError ? "danger" : null, T("common.know"));
@@ -662,7 +685,9 @@
     });
   }
 
-  /* 生成作品HTML */
+  /* ---------------------------------------------------------
+     生成作品 HTML
+     --------------------------------------------------------- */
 
   function generatePageHtml(title, script, imageDataUrl) {
     var safeTitle = escapeHtml(title || T("generator.untitledPage"));
@@ -759,7 +784,9 @@
       });
   }
 
-  /* 首页随机脚本 */
+  /* ---------------------------------------------------------
+     首页随机脚本
+     --------------------------------------------------------- */
 
   function pickRandomP5File() {
     if (!P5_FILES || !P5_FILES.length) return null;
@@ -802,7 +829,9 @@
     );
   }
 
-  /* 侧边栏作品列表 */
+  /* ---------------------------------------------------------
+     侧边栏作品列表
+     --------------------------------------------------------- */
 
   function updateSidebarPages() {
     var pages = getPages();
@@ -853,7 +882,9 @@
     sidebarPagesEl.replaceChildren(frag);
   }
 
-  /* iframe内p5画布事件代理 */
+  /* ---------------------------------------------------------
+     iframe 内 p5 画布事件代理
+     --------------------------------------------------------- */
 
   function bindIframeProxy(iframe) {
     var iwin, idoc;
@@ -969,7 +1000,9 @@
     });
   }
 
-  /* 预览锁屏 */
+  /* ---------------------------------------------------------
+     预览锁屏
+     --------------------------------------------------------- */
 
   function lockAppSize() {
     document.body.classList.add("preview-lock");
@@ -992,7 +1025,9 @@
     appEl.style.overflow = "";
   }
 
-  /* 首页渲染 */
+  /* ---------------------------------------------------------
+     首页渲染
+     --------------------------------------------------------- */
 
   function renderRunner() {
     destroyEditor();
@@ -1059,7 +1094,9 @@
     else location.hash = "#/";
   }
 
-  /* 作品操作 */
+  /* ---------------------------------------------------------
+     作品操作
+     --------------------------------------------------------- */
 
   function deletePage(id) {
     var pages = getPages();
@@ -1100,7 +1137,9 @@
     });
   }
 
-  /* 侧边栏开关 */
+  /* ---------------------------------------------------------
+     侧边栏开关
+     --------------------------------------------------------- */
 
   function openSidebar() {
     sidebarEl.classList.add("open");
@@ -1115,7 +1154,9 @@
     hamburgerBtn.setAttribute("aria-expanded", "false");
   }
 
-  /* 主题 */
+  /* ---------------------------------------------------------
+     主题
+     --------------------------------------------------------- */
 
   function applyTheme(theme) {
     var lightTheme = $("#cm-theme-light");
@@ -1143,7 +1184,9 @@
     } catch (e) {}
   }
 
-  /* 路由 */
+  /* ---------------------------------------------------------
+     路由
+     --------------------------------------------------------- */
 
   function getRoute() {
     var hash = location.hash;
@@ -1168,7 +1211,9 @@
     }
   }
 
-  /* 关于页 */
+  /* ---------------------------------------------------------
+     关于页
+     --------------------------------------------------------- */
 
   function renderAbout() {
     var wrap = document.createElement("div");
@@ -1179,23 +1224,16 @@
     return wrap;
   }
 
-  /* 编写脚本页 */
+  /* ---------------------------------------------------------
+     编写脚本页
+     --------------------------------------------------------- */
 
   function renderGenerator() {
     var wrap = el("div", "generator-page");
     wrap.appendChild(el("h1", null, T("generator.title")));
     wrap.appendChild(el("p", null, T("generator.subtitle")));
 
-    var g1 = el("div", "form-group");
-    var l1 = el("label", null, T("generator.labelTitle"));
-    l1.setAttribute("for", "title");
-    var titleInput = document.createElement("input");
-    titleInput.type = "text";
-    titleInput.id = "title";
-    titleInput.placeholder = T("generator.titlePlaceholder");
-    g1.appendChild(l1);
-    g1.appendChild(titleInput);
-
+    /* 1. 脚本代码 */
     var g2 = el("div", "form-group");
     var l2 = el("label", null, T("generator.labelScript"));
     l2.setAttribute("for", "script");
@@ -1203,7 +1241,12 @@
     ta.id = "script";
     g2.appendChild(l2);
     g2.appendChild(ta);
+    wrap.appendChild(g2);
 
+    /* 2. AI 输入框 + 状态区（无外框） */
+    wrap.appendChild(buildGeneratorAIPanel());
+
+    /* 3. 上传图片 */
     var g3 = el("div", "form-group");
     var l3 = el("label");
     l3.textContent = T("generator.labelImage");
@@ -1216,34 +1259,37 @@
     g3.appendChild(l3);
     g3.appendChild(fileInput);
     g3.appendChild(previewBox);
+    wrap.appendChild(g3);
 
+    /* 4. 标题输入 + 提交按钮 并列一行 */
+    var row = el("div", "gen-inline-row");
+    var titleInput = document.createElement("input");
+    titleInput.type = "text";
+    titleInput.id = "title";
+    titleInput.placeholder = T("generator.titlePlaceholder");
     var submit = el("button", null, T("generator.submit"));
     submit.id = "buildBtn";
     submit.type = "button";
+    row.appendChild(titleInput);
+    row.appendChild(submit);
+    wrap.appendChild(row);
 
     var result = el("div", "result");
     result.id = "result";
     result.style.display = "none";
-
-    wrap.appendChild(g1);
-    wrap.appendChild(g2);
-    wrap.appendChild(g3);
-    wrap.appendChild(submit);
     wrap.appendChild(result);
-
-    /* AI生成面板 */
-    wrap.appendChild(buildGeneratorAIPanel());
 
     return wrap;
   }
 
-  /* 编写页AI面板 */
+  /* ---------------------------------------------------------
+     编写页 AI 面板
+     --------------------------------------------------------- */
 
   function buildGeneratorAIPanel() {
-    var panel = el("div", "gen-ai-panel");
-    panel.appendChild(el("div", "gen-ai-heading", T("gen.title")));
+    var frag = document.createDocumentFragment();
 
-    var bar = el("div", "gen-ai-bar");
+    var bar = el("div", "gen-ai-bar gen-ai-bar-bare");
     var picker = el("div", "ai-model-picker");
 
     var modelBtn = el("button", "ai-model-btn", "+");
@@ -1274,9 +1320,9 @@
     var status = el("div", "gen-status");
     status.id = "genStatus";
 
-    panel.appendChild(bar);
-    panel.appendChild(status);
-    return panel;
+    frag.appendChild(bar);
+    frag.appendChild(status);
+    return frag;
   }
 
   function refreshGenModelBtn() {
@@ -1348,7 +1394,6 @@
     if (!box) return;
     var line = el("div", "gen-status-line" + (kind ? " " + kind : ""), text);
     box.appendChild(line);
-    /* 只保留最近12行 */
     while (box.children.length > 12) box.removeChild(box.firstChild);
     box.scrollTop = box.scrollHeight;
   }
@@ -1359,14 +1404,17 @@
     if (btn) btn.disabled = !!busy;
   }
 
-  /* 工具注册表 */
+  /* ---------------------------------------------------------
+     工具注册表
+     --------------------------------------------------------- */
 
   function executeToolCall(toolName, args) {
     try {
       if (toolName === "insert_code") {
         var code = args && typeof args.code === "string" ? args.code : "";
-        if (!editor) throw new Error("编辑器不存在");
+        if (!editor) throw new Error("editor not found");
         editor.setValue(code);
+        generatorDraft.script = code;
         return {
           ok: true,
           text: T("gen.toolInsert", { n: code.length }),
@@ -1374,23 +1422,22 @@
       }
       if (toolName === "append_code") {
         var code2 = args && typeof args.code === "string" ? args.code : "";
-        if (!editor) throw new Error("编辑器不存在");
+        if (!editor) throw new Error("editor not found");
         var cur = editor.getValue() || "";
-        var next =
-          cur.trim().length === 0 ? code2 : cur + "\n\n" + code2;
+        var next = cur.trim().length === 0 ? code2 : cur + "\n\n" + code2;
         editor.setValue(next);
+        generatorDraft.script = next;
         return {
           ok: true,
           text: T("gen.toolAppend", { n: code2.length }),
         };
       }
       if (toolName === "get_current_code") {
-        if (!editor) throw new Error("编辑器不存在");
+        if (!editor) throw new Error("editor not found");
         var v = editor.getValue() || "";
         return {
           ok: true,
-          text: v.length ? v : "(空)",
-          raw: true,
+          text: v.length ? v : "(empty)",
           displayText: T("gen.toolRead", { n: v.length }),
         };
       }
@@ -1403,21 +1450,20 @@
     }
   }
 
-  /* 从文本提取代码（降级） */
+  /* ---------------------------------------------------------
+     从文本提取代码（降级）
+     --------------------------------------------------------- */
 
   function extractCodeFromText(text) {
     if (!text) return null;
     var t = String(text);
 
-    /* ```js ... ``` 或 ```javascript ... ``` */
     var m = t.match(/```(?:js|javascript)\s*\n([\s\S]*?)```/i);
     if (m && m[1]) return m[1].replace(/\s+$/, "");
 
-    /* ``` ... ``` 通用 */
     m = t.match(/```\s*\n([\s\S]*?)```/);
     if (m && m[1]) return m[1].replace(/\s+$/, "");
 
-    /* 看起来像 p5 代码 */
     if (/function\s+setup\s*\(/.test(t) || /function\s+draw\s*\(/.test(t)) {
       return t.trim();
     }
@@ -1425,7 +1471,9 @@
     return null;
   }
 
-  /* 内部消息至Gemini消息转换 */
+  /* ---------------------------------------------------------
+     内部消息 → Gemini 消息 转换
+     --------------------------------------------------------- */
 
   function findToolCallName(msgs, toolCallId) {
     for (var i = 0; i < msgs.length; i++) {
@@ -1500,7 +1548,9 @@
     return { systemInstruction: systemInstruction, contents: contents };
   }
 
-  /* 流式请求 */
+  /* ---------------------------------------------------------
+     流式请求
+     --------------------------------------------------------- */
 
   function streamAI(model, key, messages, systemPrompt, onDelta, onRaw, opts) {
     var conf = aiModelConf(model);
@@ -1508,7 +1558,6 @@
     var enableTools = opts && opts.tools;
 
     if (conf.protocol === "gemini") {
-      /* 内部OpenAI格式 → Gemini格式 */
       var conv = convertToGeminiMessages(messages);
       var body = { contents: conv.contents };
       if (systemPrompt) {
@@ -1637,7 +1686,9 @@
     });
   }
 
-  /* 结构化累积器 */
+  /* ---------------------------------------------------------
+     结构化累积器
+     --------------------------------------------------------- */
 
   function createStructuredAccumulator() {
     var meta = {
@@ -1736,7 +1787,9 @@
     return { consume: consume, finalize: finalize };
   }
 
-  /* 编写页AI主流程 */
+  /* ---------------------------------------------------------
+     编写页 AI 主流程
+     --------------------------------------------------------- */
 
   function genApplyCode(code, intent) {
     if (!editor || !code) return;
@@ -1760,7 +1813,6 @@
       return;
     }
 
-    /* 清空并初始化消息（OpenAI内部格式） */
     genState.messages = [];
     genState.messages.push({
       role: "system",
@@ -1768,11 +1820,7 @@
     });
     genState.messages.push({
       role: "user",
-      content:
-        "[intent: " +
-        userIntent +
-        "] " +
-        userText,
+      content: "[intent: " + userIntent + "] " + userText,
     });
 
     genStatusClear();
@@ -1839,7 +1887,6 @@
           var meta = acc.finalize();
 
           if (meta.tool_calls && meta.tool_calls.length) {
-            /* 有工具调用：执行+回填+继续 */
             genState.messages.push({
               role: "assistant",
               content: accumulated || null,
@@ -1858,20 +1905,15 @@
                 args = {};
               }
 
-              genStatusLine(
-                T("gen.statusToolCall", { name: name }),
-              );
+              genStatusLine(T("gen.statusToolCall", { name: name }));
 
               var res = executeToolCall(name, args);
-              var display = res.displayText
-                ? res.displayText
-                : res.text;
+              var display = res.displayText ? res.displayText : res.text;
               genStatusLine(
                 T("gen.statusToolDone", { result: display }),
                 res.ok ? "ok" : "error",
               );
 
-              /* 回填给模型的是完整内容（get_current_code返回原始代码） */
               genState.messages.push({
                 role: "tool",
                 tool_call_id: tc.id,
@@ -1884,7 +1926,6 @@
             return;
           }
 
-          /* 没有工具调用 */
           if (accumulated && accumulated.trim()) {
             var code = extractCodeFromText(accumulated);
             if (code) {
@@ -1892,7 +1933,6 @@
               genApplyCode(code, userIntent);
               genStatusLine(T("gen.statusDone"), "ok");
             } else {
-              /* 只是普通回复，不写代码 */
               genStatusLine(accumulated.trim(), "ok");
               genStatusLine(T("gen.statusNoCode"), "warn");
             }
@@ -1919,22 +1959,19 @@
 
     var model = aiState.currentModel;
     if (!model || !aiModelConf(model)) {
-      genStatusClear();
-      genStatusLine(T("gen.statusNoModel"), "error");
+      showAlert(T("gen.statusNoModel"), "", true);
       return;
     }
 
     var conf = aiModelConf(model);
     if (!conf.supportsTools) {
-      genStatusClear();
-      genStatusLine(T("gen.statusModelNoTools"), "error");
+      showAlert(T("gen.statusModelNoTools"), "", true);
       return;
     }
 
     var key = aiState.keys[model];
     if (!key) {
       promptAPIKey(model, function () {
-        /* 设置后继续 */
         if (aiState.keys[model]) genSend();
       });
       return;
@@ -2024,11 +2061,12 @@
       });
     }
 
-    /* 初始刷新按钮态 */
     refreshGenModelBtn();
   }
 
-  /* 编写脚本页：原有交互 */
+  /* ---------------------------------------------------------
+     编写脚本页：原有交互
+     --------------------------------------------------------- */
 
   function bindGenerator() {
     var titleInput = $("#title");
@@ -2148,24 +2186,40 @@
 
       updateSidebarPages();
 
-      resultEl.style.display = "block";
-      var msg = el("p", null, T("generator.buildOk"));
+      /* 弹窗：提示 + 预览 / 下载 HTML */
+      openModal(function (box) {
+        box.appendChild(el("h3", null, T("generator.buildOk")));
 
-      var btnContainer = el("div", "action-buttons");
-      var previewBtn = el("button", "preview", T("generator.preview"));
-      previewBtn.addEventListener("click", function () {
-        runPage(newId);
+        var actions = el("div", "modal-actions");
+
+        var leftWrap = document.createElement("div");
+        var closeBtn = el("button", "link-btn", T("common.cancel"));
+        closeBtn.addEventListener("click", closeModal);
+        leftWrap.appendChild(closeBtn);
+
+        var rg = rightGroup();
+
+        var previewBtn = el("button", null, T("generator.preview"));
+        previewBtn.addEventListener("click", function () {
+          closeModal();
+          runPage(newId);
+        });
+
+        var downloadBtn = el("button", "cancel", T("generator.download"));
+        downloadBtn.addEventListener("click", function () {
+          downloadSingleHtml(
+            "p5_" + safeFileName(title) + "_" + newId + ".html",
+            htmlContent,
+          );
+        });
+
+        rg.appendChild(previewBtn);
+        rg.appendChild(downloadBtn);
+
+        actions.appendChild(leftWrap);
+        actions.appendChild(rg);
+        box.appendChild(actions);
       });
-      var downloadBtn = el("button", "download", T("generator.download"));
-      downloadBtn.addEventListener("click", function () {
-        downloadSingleHtml(
-          "p5_" + safeFileName(title) + "_" + newId + ".html",
-          htmlContent,
-        );
-      });
-      btnContainer.appendChild(previewBtn);
-      btnContainer.appendChild(downloadBtn);
-      resultEl.replaceChildren(msg, btnContainer);
 
       titleInput.value = "";
       if (editor) editor.setValue("");
@@ -2176,11 +2230,12 @@
       fileInput.value = "";
     });
 
-    /* AI面板绑定 */
     bindGeneratorAIPanel();
   }
 
-  /* AI页骨架 */
+  /* ---------------------------------------------------------
+     AI 页骨架
+     --------------------------------------------------------- */
 
   function renderAIAssistant() {
     var page = el("div", "ai-page");
@@ -2236,7 +2291,9 @@
     return page;
   }
 
-  /* 模型菜单（AI聊天页） */
+  /* ---------------------------------------------------------
+     模型菜单（AI 聊天页）
+     --------------------------------------------------------- */
 
   function buildAIModelMenu() {
     var menu = $("#aiModelMenu");
@@ -2330,7 +2387,6 @@
         btn.textContent = "+";
       }
     }
-    /* 同步刷新编写页按钮 */
     refreshGenModelBtn();
   }
 
@@ -2344,7 +2400,9 @@
     menu.classList.toggle("show");
   }
 
-  /* AI消息渲染 */
+  /* ---------------------------------------------------------
+     AI 消息渲染
+     --------------------------------------------------------- */
 
   function buildMsgNode(m) {
     var row = el(
@@ -2452,7 +2510,9 @@
     return box.scrollHeight - box.scrollTop - box.clientHeight < 80;
   }
 
-  /* 自定义模型编辑弹窗 */
+  /* ---------------------------------------------------------
+     自定义模型编辑弹窗
+     --------------------------------------------------------- */
 
   function showModelEditor(modelId) {
     var isEdit = !!modelId;
@@ -2498,7 +2558,6 @@
       apiInput.autocomplete = "off";
       apiInput.spellcheck = false;
 
-      /* 支持函数调用勾选框 */
       var toolsRow = document.createElement("label");
       toolsRow.style.cssText =
         "display:flex;align-items:center;gap:8px;margin:8px 0 4px;font-weight:bold;font-size:0.9rem;cursor:pointer;";
@@ -2507,9 +2566,7 @@
       toolsCb.style.cssText = "width:auto;margin:0;";
       toolsCb.checked = isEdit ? !!existing.supportsTools : false;
       toolsRow.appendChild(toolsCb);
-      toolsRow.appendChild(
-        document.createTextNode("支持函数调用（Tools）"),
-      );
+      toolsRow.appendChild(document.createTextNode("支持函数调用（Tools）"));
 
       var actions = el("div", "modal-actions");
       var leftWrap = document.createElement("div");
@@ -2637,7 +2694,9 @@
     );
   }
 
-  /* 测试连接 */
+  /* ---------------------------------------------------------
+     测试连接
+     --------------------------------------------------------- */
 
   function testAIModelConnection(model) {
     var conf = aiModelConf(model);
@@ -2715,7 +2774,9 @@
       });
   }
 
-  /* Key / 提示词 */
+  /* ---------------------------------------------------------
+     Key / 提示词
+     --------------------------------------------------------- */
 
   function promptAPIKey(model, onSaved) {
     showPrompt(
@@ -2779,7 +2840,9 @@
     updateAISendBtn();
   }
 
-  /* 导出 / 导入 */
+  /* ---------------------------------------------------------
+     导出 / 导入
+     --------------------------------------------------------- */
 
   function triggerDownload(content, mime, filename) {
     var blob = new Blob([content], { type: mime });
@@ -3006,7 +3069,9 @@
     reader.readAsText(file);
   }
 
-  /* AI聊天页：发送 / 清空 */
+  /* ---------------------------------------------------------
+     AI 聊天页：发送 / 清空
+     --------------------------------------------------------- */
 
   function aiSend() {
     if (aiState.busy) return;
@@ -3086,7 +3151,6 @@
       }
     };
 
-    /* 聊天页保留原有：历史消息构造成纯文本 */
     var payload = chat
       .slice(0, -1)
       .filter(function (m) {
@@ -3315,12 +3379,13 @@
     }
   }
 
-  /* 总渲染入口 */
+  /* ---------------------------------------------------------
+     总渲染入口
+     --------------------------------------------------------- */
 
   function render() {
     var path = getRoute();
 
-    /* 切页时中止编写页 AI */
     if (genState.busy) {
       if (genState.abortController) {
         try {
@@ -3374,7 +3439,9 @@
     }
   }
 
-  /* 静态初始化 */
+  /* ---------------------------------------------------------
+     静态初始化
+     --------------------------------------------------------- */
 
   function initStatic() {
     modalBackdrop = $("#modalBackdrop");
@@ -3438,7 +3505,6 @@
       { passive: false },
     );
 
-    /* 关闭各菜单：点击空白 */
     document.addEventListener("click", function (e) {
       var aiMenu = $("#aiModelMenu");
       if (aiMenu && aiMenu.classList.contains("show")) {
@@ -3569,7 +3635,9 @@
     });
   }
 
-  /* 加载json */
+  /* ---------------------------------------------------------
+     加载 content.json
+     --------------------------------------------------------- */
 
   function loadContent() {
     return fetch(CONTENT_URL, { cache: "no-cache" })
@@ -3584,6 +3652,10 @@
         LANG = detectLang();
       });
   }
+
+  /* ---------------------------------------------------------
+     启动
+     --------------------------------------------------------- */
 
   function boot() {
     initStatic();
