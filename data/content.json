@@ -54,12 +54,13 @@
       "common.replace": "覆盖",
 
       "about.title": "简介",
-      "about.p1": "randomArt可视化创意编程是基于localStorage存储的纯前端工具，无须后端。",
-      "about.p2": "首页随机加载运行p5.js脚本，编写脚本后提交脚本点击“预览”即可运行该脚本或在侧边栏中选择脚本名运行脚本，再点击其它导航项会回到随机状态。",
-      "about.p3": "AI助手支持ChatGPT / Gemini / DeepSeek流式输出，也支持自定义OpenAI兼容模型。每个模型可单独设置API Key与系统提示词，支持Markdown / JSON双格式导出，并可从JSON文件导入对话继续使用。JSON导出含结构化响应元数据（finish_reason / usage / tool_calls等）。",
-      "about.p4": "使用CodeMirror实现代码高亮，支持亮色/暗色主题。",
-      "about.p5": "所有脚本均可导出为zip包，也可单独下载为HTML。",
-      
+      "about.p1": "randomArt可视化创意编程是一款纯前端工具，所有数据存于浏览器localStorage，无需后端，打开即用。",
+      "about.p2": "首页会随机加载并运行p5.js脚本。在侧边栏可查看、搜索、重命名或删除已保存的作品；点击作品名即可运行它。",
+      "about.p3": "「编写脚本」页提供CodeMirror代码编辑器，支持p5.js语法高亮、草稿自动保留；可上传一张图片供脚本通过imageUrl加载。点击提交后可预览、下载为独立HTML，或在侧边栏的「导出ZIP」中打包所有作品。",
+      "about.p4": "「AI助手」支持ChatGPT / Gemini / DeepSeek流式对话，也可添加自定义OpenAI兼容模型。每个模型可单独设置API Key与系统提示词，支持「测试连接」验证配置。",
+      "about.p5": "对话记录按模型分别存储，可导出为Markdown（可读文本）或JSON（含finish_reason / usage / tool_calls等结构化元数据），也可从JSON文件导入对话继续使用（支持追加或覆盖）。",
+      "about.p6": "界面提供亮色/暗色主题切换，会根据系统语言自动选择中文或英文；针对触屏设备做了优化（禁用双指缩放、双击缩放，防止误操作）。",
+
       "generator.title": "编写p5.js脚本",
       "generator.subtitle": "输入标题和p5.js代码，上传图片（可选）点击提交脚本",
       "generator.labelTitle": "标题",
@@ -209,11 +210,12 @@
       "common.replace": "Replace",
 
       "about.title": "About",
-      "about.p1": "randomArt Visual Creative Coding is a pure frontend tool using localStorage; no backend required.",
-      "about.p2": "The home page randomly runs a p5.js sketch. After writing a script, click Preview to run it, or select it from the sidebar. Switching to another tab returns to random mode.",
-      "about.p3": "The AI assistant supports ChatGPT / Gemini / DeepSeek streaming, plus custom OpenAI-compatible models. Each model has its own API key and system prompt. Supports Markdown / JSON export and JSON import. The JSON export includes structured metadata (finish_reason / usage / tool_calls, etc.).",
-      "about.p4": "CodeMirror provides syntax highlighting with light/dark themes.",
-      "about.p5": "All scripts can be exported as a ZIP package, or downloaded individually as HTML.",
+      "about.p1": "randomArt Visual Creative Coding is a pure frontend tool. All data is stored in the browser's localStorage — no backend required, ready to use immediately.",
+      "about.p2": "The home page randomly loads and runs a p5.js sketch. From the sidebar you can view, search, rename, or delete saved scripts; click a script's name to run it.",
+      "about.p3": "The Script Editor page provides a CodeMirror editor with p5.js syntax highlighting and automatic draft preservation. You can upload an optional image that scripts can load via imageUrl. After submitting, you can preview it, download it as a standalone HTML, or export all scripts as a ZIP from the sidebar.",
+      "about.p4": "The AI Assistant supports streaming chat with ChatGPT / Gemini / DeepSeek, and you can add custom OpenAI-compatible models. Each model has its own API key and system prompt, with a 'Test Connection' option to verify the setup.",
+      "about.p5": "Conversations are stored per model and can be exported as Markdown (human-readable) or JSON (with structured metadata such as finish_reason / usage / tool_calls). You can also import a JSON conversation to continue it, with options to append or replace.",
+      "about.p6": "The UI offers light/dark themes and automatically picks Chinese or English based on your system language. Touch devices are optimized as well — pinch-zoom and double-tap zoom are disabled to prevent accidental gestures.",
 
       "generator.title": "Write p5.js Script",
       "generator.subtitle": "Enter a title and p5.js code, optionally upload an image, then submit.",
@@ -225,9 +227,9 @@
       "generator.scriptPlaceholder": "e.g.\nfunction setup() {\n  createCanvas(windowWidth, windowHeight);\n  background(102);\n}\nfunction draw() {\n  variableEllipse(mouseX, mouseY, pmouseX, pmouseY);\n}\nfunction variableEllipse(x, y, px, py) {\n  let speed = abs(x - px) + abs(y - py);\n  stroke(speed);\n  ellipse(x, y, speed, speed);\n}",
       "generator.imageOk": "✅ Image uploaded",
       "generator.imageAlt": "Upload preview",
-      "generator.buildOk": "✅ Page generated! Saved to local storage.",
+      "generator.buildOk": "✅ Submitted! Saved to the sidebar script list.",
       "generator.preview": "▶️ Preview",
-      "generator.download": "⬇️ Download HTML",
+      "generator.download": "Download HTML",
       "generator.untitled": "Untitled Script",
       "generator.untitledPage": "Untitled Page",
 
@@ -253,7 +255,7 @@
       "ai.setPromptPlaceholder": "e.g. You are a p5.js generative art assistant. Be concise and add comments to code.",
       "ai.clearPrompt": "Clear prompt",
       "ai.topRowAdd": "＋ Custom",
-      "ai.topRowImport": "↓ Import",
+      "ai.topRowImport": "Import",
       "ai.editModelTitle": "Edit Model",
 
       "model.addTitle": "Add Custom Model",
