@@ -1004,7 +1004,7 @@ button:disabled {
   width: 100%;
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 20px;
+  border-radius: 4px;
   padding: 6px;
 }
 
@@ -1056,7 +1056,7 @@ button:disabled {
   color: var(--success);
 }
 
-/* AI 输入栏：无外框版本 */
+/* AI输入栏：无外框版本 */
 .gen-ai-bar-bare {
   margin-top: 12px;
 }
