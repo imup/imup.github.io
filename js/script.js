@@ -3596,12 +3596,47 @@
     render();
   }
 
-  loadContent()
-    .then(function () {
-      boot();
-    })
-    .catch(function (e) {
-      console.warn("[content.json] 加载失败，使用默认文案：", e);
-      boot();
-    });
+/* ---------------------------------------------------------
+     启动
+     ---------------------------------------------------------
+     同步先 boot 一次：保证 UI（汉堡、路由、事件）立即可用，
+     即使 content.json 加载失败或挂起也不影响。
+
+     然后异步加载 content.json，回来后重刷文案与模型。
+     --------------------------------------------------------- */
+
+  /* 1. 同步启动：用空文案先跑起来 */
+  function bootSync() {
+    initStatic();
+    initAIState();
+    updateSidebarPages();
+    render();
+  }
+
+  /* 2. content.json 回来后：重刷文案 + 模型 */
+  function bootWithContent() {
+    LANG = detectLang();
+    applyI18nToStatic();
+    initAIState();
+    updateSidebarPages();
+    render();
+  }
+
+  function start() {
+    bootSync();
+
+    loadContent()
+      .then(function () {
+        bootWithContent();
+      })
+      .catch(function (e) {
+        console.warn("[content.json] 加载失败，使用默认文案：", e);
+      });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", start);
+  } else {
+    start();
+  }
 })();
