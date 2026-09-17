@@ -1054,3 +1054,31 @@ button:disabled {
 .gen-status .gen-status-line.ok {
   color: var(--success);
 }
+
+/* AI 输入栏：无外框版本 */
+.gen-ai-bar-bare {
+  margin-top: 12px;
+}
+
+/* 标题输入+提交按钮 并列一行 */
+.gen-inline-row {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+  margin-top: 20px;
+}
+.gen-inline-row input[type="text"] {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border-input);
+  border-radius: 4px;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 16px;
+  background: var(--input-bg-fill);
+  color: var(--modal-text);
+}
+.gen-inline-row button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
