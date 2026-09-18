@@ -1,3 +1,4 @@
+/*
 function setup() {
   createCanvas(windowWidth, windowHeight);
   background(255);
@@ -27,9 +28,7 @@ function draw() {
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
 }
-
-
-/*
+*/
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
@@ -119,5 +118,3 @@ function makeRect(x, y, w, h) {
     }
   }
 }
-
-*/
