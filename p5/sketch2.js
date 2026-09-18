@@ -3,11 +3,11 @@ var nums;
 var particleDensity = 4000;
 var noiseScale = 800;
 var maxLife = 10;
-var  simulationSpeed = 0.2;
+var simulationSpeed = 0.2;
 var fadeFrame = 0;
 var backgroundColor;
-var visualMode = 2;
-var numModes = 4;
+var visualMode = 0;
+var numModes = 2;
 var invertColors = false;
 
 function setup() {
@@ -56,15 +56,10 @@ function draw() {
       var fadeRatio;
       fadeRatio = min(particles[i].life * 5 / maxLife, 1);
       fadeRatio = min((maxLife - particles[i].life) * 5 / maxLife, fadeRatio);
-      var colorCase = visualMode;
-      if (visualMode == 0) {
-         colorCase = int(particles[i].pos.x / width * 3) + 1;
-      }
+      
+      var colorCase = visualMode + 2;
+      
       switch(colorCase) {
-         case 1:
-         var lifeRatioGrayscale = min(255, (255 * particles[i].life / maxLife) + red(backgroundColor));
-         particleColor = color(lifeRatioGrayscale, alpha * fadeRatio);
-         break;
          case 2:
          particleColor = particles[i].color;
          break;
