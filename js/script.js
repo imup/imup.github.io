@@ -1372,11 +1372,8 @@
 
     /* 脚本代码 */
     var g2 = el("div", "form-group");
-    var l2 = el("label", null, T("generator.labelScript"));
-    l2.setAttribute("for", "script");
     var ta = document.createElement("textarea");
     ta.id = "script";
-    g2.appendChild(l2);
     g2.appendChild(ta);
     wrap.appendChild(g2);
 
