@@ -3,13 +3,13 @@
    =========================================================
      - 外部依赖CDN：CodeMirror、JSZip在html中引入
      - json文案 + 模型配置加载
-     - 首页随机运行，列表硬编码在P5_FILES
+     - 首页随机运行p5.js，列表硬编码在P5_FILES
      - HTML只有骨架；所有动态DOM由createElement生成
      - 文案与模型配置从json载入支持i18n
+     - 启动时同步boot一次，保证UI立即可用
      - 编写脚本页支持AI生成代码（函数调用，OpenAI + Gemini双协议）
      - AI聊天页支持消息级操作（复制/重生成/删除）与Token统计
-     - 作品预览支持canvas截图；AI预览统一走首页渲染路径
-     - 移动端键盘适配：body 锁定 + 只缩高度、宽度固定、不位移
+     - 作品预览支持canvas截图
    ========================================================= */
 (function () {
   "use strict";
@@ -294,7 +294,6 @@
   var generatorDraft = { title: "", script: "" };
   var renderedMsgCount = 0;
   var renderedModelId = null;
-  var aiViewportCleanup = null;
 
   /* i18n */
 
@@ -395,7 +394,7 @@
         result[m.id] = [];
       }
     });
-    /* 迁移老数据（幂等：成功才清除旧 key） */
+    /* 迁移老数据（幂等：成功才清除旧key） */
     try {
       var oldRaw = localStorage.getItem(AI_CHAT_STORAGE);
       if (oldRaw) {
@@ -1008,6 +1007,7 @@
         attachProxy(canvas, iwin, idoc);
         return;
       }
+      /* 最长等待15秒（150 × 100ms） */
       if (++tries < 150) setTimeout(tryFindCanvas, 100);
     }
     tryFindCanvas();
@@ -1179,11 +1179,6 @@
       if (page) {
         html = page.html;
         appEl.dataset.currentPageId = String(page.id);
-      } else if (window.__previewHtml) {
-        /* AI 触发的临时预览：走同一渲染路径，但不关联作品、不保存 */
-        html = window.__previewHtml;
-        window.__previewHtml = null;
-        delete appEl.dataset.currentPageId;
       } else {
         runner.mode = "random";
         runner.pageId = null;
@@ -1218,7 +1213,7 @@
     });
     appEl.appendChild(iframe);
 
-    /* 只对"作品预览 / AI 临时预览"（非随机）显示截图按钮 */
+    /* 只对"作品预览"（非随机）显示截图按钮 */
     if (runner.mode === "page") {
       appEl.appendChild(buildScreenshotButton(iframe));
     }
@@ -1308,6 +1303,7 @@
       if (lightTheme) lightTheme.disabled = false;
       if (darkTheme) darkTheme.disabled = true;
     }
+    /* CodeMirror实例若存在也同步 */
     if (editor) {
       try {
         editor.setOption("theme", theme === "dark" ? "dracula" : "default");
@@ -1381,7 +1377,7 @@
     g2.appendChild(ta);
     wrap.appendChild(g2);
 
-    /* AI输入框 + 状态区（无外框，状态区在上） */
+    /* AI输入框+状态区（无外框，状态区在上） */
     wrap.appendChild(buildGeneratorAIPanel());
 
     /* 上传图片（标签在按钮下方） */
@@ -1399,7 +1395,7 @@
     g3.appendChild(previewBox);
     wrap.appendChild(g3);
 
-    /* 标题输入 + 提交按钮 并列一行 */
+    /* 标题输入 + 提交按钮并列一行 */
     var row = el("div", "gen-inline-row");
     var titleInput = document.createElement("input");
     titleInput.type = "text";
@@ -1570,6 +1566,7 @@
           args && typeof args.code === "string" ? args.code : "";
         var sel = editor.getSelection();
         if (!sel) {
+          /* 无选中则退化为覆盖 */
           editor.setValue(code3);
         } else {
           editor.replaceSelection(code3);
@@ -1637,14 +1634,21 @@
           ($("#title") ? $("#title").value.trim() : "") ||
           T("generator.untitled");
         var h2 = generatePageHtml(t3, s2, uploadedImageDataUrl || "");
-        /* 存临时预览 HTML，跳首页由 renderRunner 统一渲染；
-         * 不调用 clearDraft()，编辑器内容保留在草稿里 */
-        window.__previewHtml = h2;
         runner.mode = "page";
         runner.pageId = null;
         destroyEditor();
-        if (getRoute() === "/") render();
-        else location.hash = "#/";
+        appEl.replaceChildren();
+        appEl.classList.remove("ai-mode");
+        lockAppSize();
+        appEl.classList.add("preview-mode");
+        var iframe2 = document.createElement("iframe");
+        iframe2.setAttribute("title", "preview");
+        iframe2.setAttribute("scrolling", "no");
+        iframe2.srcdoc = h2;
+        iframe2.addEventListener("load", function () {
+          bindIframeProxy(iframe2);
+        });
+        appEl.appendChild(iframe2);
         return { ok: true, text: "已打开预览" };
       }
       return { ok: false, text: T("gen.toolUnknown", { name: toolName }) };
@@ -1662,6 +1666,7 @@
     if (!text) return null;
     var t = String(text);
 
+    /* 优先取js代码块 */
     var jsBlocks = [];
     var reJs = /```(?:js|javascript)\s*\n([\s\S]*?)```/gi;
     var m;
@@ -1670,6 +1675,7 @@
     }
     if (jsBlocks.length) return jsBlocks.join("\n\n");
 
+    /* 其次通用代码块 */
     var blocks = [];
     var re = /```\s*\n([\s\S]*?)```/g;
     while ((m = re.exec(t))) {
@@ -1677,6 +1683,7 @@
     }
     if (blocks.length) return blocks.join("\n\n");
 
+    /* 最后：整段像代码 */
     if (/function\s+setup\s*\(/.test(t) || /function\s+draw\s*\(/.test(t)) {
       return t.trim();
     }
@@ -1797,6 +1804,7 @@
       };
     }
 
+    /* 组合超时 + 外部signal */
     var timeoutCtl = new AbortController();
     var timeoutId = setTimeout(function () {
       try {
@@ -1809,6 +1817,7 @@
     } else if (aiState.abortController && !opts) {
       options.signal = aiState.abortController.signal;
     }
+    /* 优先用外部signal；同时挂上超时（两个信号，先触发的生效） */
     if (options.signal) {
       var extSig = options.signal;
       var combined = new AbortController();
@@ -2223,6 +2232,7 @@
       genRunLoop(intent, userText);
     };
 
+    /* 编辑器为空：若用户输入含代码块，视为 modify（用户贴的代码即目标） */
     if (!hasContent) {
       if (userTextHasCode(userText)) {
         doSend("modify");
@@ -2307,6 +2317,7 @@
 
     uploadedImageDataUrl = null;
 
+    /* 恢复草稿（编辑器 + 标题） */
     generatorDraft = loadDraft();
     titleInput.value = generatorDraft.title || "";
 
@@ -2458,7 +2469,7 @@
 
     bindGeneratorAIPanel();
   }
-  
+
   /* AI聊天页骨架 */
 
   function renderAIAssistant() {
@@ -2515,15 +2526,14 @@
     page.appendChild(clearBtn);
     page.appendChild(fileInput);
     page.appendChild(messages);
-    page";
-.appendChild(statsBar);
+    page.appendChild(statsBar);
     page.appendChild(inputWrap);
-       return page;
+    return page;
   }
 
-  /* top模型菜单（AI聊天页）*/
+  /* 模型菜单（AI聊天页） */
 
-  function buildAIModel.appendChild(addBtnMenu() {
+  function buildAIModelMenu() {
     var menu = $("#aiModelMenu");
     if (!menu) return;
     var frag = document.createDocumentFragment();
@@ -2532,7 +2542,8 @@
     var addBtn = el("div", "ai-model-topbtn ai-model-add", T("ai.topRowAdd"));
     addBtn.dataset.add = "1";
     var importBtn = el("div", "ai-model-topbtn", T("ai.topRowImport"));
-    importBtn.dataset.import = "1);
+    importBtn.dataset.import = "1";
+    topRow.appendChild(addBtn);
     topRow.appendChild(importBtn);
     frag.appendChild(topRow);
 
@@ -2624,6 +2635,7 @@
 
   /* AI消息渲染（含操作栏 / Token） */
 
+  /* 复制文本到剪贴板 */
   function copyToClipboard(text) {
     if (!text) return;
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -2647,6 +2659,7 @@
     } catch (e) {}
   }
 
+  /* 简短提示：在气泡旁浮现"已复制" */
   function flashTip(anchorEl, text) {
     if (!anchorEl) return;
     var tip = el("div", "msg-flash-tip", text);
@@ -2656,9 +2669,11 @@
     }, 1200);
   }
 
+  /* 构建消息操作栏 */
   function buildMsgActions(m, index) {
     var bar = el("div", "msg-actions");
 
+    /* 复制 */
     var copyBtn = el("button", "msg-action-btn", "⧉");
     copyBtn.type = "button";
     copyBtn.title = T("msg.copy");
@@ -2669,6 +2684,7 @@
     });
     bar.appendChild(copyBtn);
 
+    /* 重生成：仅最后一条assistant */
     var chat = aiState.chats[aiState.currentModel] || [];
     var isLastAssistant =
       m.role === "assistant" && index === chat.length - 1 && index > 0;
@@ -2683,6 +2699,7 @@
       bar.appendChild(regenBtn);
     }
 
+    /* 删除 */
     var delBtn = el("button", "msg-action-btn", "✕");
     delBtn.type = "button";
     delBtn.title = T("msg.delete");
@@ -2692,6 +2709,7 @@
     });
     bar.appendChild(delBtn);
 
+    /* Token（仅assistant） */
     if (m.role === "assistant" && m.usage) {
       var up = m.usage.prompt_tokens || 0;
       var down = m.usage.completion_tokens || 0;
@@ -2721,6 +2739,8 @@
 
     var actions = buildMsgActions(m, index);
 
+    /* user：操作栏在左，气泡在右
+       assistant：气泡在左，操作栏在右 */
     if (m.role === "user") {
       row.appendChild(actions);
       row.appendChild(b);
@@ -2729,6 +2749,7 @@
       row.appendChild(actions);
     }
 
+    /* 移动端长按：弹出底部菜单 */
     var pressTimer = null;
     row.addEventListener(
       "touchstart",
@@ -2757,6 +2778,7 @@
     return el("div", "ai-empty", text);
   }
 
+  /* 移动端长按底部菜单 */
   function showMsgMobileMenu(m, index) {
     openModal(function (box) {
       var list = el("div", "msg-mobile-menu");
@@ -2882,6 +2904,7 @@
     updateStatsBar();
   }
 
+  /* 底部Token累计 */
   function updateStatsBar() {
     var bar = $("#aiStats");
     if (!bar) return;
@@ -2919,9 +2942,11 @@
     btn.disabled = !!aiState.busy;
   }
 
+  /* 兼容有tool_calls的assistant消息 */
   function getLastAssistantBubble() {
     var box = $("#aiMessages");
     if (!box) return null;
+    /* 从后往前找最后一条assistant节点 */
     var kids = box.children;
     for (var i = kids.length - 1; i >= 0; i--) {
       if (kids[i].classList.contains("assistant")) {
@@ -2948,13 +2973,12 @@
       ? T("msg.deleteConfirmBody", { n: after })
       : T("msg.deleteConfirmBodyShort");
     showConfirm(
-.stream      T("msg.deleteConfirmTitle"),
-Token +=      1 msgText,
+      T("msg.deleteConfirmTitle"),
+      msgText,
       function () {
-;
-    var        chat.splice(index myToken =);
+        chat.splice(index);
         saveAIChats(model);
- ai        renderedMsgCount = 0;
+        renderedMsgCount = 0;
         renderAIMessages();
       },
       true,
@@ -2969,17 +2993,21 @@ Token +=      1 msgText,
     var userMsg = chat[index - 1];
     if (!userMsg || userMsg.role !== "user") return;
 
+    /* 删除该条及其后所有 */
     chat.splice(index);
     saveAIChats(model);
     renderedMsgCount = 0;
     renderAIMessages();
 
+    /* 用上一条user消息重新请求 */
     var text = userMsg.content || "";
     if (!text.trim()) return;
 
+    /* 复用aiSend的核心：临时构造请求 */
     aiSendWithText(text);
   }
 
+  /* 独立出"用指定文本请求"的核心逻辑，供 aiSend / regenerate复用 */
   function aiSendWithText(text) {
     var model = aiState.currentModel;
     if (!model) return;
@@ -2994,6 +3022,7 @@ Token +=      1 msgText,
     var chat = aiState.chats[model];
     if (!Array.isArray(chat)) chat = aiState.chats[model] = [];
 
+    /* 若最后一条是user，直接追加占位；否则先追加user */
     var lastMsg = chat[chat.length - 1];
     if (!(lastMsg && lastMsg.role === "user" && lastMsg.content === text)) {
       chat.push({ role: "user", content: text });
@@ -3006,7 +3035,8 @@ Token +=      1 msgText,
         aiState.abortController.abort();
       } catch (e) {}
     }
-    aiStateState.streamToken;
+    aiState.streamToken += 1;
+    var myToken = aiState.streamToken;
     aiState.abortController = new AbortController();
 
     aiState.busy = true;
@@ -3841,88 +3871,10 @@ Token +=      1 msgText,
     }
   }
 
-  /* 移动端键盘适配 */
-
-  function bindAIPageViewportFix() {
-    if (aiViewportCleanup) {
-      aiViewportCleanup();
-      aiViewportCleanup = null;
-    }
-
-    var page = document.querySelector(".ai-page");
-    if (!page) return;
-
-    var vv = window.visualViewport;
-    var box = document.querySelector("#aiMessages");
-
-    /* 锁定body：防止iOS在键盘弹出时自动上推页面 */
-    var bodyPrev = {
-      overflow: document.body.style.overflow,
-      position: document.body.style.position,
-      width: document.body.style.width,
-      height: document.body.style.height,
-    };
-    document.body.style.overflow = "hidden";
-    document.body.style.position = "fixed";
-    document.body.style.width = "100%";
-    document.body.style.height = "100%";
-
-    function update() {
-      if (!page.isConnected) return;
-      if (vv) {
-        page.style.height = vv.height + "px";
-        page.style.width = vv.width + "px";
-      }
-      /* 强制回顶：iOS可能强行滚动window，这里拉回 */
-      if (window.scrollY !== 0 || window.scrollX !== 0) {
-        window.scrollTo(0, 0);
-      }
-      if (box) box.scrollTop = box.scrollHeight;
-    }
-
-    if (vv) {
-      vv.addEventListener("resize", update);
-      /* 监听 scroll —— iOS 推页面时会触发，用于拉回顶部 */
-      vv.addEventListener("scroll", update);
-    }
-    window.addEventListener("resize", update);
-
-    update();
-
-    var onFocus = function () {
-      setTimeout(update, 300);
-    };
-    document.addEventListener("focusin", onFocus);
-
-    aiViewportCleanup = function () {
-      if (vv) {
-        vv.removeEventListener("resize", update);
-        vv.removeEventListener("scroll", update);
-      }
-      window.removeEventListener("resize", update);
-      document.removeEventListener("focusin", onFocus);
-      if (page) {
-        page.style.height = "";
-        page.style.width = "";
-      }
-      /* 恢复 body */
-      document.body.style.overflow = bodyPrev.overflow;
-      document.body.style.position = bodyPrev.position;
-      document.body.style.width = bodyPrev.width;
-      document.body.style.height = bodyPrev.height;
-    };
-  }
-
   /* 总渲染入口 */
 
   function render() {
     var path = getRoute();
-
-    /* 离开AI页时清理键盘监听 */
-    if (aiViewportCleanup) {
-      aiViewportCleanup();
-      aiViewportCleanup = null;
-    }
 
     if (genState.busy) {
       if (genState.abortController) {
@@ -3961,7 +3913,6 @@ Token +=      1 msgText,
       appEl.classList.add("ai-mode");
       appEl.appendChild(renderAIAssistant());
       bindAIAssistant();
-      bindAIPageViewportFix();
       return;
     }
 
