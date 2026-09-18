@@ -1,24 +1,30 @@
 /* =========================================================
    randomArt可视化创意编程 - 主逻辑
    =========================================================
-     - 外部依赖CDN；CodeMirror、JSZip在html 中引入
-     - json文案 + 模型配置加载
-     - 首页随机运行p5.js脚本，列表硬编码在下方P5_FILES
-     - HTML只有骨架；所有动态DOM由本文件createElement生成
-     - 文案与模型配置从json载入支持i18n
-     - 启动时同步boot一次，保证UI立即可用
-     - 编写脚本页支持AI生成代码（insert_code / append_code /
-       get_current_code），OpenAI与Gemini双协议
-     - 意图选项：覆盖 / 修改 / 取消（修改会把现有代码一并发送）
+   依赖：
+     - 外部 CDN：CodeMirror、JSZip（在 index.html 中引入）
+     - ./data/content.json（文案 + 模型配置，异步加载）
+     - ./p5/*.js（首页随机运行，列表硬编码在下方 P5_FILES）
+
+   设计：
+     - HTML 只有骨架；所有动态 DOM 由本文件 createElement 生成
+     - 文案与模型配置从 content.json 载入，支持 i18n
+     - 启动时同步 boot 一次，保证 UI 立即可用
+     - 编写脚本页支持 AI 生成代码（函数调用，OpenAI + Gemini 双协议）
+     - AI 聊天页支持消息级操作（复制/重生成/删除）与 Token 统计
+     - 作品预览支持 canvas 截图
    ========================================================= */
 (function () {
   "use strict";
 
-  /* 常量 */
+  /* ---------------------------------------------------------
+     常量
+     --------------------------------------------------------- */
 
   var STORAGE_KEY = "p5_pages";
   var THEME_KEY = "p5_theme";
   var LANG_KEY = "p5_lang";
+  var DRAFT_KEY = "p5_gen_draft";
   var MAX_IMAGE_BYTES = 1.5 * 1024 * 1024;
 
   var P5_DIR = "p5/";
@@ -33,10 +39,12 @@
 
   var MAX_CONTEXT_MESSAGES = 30;
   var MAX_TOOL_LOOP = 5;
+  var REQUEST_TIMEOUT_MS = 60000;
+  var MAX_TITLE_LEN = 60;
 
   var CONTENT_URL = "data/content.json";
 
-  /* AI编程工具声明（OpenAI格式） */
+  /* ---------- 工具声明（OpenAI 格式） ---------- */
   var TOOL_DECLARATIONS_OPENAI = [
     {
       type: "function",
@@ -88,9 +96,87 @@
         },
       },
     },
+    {
+      type: "function",
+      function: {
+        name: "replace_selection",
+        description:
+          "替换编辑器当前选中的文本。适用于：用户要求只改某段代码，且已选中时。",
+        parameters: {
+          type: "object",
+          properties: {
+            code: {
+              type: "string",
+              description: "替换选中内容的 p5.js 代码片段",
+            },
+          },
+          required: ["code"],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "get_canvas_size",
+        description:
+          "获取当前画布尺寸（宽 × 高）。适用于：需要根据画布尺寸生成代码时。",
+        parameters: {
+          type: "object",
+          properties: {},
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "set_color_palette",
+        description:
+          "设置配色方案。适用于：用户要求换一组配色，或需要统一色彩风格时。",
+        parameters: {
+          type: "object",
+          properties: {
+            colors: {
+              type: "array",
+              description: "颜色数组，RGB 十六进制字符串，如 #FF0000",
+              items: { type: "string" },
+            },
+          },
+          required: ["colors"],
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "save_page",
+        description:
+          "保存当前编辑器内容为作品。适用于：用户明确说“保存”且希望直接保存时。",
+        parameters: {
+          type: "object",
+          properties: {
+            title: {
+              type: "string",
+              description: "作品标题，可选，默认使用编辑器标题栏的内容",
+            },
+          },
+        },
+      },
+    },
+    {
+      type: "function",
+      function: {
+        name: "open_preview",
+        description:
+          "打开当前编辑器内容的预览。适用于：用户说“看一下效果”“预览”时。",
+        parameters: {
+          type: "object",
+          properties: {},
+        },
+      },
+    },
   ];
 
-  /* AI编程工具声明（Gemini格式） */
+  /* ---------- 工具声明（Gemini 格式） ---------- */
   var TOOL_DECLARATIONS_GEMINI = [
     {
       functionDeclarations: [
@@ -101,45 +187,80 @@
           parameters: {
             type: "OBJECT",
             properties: {
-              code: {
-                type: "STRING",
-                description:
-                  "完整的 p5.js 代码（含 setup / draw 等），不要加 markdown 代码块标记",
-              },
+              code: { type: "STRING", description: "完整的 p5.js 代码" },
             },
             required: ["code"],
           },
         },
         {
           name: "append_code",
-          description:
-            "在编辑器现有内容末尾追加代码。适用于：用户明确说“追加”“再加一段”“在末尾添加”时。",
+          description: "在编辑器现有内容末尾追加代码。",
           parameters: {
             type: "OBJECT",
             properties: {
-              code: {
-                type: "STRING",
-                description:
-                  "要追加的 p5.js 代码片段，不要加 markdown 代码块标记",
-              },
+              code: { type: "STRING", description: "要追加的代码片段" },
             },
             required: ["code"],
           },
         },
         {
           name: "get_current_code",
-          description:
-            "读取编辑器当前内容。适用于：需要在已有代码基础上修改时，先读取再决定怎么改。",
+          description: "读取编辑器当前内容。",
+          parameters: { type: "OBJECT", properties: {} },
+        },
+        {
+          name: "replace_selection",
+          description: "替换编辑器当前选中的文本。",
           parameters: {
             type: "OBJECT",
-            properties: {},
+            properties: {
+              code: { type: "STRING", description: "替换内容" },
+            },
+            required: ["code"],
           },
+        },
+        {
+          name: "get_canvas_size",
+          description: "获取当前画布尺寸。",
+          parameters: { type: "OBJECT", properties: {} },
+        },
+        {
+          name: "set_color_palette",
+          description: "设置配色方案。",
+          parameters: {
+            type: "OBJECT",
+            properties: {
+              colors: {
+                type: "ARRAY",
+                description: "颜色数组",
+                items: { type: "STRING" },
+              },
+            },
+            required: ["colors"],
+          },
+        },
+        {
+          name: "save_page",
+          description: "保存当前编辑器内容为作品。",
+          parameters: {
+            type: "OBJECT",
+            properties: {
+              title: { type: "STRING", description: "作品标题" },
+            },
+          },
+        },
+        {
+          name: "open_preview",
+          description: "打开当前编辑器内容的预览。",
+          parameters: { type: "OBJECT", properties: {} },
         },
       ],
     },
   ];
 
-  /* 运行时状态 */
+  /* ---------------------------------------------------------
+     运行时状态
+     --------------------------------------------------------- */
 
   var AI_MODELS = [];
   var I18N = {};
@@ -157,13 +278,13 @@
     streamToken: 0,
   };
 
-  /* 编写页AI面板（独立于AI聊天页） */
   var genState = {
     messages: [],
     busy: false,
     abortController: null,
     streamToken: 0,
     menuOpen: false,
+    palette: null,
   };
 
   var modalBackdrop, modalBox, lastFocused;
@@ -181,7 +302,9 @@
   var renderedMsgCount = 0;
   var renderedModelId = null;
 
-  /* i18n */
+  /* ---------------------------------------------------------
+     i18n
+     --------------------------------------------------------- */
 
   function T(key, params) {
     var pack = I18N[LANG] || I18N.zh || {};
@@ -207,17 +330,15 @@
 
   function applyI18nToStatic() {
     document.querySelectorAll("[data-i18n]").forEach(function (el) {
-      var key = el.getAttribute("data-i18n");
-      el.textContent = T(key);
+      el.textContent = T(el.getAttribute("data-i18n"));
     });
     document.querySelectorAll("[data-i18n-placeholder]").forEach(function (el) {
-      var key = el.getAttribute("data-i18n-placeholder");
-      el.setAttribute("placeholder", T(key));
-      el.setAttribute("aria-label", T(key));
+      var k = el.getAttribute("data-i18n-placeholder");
+      el.setAttribute("placeholder", T(k));
+      el.setAttribute("aria-label", T(k));
     });
     document.querySelectorAll("[data-i18n-title]").forEach(function (el) {
-      var key = el.getAttribute("data-i18n-title");
-      el.setAttribute("title", T(key));
+      el.setAttribute("title", T(el.getAttribute("data-i18n-title")));
     });
     try {
       document.title = T("site.title");
@@ -225,7 +346,9 @@
     } catch (e) {}
   }
 
-  /* 模型访问 */
+  /* ---------------------------------------------------------
+     模型访问
+     --------------------------------------------------------- */
 
   function getAllModels() {
     return AI_MODELS.concat(aiState.customModels || []);
@@ -250,7 +373,9 @@
     return c ? c.name : id;
   }
 
-  /* localStorage读写 */
+  /* ---------------------------------------------------------
+     localStorage 读写
+     --------------------------------------------------------- */
 
   function loadAIKeys() {
     try {
@@ -282,11 +407,13 @@
         result[m.id] = [];
       }
     });
+    /* 迁移老数据（幂等：成功才清除旧 key） */
     try {
       var oldRaw = localStorage.getItem(AI_CHAT_STORAGE);
       if (oldRaw) {
         var old = JSON.parse(oldRaw);
         if (old && typeof old === "object") {
+          var allOk = true;
           getAllModels().forEach(function (m) {
             if (
               Array.isArray(old[m.id]) &&
@@ -299,11 +426,13 @@
                   AI_CHAT_STORAGE + "_" + m.id,
                   JSON.stringify(old[m.id]),
                 );
-              } catch (e) {}
+              } catch (e) {
+                allOk = false;
+              }
             }
           });
+          if (allOk) localStorage.removeItem(AI_CHAT_STORAGE);
         }
-        localStorage.removeItem(AI_CHAT_STORAGE);
       }
     } catch (e) {}
     return result;
@@ -400,6 +529,32 @@
     }
   }
 
+  /* 编辑器草稿 */
+  function loadDraft() {
+    try {
+      var raw = localStorage.getItem(DRAFT_KEY);
+      var o = raw ? JSON.parse(raw) : null;
+      if (o && typeof o === "object") {
+        return {
+          title: typeof o.title === "string" ? o.title : "",
+          script: typeof o.script === "string" ? o.script : "",
+        };
+      }
+    } catch (e) {}
+    return { title: "", script: "" };
+  }
+  function saveDraft() {
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(generatorDraft));
+    } catch (e) {}
+  }
+  function clearDraft() {
+    generatorDraft = { title: "", script: "" };
+    try {
+      localStorage.removeItem(DRAFT_KEY);
+    } catch (e) {}
+  }
+
   function initAIState() {
     aiState.keys = loadAIKeys();
     aiState.customModels = loadCustomModels();
@@ -411,7 +566,9 @@
     });
   }
 
-  /* 存储超限 */
+  /* ---------------------------------------------------------
+     存储超限
+     --------------------------------------------------------- */
 
   function isQuotaError(e) {
     if (!e) return false;
@@ -456,7 +613,9 @@
     );
   }
 
-  /* 通用工具 */
+  /* ---------------------------------------------------------
+     通用工具
+     --------------------------------------------------------- */
 
   function $(sel, root) {
     return (root || document).querySelector(sel);
@@ -483,12 +642,12 @@
   }
   function safeFileName(name) {
     var n = String(name || "")
-      .replace(/[\\/:*?"<>|]/g, "_")
+      .replace(/[\\/:*?"<>|~#%&{}]/g, "_")
+      .replace(/\s+/g, "_")
       .trim();
+    if (n.length > MAX_TITLE_LEN) n = n.slice(0, MAX_TITLE_LEN);
     return n || "untitled";
   }
-
-  /* DOM小工厂 */
 
   function el(tag, className, text) {
     var e = document.createElement(tag);
@@ -496,12 +655,13 @@
     if (text != null) e.textContent = text;
     return e;
   }
-
   function rightGroup() {
     return el("div", "right-group");
   }
 
-  /* 弹窗 */
+  /* ---------------------------------------------------------
+     弹窗
+     --------------------------------------------------------- */
 
   function openModal(builder) {
     lastFocused = document.activeElement;
@@ -520,9 +680,7 @@
   function showAlert(title, message, isError) {
     openModal(function (box) {
       box.appendChild(el("h3", null, title));
-      if (message) {
-        box.appendChild(el("p", null, message));
-      }
+      if (message) box.appendChild(el("p", null, message));
       var a = el("div", "modal-actions");
       var rg = rightGroup();
       var ok = el("button", isError ? "danger" : null, T("common.know"));
@@ -536,7 +694,7 @@
   function showConfirm(title, message, onConfirm, danger) {
     openModal(function (box) {
       box.appendChild(el("h3", null, title));
-      box.appendChild(el("p", null, message));
+      if (message) box.appendChild(el("p", null, message));
       var a = el("div", "modal-actions");
       var rg = rightGroup();
       var cancel = el("button", "cancel", T("common.cancel"));
@@ -589,13 +747,14 @@
   function showPromptArea(opts) {
     openModal(function (box) {
       box.appendChild(el("h3", null, opts.title));
-      var hint = el("div", "modal-hint", opts.hint || T("ai.setPromptHint"));
+      box.appendChild(
+        el("div", "modal-hint", opts.hint || T("ai.setPromptHint")),
+      );
       var ta = document.createElement("textarea");
       ta.value = opts.value || "";
       ta.placeholder = opts.placeholder || "";
       ta.rows = 7;
       ta.spellcheck = false;
-
       var a = el("div", "modal-actions");
       var leftWrap = document.createElement("div");
       if (opts.value && opts.value.trim()) {
@@ -625,26 +784,20 @@
       rg.appendChild(ok);
       a.appendChild(leftWrap);
       a.appendChild(rg);
-      box.appendChild(hint);
       box.appendChild(ta);
       box.appendChild(a);
     });
   }
 
-  /* 三选弹窗：覆盖 / 修改 / 取消 */
   function showIntentChoice(title, message, onOverwrite, onModify) {
     openModal(function (box) {
       box.appendChild(el("h3", null, title));
       box.appendChild(el("p", null, message));
       var a = el("div", "modal-actions");
-
       var leftWrap = document.createElement("div");
       var cancel = el("button", "link-btn", T("common.cancel"));
-      cancel.addEventListener("click", function () {
-        closeModal();
-      });
+      cancel.addEventListener("click", closeModal);
       leftWrap.appendChild(cancel);
-
       var rg = rightGroup();
       var modifyBtn = el("button", "cancel", T("gen.intentModify"));
       modifyBtn.addEventListener("click", function () {
@@ -658,17 +811,20 @@
       });
       rg.appendChild(modifyBtn);
       rg.appendChild(overwriteBtn);
-
       a.appendChild(leftWrap);
       a.appendChild(rg);
       box.appendChild(a);
     });
   }
 
-  /* 生成作品HTML */
+  /* ---------------------------------------------------------
+     生成作品 HTML
+     --------------------------------------------------------- */
 
   function generatePageHtml(title, script, imageDataUrl) {
-    var safeTitle = escapeHtml(title || T("generator.untitledPage"));
+    var safeTitle = escapeHtml(
+      (title || T("generator.untitledPage")).slice(0, MAX_TITLE_LEN),
+    );
     var imgVar = imageDataUrl
       ? 'var imageUrl = "' + imageDataUrl + '";'
       : "var imageUrl = null;";
@@ -736,7 +892,7 @@
     }
     var zip = new JSZip();
     pages.forEach(function (page, idx) {
-      var base = (page.title || "untitled").replace(/[\\/:*?"<>|]/g, "_");
+      var base = safeFileName(page.title);
       zip.file("p5_" + base + "_" + (idx + 1) + ".html", page.html);
     });
     zip
@@ -762,7 +918,9 @@
       });
   }
 
-  /* 首页随机脚本 */
+  /* ---------------------------------------------------------
+     首页随机脚本
+     --------------------------------------------------------- */
 
   function pickRandomP5File() {
     if (!P5_FILES || !P5_FILES.length) return null;
@@ -805,7 +963,9 @@
     );
   }
 
-  /* 侧边栏作品列表 */
+  /* ---------------------------------------------------------
+     侧边栏作品列表
+     --------------------------------------------------------- */
 
   function updateSidebarPages() {
     var pages = getPages();
@@ -831,22 +991,18 @@
     var frag = document.createDocumentFragment();
     filtered.forEach(function (page) {
       var item = el("div", "page-item");
-
       var title = el("span", "page-title", page.title);
       title.dataset.action = "open";
       title.dataset.id = String(page.id);
-
       var actions = el("div", "actions");
       var renameBtn = el("button", "rename", "✏️");
       renameBtn.title = T("common.rename");
       renameBtn.dataset.action = "rename";
       renameBtn.dataset.id = String(page.id);
-
       var delBtn = el("button", "del", "🗑️");
       delBtn.title = T("common.delete");
       delBtn.dataset.action = "delete";
       delBtn.dataset.id = String(page.id);
-
       actions.appendChild(renameBtn);
       actions.appendChild(delBtn);
       item.appendChild(title);
@@ -856,7 +1012,9 @@
     sidebarPagesEl.replaceChildren(frag);
   }
 
-  /* iframe内p5画布事件代理 */
+  /* ---------------------------------------------------------
+     iframe 内 p5 画布事件代理
+     --------------------------------------------------------- */
 
   function bindIframeProxy(iframe) {
     var iwin, idoc;
@@ -876,7 +1034,8 @@
         attachProxy(canvas, iwin, idoc);
         return;
       }
-      if (++tries < 80) setTimeout(tryFindCanvas, 100);
+      /* 最长等待 15 秒（150 × 100ms） */
+      if (++tries < 150) setTimeout(tryFindCanvas, 100);
     }
     tryFindCanvas();
   }
@@ -972,7 +1131,9 @@
     });
   }
 
-  /* 预览锁屏 */
+  /* ---------------------------------------------------------
+     预览锁屏
+     --------------------------------------------------------- */
 
   function lockAppSize() {
     document.body.classList.add("preview-lock");
@@ -995,7 +1156,45 @@
     appEl.style.overflow = "";
   }
 
-  /* 首页渲染 */
+  /* ---------------------------------------------------------
+     截图按钮（作品预览专属）
+     --------------------------------------------------------- */
+
+  function buildScreenshotButton(iframe) {
+    var btn = el("button", "preview-screenshot-btn", "📷");
+    btn.id = "screenshotBtn";
+    btn.type = "button";
+    btn.title = T("preview.screenshot");
+    btn.addEventListener("click", function () {
+      try {
+        var doc = iframe.contentDocument;
+        if (!doc) throw new Error("no doc");
+        var canvas = doc.querySelector("canvas");
+        if (!canvas) {
+          showAlert(T("preview.screenshot"), T("preview.noCanvas"), true);
+          return;
+        }
+        var dataUrl = canvas.toDataURL("image/png");
+        var a = document.createElement("a");
+        a.href = dataUrl;
+        a.download = "canvas_" + Date.now() + ".png";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } catch (e) {
+        showAlert(
+          T("preview.screenshot"),
+          T("preview.screenshotFail"),
+          true,
+        );
+      }
+    });
+    return btn;
+  }
+
+  /* ---------------------------------------------------------
+     首页渲染
+     --------------------------------------------------------- */
 
   function renderRunner() {
     destroyEditor();
@@ -1046,6 +1245,11 @@
       bindIframeProxy(iframe);
     });
     appEl.appendChild(iframe);
+
+    /* 只对"作品预览"（非随机）显示截图按钮 */
+    if (runner.mode === "page") {
+      appEl.appendChild(buildScreenshotButton(iframe));
+    }
   }
 
   function setRandom() {
@@ -1062,7 +1266,9 @@
     else location.hash = "#/";
   }
 
-  /* 作品操作 */
+  /* ---------------------------------------------------------
+     作品操作
+     --------------------------------------------------------- */
 
   function deletePage(id) {
     var pages = getPages();
@@ -1103,7 +1309,9 @@
     });
   }
 
-  /* 侧边栏开关 */
+  /* ---------------------------------------------------------
+     侧边栏开关
+     --------------------------------------------------------- */
 
   function openSidebar() {
     sidebarEl.classList.add("open");
@@ -1118,7 +1326,9 @@
     hamburgerBtn.setAttribute("aria-expanded", "false");
   }
 
-  /* 主题 */
+  /* ---------------------------------------------------------
+     主题
+     --------------------------------------------------------- */
 
   function applyTheme(theme) {
     var lightTheme = $("#cm-theme-light");
@@ -1132,8 +1342,12 @@
       if (lightTheme) lightTheme.disabled = false;
       if (darkTheme) darkTheme.disabled = true;
     }
-    if (editor)
-      editor.setOption("theme", theme === "dark" ? "dracula" : "default");
+    /* CodeMirror 实例若存在也同步 */
+    if (editor) {
+      try {
+        editor.setOption("theme", theme === "dark" ? "dracula" : "default");
+      } catch (e) {}
+    }
   }
   function currentTheme() {
     return document.body.classList.contains("dark-mode") ? "dark" : "light";
@@ -1146,7 +1360,9 @@
     } catch (e) {}
   }
 
-  /* 路由 */
+  /* ---------------------------------------------------------
+     路由
+     --------------------------------------------------------- */
 
   function getRoute() {
     var hash = location.hash;
@@ -1171,25 +1387,32 @@
     }
   }
 
-  /* 关于页 */
+  /* ---------------------------------------------------------
+     关于页
+     --------------------------------------------------------- */
 
   function renderAbout() {
     var wrap = document.createElement("div");
     wrap.appendChild(el("h1", null, T("about.title")));
-    ["p1", "p2", "p3", "p4", "p5", "p6"].forEach(function (k) {
-      wrap.appendChild(el("p", null, T("about." + k)));
+    ["p1", "p2", "p3", "p4", "p5", "p6", "p7"].forEach(function (k) {
+      var text = T("about." + k);
+      if (text && text !== "about." + k) {
+        wrap.appendChild(el("p", null, text));
+      }
     });
     return wrap;
   }
 
-  /* 编写脚本页 */
+  /* ---------------------------------------------------------
+     编写脚本页
+     --------------------------------------------------------- */
 
   function renderGenerator() {
     var wrap = el("div", "generator-page");
     wrap.appendChild(el("h1", null, T("generator.title")));
     wrap.appendChild(el("p", null, T("generator.subtitle")));
 
-    /* 脚本代码 */
+    /* 1. 脚本代码 */
     var g2 = el("div", "form-group");
     var l2 = el("label", null, T("generator.labelScript"));
     l2.setAttribute("for", "script");
@@ -1199,10 +1422,10 @@
     g2.appendChild(ta);
     wrap.appendChild(g2);
 
-    /* AI输入框 + 状态区（无外框状态区在上） */
+    /* 2. AI 输入框 + 状态区（无外框，状态区在上） */
     wrap.appendChild(buildGeneratorAIPanel());
 
-    /* 上传图片（标签在按钮下方） */
+    /* 3. 上传图片（标签在按钮下方） */
     var g3 = el("div", "form-group");
     var fileInput = document.createElement("input");
     fileInput.type = "file";
@@ -1217,12 +1440,13 @@
     g3.appendChild(previewBox);
     wrap.appendChild(g3);
 
-    /* 标题输入 + 提交按钮并列一行 */
+    /* 4. 标题输入 + 提交按钮 并列一行 */
     var row = el("div", "gen-inline-row");
     var titleInput = document.createElement("input");
     titleInput.type = "text";
     titleInput.id = "title";
     titleInput.placeholder = T("generator.titlePlaceholder");
+    titleInput.maxLength = MAX_TITLE_LEN;
     var submit = el("button", null, T("generator.submit"));
     submit.id = "buildBtn";
     submit.type = "button";
@@ -1237,8 +1461,6 @@
 
     return wrap;
   }
-
-  /* 编写页AI面板 */
 
   function buildGeneratorAIPanel() {
     var frag = document.createDocumentFragment();
@@ -1274,10 +1496,8 @@
     var status = el("div", "gen-status");
     status.id = "genStatus";
 
-    /* 状态区在上，输入栏在下 */
     frag.appendChild(status);
     frag.appendChild(bar);
-
     return frag;
   }
 
@@ -1299,7 +1519,6 @@
     var menu = $("#genModelMenu");
     if (!menu) return;
     var frag = document.createDocumentFragment();
-
     var models = getToolModels();
     if (!models.length) {
       var empty = el("div", "ai-model-item");
@@ -1310,18 +1529,14 @@
       menu.replaceChildren(frag);
       return;
     }
-
     models.forEach(function (m) {
       var item = el("div", "ai-model-item");
       if (aiState.currentModel === m.id) item.classList.add("active");
       item.dataset.model = m.id;
-
       item.appendChild(el("span", "ai-check", "✓"));
       item.appendChild(el("span", "ai-model-name-text", m.name));
-
       frag.appendChild(item);
     });
-
     menu.replaceChildren(frag);
   }
 
@@ -1344,23 +1559,24 @@
     var box = $("#genStatus");
     if (box) box.replaceChildren();
   }
-
   function genStatusLine(text, kind) {
     var box = $("#genStatus");
     if (!box) return;
-    var line = el("div", "gen-status-line" + (kind ? " " + kind : ""), text);
-    box.appendChild(line);
+    box.appendChild(
+      el("div", "gen-status-line" + (kind ? " " + kind : ""), text),
+    );
     while (box.children.length > 12) box.removeChild(box.firstChild);
     box.scrollTop = box.scrollHeight;
   }
-
   function genSetBusy(busy) {
     genState.busy = busy;
     var btn = $("#genSendBtn");
     if (btn) btn.disabled = !!busy;
   }
 
-  /* 工具注册表 */
+  /* ---------------------------------------------------------
+     工具注册表
+     --------------------------------------------------------- */
 
   function executeToolCall(toolName, args) {
     try {
@@ -1369,10 +1585,8 @@
         if (!editor) throw new Error("editor not found");
         editor.setValue(code);
         generatorDraft.script = code;
-        return {
-          ok: true,
-          text: T("gen.toolInsert", { n: code.length }),
-        };
+        saveDraft();
+        return { ok: true, text: T("gen.toolInsert", { n: code.length }) };
       }
       if (toolName === "append_code") {
         var code2 = args && typeof args.code === "string" ? args.code : "";
@@ -1381,10 +1595,8 @@
         var next = cur.trim().length === 0 ? code2 : cur + "\n\n" + code2;
         editor.setValue(next);
         generatorDraft.script = next;
-        return {
-          ok: true,
-          text: T("gen.toolAppend", { n: code2.length }),
-        };
+        saveDraft();
+        return { ok: true, text: T("gen.toolAppend", { n: code2.length }) };
       }
       if (toolName === "get_current_code") {
         if (!editor) throw new Error("editor not found");
@@ -1395,6 +1607,97 @@
           displayText: T("gen.toolRead", { n: v.length }),
         };
       }
+      if (toolName === "replace_selection") {
+        if (!editor) throw new Error("editor not found");
+        var code3 =
+          args && typeof args.code === "string" ? args.code : "";
+        var sel = editor.getSelection();
+        if (!sel) {
+          /* 无选中则退化为覆盖 */
+          editor.setValue(code3);
+        } else {
+          editor.replaceSelection(code3);
+        }
+        generatorDraft.script = editor.getValue();
+        saveDraft();
+        return {
+          ok: true,
+          text: T("gen.toolReplace", { n: code3.length }),
+        };
+      }
+      if (toolName === "get_canvas_size") {
+        var W = window.innerWidth;
+        var H = window.innerHeight;
+        return {
+          ok: true,
+          text: JSON.stringify({ width: W, height: H }),
+          displayText: T("gen.toolCanvasSize", { w: W, h: H }),
+        };
+      }
+      if (toolName === "set_color_palette") {
+        var colors =
+          args && Array.isArray(args.colors) ? args.colors : [];
+        if (!colors.length) {
+          return { ok: false, text: T("gen.toolUnknown", { name: toolName }) };
+        }
+        genState.palette = colors;
+        return {
+          ok: true,
+          text: "已记录配色：" + colors.join(", "),
+          displayText: T("gen.toolPalette", { n: colors.length }),
+        };
+      }
+      if (toolName === "save_page") {
+        var t2 =
+          args && typeof args.title === "string" && args.title.trim()
+            ? args.title.trim()
+            : ($("#title") ? $("#title").value.trim() : "") ||
+              T("generator.untitled");
+        if (!editor) throw new Error("editor not found");
+        var script = editor.getValue().trim();
+        if (!script) {
+          return { ok: false, text: "编辑器为空，无法保存" };
+        }
+        var html = generatePageHtml(t2, script, uploadedImageDataUrl || "");
+        var newId = Date.now() + Math.floor(Math.random() * 1000);
+        var pages = getPages();
+        pages.push({
+          id: newId,
+          title: t2,
+          html: html,
+          timestamp: new Date().toISOString(),
+        });
+        if (savePages(pages)) {
+          updateSidebarPages();
+          return { ok: true, text: T("gen.toolSaved", { title: t2 }) };
+        }
+        return { ok: false, text: "保存失败" };
+      }
+      if (toolName === "open_preview") {
+        if (!editor) throw new Error("editor not found");
+        var s2 = editor.getValue().trim();
+        if (!s2) return { ok: false, text: "编辑器为空，无法预览" };
+        var t3 =
+          ($("#title") ? $("#title").value.trim() : "") ||
+          T("generator.untitled");
+        var h2 = generatePageHtml(t3, s2, uploadedImageDataUrl || "");
+        runner.mode = "page";
+        runner.pageId = null;
+        destroyEditor();
+        appEl.replaceChildren();
+        appEl.classList.remove("ai-mode");
+        lockAppSize();
+        appEl.classList.add("preview-mode");
+        var iframe2 = document.createElement("iframe");
+        iframe2.setAttribute("title", "preview");
+        iframe2.setAttribute("scrolling", "no");
+        iframe2.srcdoc = h2;
+        iframe2.addEventListener("load", function () {
+          bindIframeProxy(iframe2);
+        });
+        appEl.appendChild(iframe2);
+        return { ok: true, text: "已打开预览" };
+      }
       return { ok: false, text: T("gen.toolUnknown", { name: toolName }) };
     } catch (e) {
       return {
@@ -1404,26 +1707,41 @@
     }
   }
 
-  /* 从文本提取代码（降级） */
+  /* ---------------------------------------------------------
+     从文本提取代码（降级）
+     --------------------------------------------------------- */
 
   function extractCodeFromText(text) {
     if (!text) return null;
     var t = String(text);
 
-    var m = t.match(/```(?:js|javascript)\s*\n([\s\S]*?)```/i);
-    if (m && m[1]) return m[1].replace(/\s+$/, "");
+    /* 优先取 js 代码块 */
+    var jsBlocks = [];
+    var reJs = /```(?:js|javascript)\s*\n([\s\S]*?)```/gi;
+    var m;
+    while ((m = reJs.exec(t))) {
+      if (m[1]) jsBlocks.push(m[1].replace(/\s+$/, ""));
+    }
+    if (jsBlocks.length) return jsBlocks.join("\n\n");
 
-    m = t.match(/```\s*\n([\s\S]*?)```/);
-    if (m && m[1]) return m[1].replace(/\s+$/, "");
+    /* 其次通用代码块 */
+    var blocks = [];
+    var re = /```\s*\n([\s\S]*?)```/g;
+    while ((m = re.exec(t))) {
+      if (m[1]) blocks.push(m[1].replace(/\s+$/, ""));
+    }
+    if (blocks.length) return blocks.join("\n\n");
 
+    /* 最后：整段像代码 */
     if (/function\s+setup\s*\(/.test(t) || /function\s+draw\s*\(/.test(t)) {
       return t.trim();
     }
-
     return null;
   }
 
-  /* 内部消息至Gemini消息转换 */
+  /* ---------------------------------------------------------
+     内部消息 → Gemini 消息 转换
+     --------------------------------------------------------- */
 
   function findToolCallName(msgs, toolCallId) {
     for (var i = 0; i < msgs.length; i++) {
@@ -1448,10 +1766,7 @@
       if (m.role === "system") {
         systemInstruction = { parts: [{ text: m.content || "" }] };
       } else if (m.role === "user") {
-        contents.push({
-          role: "user",
-          parts: [{ text: m.content || "" }],
-        });
+        contents.push({ role: "user", parts: [{ text: m.content || "" }] });
       } else if (m.role === "assistant") {
         if (m.tool_calls && m.tool_calls.length) {
           var parts = [];
@@ -1466,18 +1781,12 @@
               argsObj = {};
             }
             parts.push({
-              functionCall: {
-                name: tc.function.name,
-                args: argsObj,
-              },
+              functionCall: { name: tc.function.name, args: argsObj },
             });
           });
           contents.push({ role: "model", parts: parts });
         } else {
-          contents.push({
-            role: "model",
-            parts: [{ text: m.content || "" }],
-          });
+          contents.push({ role: "model", parts: [{ text: m.content || "" }] });
         }
       } else if (m.role === "tool") {
         var tcName = findToolCallName(internalMsgs, m.tool_call_id);
@@ -1494,11 +1803,12 @@
         });
       }
     }
-
     return { systemInstruction: systemInstruction, contents: contents };
   }
 
-  /* 流式请求 */
+  /* ---------------------------------------------------------
+     流式请求（含超时）
+     --------------------------------------------------------- */
 
   function streamAI(model, key, messages, systemPrompt, onDelta, onRaw, opts) {
     var conf = aiModelConf(model);
@@ -1513,9 +1823,7 @@
       } else if (conv.systemInstruction) {
         body.systemInstruction = conv.systemInstruction;
       }
-      if (enableTools) {
-        body.tools = TOOL_DECLARATIONS_GEMINI;
-      }
+      if (enableTools) body.tools = TOOL_DECLARATIONS_GEMINI;
       url =
         conf.endpoint.replace(":generateContent", ":streamGenerateContent") +
         "?alt=sse&key=" +
@@ -1527,9 +1835,7 @@
       };
     } else {
       var msgs = [];
-      if (systemPrompt) {
-        msgs.push({ role: "system", content: systemPrompt });
-      }
+      if (systemPrompt) msgs.push({ role: "system", content: systemPrompt });
       messages.forEach(function (m) {
         msgs.push(m);
       });
@@ -1551,90 +1857,119 @@
       };
     }
 
+    /* 组合超时 + 外部 signal */
+    var timeoutCtl = new AbortController();
+    var timeoutId = setTimeout(function () {
+      try {
+        timeoutCtl.abort();
+      } catch (e) {}
+    }, REQUEST_TIMEOUT_MS);
+
     if (opts && opts.signal) {
       options.signal = opts.signal;
     } else if (aiState.abortController && !opts) {
       options.signal = aiState.abortController.signal;
     }
-
-    return fetch(url, options).then(function (res) {
-      if (!res.ok) {
-        return res.text().then(function (t) {
-          var msg = "HTTP " + res.status;
-          try {
-            var d = JSON.parse(t);
-            msg =
-              (d.error && d.error.message) ||
-              d.message ||
-              (d.error && d.error.status) ||
-              msg;
-          } catch (e) {}
-          throw new Error(msg);
-        });
-      }
-      if (!res.body || !res.body.getReader) {
-        throw new Error(T("chat.errStreamUnsupported"));
-      }
-
-      var reader = res.body.getReader();
-      var decoder = new TextDecoder();
-      var buffer = "";
-
-      function dispatchData(data) {
-        if (!data) return;
-        if (data === "[DONE]") {
-          if (onRaw) onRaw("[DONE]");
-          return;
-        }
+    /* 优先用外部 signal；同时挂上超时（两个信号，先触发的生效） */
+    if (options.signal) {
+      var extSig = options.signal;
+      var combined = new AbortController();
+      var onAbort = function () {
         try {
-          var obj = JSON.parse(data);
-          if (onRaw) onRaw(obj);
-          onDelta(obj);
+          combined.abort();
         } catch (e) {}
-      }
+      };
+      extSig.addEventListener("abort", onAbort);
+      timeoutCtl.signal.addEventListener("abort", onAbort);
+      options.signal = combined.signal;
+    } else {
+      options.signal = timeoutCtl.signal;
+    }
 
-      function processBuffer(flush) {
-        if (buffer.indexOf("\r") !== -1) {
-          buffer = buffer.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+    return fetch(url, options)
+      .then(function (res) {
+        if (!res.ok) {
+          return res.text().then(function (t) {
+            var msg = "HTTP " + res.status;
+            try {
+              var d = JSON.parse(t);
+              msg =
+                (d.error && d.error.message) ||
+                d.message ||
+                (d.error && d.error.status) ||
+                msg;
+            } catch (e) {}
+            throw new Error(msg);
+          });
         }
-        var sepIndex;
-        while ((sepIndex = buffer.indexOf("\n\n")) !== -1) {
-          var evt = buffer.slice(0, sepIndex);
-          buffer = buffer.slice(sepIndex + 2);
-          var lines = evt.split("\n");
-          for (var i = 0; i < lines.length; i++) {
-            var line = lines[i].trim();
-            if (line.indexOf("data:") === 0) {
-              dispatchData(line.slice(5).trim());
-            }
-          }
+        if (!res.body || !res.body.getReader) {
+          throw new Error(T("chat.errStreamUnsupported"));
         }
-        if (flush && buffer.trim()) {
-          var tail = buffer.trim();
-          if (tail.indexOf("data:") === 0) {
-            dispatchData(tail.slice(5).trim());
-          }
-          buffer = "";
-        }
-      }
 
-      function pump() {
-        return reader.read().then(function (result) {
-          if (result.done) {
-            processBuffer(true);
+        var reader = res.body.getReader();
+        var decoder = new TextDecoder();
+        var buffer = "";
+
+        function dispatchData(data) {
+          if (!data) return;
+          if (data === "[DONE]") {
+            if (onRaw) onRaw("[DONE]");
             return;
           }
-          buffer += decoder.decode(result.value, { stream: true });
-          processBuffer(false);
-          return pump();
-        });
-      }
+          try {
+            var obj = JSON.parse(data);
+            if (onRaw) onRaw(obj);
+            onDelta(obj);
+          } catch (e) {}
+        }
 
-      return pump();
-    });
+        function processBuffer(flush) {
+          if (buffer.indexOf("\r") !== -1) {
+            buffer = buffer.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+          }
+          var sepIndex;
+          while ((sepIndex = buffer.indexOf("\n\n")) !== -1) {
+            var evt = buffer.slice(0, sepIndex);
+            buffer = buffer.slice(sepIndex + 2);
+            var lines = evt.split("\n");
+            for (var i = 0; i < lines.length; i++) {
+              var line = lines[i].trim();
+              if (line.indexOf("data:") === 0) {
+                dispatchData(line.slice(5).trim());
+              }
+            }
+          }
+          if (flush && buffer.trim()) {
+            var tail = buffer.trim();
+            if (tail.indexOf("data:") === 0) {
+              dispatchData(tail.slice(5).trim());
+            }
+            buffer = "";
+          }
+        }
+
+        function pump() {
+          return reader.read().then(function (result) {
+            if (result.done) {
+              processBuffer(true);
+              return;
+            }
+            buffer += decoder.decode(result.value, { stream: true });
+            processBuffer(false);
+            return pump();
+          });
+        }
+
+        return pump();
+      })
+      .finally(function () {
+        clearTimeout(timeoutId);
+      });
   }
 
-  /* 结构化累积器 */
+  /* ---------------------------------------------------------
+     结构化累积器
+     --------------------------------------------------------- */
 
   function createStructuredAccumulator() {
     var meta = {
@@ -1733,7 +2068,9 @@
     return { consume: consume, finalize: finalize };
   }
 
-  /* 编写页AI主流程 */
+  /* ---------------------------------------------------------
+     编写页 AI 主流程
+     --------------------------------------------------------- */
 
   function genApplyCode(code, intent) {
     if (!editor || !code) return;
@@ -1744,9 +2081,9 @@
       editor.setValue(code);
     }
     generatorDraft.script = editor.getValue();
+    saveDraft();
   }
 
-  /* 判断用户输入是否已包含代码块 */
   function userTextHasCode(text) {
     if (!text) return false;
     if (/```/.test(text)) return true;
@@ -1772,24 +2109,16 @@
       content: T("gen.systemPrompt"),
     });
 
-    /* 构造user消息内容 */
     var userContent = "[intent: " + userIntent + "]\n";
-
-    /* modify且用户输入里没有代码块时，拼入编辑器当前代码；
-     * 若用户已经贴了代码，就不拼编辑器，避免双份冲突 */
     if (userIntent === "modify" && editor && !userTextHasCode(userText)) {
       var currentCode = editor.getValue() || "";
       if (currentCode.trim()) {
         userContent += "\n当前代码：\n```js\n" + currentCode + "\n```\n";
       }
     }
-
     userContent += "\n用户要求：" + userText;
 
-    genState.messages.push({
-      role: "user",
-      content: userContent,
-    });
+    genState.messages.push({ role: "user", content: userContent });
 
     genStatusClear();
     genStatusLine(T("gen.statusRequest", { model: aiModelName(model) }));
@@ -1824,9 +2153,7 @@
           if (cand && cand.content && cand.content.parts) {
             for (var i = 0; i < cand.content.parts.length; i++) {
               var p = cand.content.parts[i];
-              if (p && typeof p.text === "string") {
-                accumulated += p.text;
-              }
+              if (p && typeof p.text === "string") accumulated += p.text;
             }
           }
         } else {
@@ -1837,17 +2164,15 @@
         }
       };
 
-      var onRaw = function (obj) {
-        acc.consume(obj);
-      };
-
       streamAI(
         model,
         key,
         genState.messages.slice(),
         null,
         onDelta,
-        onRaw,
+        function (obj) {
+          acc.consume(obj);
+        },
         { tools: true, signal: mySignal },
       )
         .then(function () {
@@ -1872,16 +2197,13 @@
               } catch (e) {
                 args = {};
               }
-
               genStatusLine(T("gen.statusToolCall", { name: name }));
-
               var res = executeToolCall(name, args);
               var display = res.displayText ? res.displayText : res.text;
               genStatusLine(
                 T("gen.statusToolDone", { result: display }),
                 res.ok ? "ok" : "error",
               );
-
               genState.messages.push({
                 role: "tool",
                 tool_call_id: tc.id,
@@ -1907,13 +2229,16 @@
           } else {
             genStatusLine(T("gen.statusNoCode"), "warn");
           }
-
           genSetBusy(false);
         })
         .catch(function (err) {
           if (genState.streamToken !== myToken) return;
           var msg = String((err && err.message) || err);
-          if (err && err.name === "AbortError") return;
+          if (err && err.name === "AbortError") {
+            genStatusLine(T("gen.statusTimeout"), "error");
+            genSetBusy(false);
+            return;
+          }
           genStatusLine(T("gen.statusError", { msg: msg }), "error");
           genSetBusy(false);
         });
@@ -1964,8 +2289,13 @@
       genRunLoop(intent, userText);
     };
 
+    /* 编辑器为空：若用户输入含代码块，视为 modify（用户贴的代码即目标） */
     if (!hasContent) {
-      doSend("overwrite");
+      if (userTextHasCode(userText)) {
+        doSend("modify");
+      } else {
+        doSend("overwrite");
+      }
     } else {
       showIntentChoice(
         T("gen.editorNotEmptyTitle"),
@@ -2032,7 +2362,9 @@
     refreshGenModelBtn();
   }
 
-  /* 编写脚本页：交互 */
+  /* ---------------------------------------------------------
+     编写脚本页：原有交互
+     --------------------------------------------------------- */
 
   function bindGenerator() {
     var titleInput = $("#title");
@@ -2043,6 +2375,9 @@
     var buildBtn = $("#buildBtn");
 
     uploadedImageDataUrl = null;
+
+    /* 恢复草稿（编辑器 + 标题） */
+    generatorDraft = loadDraft();
     titleInput.value = generatorDraft.title || "";
 
     destroyEditor();
@@ -2086,11 +2421,13 @@
 
       editor.on("change", function () {
         generatorDraft.script = editor.getValue();
+        saveDraft();
       });
     }
 
     titleInput.addEventListener("input", function () {
       generatorDraft.title = this.value;
+      saveDraft();
     });
 
     fileInput.addEventListener("change", function () {
@@ -2131,7 +2468,9 @@
     });
 
     buildBtn.addEventListener("click", function () {
-      var title = titleInput.value.trim() || T("generator.untitled");
+      var title =
+        titleInput.value.trim().slice(0, MAX_TITLE_LEN) ||
+        T("generator.untitled");
       var script = (editor ? editor.getValue() : textarea.value).trim();
       if (!script) {
         showAlert(T("page.noScriptTitle"), T("page.noScriptBody"), true);
@@ -2152,25 +2491,19 @@
 
       updateSidebarPages();
 
-      /* 弹窗：提示 + 预览 / 下载HTML */
       openModal(function (box) {
         box.appendChild(el("h3", null, T("generator.buildOk")));
-
         var actions = el("div", "modal-actions");
-
         var leftWrap = document.createElement("div");
         var closeBtn = el("button", "link-btn", T("common.cancel"));
         closeBtn.addEventListener("click", closeModal);
         leftWrap.appendChild(closeBtn);
-
         var rg = rightGroup();
-
         var previewBtn = el("button", null, T("generator.preview"));
         previewBtn.addEventListener("click", function () {
           closeModal();
           runPage(newId);
         });
-
         var downloadBtn = el("button", "cancel", T("generator.download"));
         downloadBtn.addEventListener("click", function () {
           downloadSingleHtml(
@@ -2178,10 +2511,8 @@
             htmlContent,
           );
         });
-
         rg.appendChild(previewBtn);
         rg.appendChild(downloadBtn);
-
         actions.appendChild(leftWrap);
         actions.appendChild(rg);
         box.appendChild(actions);
@@ -2189,8 +2520,7 @@
 
       titleInput.value = "";
       if (editor) editor.setValue("");
-      generatorDraft.title = "";
-      generatorDraft.script = "";
+      clearDraft();
       uploadedImageDataUrl = "";
       previewEl.replaceChildren();
       fileInput.value = "";
@@ -2199,7 +2529,9 @@
     bindGeneratorAIPanel();
   }
 
-  /* AI页骨架 */
+  /* ---------------------------------------------------------
+     AI 聊天页骨架
+     --------------------------------------------------------- */
 
   function renderAIAssistant() {
     var page = el("div", "ai-page");
@@ -2217,6 +2549,10 @@
 
     var messages = el("div", "ai-messages");
     messages.id = "aiMessages";
+
+    var statsBar = el("div", "ai-stats");
+    statsBar.id = "aiStats";
+    statsBar.style.display = "none";
 
     var inputWrap = el("div", "ai-input-wrap");
     var bar = el("div", "ai-input-bar");
@@ -2251,11 +2587,14 @@
     page.appendChild(clearBtn);
     page.appendChild(fileInput);
     page.appendChild(messages);
+    page.appendChild(statsBar);
     page.appendChild(inputWrap);
     return page;
   }
 
-  /* 模型菜单（AI聊天页） */
+  /* ---------------------------------------------------------
+     模型菜单（AI 聊天页）
+     --------------------------------------------------------- */
 
   function buildAIModelMenu() {
     var menu = $("#aiModelMenu");
@@ -2275,13 +2614,10 @@
       var item = el("div", "ai-model-item");
       if (aiState.currentModel === m.id) item.classList.add("active");
       item.dataset.model = m.id;
-
       item.appendChild(el("span", "ai-check", "✓"));
-
       var name = el("span", "ai-model-name");
       var nameText = el("span", "ai-model-name-text", m.name);
       name.appendChild(nameText);
-
       if (!m.builtin) {
         var editBtn = el("button", "ai-model-edit", "✎");
         editBtn.type = "button";
@@ -2324,10 +2660,8 @@
       item.appendChild(promptBtn);
       item.appendChild(jsonBtn);
       item.appendChild(mdBtn);
-
       frag.appendChild(item);
     });
-
     menu.replaceChildren(frag);
   }
 
@@ -2362,13 +2696,104 @@
     menu.classList.toggle("show");
   }
 
-  /* AI消息渲染 */
+  /* ---------------------------------------------------------
+     AI 消息渲染（含操作栏 / Token）
+     --------------------------------------------------------- */
 
-  function buildMsgNode(m) {
+  /* 复制文本到剪贴板 */
+  function copyToClipboard(text) {
+    if (!text) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).catch(function () {
+        fallbackCopy(text);
+      });
+      return;
+    }
+    fallbackCopy(text);
+  }
+  function fallbackCopy(text) {
+    try {
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.cssText =
+        "position:fixed;left:-9999px;top:-9999px;opacity:0;";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    } catch (e) {}
+  }
+
+  /* 简短提示：在气泡旁浮现"已复制" */
+  function flashTip(anchorEl, text) {
+    if (!anchorEl) return;
+    var tip = el("div", "msg-flash-tip", text);
+    anchorEl.appendChild(tip);
+    setTimeout(function () {
+      if (tip.parentNode) tip.parentNode.removeChild(tip);
+    }, 1200);
+  }
+
+  /* 构建消息操作栏 */
+  function buildMsgActions(m, index) {
+    var bar = el("div", "msg-actions");
+
+    /* 复制 */
+    var copyBtn = el("button", "msg-action-btn", "⧉");
+    copyBtn.type = "button";
+    copyBtn.title = T("msg.copy");
+    copyBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      copyToClipboard(m.content || "");
+      flashTip(bar, T("msg.copied"));
+    });
+    bar.appendChild(copyBtn);
+
+    /* 重生成：仅最后一条 assistant */
+    var chat = aiState.chats[aiState.currentModel] || [];
+    var isLastAssistant =
+      m.role === "assistant" && index === chat.length - 1 && index > 0;
+    if (isLastAssistant) {
+      var regenBtn = el("button", "msg-action-btn", "↻");
+      regenBtn.type = "button";
+      regenBtn.title = T("msg.regen");
+      regenBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        regenerateMessage(index);
+      });
+      bar.appendChild(regenBtn);
+    }
+
+    /* 删除 */
+    var delBtn = el("button", "msg-action-btn", "✕");
+    delBtn.type = "button";
+    delBtn.title = T("msg.delete");
+    delBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      deleteMessageFrom(index);
+    });
+    bar.appendChild(delBtn);
+
+    /* Token（仅 assistant） */
+    if (m.role === "assistant" && m.usage) {
+      var up = m.usage.prompt_tokens || 0;
+      var down = m.usage.completion_tokens || 0;
+      var total = m.usage.total_tokens || up + down;
+      var tok = el("span", "msg-token", "↑" + up + " ↓" + down);
+      tok.title = total + " tokens";
+      bar.appendChild(tok);
+    }
+
+    return bar;
+  }
+
+  function buildMsgNode(m, index) {
     var row = el(
       "div",
       "ai-msg " + (m.role === "assistant" ? "assistant" : "user"),
     );
+    row.dataset.index = String(index);
+
     var b = el("div", "bubble");
     if (m.role === "assistant" && !m.content) {
       b.textContent = T("ai.thinking");
@@ -2376,12 +2801,100 @@
     } else {
       b.textContent = m.content;
     }
-    row.appendChild(b);
+
+    var actions = buildMsgActions(m, index);
+
+    /* user：操作栏在左，气泡在右
+       assistant：气泡在左，操作栏在右 */
+    if (m.role === "user") {
+      row.appendChild(actions);
+      row.appendChild(b);
+    } else {
+      row.appendChild(b);
+      row.appendChild(actions);
+    }
+
+    /* 移动端长按：弹出底部菜单 */
+    var pressTimer = null;
+    row.addEventListener(
+      "touchstart",
+      function () {
+        pressTimer = setTimeout(function () {
+          showMsgMobileMenu(m, index);
+          pressTimer = null;
+        }, 550);
+      },
+      { passive: true },
+    );
+    var cancelPress = function () {
+      if (pressTimer) {
+        clearTimeout(pressTimer);
+        pressTimer = null;
+      }
+    };
+    row.addEventListener("touchend", cancelPress);
+    row.addEventListener("touchcancel", cancelPress);
+    row.addEventListener("touchmove", cancelPress, { passive: true });
+
     return row;
   }
 
   function buildEmptyNode(text) {
     return el("div", "ai-empty", text);
+  }
+
+  /* 移动端长按底部菜单 */
+  function showMsgMobileMenu(m, index) {
+    openModal(function (box) {
+      var list = el("div", "msg-mobile-menu");
+      var items = [];
+
+      items.push({
+        icon: "⧉",
+        label: T("msg.copy"),
+        onTap: function () {
+          closeModal();
+          copyToClipboard(m.content || "");
+        },
+      });
+
+      var chat = aiState.chats[aiState.currentModel] || [];
+      if (m.role === "assistant" && index === chat.length - 1 && index > 0) {
+        items.push({
+          icon: "↻",
+          label: T("msg.regen"),
+          onTap: function () {
+            closeModal();
+            regenerateMessage(index);
+          },
+        });
+      }
+
+      items.push({
+        icon: "✕",
+        label: T("msg.delete"),
+        danger: true,
+        onTap: function () {
+          closeModal();
+          deleteMessageFrom(index);
+        },
+      });
+
+      items.forEach(function (it) {
+        var row = el("div", "msg-mobile-item" + (it.danger ? " danger" : ""));
+        row.appendChild(el("span", "msg-mobile-icon", it.icon));
+        row.appendChild(el("span", "msg-mobile-label", it.label));
+        row.addEventListener("click", it.onTap);
+        list.appendChild(row);
+      });
+
+      var cancel = el("button", "msg-mobile-cancel", T("common.cancel"));
+      cancel.type = "button";
+      cancel.addEventListener("click", closeModal);
+
+      box.appendChild(list);
+      box.appendChild(cancel);
+    });
   }
 
   function renderAIMessages() {
@@ -2395,6 +2908,7 @@
       }
       renderedModelId = null;
       renderedMsgCount = 0;
+      updateStatsBar();
       return;
     }
 
@@ -2413,6 +2927,7 @@
         );
       }
       renderedMsgCount = 0;
+      updateStatsBar();
       return;
     }
 
@@ -2421,11 +2936,12 @@
     if (renderedMsgCount === 0) {
       var frag = document.createDocumentFragment();
       for (var i = 0; i < chat.length; i++) {
-        frag.appendChild(buildMsgNode(chat[i]));
+        frag.appendChild(buildMsgNode(chat[i], i));
       }
       box.replaceChildren(frag);
       renderedMsgCount = chat.length;
       box.scrollTop = box.scrollHeight;
+      updateStatsBar();
       return;
     }
 
@@ -2436,19 +2952,53 @@
         renderedMsgCount = 0;
         var frag2 = document.createDocumentFragment();
         for (var k = 0; k < chat.length; k++) {
-          frag2.appendChild(buildMsgNode(chat[k]));
+          frag2.appendChild(buildMsgNode(chat[k], k));
         }
         box.replaceChildren(frag2);
         renderedMsgCount = chat.length;
         box.scrollTop = box.scrollHeight;
+        updateStatsBar();
         return;
       }
       for (var j = renderedMsgCount; j < chat.length; j++) {
-        box.appendChild(buildMsgNode(chat[j]));
+        box.appendChild(buildMsgNode(chat[j], j));
       }
       renderedMsgCount = chat.length;
       box.scrollTop = box.scrollHeight;
     }
+    updateStatsBar();
+  }
+
+  /* 底部 Token 累计 */
+  function updateStatsBar() {
+    var bar = $("#aiStats");
+    if (!bar) return;
+    var model = aiState.currentModel;
+    if (!model) {
+      bar.style.display = "none";
+      return;
+    }
+    var chat = aiState.chats[model] || [];
+    var totalPrompt = 0;
+    var totalCompletion = 0;
+    var turns = 0;
+    chat.forEach(function (m) {
+      if (m.role === "assistant" && m.usage) {
+        totalPrompt += m.usage.prompt_tokens || 0;
+        totalCompletion += m.usage.completion_tokens || 0;
+        turns += 1;
+      }
+    });
+    if (!turns) {
+      bar.style.display = "none";
+      return;
+    }
+    var total = totalPrompt + totalCompletion;
+    bar.style.display = "block";
+    bar.textContent = T("ai.stats", {
+      turns: turns,
+      total: total.toLocaleString(),
+    });
   }
 
   function updateAISendBtn() {
@@ -2457,12 +3007,18 @@
     btn.disabled = !!aiState.busy;
   }
 
+  /* 兼容有 tool_calls 的 assistant 消息 */
   function getLastAssistantBubble() {
     var box = $("#aiMessages");
     if (!box) return null;
-    var last = box.lastElementChild;
-    if (!last || !last.classList.contains("assistant")) return null;
-    return last.querySelector(".bubble");
+    /* 从后往前找最后一条 assistant 节点 */
+    var kids = box.children;
+    for (var i = kids.length - 1; i >= 0; i--) {
+      if (kids[i].classList.contains("assistant")) {
+        return kids[i].querySelector(".bubble");
+      }
+    }
+    return null;
   }
 
   function isNearBottom(box) {
@@ -2470,7 +3026,190 @@
     return box.scrollHeight - box.scrollTop - box.clientHeight < 80;
   }
 
-  /* 自定义模型编辑弹窗 */
+  /* ---------------------------------------------------------
+     消息操作：删除 / 重新生成
+     --------------------------------------------------------- */
+
+  function deleteMessageFrom(index) {
+    var model = aiState.currentModel;
+    if (!model) return;
+    var chat = aiState.chats[model] || [];
+    if (index < 0 || index >= chat.length) return;
+    var after = chat.length - index - 1;
+    var msgText = after > 0
+      ? T("msg.deleteConfirmBody", { n: after })
+      : T("msg.deleteConfirmBodyShort");
+    showConfirm(
+      T("msg.deleteConfirmTitle"),
+      msgText,
+      function () {
+        chat.splice(index);
+        saveAIChats(model);
+        renderedMsgCount = 0;
+        renderAIMessages();
+      },
+      true,
+    );
+  }
+
+  function regenerateMessage(index) {
+    var model = aiState.currentModel;
+    if (!model) return;
+    var chat = aiState.chats[model] || [];
+    if (index < 1) return;
+    var userMsg = chat[index - 1];
+    if (!userMsg || userMsg.role !== "user") return;
+
+    /* 删除该条及其后所有 */
+    chat.splice(index);
+    saveAIChats(model);
+    renderedMsgCount = 0;
+    renderAIMessages();
+
+    /* 用上一条 user 消息重新请求 */
+    var text = userMsg.content || "";
+    if (!text.trim()) return;
+
+    /* 复用 aiSend 的核心：临时构造请求 */
+    aiSendWithText(text);
+  }
+
+  /* 独立出"用指定文本请求"的核心逻辑，供 aiSend / regenerate 复用 */
+  function aiSendWithText(text) {
+    var model = aiState.currentModel;
+    if (!model) return;
+    var key = aiState.keys[model];
+    if (!key) {
+      promptAPIKey(model, function () {
+        if (aiState.keys[model]) aiSendWithText(text);
+      });
+      return;
+    }
+
+    var chat = aiState.chats[model];
+    if (!Array.isArray(chat)) chat = aiState.chats[model] = [];
+
+    /* 若最后一条是 user，直接追加占位；否则先追加 user */
+    var lastMsg = chat[chat.length - 1];
+    if (!(lastMsg && lastMsg.role === "user" && lastMsg.content === text)) {
+      chat.push({ role: "user", content: text });
+    }
+    chat.push({ role: "assistant", content: "" });
+    saveAIChats(model);
+
+    if (aiState.abortController) {
+      try {
+        aiState.abortController.abort();
+      } catch (e) {}
+    }
+    aiState.streamToken += 1;
+    var myToken = aiState.streamToken;
+    aiState.abortController = new AbortController();
+
+    aiState.busy = true;
+    updateAISendBtn();
+    renderAIMessages();
+
+    var bubble = getLastAssistantBubble();
+    if (bubble) {
+      bubble.textContent = "";
+      bubble.classList.remove("pending");
+    }
+    var accumulated = "";
+    var conf = aiModelConf(model);
+    var isGemini = conf && conf.protocol === "gemini";
+    var box = $("#aiMessages");
+    var acc = createStructuredAccumulator();
+
+    function pushDelta(t2) {
+      if (aiState.streamToken !== myToken) return;
+      if (!t2) return;
+      accumulated += t2;
+      if (bubble) bubble.appendChild(document.createTextNode(t2));
+      if (box && isNearBottom(box)) box.scrollTop = box.scrollHeight;
+    }
+
+    var onDelta = function (obj) {
+      if (isGemini) {
+        var cand = obj.candidates && obj.candidates[0];
+        if (cand && cand.content && cand.content.parts) {
+          var t = "";
+          for (var i = 0; i < cand.content.parts.length; i++) {
+            t += cand.content.parts[i].text || "";
+          }
+          pushDelta(t);
+        }
+      } else {
+        var d = obj.choices && obj.choices[0] && obj.choices[0].delta;
+        if (d && d.content) pushDelta(d.content);
+      }
+    };
+
+    var payload = chat
+      .slice(0, -1)
+      .filter(function (m) {
+        return m.role === "user" || m.role === "assistant";
+      })
+      .map(function (m) {
+        return { role: m.role, content: m.content || "" };
+      });
+    if (payload.length > MAX_CONTEXT_MESSAGES) {
+      payload = payload.slice(-MAX_CONTEXT_MESSAGES);
+    }
+    var systemPrompt = aiState.prompts[model] || "";
+
+    streamAI(model, key, payload, systemPrompt, onDelta, function (raw) {
+      acc.consume(raw);
+    })
+      .then(function () {
+        if (aiState.streamToken !== myToken) return;
+        var meta = acc.finalize();
+        var msg = chat[chat.length - 1];
+        msg.content = accumulated || T("ai.emptyReply");
+        if (meta.id) msg.id = meta.id;
+        if (meta.model) msg.model = meta.model;
+        if (meta.created) msg.created = meta.created;
+        if (meta.finish_reason) msg.finish_reason = meta.finish_reason;
+        if (meta.usage) msg.usage = meta.usage;
+        if (meta.tool_calls) msg.tool_calls = meta.tool_calls;
+        saveAIChats(model);
+        aiState.busy = false;
+        updateAISendBtn();
+        renderAIMessages();
+      })
+      .catch(function (err) {
+        if (aiState.streamToken !== myToken) return;
+        aiState.busy = false;
+        updateAISendBtn();
+        var meta = acc.finalize();
+        var isAbort = err && (err.name === "AbortError" || err.code === 20);
+        if (accumulated) {
+          var msg = chat[chat.length - 1];
+          msg.content = accumulated;
+          if (meta.id) msg.id = meta.id;
+          if (meta.model) msg.model = meta.model;
+          if (meta.created) msg.created = meta.created;
+          if (meta.finish_reason) msg.finish_reason = meta.finish_reason;
+          if (meta.usage) msg.usage = meta.usage;
+          if (meta.tool_calls) msg.tool_calls = meta.tool_calls;
+        } else {
+          chat.pop();
+        }
+        saveAIChats(model);
+        renderAIMessages();
+        if (!isAbort) {
+          showAlert(
+            T("chat.errRequestTitle"),
+            String((err && err.message) || err) || T("chat.errRequestBody"),
+            true,
+          );
+        }
+      });
+  }
+
+  /* ---------------------------------------------------------
+     自定义模型编辑弹窗
+     --------------------------------------------------------- */
 
   function showModelEditor(modelId) {
     var isEdit = !!modelId;
@@ -2481,12 +3220,9 @@
       box.appendChild(
         el("h3", null, isEdit ? T("ai.editModelTitle") : T("model.addTitle")),
       );
-      var hint = el(
-        "div",
-        "modal-hint",
-        T("model.hint", { endpoint: "{endpoint}" }),
+      box.appendChild(
+        el("div", "modal-hint", T("model.hint", { endpoint: "{endpoint}" })),
       );
-      box.appendChild(hint);
 
       var l1 = el("label", null, T("model.labelName"));
       l1.style.cssText =
@@ -2547,7 +3283,6 @@
         var name = nameInput.value.trim();
         var ep = epInput.value.trim();
         var apiModel = apiInput.value.trim();
-
         if (!name) {
           nameInput.focus();
           return;
@@ -2564,7 +3299,6 @@
           apiInput.focus();
           return;
         }
-
         var supportsTools = !!toolsCb.checked;
 
         if (isEdit) {
@@ -2652,7 +3386,9 @@
     );
   }
 
-  /* 测试连接 */
+  /* ---------------------------------------------------------
+     测试连接
+     --------------------------------------------------------- */
 
   function testAIModelConnection(model) {
     var conf = aiModelConf(model);
@@ -2730,7 +3466,9 @@
       });
   }
 
-  /* Key / 提示词 */
+  /* ---------------------------------------------------------
+     Key / 提示词
+     --------------------------------------------------------- */
 
   function promptAPIKey(model, onSaved) {
     showPrompt(
@@ -2794,7 +3532,9 @@
     updateAISendBtn();
   }
 
-  /* 导出 / 导入 */
+  /* ---------------------------------------------------------
+     导出 / 导入
+     --------------------------------------------------------- */
 
   function triggerDownload(content, mime, filename) {
     var blob = new Blob([content], { type: mime });
@@ -2996,7 +3736,6 @@
         var cancelBtn = el("button", "link-btn", T("common.cancel"));
         cancelBtn.addEventListener("click", closeModal);
         leftWrap.appendChild(cancelBtn);
-
         var rg = rightGroup();
         var appendBtn = el("button", "cancel", T("common.append"));
         appendBtn.addEventListener("click", function () {
@@ -3021,7 +3760,9 @@
     reader.readAsText(file);
   }
 
-  /* AI聊天页：发送 / 清空 */
+  /* ---------------------------------------------------------
+     AI 聊天页：发送 / 清空 / 绑定
+     --------------------------------------------------------- */
 
   function aiSend() {
     if (aiState.busy) return;
@@ -3030,137 +3771,15 @@
       showAlert(T("chat.errNoModelTitle"), T("chat.errNoModelBody"), true);
       return;
     }
-    var key = aiState.keys[model];
-    if (!key) {
-      promptAPIKey(model, function () {
-        aiSend();
-      });
-      return;
-    }
-
     var inputEl = $("#aiInput");
     if (!inputEl) return;
     var text = (inputEl.value || "").trim();
     if (!text) return;
 
-    var chat = aiState.chats[model];
-    if (!Array.isArray(chat)) chat = aiState.chats[model] = [];
-
-    chat.push({ role: "user", content: text });
-    chat.push({ role: "assistant", content: "" });
-    saveAIChats(model);
-
     inputEl.value = "";
     inputEl.style.height = "auto";
 
-    if (aiState.abortController) {
-      try {
-        aiState.abortController.abort();
-      } catch (e) {}
-    }
-    aiState.streamToken += 1;
-    var myToken = aiState.streamToken;
-    aiState.abortController = new AbortController();
-
-    aiState.busy = true;
-    updateAISendBtn();
-    renderAIMessages();
-
-    var bubble = getLastAssistantBubble();
-    if (bubble) {
-      bubble.textContent = "";
-      bubble.classList.remove("pending");
-    }
-    var accumulated = "";
-    var conf = aiModelConf(model);
-    var isGemini = conf && conf.protocol === "gemini";
-    var box = $("#aiMessages");
-    var acc = createStructuredAccumulator();
-
-    function pushDelta(text2) {
-      if (aiState.streamToken !== myToken) return;
-      if (!text2) return;
-      accumulated += text2;
-      if (bubble) bubble.appendChild(document.createTextNode(text2));
-      if (box && isNearBottom(box)) box.scrollTop = box.scrollHeight;
-    }
-
-    var onDelta = function (obj) {
-      if (isGemini) {
-        var cand = obj.candidates && obj.candidates[0];
-        if (cand && cand.content && cand.content.parts) {
-          var t = "";
-          for (var i = 0; i < cand.content.parts.length; i++) {
-            t += cand.content.parts[i].text || "";
-          }
-          pushDelta(t);
-        }
-      } else {
-        var d = obj.choices && obj.choices[0] && obj.choices[0].delta;
-        if (d && d.content) pushDelta(d.content);
-      }
-    };
-
-    var payload = chat
-      .slice(0, -1)
-      .filter(function (m) {
-        return m.role === "user" || m.role === "assistant";
-      })
-      .map(function (m) {
-        return { role: m.role, content: m.content || "" };
-      });
-    if (payload.length > MAX_CONTEXT_MESSAGES) {
-      payload = payload.slice(-MAX_CONTEXT_MESSAGES);
-    }
-    var systemPrompt = aiState.prompts[model] || "";
-
-    streamAI(model, key, payload, systemPrompt, onDelta, function (raw) {
-      acc.consume(raw);
-    })
-      .then(function () {
-        if (aiState.streamToken !== myToken) return;
-        var meta = acc.finalize();
-        var msg = chat[chat.length - 1];
-        msg.content = accumulated || T("ai.emptyReply");
-        if (meta.id) msg.id = meta.id;
-        if (meta.model) msg.model = meta.model;
-        if (meta.created) msg.created = meta.created;
-        if (meta.finish_reason) msg.finish_reason = meta.finish_reason;
-        if (meta.usage) msg.usage = meta.usage;
-        if (meta.tool_calls) msg.tool_calls = meta.tool_calls;
-        saveAIChats(model);
-        aiState.busy = false;
-        updateAISendBtn();
-        renderAIMessages();
-      })
-      .catch(function (err) {
-        if (aiState.streamToken !== myToken) return;
-        aiState.busy = false;
-        updateAISendBtn();
-        var meta = acc.finalize();
-        var isAbort = err && (err.name === "AbortError" || err.code === 20);
-        if (accumulated) {
-          var msg = chat[chat.length - 1];
-          msg.content = accumulated;
-          if (meta.id) msg.id = meta.id;
-          if (meta.model) msg.model = meta.model;
-          if (meta.created) msg.created = meta.created;
-          if (meta.finish_reason) msg.finish_reason = meta.finish_reason;
-          if (meta.usage) msg.usage = meta.usage;
-          if (meta.tool_calls) msg.tool_calls = meta.tool_calls;
-        } else {
-          chat.pop();
-        }
-        saveAIChats(model);
-        renderAIMessages();
-        if (!isAbort) {
-          showAlert(
-            T("chat.errRequestTitle"),
-            String((err && err.message) || err) || T("chat.errRequestBody"),
-            true,
-          );
-        }
-      });
+    aiSendWithText(text);
   }
 
   function clearAIChat() {
@@ -3329,7 +3948,9 @@
     }
   }
 
-  /* 总渲染入口 */
+  /* ---------------------------------------------------------
+     总渲染入口
+     --------------------------------------------------------- */
 
   function render() {
     var path = getRoute();
@@ -3387,7 +4008,9 @@
     }
   }
 
-  /* 静态初始化 */
+  /* ---------------------------------------------------------
+     静态初始化
+     --------------------------------------------------------- */
 
   function initStatic() {
     modalBackdrop = $("#modalBackdrop");
@@ -3581,7 +4204,9 @@
     });
   }
 
-  /* 加载json */
+  /* ---------------------------------------------------------
+     加载 content.json
+     --------------------------------------------------------- */
 
   function loadContent() {
     return fetch(CONTENT_URL, { cache: "no-cache" })
@@ -3597,7 +4222,9 @@
       });
   }
 
-  /* 启动 */
+  /* ---------------------------------------------------------
+     启动
+     --------------------------------------------------------- */
 
   function boot() {
     initStatic();
