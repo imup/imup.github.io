@@ -13,7 +13,6 @@
      - 编写脚本页支持 AI 生成代码（函数调用，OpenAI + Gemini 双协议）
      - AI 聊天页支持消息级操作（复制/重生成/删除）与 Token 统计
      - 作品预览支持 canvas 截图；AI 预览统一走首页渲染路径
-     - 移动端键盘适配：body 锁定 + 只缩高度、宽度固定、不位移
    ========================================================= */
 (function () {
   "use strict";
@@ -302,7 +301,6 @@
   var generatorDraft = { title: "", script: "" };
   var renderedMsgCount = 0;
   var renderedModelId = null;
-  var aiViewportCleanup = null;
 
   /* ---------------------------------------------------------
      i18n
@@ -3920,100 +3918,11 @@
   }
 
   /* ---------------------------------------------------------
-     移动端键盘适配
-     ---------------------------------------------------------
-     原理：
-       - iOS Safari 键盘弹出时会"自动上推"页面 + "缩减可视视口"
-       - 若我们只缩高度，会与 iOS 自动上推叠加 → 双重缩减
-       - 解决方案：
-         1. 锁定 body（position: fixed）防止 iOS 自动上推
-         2. 监听 vv.scroll / scrollTo(0,0) 拉回页面
-         3. 只保留 .ai-page 高度缩减
-       - 宽度固定为可视宽度，避免被缩放
-       - 不设 transform / translateY
-     --------------------------------------------------------- */
-  function bindAIPageViewportFix() {
-    if (aiViewportCleanup) {
-      aiViewportCleanup();
-      aiViewportCleanup = null;
-    }
-
-    var page = document.querySelector(".ai-page");
-    if (!page) return;
-
-    var vv = window.visualViewport;
-    var box = document.querySelector("#aiMessages");
-
-    /* 锁定 body：防止 iOS 在键盘弹出时自动上推页面 */
-    var bodyPrev = {
-      overflow: document.body.style.overflow,
-      position: document.body.style.position,
-      width: document.body.style.width,
-      height: document.body.style.height,
-    };
-    document.body.style.overflow = "hidden";
-    document.body.style.position = "fixed";
-    document.body.style.width = "100%";
-    document.body.style.height = "100%";
-
-    function update() {
-      if (!page.isConnected) return;
-      if (vv) {
-        page.style.height = vv.height + "px";
-        page.style.width = vv.width + "px";
-      }
-      /* 强制回顶：iOS 可能强行滚动 window，这里拉回 */
-      if (window.scrollY !== 0 || window.scrollX !== 0) {
-        window.scrollTo(0, 0);
-      }
-      if (box) box.scrollTop = box.scrollHeight;
-    }
-
-    if (vv) {
-      vv.addEventListener("resize", update);
-      /* 监听 scroll —— iOS 推页面时会触发，用于拉回顶部 */
-      vv.addEventListener("scroll", update);
-    }
-    window.addEventListener("resize", update);
-
-    update();
-
-    var onFocus = function () {
-      setTimeout(update, 300);
-    };
-    document.addEventListener("focusin", onFocus);
-
-    aiViewportCleanup = function () {
-      if (vv) {
-        vv.removeEventListener("resize", update);
-        vv.removeEventListener("scroll", update);
-      }
-      window.removeEventListener("resize", update);
-      document.removeEventListener("focusin", onFocus);
-      if (page) {
-        page.style.height = "";
-        page.style.width = "";
-      }
-      /* 恢复 body */
-      document.body.style.overflow = bodyPrev.overflow;
-      document.body.style.position = bodyPrev.position;
-      document.body.style.width = bodyPrev.width;
-      document.body.style.height = bodyPrev.height;
-    };
-  }
-
-  /* ---------------------------------------------------------
      总渲染入口
      --------------------------------------------------------- */
 
   function render() {
     var path = getRoute();
-
-    /* 离开 AI 页时清理键盘监听 */
-    if (aiViewportCleanup) {
-      aiViewportCleanup();
-      aiViewportCleanup = null;
-    }
 
     if (genState.busy) {
       if (genState.abortController) {
@@ -4052,7 +3961,6 @@
       appEl.classList.add("ai-mode");
       appEl.appendChild(renderAIAssistant());
       bindAIAssistant();
-      bindAIPageViewportFix();
       return;
     }
 
