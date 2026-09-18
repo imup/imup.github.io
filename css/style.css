@@ -1115,7 +1115,7 @@ button:disabled {
 /* 无外框版本（位于脚本编辑框下方） */
 .gen-ai-bar-bare {
   margin-top: 12px;
-  margin-bottom: 32px;
+  margin-bottom: 12px;
 }
 
 /* 编写页AI输入框内的发送按钮：透明底 + 边框 */
