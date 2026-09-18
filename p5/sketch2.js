@@ -8,7 +8,6 @@ var fadeFrame = 0;
 var backgroundColor;
 var visualMode = 0;
 var numModes = 2;
-var invertColors = false;
 
 function setup() {
    nums = windowWidth * windowHeight / particleDensity;
@@ -25,19 +24,11 @@ function draw() {
    
    ++fadeFrame;
    if (fadeFrame % 5 == 0) {
-      if (invertColors) {
-         blendMode(ADD);
-      } else {
-         blendMode(DIFFERENCE);
-      }
+      blendMode(DIFFERENCE);
       fill(1, 1, 1);
       rect(0, 0, width, height);
       
-      if (invertColors) {
-         blendMode(DARKEST);
-      } else {
-         blendMode(LIGHTEST);
-      }
+      blendMode(LIGHTEST);
       fill(backgroundColor);
       rect(0, 0, width, height);
    }
@@ -66,9 +57,6 @@ function draw() {
          case 3:
          particleColor = color(blue(particles[i].color) + 70, green(particles[i].color) + 20, red(particles[i].color) - 50);
          break;
-      }
-      if (invertColors) {
-         particleColor = color(255 - red(particleColor), 255 - green(particleColor), 255 - blue(particleColor));
       }
       fill(red(particleColor), green(particleColor), blue(particleColor), alpha * fadeRatio);
       particles[i].display(radius);
@@ -125,10 +113,6 @@ function Particle() {
 
 function advanceVisual() {
    visualMode = ++visualMode % numModes;
-   if (visualMode == 0) {
-      invertColors = !invertColors;
-      backgroundColor = invertColors ? color(235, 235, 235) : color(20, 20, 20);
-   }
    noiseSeed(random()*Number.MAX_SAFE_INTEGER);
    background(backgroundColor);
    for (var i = 0; i < nums; i++) {
@@ -137,6 +121,21 @@ function advanceVisual() {
    }
 }
 
-function touchStarted(){
-  advanceVisual();
+var lastAdvanceTime = 0;
+
+function handleAdvance() {
+   var now = millis();
+   if (now - lastAdvanceTime < 250) return;
+   lastAdvanceTime = now;
+   advanceVisual();
+}
+
+function touchStarted() {
+   handleAdvance();
+   return false;
+}
+
+function mousePressed() {
+   if (typeof touches !== 'undefined' && touches.length > 0) return;
+   handleAdvance();
 }
