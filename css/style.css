@@ -1065,7 +1065,8 @@ button:disabled {
 }
 
 /* 输入框 */
-.ai-input-bar textarea {
+.ai-input-bar textarea,
+.gen-ai-bar textarea {
   flex: 1 1 auto;
   min-width: 0;
   resize: none;
@@ -1081,7 +1082,8 @@ button:disabled {
   line-height: 1.45;
   overflow-y: auto;
 }
-.ai-input-bar textarea::placeholder {
+.ai-input-bar textarea::placeholder,
+.gen-ai-bar textarea::placeholder {
   color: var(--text-placeholder);
 }
 
