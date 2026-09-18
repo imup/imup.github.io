@@ -1,4 +1,6 @@
-/* 主题变量 */
+/* =========================================================
+   主题变量
+   ========================================================= */
 :root {
   --primary: #007bff;
   --primary-hover: #0056b3;
@@ -71,7 +73,9 @@ body.dark-mode {
   --hover-dl: rgba(255, 255, 255, 0.14);
 }
 
-/* 全局 */
+/* =========================================================
+   全局
+   ========================================================= */
 * {
   box-sizing: border-box;
 }
@@ -107,7 +111,9 @@ body.preview-lock {
   touch-action: none;
 }
 
-/* 汉堡按钮 */
+/* =========================================================
+   汉堡按钮
+   ========================================================= */
 .hamburger-btn {
   position: fixed;
   top: clamp(8px, 2vw, 14px);
@@ -141,7 +147,9 @@ body.sidebar-open .hamburger-btn {
   pointer-events: none;
 }
 
-/* 侧边栏 */
+/* =========================================================
+   侧边栏
+   ========================================================= */
 .sidebar {
   position: fixed;
   top: 0;
@@ -312,7 +320,9 @@ body.sidebar-open .hamburger-btn {
   background: var(--line);
 }
 
-/* 遮罩 */
+/* =========================================================
+   遮罩
+   ========================================================= */
 .overlay {
   display: none;
   position: fixed;
@@ -327,7 +337,9 @@ body.sidebar-open .hamburger-btn {
   opacity: 1;
 }
 
-/* 主内容区 */
+/* =========================================================
+   主内容区
+   ========================================================= */
 #app {
   width: 100%;
   min-height: 100vh;
@@ -392,7 +404,9 @@ body.sidebar-open .hamburger-btn {
   margin: 0.5em 0;
 }
 
-/* 表单 */
+/* =========================================================
+   表单
+   ========================================================= */
 .form-group {
   margin-bottom: 15px;
 }
@@ -420,7 +434,24 @@ body.sidebar-open .hamburger-btn {
   font-size: 14px;
 }
 
-/* CodeMirror占位符浮层 */
+/* 上传图片按钮：去掉外框线 */
+.form-group input[type="file"] {
+  border: none;
+  padding-left: 0;
+  padding-right: 0;
+  background: transparent;
+}
+
+/* 上传图片标签：在按钮下方 */
+.form-group label.image-label-below {
+  margin-top: 6px;
+  margin-bottom: 0;
+  font-weight: normal;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+/* CodeMirror 占位符浮层 */
 .cm-placeholder-overlay {
   position: absolute;
   top: 5px;
@@ -437,7 +468,9 @@ body.sidebar-open .hamburger-btn {
   overflow: hidden;
 }
 
-/* 通用按钮 */
+/* =========================================================
+   通用按钮
+   ========================================================= */
 button {
   background: var(--primary);
   color: white;
@@ -487,7 +520,9 @@ button:disabled {
   background: var(--success);
 }
 
-/* 弹窗 */
+/* =========================================================
+   弹窗
+   ========================================================= */
 .modal-backdrop {
   display: none;
   position: fixed;
@@ -585,7 +620,9 @@ button:disabled {
   color: var(--danger);
 }
 
-/* AI助手 */
+/* =========================================================
+   AI 助手（聊天页）
+   ========================================================= */
 .ai-page {
   position: relative;
   display: flex;
@@ -599,8 +636,8 @@ button:disabled {
 /* 清除按钮 */
 .ai-clear-btn {
   position: absolute;
-  top: clamp(16px, 2vw, 14px);
-  right: clamp(16px, 3vw, 18px);
+  top: clamp(8px, 2vw, 14px);
+  right: clamp(10px, 3vw, 18px);
   z-index: 60;
   width: 28px;
   height: 28px;
@@ -611,7 +648,7 @@ button:disabled {
   border: none;
   color: inherit;
   font-size: 32px;
-  font-weight: 400;
+  font-weight: 300;
   line-height: 1;
   display: flex;
   align-items: center;
@@ -633,6 +670,7 @@ button:disabled {
   transform: scale(0.95);
 }
 
+/* 消息列表 */
 .ai-messages {
   flex: 1 1 auto;
   min-height: 0;
@@ -645,6 +683,9 @@ button:disabled {
 .ai-msg {
   margin-bottom: 12px;
   display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
 }
 .ai-msg:last-child {
   margin-bottom: 0;
@@ -676,6 +717,121 @@ button:disabled {
   font-style: italic;
 }
 
+/* 消息操作栏 */
+.msg-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  flex: 0 0 auto;
+}
+.ai-msg:hover .msg-actions {
+  opacity: 1;
+}
+.msg-action-btn {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.msg-action-btn:hover {
+  background: var(--hover);
+  color: var(--primary);
+}
+.msg-token {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  margin-left: 4px;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  white-space: nowrap;
+}
+
+/* "已复制"提示 */
+.msg-flash-tip {
+  position: absolute;
+  top: -20px;
+  right: 0;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  background: var(--modal-bg);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 2px 6px;
+  pointer-events: none;
+  animation: flashFade 1.2s ease forwards;
+}
+@keyframes flashFade {
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/* 移动端长按菜单 */
+.msg-mobile-menu {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 8px;
+}
+.msg-mobile-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.msg-mobile-item:hover {
+  background: var(--hover);
+}
+.msg-mobile-item:first-child {
+  border-top: 1px solid var(--line);
+}
+.msg-mobile-item.danger .msg-mobile-label {
+  color: var(--danger);
+}
+.msg-mobile-icon {
+  width: 20px;
+  text-align: center;
+  font-size: 16px;
+  color: var(--text-muted);
+}
+.msg-mobile-label {
+  flex: 1;
+  font-size: 0.95rem;
+}
+.msg-mobile-cancel {
+  width: 100%;
+  padding: 12px;
+  background: var(--neutral-btn);
+  margin-top: 4px;
+}
+
+/* 空状态 */
 .ai-empty {
   color: var(--text-tertiary);
   text-align: center;
@@ -685,7 +841,17 @@ button:disabled {
   white-space: pre-line;
 }
 
-/* 底部浮动输入区 */
+/* Token 累计栏 */
+.ai-stats {
+  flex: 0 0 auto;
+  padding: 6px 14px 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: center;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+}
+
+/* 底部输入区 */
 .ai-input-wrap {
   flex: 0 0 auto;
   padding: 10px 12px calc(12px + env(safe-area-inset-bottom));
@@ -711,6 +877,7 @@ button:disabled {
     border-color 0.3s;
 }
 
+/* 模型选择器 */
 .ai-model-picker {
   position: relative;
   flex: 0 0 auto;
@@ -747,6 +914,7 @@ button:disabled {
   background: rgba(0, 123, 255, 0.12);
 }
 
+/* 模型菜单 */
 .ai-model-menu {
   display: none;
   position: absolute;
@@ -765,7 +933,7 @@ button:disabled {
   display: block;
 }
 
-/* 菜单顶部：导入 + 自定义并排 */
+/* 菜单顶部：自定义 + 导入并排 */
 .ai-model-toprow {
   display: flex;
   align-items: stretch;
@@ -789,11 +957,11 @@ button:disabled {
 .ai-model-toprow .ai-model-topbtn:hover {
   background: rgba(0, 123, 255, 0.08);
 }
-/* 两个按钮之间的分隔竖线 */
 .ai-model-toprow .ai-model-topbtn + .ai-model-topbtn {
   border-left: 1px solid var(--line);
 }
 
+/* 模型行 */
 .ai-model-item {
   display: flex;
   align-items: center;
@@ -819,7 +987,6 @@ button:disabled {
   visibility: visible;
 }
 
-/* 模型名称容器：文本 + （自定义模型时）名字后的编辑符号 */
 .ai-model-item .ai-model-name {
   flex: 1;
   min-width: 0;
@@ -858,6 +1025,7 @@ button:disabled {
   border-color: var(--primary);
 }
 
+/* T / K / P / J / M 按钮 */
 .ai-model-item .ai-key,
 .ai-model-item .ai-prompt,
 .ai-model-item .ai-dl {
@@ -896,6 +1064,7 @@ button:disabled {
   color: var(--purple);
 }
 
+/* 输入框 */
 .ai-input-bar textarea {
   flex: 1 1 auto;
   min-width: 0;
@@ -916,6 +1085,7 @@ button:disabled {
   color: var(--text-placeholder);
 }
 
+/* 发送按钮（AI 聊天页） */
 .ai-send-btn {
   flex: 0 0 auto;
   width: 38px;
@@ -948,55 +1118,9 @@ button:disabled {
   cursor: not-allowed;
 }
 
-/* 响应式 */
-@media (max-width: 420px) {
-  .hamburger-btn {
-    font-size: 28px;
-  }
-  .action-buttons button {
-    flex: 1 1 auto;
-  }
-  .sidebar-footer .footer-item {
-    font-size: 0.82rem;
-    padding: 10px 6px calc(10px + env(safe-area-inset-bottom, 0px));
-  }
-  .ai-clear-btn {
-    width: 26px;
-    height: 26px;
-    min-width: 26px;
-    font-size: 28px;
-  }
-  .ai-model-menu {
-    min-width: 280px;
-  }
-}
-
-@media (max-height: 480px) {
-  .form-group .CodeMirror {
-    height: 140px !important;
-  }
-  .ai-messages {
-    padding-top: 54px;
-  }
-}
-
-
-/* AI生成面板（编写脚本页） */
-.gen-ai-panel {
-  margin-top: 24px;
-  padding: 12px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--bg);
-}
-
-.gen-ai-panel .gen-ai-heading {
-  font-weight: bold;
-  font-size: 0.95rem;
-  color: var(--text-secondary);
-  margin-bottom: 10px;
-}
-
+/* =========================================================
+   编写脚本页：AI 生成面板
+   ========================================================= */
 .gen-ai-bar {
   display: flex;
   align-items: flex-end;
@@ -1008,29 +1132,31 @@ button:disabled {
   padding: 6px;
 }
 
-.gen-ai-bar textarea {
-  flex: 1 1 auto;
-  min-width: 0;
-  resize: none;
-  border: none;
-  outline: none;
-  background: transparent;
-  color: inherit;
-  min-height: 34px;
-  max-height: 120px;
-  padding: 7px 6px;
-  font-family: inherit;
-  font-size: 15px;
-  line-height: 1.45;
-  overflow-y: auto;
-}
-.gen-ai-bar textarea::placeholder {
-  color: var(--text-placeholder);
+/* 无外框版本（位于脚本编辑框下方） */
+.gen-ai-bar-bare {
+  margin-top: 12px;
+  margin-bottom: 32px;
 }
 
+/* 编写页 AI 输入框内的发送按钮：透明底 + 边框 */
+.gen-ai-bar .ai-send-btn {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border-input);
+}
+.gen-ai-bar .ai-send-btn:hover {
+  background: var(--hover);
+  color: var(--primary);
+  border-color: var(--primary-focus);
+}
+.gen-ai-bar .ai-send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* AI 状态区 */
 .gen-status {
   margin-top: 10px;
-  mergin-bottom: 10px;
   font-family: ui-monospace, Menlo, Consolas, monospace;
   font-size: 0.82rem;
   line-height: 1.6;
@@ -1056,12 +1182,7 @@ button:disabled {
   color: var(--success);
 }
 
-/* AI输入栏：无外框版本 */
-.gen-ai-bar-bare {
-  margin-top: 12px;
-}
-
-/* 标题输入+提交按钮 并列一行 */
+/* 标题输入 + 提交按钮 并列一行 */
 .gen-inline-row {
   display: flex;
   gap: 10px;
@@ -1083,31 +1204,71 @@ button:disabled {
   flex: 0 0 auto;
   white-space: nowrap;
 }
-.form-group label.image-label-below {
-  margin-top: 6px;
-  margin-bottom: 0;
-  font-weight: normal;
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-}
-.form-group input[type="file"] {
+
+/* =========================================================
+   预览截图按钮（仅作品预览时显示）
+   ========================================================= */
+.preview-screenshot-btn {
+  position: fixed;
+  top: clamp(8px, 2vw, 14px);
+  right: clamp(10px, 3vw, 18px);
+  z-index: 300;
+  background: none;
   border: none;
-  padding-left: 0;
-  padding-right: 0;
-  background: transparent;
+  color: #fff;
+  font-size: clamp(24px, 4.5vw, 32px);
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
+  user-select: none;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  transition: transform 0.15s;
 }
-/* 编写页AI发送按钮：去掉蓝底，改用边框 */
-.gen-ai-bar .ai-send-btn {
-  background: transparent;
-  color: var(--text);
-  border: 1px solid var(--border-input);
+.preview-screenshot-btn:hover {
+  transform: scale(1.1);
 }
-.gen-ai-bar .ai-send-btn:hover {
-  background: var(--hover);
-  color: var(--primary);
-  border-color: var(--primary-focus);
+.preview-screenshot-btn:active {
+  transform: scale(0.95);
 }
-.gen-ai-bar .ai-send-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+
+/* =========================================================
+   响应式
+   ========================================================= */
+
+/* 触屏：隐藏悬停操作栏（改用长按菜单） */
+@media (hover: none) {
+  .ai-msg .msg-actions {
+    display: none;
+  }
+}
+
+@media (max-width: 420px) {
+  .hamburger-btn {
+    font-size: 28px;
+  }
+  .action-buttons button {
+    flex: 1 1 auto;
+  }
+  .sidebar-footer .footer-item {
+    font-size: 0.82rem;
+    padding: 10px 6px calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+  .ai-clear-btn {
+    width: 26px;
+    height: 26px;
+    min-width: 26px;
+    font-size: 24px;
+  }
+  .ai-model-menu {
+    min-width: 280px;
+  }
+}
+
+@media (max-height: 480px) {
+  .form-group .CodeMirror {
+    height: 140px !important;
+  }
+  .ai-messages {
+    padding-top: 54px;
+  }
 }
