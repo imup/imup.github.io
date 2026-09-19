@@ -651,7 +651,6 @@ button:disabled {
 }
 
 /* 11.消息列表 */
-/*
 .ai-messages {
   flex: 1 1 auto;
   min-height: 0;
@@ -698,6 +697,7 @@ button:disabled {
   font-style: italic;
 }
 
+/*
 /* 消息操作栏  /
 .msg-actions {
   display: flex;
