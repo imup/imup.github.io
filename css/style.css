@@ -601,8 +601,182 @@ button:disabled {
   background: var(--hover-strong);
   color: var(--danger);
 }
+/* =========================================================
+   AI 助手（聊天页）——消息区
+   ========================================================= */
 
-/* AI助手（聊天页） */
+.ai-msg {
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+}
+.ai-msg:last-child {
+  margin-bottom: 0;
+}
+.ai-msg.user {
+  justify-content: flex-end;
+  position: relative;
+}
+/* 用户消息的操作栏：绝对定位在气泡左侧（悬停/常驻显示，不影响气泡位置） */
+.ai-msg.user .msg-actions {
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  transform: translateY(-50%);
+  margin-right: 6px;
+}
+
+/* 用户消息气泡 */
+.ai-msg.user .bubble {
+  max-width: 84%;
+  padding: 9px 13px;
+  border-radius: 16px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.55;
+  font-size: 0.95rem;
+  background: var(--bubble-user-bg);
+  color: var(--bubble-user-text);
+  border-bottom-right-radius: 4px;
+}
+
+/* AI 消息：整框无气泡 */
+.ai-msg.assistant {
+  display: block;
+  align-items: stretch;
+  margin-bottom: 18px;
+}
+.ai-msg.assistant .assistant-body {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--bubble-assistant-text);
+  word-break: break-word;
+  white-space: pre-wrap;
+  padding: 2px 0;
+}
+.ai-msg.assistant .assistant-body.pending {
+  opacity: 0.65;
+  font-style: italic;
+}
+
+/* AI 消息底部工具栏 */
+.assistant-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--line);
+  position: relative;
+}
+.assistant-toolbar .toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.assistant-toolbar .toolbar-right {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+.assistant-tool-btn {
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  padding: 2px 8px;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  cursor: pointer;
+  border-radius: 4px;
+  transition:
+    background 0.15s,
+    color 0.15s;
+  white-space: nowrap;
+}
+.assistant-tool-btn:hover {
+  background: var(--hover);
+  color: var(--primary);
+}
+
+.assistant-token {
+  color: var(--text-muted);
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.75rem;
+  padding-left: 4px;
+  white-space: nowrap;
+}
+
+/* 用户消息操作栏：常驻显示 */
+.msg-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+  opacity: 1;
+}
+.msg-action-btn {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.msg-action-btn:hover {
+  background: var(--hover);
+  color: var(--primary);
+}
+
+/* "已复制"提示 */
+.msg-flash-tip {
+  position: absolute;
+  top: -20px;
+  right: 0;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  background: var(--modal-bg);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 2px 6px;
+  pointer-events: none;
+  animation: flashFade 1.2s ease forwards;
+}
+@keyframes flashFade {
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+/*
+/* AI助手（聊天页） /
 .ai-page {
   position: relative;
   display: flex;
@@ -613,7 +787,7 @@ button:disabled {
   overflow: hidden;
 }
 
-/* 清除按钮 */
+/* 清除按钮 /
 .ai-clear-btn {
   position: absolute;
   top: clamp(15px, 2vw, 14px);
@@ -650,7 +824,7 @@ button:disabled {
   transform: scale(0.95);
 }
 
-/* 消息列表 */
+/* 消息列表 /
 .ai-messages {
   flex: 1 1 auto;
   min-height: 0;
@@ -697,7 +871,7 @@ button:disabled {
   font-style: italic;
 }
 
-/* 消息操作栏 */
+/* 消息操作栏 /
 .msg-actions {
   display: flex;
   align-items: center;
@@ -739,7 +913,7 @@ button:disabled {
   white-space: nowrap;
 }
 
-/* "已复制"提示 */
+/* "已复制"提示 /
 .msg-flash-tip {
   position: absolute;
   top: -20px;
@@ -769,6 +943,8 @@ button:disabled {
     opacity: 0;
   }
 }
+
+*/
 
 /* 移动端长按菜单 */
 .msg-mobile-menu {
