@@ -838,13 +838,13 @@
       '<html lang="zh-CN">\n' +
       "<head>\n" +
       '  <meta charset="UTF-8">\n' +
-      '  <meta name="viewport" content="width=device-width, initial-scale=1.0">\n' +
+      '  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">\n' +
       "  <title>" +
       safeTitle +
       "</title>\n" +
       "  <style>\n" +
-      "    html, body { margin: 0; padding: 0; }\n" +
-      "    canvas { display: block; }\n" +
+      "    html, body { margin: 0; padding: 0; touch-action: none; }\n" +
+      "    canvas { display: block; touch-action: none; }\n" +
       "  </style>\n" +
       '  \x3Cscript src="' +
       P5_CDN +
