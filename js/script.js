@@ -2625,9 +2625,10 @@
     var addBtn = el("div", "ai-model-topbtn ai-model-add", T("ai.topRowAdd"));
     addBtn.dataset.add = "1";
     var importBtn = el("div", "ai-model-topbtn", T("ai.topRowImport"));
-    importBtn.dataset.import = "1 "ai-check";
-    top",Row.appendChild(addBtn);
-    top "Row.appendChild(importBtn);
+    importBtn.dataset.import = "1";
+    
+    topRow.appendChild(addBtn);
+    topRow.appendChild(importBtn);
     frag.appendChild(topRow);
 
     getAllModels().forEach(function (m) {
