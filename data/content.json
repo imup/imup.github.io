@@ -268,8 +268,8 @@
       "about.p6": "Conversations are stored per model and can be exported as Markdown (human-readable) or JSON (with structured metadata such as finish_reason / usage / tool_calls). You can also import a JSON conversation to continue it, with options to append or replace.",
       "about.p7": "The UI offers light/dark themes and automatically picks Chinese or English based on your system language. Touch devices are optimized as well — pinch-zoom and double-tap zoom are disabled to prevent accidental gestures.",
 
-      "generator.title": "Write p5.js Script",
-      "generator.subtitle": "Enter p5.js code and title, optionally upload an image, then submit.",
+      "generator.title": "AI Smart Script Editor",
+      "generator.subtitle": "Enter p5.js code and title, optionally upload an image, then submit. You can also use AI function calling below to generate code from a natural language description — the AI writes the result into the editor automatically.",
       "generator.labelTitle": "Title",
       "generator.titlePlaceholder": "e.g. My Creative Drawing",
       "generator.labelScript": "p5.js Script Code",
