@@ -2623,7 +2623,7 @@
 
     var topRow = el("div", "ai-model-toprow");
     var addBtn = el("div", "ai-model-topbtn ai-model-add", T("ai.topRowAdd"));
-    addBtn.dat",aset.add = "1";
+    addBtn.dataset.add = "1";
     var importBtn = el("div", "ai-model-topbtn", T("ai.topRowImport"));
     importBtn.dataset.import = "1 "ai-check";
     top",Row.appendChild(addBtn);
