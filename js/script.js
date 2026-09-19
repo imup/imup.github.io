@@ -15,7 +15,7 @@
 (function () {
   "use strict";
 
-  /* 常量 */
+  /* 1.常量 */
 
   var STORAGE_KEY = "p5_pages";
   var THEME_KEY = "p5_theme";
@@ -255,7 +255,7 @@
     },
   ];
 
-  /* 运行时状态 */
+  /* 2.运行时状态 */
 
   var AI_MODELS = [];
   var I18N = {};
@@ -302,7 +302,7 @@
   var renderedMsgCount = 0;
   var renderedModelId = null;
 
-  /* i18n */
+  /* 3.i18n */
 
   function T(key, params) {
     var pack = I18N[LANG] || I18N.zh || {};
@@ -344,7 +344,7 @@
     } catch (e) {}
   }
 
-  /* 模型访问 */
+  /* 4.模型访问 */
 
   function getAllModels() {
     return AI_MODELS.concat(aiState.customModels || []);
@@ -369,7 +369,7 @@
     return c ? c.name : id;
   }
 
-  /* localStorage读写 */
+  /* 5.localStorage读写 */
 
   function loadAIKeys() {
     try {
@@ -560,7 +560,7 @@
     });
   }
 
-  /* 存储超限 */
+  /* 6.存储超限 */
 
   function isQuotaError(e) {
     if (!e) return false;
@@ -605,7 +605,7 @@
     );
   }
 
-  /* 通用工具 */
+  /* 7.通用工具 */
 
   function $(sel, root) {
     return (root || document).querySelector(sel);
@@ -649,7 +649,7 @@
     return el("div", "right-group");
   }
 
-  /* 弹窗 */
+  /* 8.弹窗 */
 
   function openModal(builder) {
     lastFocused = document.activeElement;
@@ -805,7 +805,7 @@
     });
   }
 
-  /* 生成作品HTML */
+  /* 9.生成作品HTML */
   /*
    * generatePageHtml(title, script, imageDataUrl, hasImage)
    *  - imageDataUrl 有值：直接把 DataURL 嵌入（用于 open_preview 临时预览）
@@ -933,7 +933,7 @@
       });
   }
 
-  /* 首页随机脚本 */
+  /* 10.首页随机脚本 */
 
   function pickRandomP5File() {
     if (!P5_FILES || !P5_FILES.length) return null;
@@ -976,7 +976,7 @@
     );
   }
 
-  /* 侧边栏作品列表 */
+  /* 11.侧边栏作品列表 */
 
   function updateSidebarPages() {
     var pages = getPages();
@@ -1023,7 +1023,7 @@
     sidebarPagesEl.replaceChildren(frag);
   }
 
-  /* iframe内p5画布事件代理 */
+  /* 12.iframe内p5画布事件代理 */
 
   function bindIframeProxy(iframe) {
     var iwin, idoc;
@@ -1139,7 +1139,7 @@
     });
   }
 
-  /* 预览锁屏 */
+  /* 13.预览锁屏 */
 
   function lockAppSize() {
     document.body.classList.add("preview-lock");
@@ -1162,7 +1162,7 @@
     appEl.style.overflow = "";
   }
 
-  /* 截图按钮（作品预览专属） */
+  /* 14.截图按钮（作品预览专属） */
 
   function buildScreenshotButton(iframe) {
     var btn = el("button", "preview-screenshot-btn", "📷");
@@ -1196,7 +1196,7 @@
     return btn;
   }
 
-  /* 首页渲染 */
+  /* 15.首页渲染 */
 
   function renderRunner() {
     destroyEditor();
@@ -1277,7 +1277,7 @@
     else location.hash = "#/";
   }
 
-  /* 作品操作 */
+  /* 16.作品操作 */
 
   function deletePage(id) {
     var pages = getPages();
@@ -1320,7 +1320,7 @@
     });
   }
 
-  /* 侧边栏开关 */
+  /* 17.侧边栏开关 */
 
   function openSidebar() {
     sidebarEl.classList.add("open");
@@ -1335,7 +1335,7 @@
     hamburgerBtn.setAttribute("aria-expanded", "false");
   }
 
-  /* 主题 */
+  /* 18.主题 */
 
   function applyTheme(theme) {
     var lightTheme = $("#cm-theme-light");
@@ -1366,7 +1366,7 @@
     } catch (e) {}
   }
 
-  /* 路由 */
+  /* 19.路由 */
 
   function getRoute() {
     var hash = location.hash;
@@ -1391,7 +1391,7 @@
     }
   }
 
-  /* 关于页 */
+  /* 20.关于页 */
 
   function renderAbout() {
     var wrap = document.createElement("div");
@@ -1405,7 +1405,7 @@
     return wrap;
   }
 
-  /* 编写脚本页 */
+  /* 21.编写脚本页 */
 
   function renderGenerator() {
     var wrap = el("div", "generator-page");
@@ -2552,7 +2552,7 @@
     bindGeneratorAIPanel();
   }
   
-  /* AI聊天页骨架 */
+  /* 22.AI聊天页骨架 */
 
   function renderAIAssistant() {
     var page = el("div", "ai-page");
@@ -2613,7 +2613,7 @@
     return page;
   }
 
-  /* 模型菜单（AI聊天页） */
+  /* 23.模型菜单（AI聊天页） */
 
   function buildAIModelMenu() {
     var menu = $("#aiModelMenu");
@@ -2715,8 +2715,8 @@
     menu.classList.toggle("show");
   }
 
-  /* AI消息渲染（含操作栏 / Token） */
-
+  /* 24.AI消息渲染（含操作栏 / Token） */
+/*
   function copyToClipboard(text) {
     if (!text) return;
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -3028,8 +3028,472 @@
     if (!box) return true;
     return box.scrollHeight - box.scrollTop - box.clientHeight < 80;
   }
+  
+*/
 
-  /* 消息操作：删除 / 重新生成 */
+/* =========================================================
+     二十四、AI 消息渲染
+     =========================================================
+     结构说明：
+       - 用户消息：右对齐气泡 + 左侧 [⧉ ✕] 按钮（默认隐藏）
+       - AI 消息：整框无气泡 + 底部工具栏（默认隐藏）
+           左：↻ 重生成 · ✕ 删除 · ↑↓ token
+           右：⧉ 复制
+       - 交互：点击消息 / 长按 0.5s → 展开该条操作栏
+              点击其它消息 → 前一条收起
+              点击空白处 → 全部收起（由 initStatic 全局 click 处理）
+       - showMsgMobileMenu 已弃用但保留（如需恢复长按弹窗可复用）
+     ========================================================= */
+
+  /* ---------------------------------------------------------
+     剪贴板工具
+     --------------------------------------------------------- */
+
+  function copyToClipboard(text) {
+    if (!text) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).catch(function () {
+        fallbackCopy(text);
+      });
+      return;
+    }
+    fallbackCopy(text);
+  }
+
+  function fallbackCopy(text) {
+    try {
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      ta.style.cssText =
+        "position:fixed;left:-9999px;top:-9999px;opacity:0;";
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      document.body.removeChild(ta);
+    } catch (e) {}
+  }
+
+  /* 在指定元素内浮现"已复制"提示，1.2 秒后自动消失 */
+  function flashTip(anchorEl, text) {
+    if (!anchorEl) return;
+    var tip = el("div", "msg-flash-tip", text);
+    anchorEl.appendChild(tip);
+    setTimeout(function () {
+      if (tip.parentNode) tip.parentNode.removeChild(tip);
+    }, 1200);
+  }
+
+  /* ---------------------------------------------------------
+     用户消息：左侧操作栏（复制 + 删除）
+     --------------------------------------------------------- */
+
+  function buildMsgActions(m, index) {
+    var bar = el("div", "msg-actions");
+
+    var copyBtn = el("button", "msg-action-btn", "⧉");
+    copyBtn.type = "button";
+    copyBtn.title = T("msg.copy");
+    copyBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      copyToClipboard(m.content || "");
+      flashTip(bar, T("msg.copied"));
+    });
+    bar.appendChild(copyBtn);
+
+    var delBtn = el("button", "msg-action-btn", "✕");
+    delBtn.type = "button";
+    delBtn.title = T("msg.delete");
+    delBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      deleteMessageFrom(index);
+    });
+    bar.appendChild(delBtn);
+
+    return bar;
+  }
+
+  /* ---------------------------------------------------------
+     AI 消息：底部工具栏
+       左：↻ 重生成（仅最后一条）· ✕ 删除 · ↑↓ token
+       右：⧉ 复制
+     --------------------------------------------------------- */
+
+  function buildAssistantToolbar(m, index) {
+    var toolbar = el("div", "assistant-toolbar");
+
+    /* ---------- 左侧组 ---------- */
+    var left = el("div", "toolbar-left");
+
+    var chat = aiState.chats[aiState.currentModel] || [];
+    var isLastAssistant =
+      m.role === "assistant" && index === chat.length - 1 && index > 0;
+    if (isLastAssistant) {
+      var regenBtn = el(
+        "button",
+        "assistant-tool-btn",
+        "↻ " + T("msg.regen"),
+      );
+      regenBtn.type = "button";
+      regenBtn.title = T("msg.regen");
+      regenBtn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        regenerateMessage(index);
+      });
+      left.appendChild(regenBtn);
+    }
+
+    var delBtn = el("button", "assistant-tool-btn", "✕ " + T("msg.delete"));
+    delBtn.type = "button";
+    delBtn.title = T("msg.delete");
+    delBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      deleteMessageFrom(index);
+    });
+    left.appendChild(delBtn);
+
+    if (m.usage) {
+      var up = m.usage.prompt_tokens || 0;
+      var down = m.usage.completion_tokens || 0;
+      var total = m.usage.total_tokens || up + down;
+      var tok = el("span", "assistant-token", "↑" + up + " ↓" + down);
+      tok.title = total + " tokens";
+      left.appendChild(tok);
+    }
+
+    toolbar.appendChild(left);
+
+    /* ---------- 右侧组 ---------- */
+    var right = el("div", "toolbar-right");
+    var copyBtn = el("button", "assistant-tool-btn", "⧉ " + T("msg.copy"));
+    copyBtn.type = "button";
+    copyBtn.title = T("msg.copy");
+    copyBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      copyToClipboard(m.content || "");
+      flashTip(toolbar, T("msg.copied"));
+    });
+    right.appendChild(copyBtn);
+    toolbar.appendChild(right);
+
+    return toolbar;
+  }
+
+  /* ---------------------------------------------------------
+     消息行通用交互：点击 / 长按 → 切换 actions-visible
+     - 点击行内（非按钮区）→ 切换
+     - 长按 500ms → 显示
+     - 点其它行 → 关闭之前的，打开当前
+     - 点空白 → 关闭所有（由 initStatic 里的全局 click 处理）
+     --------------------------------------------------------- */
+
+  function bindRowToggleActions(row) {
+    var pressTimer = null;
+    var longPressed = false;
+
+    function show() {
+      $$(".ai-msg.actions-visible").forEach(function (el) {
+        if (el !== row) el.classList.remove("actions-visible");
+      });
+      row.classList.add("actions-visible");
+    }
+
+    function toggle() {
+      if (row.classList.contains("actions-visible")) {
+        row.classList.remove("actions-visible");
+      } else {
+        show();
+      }
+    }
+
+    function startPress() {
+      longPressed = false;
+      if (pressTimer) clearTimeout(pressTimer);
+      pressTimer = setTimeout(function () {
+        pressTimer = null;
+        longPressed = true;
+        show();
+      }, 500);
+    }
+
+    function cancelPress() {
+      if (pressTimer) {
+        clearTimeout(pressTimer);
+        pressTimer = null;
+      }
+    }
+
+    row.addEventListener("pointerdown", startPress);
+    row.addEventListener("pointerup", cancelPress);
+    row.addEventListener("pointercancel", cancelPress);
+    row.addEventListener("pointerleave", cancelPress);
+
+    row.addEventListener("click", function (e) {
+      /* 点在按钮上：不切换（按钮自己处理） */
+      if (e.target.closest("button")) return;
+      /* 长按刚触发过：忽略这次 click */
+      if (longPressed) {
+        longPressed = false;
+        return;
+      }
+      toggle();
+    });
+  }
+
+  /* ---------------------------------------------------------
+     构建单条消息节点
+     --------------------------------------------------------- */
+
+  function buildMsgNode(m, index) {
+    var row = el(
+      "div",
+      "ai-msg " + (m.role === "assistant" ? "assistant" : "user"),
+    );
+    row.dataset.index = String(index);
+
+    if (m.role === "assistant") {
+      /* AI 消息：整框 + 底部工具栏（工具栏默认隐藏） */
+      var body = el("div", "assistant-body");
+      if (!m.content) {
+        body.textContent = T("ai.thinking");
+        body.classList.add("pending");
+      } else {
+        body.textContent = m.content;
+      }
+      row.appendChild(body);
+
+      var toolbar = buildAssistantToolbar(m, index);
+      row.appendChild(toolbar);
+    } else {
+      /* 用户消息：气泡（右对齐）+ 左侧操作栏（默认隐藏） */
+      var b = el("div", "bubble");
+      b.textContent = m.content;
+      var actions = buildMsgActions(m, index);
+      row.appendChild(actions);
+      row.appendChild(b);
+    }
+
+    /* 统一交互：点击 / 长按 → 切换 actions-visible */
+    bindRowToggleActions(row);
+
+    return row;
+  }
+
+  /* 空状态节点 */
+  function buildEmptyNode(text) {
+    return el("div", "ai-empty", text);
+  }
+
+  /* ---------------------------------------------------------
+     移动端长按菜单（已弃用，保留备用）
+     ---------------------------------------------------------
+     说明：消息操作已改为"点击展开"，
+          此处不再被调用。如需恢复长按弹窗交互，可重新绑定。
+     --------------------------------------------------------- */
+
+  function showMsgMobileMenu(m, index) {
+    openModal(function (box) {
+      var list = el("div", "msg-mobile-menu");
+      var items = [];
+
+      items.push({
+        icon: "⧉",
+        label: T("msg.copy"),
+        onTap: function () {
+          closeModal();
+          copyToClipboard(m.content || "");
+        },
+      });
+
+      var chat = aiState.chats[aiState.currentModel] || [];
+      if (m.role === "assistant" && index === chat.length - 1 && index > 0) {
+        items.push({
+          icon: "↻",
+          label: T("msg.regen"),
+          onTap: function () {
+            closeModal();
+            regenerateMessage(index);
+          },
+        });
+      }
+
+      items.push({
+        icon: "✕",
+        label: T("msg.delete"),
+        danger: true,
+        onTap: function () {
+          closeModal();
+          deleteMessageFrom(index);
+        },
+      });
+
+      items.forEach(function (it) {
+        var row = el("div", "msg-mobile-item" + (it.danger ? " danger" : ""));
+        row.appendChild(el("span", "msg-mobile-icon", it.icon));
+        row.appendChild(el("span", "msg-mobile-label", it.label));
+        row.addEventListener("click", it.onTap);
+        list.appendChild(row);
+      });
+
+      var cancel = el("button", "msg-mobile-cancel", T("common.cancel"));
+      cancel.type = "button";
+      cancel.addEventListener("click", closeModal);
+
+      box.appendChild(list);
+      box.appendChild(cancel);
+    });
+  }
+
+  /* ---------------------------------------------------------
+     渲染消息列表（增量渲染）
+     --------------------------------------------------------- */
+
+  function renderAIMessages() {
+    var box = $("#aiMessages");
+    if (!box) return;
+    var model = aiState.currentModel;
+
+    /* 未选模型 */
+    if (!model) {
+      if (!box.firstChild || !box.querySelector(".ai-empty")) {
+        box.replaceChildren(buildEmptyNode(T("ai.emptyNoModel")));
+      }
+      renderedModelId = null;
+      renderedMsgCount = 0;
+      updateStatsBar();
+      return;
+    }
+
+    /* 切换模型：清空重建 */
+    if (renderedModelId !== model) {
+      renderedModelId = model;
+      renderedMsgCount = 0;
+      box.replaceChildren();
+    }
+
+    var chat = aiState.chats[model] || [];
+
+    /* 空对话 */
+    if (!chat.length) {
+      if (!box.firstChild || !box.querySelector(".ai-empty")) {
+        box.replaceChildren(
+          buildEmptyNode(T("ai.emptyStart", { model: aiModelName(model) })),
+        );
+      }
+      renderedMsgCount = 0;
+      updateStatsBar();
+      return;
+    }
+
+    /* 数量回退（清空/pop）→ 全量重建 */
+    if (renderedMsgCount > chat.length) renderedMsgCount = 0;
+
+    /* 全量重建 */
+    if (renderedMsgCount === 0) {
+      var frag = document.createDocumentFragment();
+      for (var i = 0; i < chat.length; i++) {
+        frag.appendChild(buildMsgNode(chat[i], i));
+      }
+      box.replaceChildren(frag);
+      renderedMsgCount = chat.length;
+      box.scrollTop = box.scrollHeight;
+      updateStatsBar();
+      return;
+    }
+
+    /* 增量追加 */
+    if (renderedMsgCount < chat.length) {
+      /* 若当前是空状态，先清空 */
+      var emptyEl = box.querySelector(".ai-empty");
+      if (emptyEl && box.children.length === 1) {
+        box.replaceChildren();
+        renderedMsgCount = 0;
+        var frag2 = document.createDocumentFragment();
+        for (var k = 0; k < chat.length; k++) {
+          frag2.appendChild(buildMsgNode(chat[k], k));
+        }
+        box.replaceChildren(frag2);
+        renderedMsgCount = chat.length;
+        box.scrollTop = box.scrollHeight;
+        updateStatsBar();
+        return;
+      }
+      for (var j = renderedMsgCount; j < chat.length; j++) {
+        box.appendChild(buildMsgNode(chat[j], j));
+      }
+      renderedMsgCount = chat.length;
+      box.scrollTop = box.scrollHeight;
+    }
+    updateStatsBar();
+  }
+
+  /* ---------------------------------------------------------
+     底部会话累计（Token 统计）
+     --------------------------------------------------------- */
+
+  function updateStatsBar() {
+    var bar = $("#aiStats");
+    if (!bar) return;
+    var model = aiState.currentModel;
+    if (!model) {
+      bar.style.display = "none";
+      return;
+    }
+    var chat = aiState.chats[model] || [];
+    var totalPrompt = 0;
+    var totalCompletion = 0;
+    var turns = 0;
+    chat.forEach(function (m) {
+      if (m.role === "assistant" && m.usage) {
+        totalPrompt += m.usage.prompt_tokens || 0;
+        totalCompletion += m.usage.completion_tokens || 0;
+        turns += 1;
+      }
+    });
+    if (!turns) {
+      bar.style.display = "none";
+      return;
+    }
+    var total = totalPrompt + totalCompletion;
+    bar.style.display = "block";
+    bar.textContent = T("ai.stats", {
+      turns: turns,
+      total: total.toLocaleString(),
+    });
+  }
+
+  /* ---------------------------------------------------------
+     发送按钮可用状态
+     --------------------------------------------------------- */
+
+  function updateAISendBtn() {
+    var btn = $("#aiSendBtn");
+    if (!btn) return;
+    btn.disabled = !!aiState.busy;
+  }
+
+  /* ---------------------------------------------------------
+     取最后一条 assistant 的正文节点（用于流式追加）
+     --------------------------------------------------------- */
+
+  function getLastAssistantBubble() {
+    var box = $("#aiMessages");
+    if (!box) return null;
+    var kids = box.children;
+    for (var i = kids.length - 1; i >= 0; i--) {
+      if (kids[i].classList.contains("assistant")) {
+        return kids[i].querySelector(".assistant-body");
+      }
+    }
+    return null;
+  }
+
+  /* 判断消息容器是否接近底部 */
+  function isNearBottom(box) {
+    if (!box) return true;
+    return box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+  }
+
+  /* 25.消息操作：删除 / 重新生成 */
 
   function deleteMessageFrom(index) {
     var model = aiState.currentModel;
@@ -3203,7 +3667,7 @@
       });
   }
   
-  /* 自定义模型编辑弹窗 */
+  /* 26.自定义模型编辑弹窗 */
 
   function showModelEditor(modelId) {
     var isEdit = !!modelId;
@@ -3748,7 +4212,7 @@
     reader.readAsText(file);
   }
 
-  /* AI聊天页：发送 / 清空 / 绑定 */
+  /* 27.AI聊天页：发送 / 清空 / 绑定 */
 
   function aiSend() {
     if (aiState.busy) return;
@@ -3934,7 +4398,7 @@
     }
   }
 
-  /* 总渲染入口 */
+  /* 28.总渲染入口 */
 
   function render() {
     var path = getRoute();
@@ -3992,7 +4456,7 @@
     }
   }
 
-  /* 静态初始化 */
+  /* 29.静态初始化 */
 
   function initStatic() {
     modalBackdrop = $("#modalBackdrop");
@@ -4071,6 +4535,15 @@
           closeGenMenu();
         }
       }
+      
+      
+      if (!e.target.closest(".ai-msg")) {
+        $$(".ai-msg.actions-visible").forEach(function (el) {
+          el.classList.remove("actions-visible");
+        });
+      }
+      
+      
     });
 
     if (sidebarSearchEl) {
@@ -4186,7 +4659,8 @@
     });
   }
 
-  /* 加载json */
+
+  /* 30.加载json */
 
   function loadContent() {
     return fetch(CONTENT_URL, { cache: "no-cache" })
@@ -4202,7 +4676,7 @@
       });
   }
 
-  /* 启动 */
+  /* 31.启动 */
 
   function boot() {
     initStatic();
