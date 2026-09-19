@@ -651,7 +651,6 @@ button:disabled {
 }
 
 /* 11.消息列表 */
-/*
 .ai-messages {
   flex: 1 1 auto;
   min-height: 0;
@@ -661,6 +660,7 @@ button:disabled {
   scroll-behavior: smooth;
   touch-action: pan-y;
 }
+/*
 .ai-msg {
   margin-bottom: 12px;
   display: flex;
