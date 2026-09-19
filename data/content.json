@@ -65,7 +65,7 @@
       "about.p6": "对话记录按模型分别存储，可导出为Markdown（可读文本）或JSON（含finish_reason / usage / tool_calls等结构化元数据），也可从JSON文件导入对话继续使用（支持追加或覆盖）。",
       "about.p7": "界面提供亮色/暗色主题切换，会根据系统语言自动选择中文或英文；针对触屏设备做了优化（禁用双指缩放、双击缩放，防止误操作）。",
 
-      "generator.title": "编写p5.js脚本",
+      "generator.title": "AI智能脚本编辑器",
       "generator.subtitle": "输入p5.js代码和标题，上传图片（可选）点击提交脚本；也可在下方选择AI函数调用执行代码生成，用自然语言描述效果，AI会自动把生成的代码写入编辑器",
       "generator.labelTitle": "标题",
       "generator.titlePlaceholder": "标题例如：我的创意绘图",
