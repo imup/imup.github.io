@@ -697,8 +697,7 @@ button:disabled {
   font-style: italic;
 }
 
-/*
-/* 消息操作栏  /
+/* 消息操作栏 /
 .msg-actions {
   display: flex;
   align-items: center;
