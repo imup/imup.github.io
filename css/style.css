@@ -335,15 +335,15 @@ body.sidebar-open .hamburger-btn {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.sidebar-footer .footer-vdivider {
-  width: 1px;
-  flex: 0 0 1px;
-  background: var(--line);
-}
 .sidebar-footer .footer-item .nav-icon {
   width: 16px;
   height: 16px;
   margin-right: 6px;
+}
+.sidebar-footer .footer-vdivider {
+  width: 1px;
+  flex: 0 0 1px;
+  background: var(--line);
 }
 
 /* 5.遮罩 */
