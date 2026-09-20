@@ -328,7 +328,14 @@
 
   function applyI18nToStatic() {
     document.querySelectorAll("[data-i18n]").forEach(function (el) {
-      el.textContent = T(el.getAttribute("data-i18n"));
+      var text = T(el.getAttribute("data-i18n"));
+      /* 若元素内含span用于SVG+文字组合只更新 span */
+      var span = el.querySelector("span");
+      if (span) {
+        span.textContent = text;
+      } else {
+        el.textContent = text;
+      }
     });
     document.querySelectorAll("[data-i18n-placeholder]").forEach(function (el) {
       var k = el.getAttribute("data-i18n-placeholder");
@@ -343,7 +350,7 @@
       document.documentElement.lang = LANG === "zh" ? "zh-CN" : "en";
     } catch (e) {}
   }
-
+  
   /* 4.模型访问 */
 
   function getAllModels() {
