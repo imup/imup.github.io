@@ -340,7 +340,11 @@ body.sidebar-open .hamburger-btn {
   flex: 0 0 1px;
   background: var(--line);
 }
-
+.sidebar-footer .footer-item .nav-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+}
 
 /* 5.遮罩 */
 .overlay {
