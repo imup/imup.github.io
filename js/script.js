@@ -293,9 +293,9 @@
 
   var editor = null;
   var uploadedImageDataUrl = null;
-  /* 当前上传图片的宽高：{ width, height } */
+  /* 当前上传图片的宽高 */
   var uploadedImageInfo = null;
-  /* 会话级图片缓存：{ pageId: dataUrl }，刷新即丢，不写 localStorage */
+  /* 会话级图片缓存刷新即丢，不写localStorage */
   var sessionImages = {};
 
   var generatorDraft = { title: "", script: "" };
@@ -806,14 +806,7 @@
   }
 
   /* 9.生成作品HTML */
-  /*
-   * generatePageHtml(title, script, imageDataUrl, hasImage)
-   *  - imageDataUrl 有值：直接把 DataURL 嵌入（用于 open_preview 临时预览）
-   *  - imageDataUrl 为空 + hasImage=true：
-   *      注入注解，说明原作品含图但未嵌入；
-   *      imageUrl 设为 null，预览时由前端内存注入真实 DataURL
-   *  - 两者都没有：普通作品
-   */
+
   function generatePageHtml(title, script, imageDataUrl, hasImage) {
     var safeTitle = escapeHtml(
       (title || T("generator.untitledPage")).slice(0, MAX_TITLE_LEN),
@@ -864,8 +857,7 @@
     );
   }
 
-  /* 把内存里的图片注入到作品HTML里
-   * 匹配 `var imageUrl = null;` 或 `var imageUrl = "...";` */
+  /* 把内存里的图片注入到作品HTML里匹配 */
   function injectSessionImage(html, dataUrl) {
     if (!html || !dataUrl) return html;
     var escaped = String(dataUrl)
@@ -1213,7 +1205,7 @@
       });
       if (page) {
         html = page.html;
-        /* 若本次会话里有该作品的图片，注入到 HTML（不写磁盘） */
+        /* 若本次会话里有该作品的图片，注入到 HTML不写磁盘 */
         if (sessionImages[page.id]) {
           html = injectSessionImage(html, sessionImages[page.id]);
         }
@@ -1257,7 +1249,7 @@
     });
     appEl.appendChild(iframe);
 
-    /* 只对"作品预览 / AI临时预览"（非随机）显示截图按钮 */
+    /* 只对预览/AI临时预览（非随机）显示截图 */
     if (runner.mode === "page") {
       appEl.appendChild(buildScreenshotButton(iframe));
     }
@@ -1437,7 +1429,7 @@
     g3.appendChild(previewBox);
     wrap.appendChild(g3);
 
-    /* 标题输入 + 提交按钮 并列一行 */
+    /* 标题输入+提交按钮并列一行 */
     var row = el("div", "gen-inline-row");
     var titleInput = document.createElement("input");
     titleInput.type = "text";
@@ -1689,8 +1681,8 @@
           ($("#title") ? $("#title").value.trim() : "") ||
           T("generator.untitled");
         var h2 = generatePageHtml(t3, s2, uploadedImageDataUrl || "");
-        /* 存临时预览HTML，跳首页由renderRunner统一渲染；
-         * 不调用clearDraft()，编辑器内容保留在草稿里 */
+        /* 存临时预览HTML跳首页由renderRunner统一渲染；
+         * 不调用clearDraft()编辑器内容保留在草稿里 */
         window.__previewHtml = h2;
         runner.mode = "page";
         runner.pageId = null;
@@ -2714,324 +2706,8 @@
     if (!menu) return;
     menu.classList.toggle("show");
   }
-
-  /* 24.AI消息渲染（含操作栏 / Token） */
-/*
-  function copyToClipboard(text) {
-    if (!text) return;
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).catch(function () {
-        fallbackCopy(text);
-      });
-      return;
-    }
-    fallbackCopy(text);
-  }
-  function fallbackCopy(text) {
-    try {
-      var ta = document.createElement("textarea");
-      ta.value = text;
-      ta.style.cssText =
-        "position:fixed;left:-9999px;top:-9999px;opacity:0;";
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      document.body.removeChild(ta);
-    } catch (e) {}
-  }
-
-  function flashTip(anchorEl, text) {
-    if (!anchorEl) return;
-    var tip = el("div", "msg-flash-tip", text);
-    anchorEl.appendChild(tip);
-    setTimeout(function () {
-      if (tip.parentNode) tip.parentNode.removeChild(tip);
-    }, 1200);
-  }
-
-  function buildMsgActions(m, index) {
-    var bar = el("div", "msg-actions");
-
-    var copyBtn = el("button", "msg-action-btn", "⧉");
-    copyBtn.type = "button";
-    copyBtn.title = T("msg.copy");
-    copyBtn.addEventListener("click", function (e) {
-      e.stopPropagation();
-      copyToClipboard(m.content || "");
-      flashTip(bar, T("msg.copied"));
-    });
-    bar.appendChild(copyBtn);
-
-    var chat = aiState.chats[aiState.currentModel] || [];
-    var isLastAssistant =
-      m.role === "assistant" && index === chat.length - 1 && index > 0;
-    if (isLastAssistant) {
-      var regenBtn = el("button", "msg-action-btn", "↻");
-      regenBtn.type = "button";
-      regenBtn.title = T("msg.regen");
-      regenBtn.addEventListener("click", function (e) {
-        e.stopPropagation();
-        regenerateMessage(index);
-      });
-      bar.appendChild(regenBtn);
-    }
-
-    var delBtn = el("button", "msg-action-btn", "✕");
-    delBtn.type = "button";
-    delBtn.title = T("msg.delete");
-    delBtn.addEventListener("click", function (e) {
-      e.stopPropagation();
-      deleteMessageFrom(index);
-    });
-    bar.appendChild(delBtn);
-
-    if (m.role === "assistant" && m.usage) {
-      var up = m.usage.prompt_tokens || 0;
-      var down = m.usage.completion_tokens || 0;
-      var total = m.usage.total_tokens || up + down;
-      var tok = el("span", "msg-token", "↑" + up + " ↓" + down);
-      tok.title = total + " tokens";
-      bar.appendChild(tok);
-    }
-
-    return bar;
-  }
-
-  function buildMsgNode(m, index) {
-    var row = el(
-      "div",
-      "ai-msg " + (m.role === "assistant" ? "assistant" : "user"),
-    );
-    row.dataset.index = String(index);
-
-    var b = el("div", "bubble");
-    if (m.role === "assistant" && !m.content) {
-      b.textContent = T("ai.thinking");
-      b.classList.add("pending");
-    } else {
-      b.textContent = m.content;
-    }
-
-    var actions = buildMsgActions(m, index);
-
-    if (m.role === "user") {
-      row.appendChild(actions);
-      row.appendChild(b);
-    } else {
-      row.appendChild(b);
-      row.appendChild(actions);
-    }
-
-    var pressTimer = null;
-    row.addEventListener(
-      "touchstart",
-      function () {
-        pressTimer = setTimeout(function () {
-          showMsgMobileMenu(m, index);
-          pressTimer = null;
-        }, 550);
-      },
-      { passive: true },
-    );
-    var cancelPress = function () {
-      if (pressTimer) {
-        clearTimeout(pressTimer);
-        pressTimer = null;
-      }
-    };
-    row.addEventListener("touchend", cancelPress);
-    row.addEventListener("touchcancel", cancelPress);
-    row.addEventListener("touchmove", cancelPress, { passive: true });
-
-    return row;
-  }
-
-  function buildEmptyNode(text) {
-    return el("div", "ai-empty", text);
-  }
-
-  function showMsgMobileMenu(m, index) {
-    openModal(function (box) {
-      var list = el("div", "msg-mobile-menu");
-      var items = [];
-
-      items.push({
-        icon: "⧉",
-        label: T("msg.copy"),
-        onTap: function () {
-          closeModal();
-          copyToClipboard(m.content || "");
-        },
-      });
-
-      var chat = aiState.chats[aiState.currentModel] || [];
-      if (m.role === "assistant" && index === chat.length - 1 && index > 0) {
-        items.push({
-          icon: "↻",
-          label: T("msg.regen"),
-          onTap: function () {
-            closeModal();
-            regenerateMessage(index);
-          },
-        });
-      }
-
-      items.push({
-        icon: "✕",
-        label: T("msg.delete"),
-        danger: true,
-        onTap: function () {
-          closeModal();
-          deleteMessageFrom(index);
-        },
-      });
-
-      items.forEach(function (it) {
-        var row = el("div", "msg-mobile-item" + (it.danger ? " danger" : ""));
-        row.appendChild(el("span", "msg-mobile-icon", it.icon));
-        row.appendChild(el("span", "msg-mobile-label", it.label));
-        row.addEventListener("click", it.onTap);
-        list.appendChild(row);
-      });
-
-      var cancel = el("button", "msg-mobile-cancel", T("common.cancel"));
-      cancel.type = "button";
-      cancel.addEventListener("click", closeModal);
-
-      box.appendChild(list);
-      box.appendChild(cancel);
-    });
-  }
-
-  function renderAIMessages() {
-    var box = $("#aiMessages");
-    if (!box) return;
-    var model = aiState.currentModel;
-
-    if (!model) {
-      if (!box.firstChild || !box.querySelector(".ai-empty")) {
-        box.replaceChildren(buildEmptyNode(T("ai.emptyNoModel")));
-      }
-      renderedModelId = null;
-      renderedMsgCount = 0;
-      updateStatsBar();
-      return;
-    }
-
-    if (renderedModelId !== model) {
-      renderedModelId = model;
-      renderedMsgCount = 0;
-      box.replaceChildren();
-    }
-
-    var chat = aiState.chats[model] || [];
-
-    if (!chat.length) {
-      if (!box.firstChild || !box.querySelector(".ai-empty")) {
-        box.replaceChildren(
-          buildEmptyNode(T("ai.emptyStart", { model: aiModelName(model) })),
-        );
-      }
-      renderedMsgCount = 0;
-      updateStatsBar();
-      return;
-    }
-
-    if (renderedMsgCount > chat.length) renderedMsgCount = 0;
-
-    if (renderedMsgCount === 0) {
-      var frag = document.createDocumentFragment();
-      for (var i = 0; i < chat.length; i++) {
-        frag.appendChild(buildMsgNode(chat[i], i));
-      }
-      box.replaceChildren(frag);
-      renderedMsgCount = chat.length;
-      box.scrollTop = box.scrollHeight;
-      updateStatsBar();
-      return;
-    }
-
-    if (renderedMsgCount < chat.length) {
-      var emptyEl = box.querySelector(".ai-empty");
-      if (emptyEl && box.children.length === 1) {
-        box.replaceChildren();
-        renderedMsgCount = 0;
-        var frag2 = document.createDocumentFragment();
-        for (var k = 0; k < chat.length; k++) {
-          frag2.appendChild(buildMsgNode(chat[k], k));
-        }
-        box.replaceChildren(frag2);
-        renderedMsgCount = chat.length;
-        box.scrollTop = box.scrollHeight;
-        updateStatsBar();
-        return;
-      }
-      for (var j = renderedMsgCount; j < chat.length; j++) {
-        box.appendChild(buildMsgNode(chat[j], j));
-      }
-      renderedMsgCount = chat.length;
-      box.scrollTop = box.scrollHeight;
-    }
-    updateStatsBar();
-  }
-
-  function updateStatsBar() {
-    var bar = $("#aiStats");
-    if (!bar) return;
-    var model = aiState.currentModel;
-    if (!model) {
-      bar.style.display = "none";
-      return;
-    }
-    var chat = aiState.chats[model] || [];
-    var totalPrompt = 0;
-    var totalCompletion = 0;
-    var turns = 0;
-    chat.forEach(function (m) {
-      if (m.role === "assistant" && m.usage) {
-        totalPrompt += m.usage.prompt_tokens || 0;
-        totalCompletion += m.usage.completion_tokens || 0;
-        turns += 1;
-      }
-    });
-    if (!turns) {
-      bar.style.display = "none";
-      return;
-    }
-    var total = totalPrompt + totalCompletion;
-    bar.style.display = "block";
-    bar.textContent = T("ai.stats", {
-      turns: turns,
-      total: total.toLocaleString(),
-    });
-  }
-
-  function updateAISendBtn() {
-    var btn = $("#aiSendBtn");
-    if (!btn) return;
-    btn.disabled = !!aiState.busy;
-  }
-
-  function getLastAssistantBubble() {
-    var box = $("#aiMessages");
-    if (!box) return null;
-    var kids = box.children;
-    for (var i = kids.length - 1; i >= 0; i--) {
-      if (kids[i].classList.contains("assistant")) {
-        return kids[i].querySelector(".bubble");
-      }
-    }
-    return null;
-  }
-
-  function isNearBottom(box) {
-    if (!box) return true;
-    return box.scrollHeight - box.scrollTop - box.clientHeight < 80;
-  }
   
-*/
-
-/* 24.AI消息渲染 */
+   /* 24.AI消息渲染 */
 
   /* 剪贴板工具 */
 
@@ -3158,7 +2834,7 @@
     return toolbar;
   }
 
-  /* 消息行通用交互：点击 / 长按 → 切换 */
+  /* 消息行通用交互：点击/长按切换 */
 
   function bindRowToggleActions(row) {
     var pressTimer = null;
