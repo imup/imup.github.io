@@ -422,6 +422,7 @@ body.sidebar-open .hamburger-btn {
 
 /* 上传图片按钮：去掉外框线 */
 .form-group input[type="file"] {
+  width: auto;
   border: none;
   padding-left: 0;
   padding-right: 0;
@@ -430,7 +431,7 @@ body.sidebar-open .hamburger-btn {
 
 /* 上传图片标签：在按钮下方 */
 .form-group label.image-label-below {
-  margin-top: 6px;
+  margin-top: 0px;
   margin-bottom: 0;
   font-weight: normal;
   font-size: 0.85rem;
