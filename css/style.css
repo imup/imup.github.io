@@ -1,4 +1,5 @@
-/* 1.主题变量 */
+/* 一、主题变量 */
+
 :root {
   --primary: #007bff;
   --primary-hover: #0056b3;
@@ -71,7 +72,8 @@ body.dark-mode {
   --hover-dl: rgba(255, 255, 255, 0.14);
 }
 
-/* 2.全局 */
+/* 二、全局重置 */
+
 * {
   box-sizing: border-box;
 }
@@ -107,7 +109,8 @@ body.preview-lock {
   touch-action: none;
 }
 
-/* 3.汉堡按钮 */
+/* 三、汉堡按钮 */
+
 .hamburger-btn {
   position: fixed;
   top: clamp(8px, 2vw, 14px);
@@ -141,7 +144,8 @@ body.sidebar-open .hamburger-btn {
   pointer-events: none;
 }
 
-/* 4.侧边栏 */
+/* 四、侧边栏 */
+
 .sidebar {
   position: fixed;
   top: 0;
@@ -312,7 +316,8 @@ body.sidebar-open .hamburger-btn {
   background: var(--line);
 }
 
-/* 5.遮罩 */
+/* 五、遮罩 */
+
 .overlay {
   display: none;
   position: fixed;
@@ -327,7 +332,8 @@ body.sidebar-open .hamburger-btn {
   opacity: 1;
 }
 
-/* 6.主内容区 */
+/* 六、主内容区 */
+
 #app {
   width: 100%;
   min-height: 100vh;
@@ -392,7 +398,8 @@ body.sidebar-open .hamburger-btn {
   margin: 0.3em 0;
 }
 
-/* 7.表单 */
+/* 七、表单 */
+
 .form-group {
   margin-bottom: 15px;
 }
@@ -437,7 +444,7 @@ body.sidebar-open .hamburger-btn {
   color: var(--text-secondary);
 }
 
-/* CodeMirror占位符浮层 */
+/* CodeMirror 占位符浮层 */
 .cm-placeholder-overlay {
   position: absolute;
   top: 5px;
@@ -454,7 +461,8 @@ body.sidebar-open .hamburger-btn {
   overflow: hidden;
 }
 
-/* 8.通用按钮 */
+/* 八、通用按钮 */
+
 button {
   background: var(--primary);
   color: white;
@@ -504,7 +512,8 @@ button:disabled {
   background: var(--success);
 }
 
-/* 9.弹窗 */
+/* 九、弹窗 */
+
 .modal-backdrop {
   display: none;
   position: fixed;
@@ -602,7 +611,8 @@ button:disabled {
   color: var(--danger);
 }
 
-/* 10.AI助手（聊天页）*/
+/* 十、AI 助手（聊天页骨架） */
+
 .ai-page {
   position: relative;
   display: flex;
@@ -616,8 +626,8 @@ button:disabled {
 /* 清除按钮 */
 .ai-clear-btn {
   position: absolute;
-  top: clamp(15px, 2vw, 14px);
-  right: clamp(15px, 3vw, 18px);
+  top: clamp(8px, 2vw, 14px);
+  right: clamp(10px, 3vw, 18px);
   z-index: 60;
   width: 28px;
   height: 28px;
@@ -628,7 +638,7 @@ button:disabled {
   border: none;
   color: inherit;
   font-size: 32px;
-  font-weight: 400;
+  font-weight: 300;
   line-height: 1;
   display: flex;
   align-items: center;
@@ -650,7 +660,7 @@ button:disabled {
   transform: scale(0.95);
 }
 
-/* 11.消息列表 */
+/* 消息列表容器 */
 .ai-messages {
   flex: 1 1 auto;
   min-height: 0;
@@ -660,158 +670,8 @@ button:disabled {
   scroll-behavior: smooth;
   touch-action: pan-y;
 }
-.ai-msg {
-  margin-bottom: 12px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  position: relative;
-}
-.ai-msg:last-child {
-  margin-bottom: 0;
-}
-.ai-msg.user {
-  justify-content: flex-end;
-}
-.ai-msg .bubble {
-  max-width: 84%;
-  padding: 9px 13px;
-  border-radius: 16px;
-  white-space: pre-wrap;
-  word-break: break-word;
-  line-height: 1.55;
-  font-size: 0.95rem;
-}
-.ai-msg.user .bubble {
-  background: var(--bubble-user-bg);
-  color: var(--bubble-user-text);
-  border-bottom-right-radius: 4px;
-}
-.ai-msg.assistant .bubble {
-  background: var(--bubble-assistant-bg);
-  color: var(--bubble-assistant-text);
-  border-bottom-left-radius: 4px;
-}
-.ai-msg.pending .bubble {
-  opacity: 0.65;
-  font-style: italic;
-}
 
-/* 消息操作栏 /
-.msg-actions {
-  display: flex;
-  align-items: center;
-  gap: 2px;
-  opacity: 0;
-  transition: opacity 0.15s;
-  flex: 0 0 auto;
-}
-.ai-msg:hover .msg-actions {
-  opacity: 1;
-}
-.msg-action-btn {
-  width: 26px;
-  height: 26px;
-  padding: 0;
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  font-size: 14px;
-  line-height: 1;
-  cursor: pointer;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition:
-    background 0.15s,
-    color 0.15s;
-}
-.msg-action-btn:hover {
-  background: var(--hover);
-  color: var(--primary);
-}
-.msg-token {
-  font-size: 0.72rem;
-  color: var(--text-muted);
-  margin-left: 4px;
-  font-family: ui-monospace, Menlo, Consolas, monospace;
-  white-space: nowrap;
-}
-
-/* "已复制"提示 /
-.msg-flash-tip {
-  position: absolute;
-  top: -20px;
-  right: 0;
-  font-size: 0.72rem;
-  color: var(--text-muted);
-  background: var(--modal-bg);
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  padding: 2px 6px;
-  pointer-events: none;
-  animation: flashFade 1.2s ease forwards;
-}
-@keyframes flashFade {
-  0% {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  20% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-  80% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-  }
-}
-
-/* 移动端长按菜单 /
-.msg-mobile-menu {
-  display: flex;
-  flex-direction: column;
-  margin-bottom: 8px;
-}
-.msg-mobile-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--line);
-  cursor: pointer;
-  transition: background 0.15s;
-}
-.msg-mobile-item:hover {
-  background: var(--hover);
-}
-.msg-mobile-item:first-child {
-  border-top: 1px solid var(--line);
-}
-.msg-mobile-item.danger .msg-mobile-label {
-  color: var(--danger);
-}
-.msg-mobile-icon {
-  width: 20px;
-  text-align: center;
-  font-size: 16px;
-  color: var(--text-muted);
-}
-.msg-mobile-label {
-  flex: 1;
-  font-size: 0.95rem;
-}
-.msg-mobile-cancel {
-  width: 100%;
-  padding: 12px;
-  background: var(--neutral-btn);
-  margin-top: 4px;
-}
-
-/* 空状态 /
+/* 空状态 */
 .ai-empty {
   color: var(--text-tertiary);
   text-align: center;
@@ -821,7 +681,7 @@ button:disabled {
   white-space: pre-line;
 }
 
-/* Token累计栏 /
+/* 底部 Token 累计栏 */
 .ai-stats {
   flex: 0 0 auto;
   padding: 6px 14px 0;
@@ -830,28 +690,10 @@ button:disabled {
   text-align: center;
   font-family: ui-monospace, Menlo, Consolas, monospace;
 }
-*/
 
-/* =========================================================
-   十一、AI 消息渲染（用户气泡 + AI 整框 + 工具栏）
-   =========================================================
-   结构：
-     - 用户消息 .ai-msg.user
-         左侧 .msg-actions（绝对定位，默认隐藏）
-         右侧 .bubble（气泡）
-     - AI 消息 .ai-msg.assistant
-         上方 .assistant-body（整框无气泡）
-         下方 .assistant-toolbar（默认折叠）
-             左 .toolbar-left  ↻ ✕ token
-             右 .toolbar-right ⧉
-   展开：.ai-msg.actions-visible
-     - 用户消息：.msg-actions 淡入
-     - AI 消息：.assistant-toolbar 展开
-   ========================================================= */
+/* 十一、AI消息渲染（用户气泡+AI整框+工具栏） */
 
-/* ---------------------------------------------------------
-   消息行基础
-   --------------------------------------------------------- */
+/* 消息行基础 */
 .ai-msg {
   margin-bottom: 12px;
   display: flex;
@@ -867,9 +709,7 @@ button:disabled {
   position: relative;
 }
 
-/* ---------------------------------------------------------
-   用户消息
-   --------------------------------------------------------- */
+/* 用户消息 */
 
 /* 用户消息的左侧操作栏：绝对定位在气泡左侧，不占用流式布局 */
 .ai-msg.user .msg-actions {
@@ -894,10 +734,7 @@ button:disabled {
   border-bottom-right-radius: 4px;
 }
 
-/* ---------------------------------------------------------
-   用户消息操作栏：默认隐藏，展开时;
- 显示 font
-   --------------------------------------------------------- */
+/* 用户消息操作栏：默认隐藏，展开时;显示font */
 .msg--weightactions {
   display: flex;
  : align-items: center;
@@ -938,9 +775,7 @@ button:disabled {
   color: var(--primary);
 }
 
-/* ---------------------------------------------------------
-   气泡旁"已复制"提示
-   --------------------------------------------------------- */
+/* 气泡旁"已复制"提示 */
 .msg-flash-tip {
   position: absolute;
   top: -20px;
@@ -971,11 +806,9 @@ button:disabled {
   }
 }
 
-/* ---------------------------------------------------------
-   AI 消息
-   --------------------------------------------------------- */
+/* AI消息 */
 
-/* AI 消息：整框无气泡 */
+/* AI消息：整框无气泡 */
 .ai-msg.assistant {
   display: block;
   align-items: stretch;
@@ -994,10 +827,7 @@ button:disabled {
   font-style: italic;
 }
 
-/* ---------------------------------------------------------
-   AI 消息底部工具栏：默认折叠（max-height: 0，无分隔线）
-   展开时（.ai-msg.actions-visible）显示
-   --------------------------------------------------------- */
+/* AI消息底部工具栏：默认折叠无分隔线）*/
 .assistant-toolbar {
   display: flex;
   justify-content: space-between;
@@ -1077,12 +907,7 @@ button:disabled {
   line-height: 1.2;
 }
 
-/* ---------------------------------------------------------
-   移动端长按菜单（已弃用，保留备用）
-   ---------------------------------------------------------
-   说明：消息操作已改为"点击/长按展开工具栏"，
-        以下样式不再被引用，保留以防将来恢复弹窗交互。
-   --------------------------------------------------------- */
+/* 移动端长按菜单（已弃用，保留备用）*/
 .msg-mobile-menu {
   display: flex;
   flex-direction: column;
@@ -1123,8 +948,9 @@ button:disabled {
   margin-top: 4px;
 }
 
+/* 十二、AI输入区 / 模型菜单 */
 
-/* 12.底部输入区 */
+/* 底部输入区外壳 */
 .ai-input-wrap {
   flex: 0 0 auto;
   padding: 10px 12px calc(12px + env(safe-area-inset-bottom));
@@ -1132,6 +958,7 @@ button:disabled {
   pointer-events: none;
 }
 
+/* 输入条 */
 .ai-input-bar {
   display: flex;
   align-items: flex-end;
@@ -1187,7 +1014,7 @@ button:disabled {
   background: rgba(0, 123, 255, 0.12);
 }
 
-/* 模型菜单 */
+/* 模型菜单容器 */
 .ai-model-menu {
   display: none;
   position: absolute;
@@ -1393,7 +1220,10 @@ button:disabled {
   cursor: not-allowed;
 }
 
-/* 13.编写脚本页AI生成面板 */
+
+/* 十三、编写脚本页AI面板 */
+
+/* AI输入栏（编写页） */
 .gen-ai-bar {
   display: flex;
   align-items: flex-end;
@@ -1407,8 +1237,7 @@ button:disabled {
 
 /* 无外框版本（位于脚本编辑框下方） */
 .gen-ai-bar-bare {
-  margin-top: 12px;
-  margin-bottom: 12px;
+  margin: 12px 0;
 }
 
 /* 编写页AI输入框内的发送按钮：透明底 + 边框 */
@@ -1455,7 +1284,7 @@ button:disabled {
   color: var(--success);
 }
 
-/* 标题输入+提交按钮并列一行 */
+/* 标题输入 + 提交按钮 并列一行 */
 .gen-inline-row {
   display: flex;
   gap: 10px;
@@ -1478,7 +1307,8 @@ button:disabled {
   white-space: nowrap;
 }
 
-/* 14.预览截图按钮（仅作品预览时显示） */
+/* 十四、预览截图按钮（仅作品预览时显示） */
+
 .preview-screenshot-btn {
   position: fixed;
   top: clamp(8px, 2vw, 14px);
@@ -1502,14 +1332,7 @@ button:disabled {
   transform: scale(0.95);
 }
 
-/* 15.响应式 */
-
-/* 触屏：隐藏悬停操作栏（改用长按菜单） */
-@media (hover: none) {
-  .ai-msg .msg-actions {
-    display: none;
-  }
-}
+/* 十五、响应式 */
 
 @media (max-width: 420px) {
   .hamburger-btn {
@@ -1530,6 +1353,13 @@ button:disabled {
   }
   .ai-model-menu {
     min-width: 280px;
+  }
+  .assistant-tool-btn {
+    font-size: 0.68rem;
+    padding: 0 4px;
+  }
+  .assistant-token {
+    font-size: 0.62rem;
   }
 }
 
