@@ -220,10 +220,32 @@ body.sidebar-open .hamburger-btn {
 
 /* 导航项 */
 .sidebar .nav-item {
+  display: flex;
+  align-items: center;
   padding: 12px clamp(16px, 4vw, 20px);
   border-bottom: 1px solid var(--line);
   cursor: pointer;
   transition: background 0.15s;
+}
+
+/* 侧边栏SVG图标 */
+.sidebar .nav-item .nav-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-right: 10px;
+  stroke: currentColor;
+  fill: none;
+  color: inherit;
+}
+
+/* nav-item 内的文字：占满剩余宽度 */
+.sidebar .nav-item > span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .sidebar .nav-item:hover {
   background: var(--hover);
