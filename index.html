@@ -24,6 +24,7 @@
       disabled
     />
     <link rel="stylesheet" href="css/style.css" />
+    <link rel="manifest" href="manifest.json" />
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   </head>
@@ -133,5 +134,17 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
 
     <script src="js/script.js"></script>
+    
+    <script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker
+        .register("./sw.js")
+        .catch(function (e) {
+          console.warn("[SW] 注册失败：", e);
+        });
+    });
+  }
+</script>
   </body>
 </html>
