@@ -1,5 +1,4 @@
-/* 一、主题变量 */
-
+/* 1.主题变量 */
 :root {
   --primary: #007bff;
   --primary-hover: #0056b3;
@@ -72,8 +71,7 @@ body.dark-mode {
   --hover-dl: rgba(255, 255, 255, 0.14);
 }
 
-/* 二、全局重置 */
-
+/* 2.全局重置 */
 * {
   box-sizing: border-box;
 }
@@ -109,8 +107,7 @@ body.preview-lock {
   touch-action: none;
 }
 
-/* 三、汉堡按钮 */
-
+/* 3.汉堡按钮 */
 .hamburger-btn {
   position: fixed;
   top: clamp(8px, 2vw, 14px);
@@ -144,8 +141,7 @@ body.sidebar-open .hamburger-btn {
   pointer-events: none;
 }
 
-/* 四、侧边栏 */
-
+/* 4.侧边栏 */
 .sidebar {
   position: fixed;
   top: 0;
@@ -316,8 +312,7 @@ body.sidebar-open .hamburger-btn {
   background: var(--line);
 }
 
-/* 五、遮罩 */
-
+/* 5.遮罩 */
 .overlay {
   display: none;
   position: fixed;
@@ -332,8 +327,7 @@ body.sidebar-open .hamburger-btn {
   opacity: 1;
 }
 
-/* 六、主内容区 */
-
+/* 6.主内容区 */
 #app {
   width: 100%;
   min-height: 100vh;
@@ -398,8 +392,7 @@ body.sidebar-open .hamburger-btn {
   margin: 0.3em 0;
 }
 
-/* 七、表单 */
-
+/* 7.表单 */
 .form-group {
   margin-bottom: 15px;
 }
@@ -444,7 +437,7 @@ body.sidebar-open .hamburger-btn {
   color: var(--text-secondary);
 }
 
-/* CodeMirror 占位符浮层 */
+/* CodeMirror占位符浮层 */
 .cm-placeholder-overlay {
   position: absolute;
   top: 5px;
@@ -461,8 +454,7 @@ body.sidebar-open .hamburger-btn {
   overflow: hidden;
 }
 
-/* 八、通用按钮 */
-
+/* 8.通用按钮 */
 button {
   background: var(--primary);
   color: white;
@@ -512,8 +504,7 @@ button:disabled {
   background: var(--success);
 }
 
-/* 九、弹窗 */
-
+/* 9.弹窗 */
 .modal-backdrop {
   display: none;
   position: fixed;
@@ -611,8 +602,7 @@ button:disabled {
   color: var(--danger);
 }
 
-/* 十、AI 助手（聊天页骨架） */
-
+/* 10.AI助手（聊天页骨架） */
 .ai-page {
   position: relative;
   display: flex;
@@ -626,8 +616,8 @@ button:disabled {
 /* 清除按钮 */
 .ai-clear-btn {
   position: absolute;
-  top: clamp(8px, 2vw, 14px);
-  right: clamp(10px, 3vw, 18px);
+  top: clamp(16px, 2vw, 14px);
+  right: clamp(16px, 3vw, 18px);
   z-index: 60;
   width: 28px;
   height: 28px;
@@ -638,7 +628,7 @@ button:disabled {
   border: none;
   color: inherit;
   font-size: 32px;
-  font-weight: 300;
+  font-weight: 400;
   line-height: 1;
   display: flex;
   align-items: center;
@@ -681,7 +671,7 @@ button:disabled {
   white-space: pre-line;
 }
 
-/* 底部 Token 累计栏 */
+/* 底部Token累计栏 */
 .ai-stats {
   flex: 0 0 auto;
   padding: 6px 14px 0;
@@ -691,7 +681,7 @@ button:disabled {
   font-family: ui-monospace, Menlo, Consolas, monospace;
 }
 
-/* 十一、AI消息渲染（用户气泡+AI整框+工具栏） */
+/* 11.AI消息渲染（用户气泡+AI整框+工具栏） */
 
 /* 消息行基础 */
 .ai-msg {
@@ -710,8 +700,6 @@ button:disabled {
 }
 
 /* 用户消息 */
-
-/* 用户消息的左侧操作栏：绝对定位在气泡左侧，不占用流式布局 */
 .ai-msg.user .msg-actions {
   position: absolute;
   right: 100%;
@@ -806,8 +794,6 @@ button:disabled {
   }
 }
 
-/* AI消息 */
-
 /* AI消息：整框无气泡 */
 .ai-msg.assistant {
   display: block;
@@ -897,7 +883,7 @@ button:disabled {
   color: var(--primary);
 }
 
-/* Token 文本 */
+/* Token文本 */
 .assistant-token {
   color: var(--text-muted);
   font-family: ui-monospace, Menlo, Consolas, monospace;
@@ -948,7 +934,7 @@ button:disabled {
   margin-top: 4px;
 }
 
-/* 十二、AI输入区 / 模型菜单 */
+/* 12.AI输入区 / 模型菜单 */
 
 /* 底部输入区外壳 */
 .ai-input-wrap {
@@ -1220,8 +1206,7 @@ button:disabled {
   cursor: not-allowed;
 }
 
-
-/* 十三、编写脚本页AI面板 */
+/* 13.编写脚本页AI面板 */
 
 /* AI输入栏（编写页） */
 .gen-ai-bar {
@@ -1307,8 +1292,7 @@ button:disabled {
   white-space: nowrap;
 }
 
-/* 十四、预览截图按钮（仅作品预览时显示） */
-
+/* 14.预览截图按钮（仅作品预览时显示） */
 .preview-screenshot-btn {
   position: fixed;
   top: clamp(8px, 2vw, 14px);
@@ -1332,8 +1316,7 @@ button:disabled {
   transform: scale(0.95);
 }
 
-/* 十五、响应式 */
-
+/* 15.响应式 */
 @media (max-width: 420px) {
   .hamburger-btn {
     font-size: 28px;
