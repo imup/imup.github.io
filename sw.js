@@ -1,11 +1,14 @@
 /* Service Worker —— 缓存静态资源，支持离线打开 */
-var CACHE_NAME = "randomart-v1";
+var CACHE_NAME = "randomArt-v1";
 var URLS_TO_CACHE = [
   "./",
   "./index.html",
   "./css/style.css",
   "./js/script.js",
   "./data/content.json",
+  "./manifest.json",
+  "./img/icon-192.png",
+  "./img/icon-512.png",
 ];
 
 self.addEventListener("install", function (e) {
