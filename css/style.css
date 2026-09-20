@@ -322,11 +322,10 @@ body.sidebar-open .hamburger-btn {
   padding: 12px clamp(8px, 2vw, 14px)
     calc(12px + env(safe-area-inset-bottom, 0px));
   border-bottom: none;
-  text-align: center;
+  justify-content: center;  /* 新增：图标 + 文字居中 */
   font-size: 0.9rem;
   white-space: nowrap;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 .sidebar-footer .footer-vdivider {
   width: 1px;
