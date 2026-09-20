@@ -31,9 +31,9 @@ self.addEventListener("activate", function (e) {
 });
 
 self.addEventListener("fetch", function (e) {
-  /* 只缓存 GET 请求 */
+  /* 只缓存GET请求 */
   if (e.request.method !== "GET") return;
-  /* 不缓存 AI API 请求 */
+  /* 不缓存AI API请求 */
   var url = e.request.url;
   if (
     url.indexOf("api.openai.com") !== -1 ||
@@ -47,7 +47,7 @@ self.addEventListener("fetch", function (e) {
       if (cached) return cached;
       return fetch(e.request)
         .then(function (res) {
-          /* 只缓存同源 200 响应 */
+          /* 只缓存同源200响应 */
           if (
             res &&
             res.status === 200 &&
