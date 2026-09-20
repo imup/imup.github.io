@@ -433,7 +433,7 @@ body.sidebar-open .hamburger-btn {
 
 /* 上传图片标签：在按钮下方 */
 .form-group label.image-label-below {
-  margin-top: 0px;
+  margin-top: 2px;
   margin-bottom: 0;
   font-weight: normal;
   font-size: 0.85rem;
