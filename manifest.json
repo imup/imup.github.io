@@ -3,7 +3,7 @@
   "short_name": "randomArt",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#f5f5f5",
+  "background_color": "#ffffff",
   "theme_color": "#F5F5F5",
   "icons": [
     {
