@@ -1,5 +1,5 @@
 /* Service Worker —— 缓存静态资源，支持离线打开 */
-var CACHE_NAME = "randomArt-v1";
+var CACHE_NAME = "randomArt-v1.00";
 var URLS_TO_CACHE = [
   "./",
   "./index.html",
