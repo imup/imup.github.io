@@ -3,8 +3,8 @@
   "short_name": "randomArt",
   "start_url": "./",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#000000",
+  "background_color": "#F5F5F5",
+  "theme_color": "#FFFFFF",
   "icons": [
     {
       "src": "img/icon-192.png",
