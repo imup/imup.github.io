@@ -1005,11 +1005,11 @@
       title.dataset.action = "open";
       title.dataset.id = String(page.id);
       var actions = el("div", "actions");
-      var renameBtn = el("button", "rename", "✎");
+      var renameBtn = el("button", "rename", "✎ ");
       renameBtn.title = T("common.rename");
       renameBtn.dataset.action = "rename";
       renameBtn.dataset.id = String(page.id);
-      var delBtn = el("button", "del", "✕");
+      var delBtn = el("button", "del", " ✕");
       delBtn.title = T("common.delete");
       delBtn.dataset.action = "delete";
       delBtn.dataset.id = String(page.id);
