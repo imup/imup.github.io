@@ -1,4 +1,3 @@
-/* 1.主题变量 */
 :root {
   --primary: #007bff;
   --primary-hover: #0056b3;
@@ -71,7 +70,6 @@ body.dark-mode {
   --hover-dl: rgba(255, 255, 255, 0.14);
 }
 
-/* 2.全局重置 */
 * {
   box-sizing: border-box;
 }
@@ -107,7 +105,6 @@ body.preview-lock {
   touch-action: none;
 }
 
-/* 3.汉堡按钮 */
 .hamburger-btn {
   position: fixed;
   top: clamp(8px, 2vw, 14px);
@@ -141,7 +138,6 @@ body.sidebar-open .hamburger-btn {
   pointer-events: none;
 }
 
-/* 4.侧边栏 */
 .sidebar {
   position: fixed;
   top: 0;
@@ -170,7 +166,6 @@ body.sidebar-open .hamburger-btn {
   transform: translateX(0);
 }
 
-/* 搜索框 */
 .sidebar-search {
   padding: 0 clamp(14px, 4vw, 18px) 12px;
   margin-top: -4px;
@@ -218,7 +213,6 @@ body.sidebar-open .hamburger-btn {
   cursor: pointer;
 }
 
-/* 导航项 */
 .sidebar .nav-item {
   display: flex;
   align-items: center;
@@ -228,7 +222,6 @@ body.sidebar-open .hamburger-btn {
   transition: background 0.15s;
 }
 
-/* 侧边栏SVG图标 */
 .sidebar .nav-item .nav-icon {
   width: 18px;
   height: 18px;
@@ -239,7 +232,6 @@ body.sidebar-open .hamburger-btn {
   color: inherit;
 }
 
-/* nav-item 内的文字：占满剩余宽度 */
 .sidebar .nav-item > span {
   flex: 1;
   min-width: 0;
@@ -306,7 +298,6 @@ body.sidebar-open .hamburger-btn {
   font-style: italic;
 }
 
-/* 侧边栏底部 */
 .sidebar-footer {
   margin-top: auto;
   border-top: 1px solid var(--line);
@@ -327,7 +318,7 @@ body.sidebar-open .hamburger-btn {
   white-space: nowrap;
   overflow: hidden;
 }
-/* 页脚按钮内的文字不要撑满，让图标+文字整体居中 */
+
 .sidebar-footer .footer-item > span {
   flex: 0 1 auto;
   min-width: 0;
@@ -346,7 +337,6 @@ body.sidebar-open .hamburger-btn {
   background: var(--line);
 }
 
-/* 5.遮罩 */
 .overlay {
   display: none;
   position: fixed;
@@ -361,7 +351,6 @@ body.sidebar-open .hamburger-btn {
   opacity: 1;
 }
 
-/* 6.主内容区 */
 #app {
   width: 100%;
   min-height: 100vh;
@@ -426,7 +415,6 @@ body.sidebar-open .hamburger-btn {
   margin: 0.3em 0;
 }
 
-/* 7.表单 */
 .form-group {
   margin-bottom: 15px;
 }
@@ -454,7 +442,6 @@ body.sidebar-open .hamburger-btn {
   font-size: 14px;
 }
 
-/* 上传图片按钮：去掉外框线 */
 .form-group input[type="file"] {
   width: auto;
   max-width: 100%;
@@ -465,7 +452,6 @@ body.sidebar-open .hamburger-btn {
   cursor: pointer;
 }
 
-/* 上传图片标签：在按钮下方 */
 .form-group label.image-label-below {
   margin-top: 2px;
   margin-bottom: 0;
@@ -474,7 +460,6 @@ body.sidebar-open .hamburger-btn {
   color: var(--text-secondary);
 }
 
-/* CodeMirror占位符浮层 */
 .cm-placeholder-overlay {
   position: absolute;
   top: 5px;
@@ -491,7 +476,6 @@ body.sidebar-open .hamburger-btn {
   overflow: hidden;
 }
 
-/* 8.通用按钮 */
 button {
   background: var(--primary);
   color: white;
@@ -541,7 +525,6 @@ button:disabled {
   background: var(--success);
 }
 
-/* 9.弹窗 */
 .modal-backdrop {
   display: none;
   position: fixed;
@@ -639,7 +622,6 @@ button:disabled {
   color: var(--danger);
 }
 
-/* 10.AI助手（聊天页骨架） */
 .ai-page {
   position: relative;
   display: flex;
@@ -650,7 +632,6 @@ button:disabled {
   overflow: hidden;
 }
 
-/* 清除按钮 */
 .ai-clear-btn {
   position: absolute;
   top: clamp(16px, 2vw, 14px);
@@ -687,7 +668,6 @@ button:disabled {
   transform: scale(0.95);
 }
 
-/* 消息列表容器 */
 .ai-messages {
   flex: 1 1 auto;
   min-height: 0;
@@ -698,7 +678,6 @@ button:disabled {
   touch-action: pan-y;
 }
 
-/* 空状态 */
 .ai-empty {
   color: var(--text-tertiary);
   text-align: center;
@@ -708,7 +687,6 @@ button:disabled {
   white-space: pre-line;
 }
 
-/* 底部Token累计栏 */
 .ai-stats {
   flex: 0 0 auto;
   padding: 6px 14px 0;
@@ -718,9 +696,6 @@ button:disabled {
   font-family: ui-monospace, Menlo, Consolas, monospace;
 }
 
-/* 11.AI消息渲染（用户气泡+AI整框+工具栏） */
-
-/* 消息行基础 */
 .ai-msg {
   margin-bottom: 12px;
   display: flex;
@@ -736,7 +711,6 @@ button:disabled {
   position: relative;
 }
 
-/* 用户消息 */
 .ai-msg.user .msg-actions {
   position: absolute;
   right: 100%;
@@ -745,7 +719,6 @@ button:disabled {
   margin-right: 6px;
 }
 
-/* 用户消息气泡 */
 .ai-msg.user .bubble {
   max-width: 84%;
   padding: 9px 13px;
@@ -759,7 +732,6 @@ button:disabled {
   border-bottom-right-radius: 4px;
 }
 
-/* 用户消息操作栏：默认隐藏，展开时;显示font */
 .msg--weightactions {
   display: flex;
  : align-items: center;
@@ -775,7 +747,6 @@ button:disabled {
   pointer-events: auto;
 }
 
-/* 操作栏内的按钮 */
 .msg-action-btn {
   width: 20px;
   height: 20px;
@@ -800,7 +771,6 @@ button:disabled {
   color: var(--primary);
 }
 
-/* 气泡旁"已复制"提示 */
 .msg-flash-tip {
   position: absolute;
   top: -20px;
@@ -831,7 +801,6 @@ button:disabled {
   }
 }
 
-/* AI消息：整框无气泡 */
 .ai-msg.assistant {
   display: block;
   align-items: stretch;
@@ -850,7 +819,6 @@ button:disabled {
   font-style: italic;
 }
 
-/* AI消息底部工具栏：默认折叠无分隔线）*/
 .assistant-toolbar {
   display: flex;
   justify-content: space-between;
@@ -877,7 +845,6 @@ button:disabled {
   border-top: 1px solid var(--line);
 }
 
-/* 工具栏左右两组 */
 .assistant-toolbar .toolbar-left {
   display: flex;
   align-items: center;
@@ -892,7 +859,6 @@ button:disabled {
   flex: 0 0 auto;
 }
 
-/* 工具栏按钮 */
 .assistant-tool-btn {
   background: transparent !important;
   color: var(--text-muted);
@@ -920,7 +886,6 @@ button:disabled {
   color: var(--primary);
 }
 
-/* Token文本 */
 .assistant-token {
   color: var(--text-muted);
   font-family: ui-monospace, Menlo, Consolas, monospace;
@@ -930,7 +895,6 @@ button:disabled {
   line-height: 1.2;
 }
 
-/* 移动端长按菜单（已弃用，保留备用）*/
 .msg-mobile-menu {
   display: flex;
   flex-direction: column;
@@ -971,9 +935,6 @@ button:disabled {
   margin-top: 4px;
 }
 
-/* 12.AI输入区 / 模型菜单 */
-
-/* 底部输入区外壳 */
 .ai-input-wrap {
   flex: 0 0 auto;
   padding: 10px 12px calc(12px + env(safe-area-inset-bottom));
@@ -981,7 +942,6 @@ button:disabled {
   pointer-events: none;
 }
 
-/* 输入条 */
 .ai-input-bar {
   display: flex;
   align-items: flex-end;
@@ -1000,7 +960,6 @@ button:disabled {
     border-color 0.3s;
 }
 
-/* 模型选择器 */
 .ai-model-picker {
   position: relative;
   flex: 0 0 auto;
@@ -1037,7 +996,6 @@ button:disabled {
   background: rgba(0, 123, 255, 0.12);
 }
 
-/* 模型菜单容器 */
 .ai-model-menu {
   display: none;
   position: absolute;
@@ -1056,7 +1014,6 @@ button:disabled {
   display: block;
 }
 
-/* 菜单顶部：自定义 + 导入并排 */
 .ai-model-toprow {
   display: flex;
   align-items: stretch;
@@ -1084,7 +1041,6 @@ button:disabled {
   border-left: 1px solid var(--line);
 }
 
-/* 模型行 */
 .ai-model-item {
   display: flex;
   align-items: center;
@@ -1126,7 +1082,6 @@ button:disabled {
   white-space: nowrap;
 }
 
-/* 名字后的编辑符号 */
 .ai-model-item .ai-model-edit {
   flex: 0 0 auto;
   padding: 1px 5px;
@@ -1148,7 +1103,6 @@ button:disabled {
   border-color: var(--primary);
 }
 
-/* T / K / P / J / M 按钮 */
 .ai-model-item .ai-key,
 .ai-model-item .ai-prompt,
 .ai-model-item .ai-dl {
@@ -1187,7 +1141,6 @@ button:disabled {
   color: var(--purple);
 }
 
-/* 输入框 */
 .ai-input-bar textarea,
 .gen-ai-bar textarea {
   flex: 1 1 auto;
@@ -1210,7 +1163,6 @@ button:disabled {
   color: var(--text-placeholder);
 }
 
-/* 发送按钮（AI聊天页） */
 .ai-send-btn {
   flex: 0 0 auto;
   width: 38px;
@@ -1243,9 +1195,6 @@ button:disabled {
   cursor: not-allowed;
 }
 
-/* 13.编写脚本页AI面板 */
-
-/* AI输入栏（编写页） */
 .gen-ai-bar {
   display: flex;
   align-items: flex-end;
@@ -1257,12 +1206,10 @@ button:disabled {
   padding: 6px;
 }
 
-/* 无外框版本（位于脚本编辑框下方） */
 .gen-ai-bar-bare {
   margin: 12px 0;
 }
 
-/* 编写页AI输入框内的发送按钮：透明底 + 边框 */
 .gen-ai-bar .ai-send-btn {
   background: transparent;
   color: var(--text);
@@ -1278,7 +1225,6 @@ button:disabled {
   cursor: not-allowed;
 }
 
-/* AI状态区 */
 .gen-status {
   margin-top: 10px;
   font-family: ui-monospace, Menlo, Consolas, monospace;
@@ -1306,7 +1252,6 @@ button:disabled {
   color: var(--success);
 }
 
-/* 标题输入 + 提交按钮 并列一行 */
 .gen-inline-row {
   display: flex;
   gap: 10px;
@@ -1329,7 +1274,6 @@ button:disabled {
   white-space: nowrap;
 }
 
-/* 14.预览截图按钮（仅作品预览时显示） */
 .preview-screenshot-btn {
   position: fixed;
   top: clamp(8px, 2vw, 14px);
@@ -1353,7 +1297,6 @@ button:disabled {
   transform: scale(0.95);
 }
 
-/* 15.响应式 */
 @media (max-width: 420px) {
   .hamburger-btn {
     font-size: 28px;
