@@ -1,22 +1,9 @@
 /* =========================================================
    randomArt可视化创意编程 - 主逻辑
-   =========================================================
-     - 外部依赖CDN：CodeMirror、JSZip在html 中引入
-     - json文案 + 模型配置加载
-     - 首页随机运行p5.js，列表硬编码在P5_FILES
-     - HTML只有骨架；所有动态DOM由本文件createElement生成
-     - 文案与模型配置从json载入，支持i18n
-     - 编写脚本页支持AI生成代码（函数调用，OpenAI + Gemini双协议）
-     - AI聊天页支持消息级操作（复制/重生成/删除）与 Token 统计
-     - 作品预览支持canvas截图；AI预览统一走首页渲染路径
-     - 上传图片仅保存在内存，不写入localStorage；预览时从内存注入，刷新即丢；HTML保留注解
-     - AI通过[图片已上传 | 尺寸: W×H]标记判断图片可用性
    ========================================================= */
 (function () {
   "use strict";
-
-  /* 1.常量 */
-
+  
   var STORAGE_KEY = "p5_pages";
   var THEME_KEY = "p5_theme";
   var LANG_KEY = "p5_lang";
@@ -41,7 +28,6 @@
 
   var CONTENT_URL = "data/content.json";
 
-  /* 工具声明（OpenAI格式） */
   var TOOL_DECLARATIONS_OPENAI = [
     {
       type: "function",
@@ -172,8 +158,7 @@
       },
     },
   ];
-
-  /* 工具声明（Gemini格式） */
+  
   var TOOL_DECLARATIONS_GEMINI = [
     {
       functionDeclarations: [
@@ -254,9 +239,7 @@
       ],
     },
   ];
-
-  /* 2.运行时状态 */
-
+  
   var AI_MODELS = [];
   var I18N = {};
   var LANG = "zh";
@@ -293,17 +276,13 @@
 
   var editor = null;
   var uploadedImageDataUrl = null;
-  /* 当前上传图片的宽高 */
   var uploadedImageInfo = null;
-  /* 会话级图片缓存刷新即丢，不写localStorage */
   var sessionImages = {};
 
   var generatorDraft = { title: "", script: "" };
   var renderedMsgCount = 0;
   var renderedModelId = null;
-
-  /* 3.i18n */
-
+  
   function T(key, params) {
     var pack = I18N[LANG] || I18N.zh || {};
     var text = pack[key];
@@ -329,7 +308,6 @@
   function applyI18nToStatic() {
     document.querySelectorAll("[data-i18n]").forEach(function (el) {
       var text = T(el.getAttribute("data-i18n"));
-      /* 若元素内含span用于SVG+文字组合只更新 span */
       var span = el.querySelector("span");
       if (span) {
         span.textContent = text;
@@ -351,8 +329,6 @@
     } catch (e) {}
   }
   
-  /* 4.模型访问 */
-
   function getAllModels() {
     return AI_MODELS.concat(aiState.customModels || []);
   }
@@ -375,9 +351,7 @@
     var c = aiModelConf(id);
     return c ? c.name : id;
   }
-
-  /* 5.localStorage读写 */
-
+  
   function loadAIKeys() {
     try {
       var raw = localStorage.getItem(AI_KEY_STORAGE);
@@ -408,7 +382,6 @@
         result[m.id] = [];
       }
     });
-    /* 迁移老数据（幂等：成功才清除旧key） */
     try {
       var oldRaw = localStorage.getItem(AI_CHAT_STORAGE);
       if (oldRaw) {
@@ -529,8 +502,7 @@
       return false;
     }
   }
-
-  /* 编辑器草稿 */
+  
   function loadDraft() {
     try {
       var raw = localStorage.getItem(DRAFT_KEY);
@@ -566,9 +538,7 @@
       if (typeof aiState.prompts[m.id] !== "string") aiState.prompts[m.id] = "";
     });
   }
-
-  /* 6.存储超限 */
-
+  
   function isQuotaError(e) {
     if (!e) return false;
     if (e.name === "QuotaExceededError") return true;
@@ -611,9 +581,7 @@
       true,
     );
   }
-
-  /* 7.通用工具 */
-
+  
   function $(sel, root) {
     return (root || document).querySelector(sel);
   }
@@ -655,9 +623,7 @@
   function rightGroup() {
     return el("div", "right-group");
   }
-
-  /* 8.弹窗 */
-
+  
   function openModal(builder) {
     lastFocused = document.activeElement;
     modalBox.innerHTML = "";
@@ -811,9 +777,7 @@
       box.appendChild(a);
     });
   }
-
-  /* 9.生成作品HTML */
-
+  
   function generatePageHtml(title, script, imageDataUrl, hasImage) {
     var safeTitle = escapeHtml(
       (title || T("generator.untitledPage")).slice(0, MAX_TITLE_LEN),
@@ -863,8 +827,7 @@
       "</html>"
     );
   }
-
-  /* 把内存里的图片注入到作品HTML里匹配 */
+  
   function injectSessionImage(html, dataUrl) {
     if (!html || !dataUrl) return html;
     var escaped = String(dataUrl)
@@ -931,9 +894,7 @@
         );
       });
   }
-
-  /* 10.首页随机脚本 */
-
+  
   function pickRandomP5File() {
     if (!P5_FILES || !P5_FILES.length) return null;
     if (P5_FILES.length === 1) return P5_FILES[0];
@@ -974,9 +935,7 @@
       "</html>"
     );
   }
-
-  /* 11.侧边栏作品列表 */
-
+  
   function updateSidebarPages() {
     var pages = getPages();
     var kw = sidebarSearchKeyword.trim().toLowerCase();
@@ -1021,9 +980,7 @@
     });
     sidebarPagesEl.replaceChildren(frag);
   }
-
-  /* 12.iframe内p5画布事件代理 */
-
+  
   function bindIframeProxy(iframe) {
     var iwin, idoc;
     try {
@@ -1137,9 +1094,7 @@
       });
     });
   }
-
-  /* 13.预览锁屏 */
-
+  
   function lockAppSize() {
     document.body.classList.add("preview-lock");
     var w = window.innerWidth;
@@ -1160,9 +1115,7 @@
     appEl.style.height = "";
     appEl.style.overflow = "";
   }
-
-  /* 14.截图按钮（作品预览专属） */
-
+  
   function buildScreenshotButton(iframe) {
     var btn = el("button", "preview-screenshot-btn", "📷");
     btn.id = "screenshotBtn";
@@ -1194,9 +1147,7 @@
     });
     return btn;
   }
-
-  /* 15.首页渲染 */
-
+  
   function renderRunner() {
     destroyEditor();
     appEl.replaceChildren();
@@ -1212,13 +1163,11 @@
       });
       if (page) {
         html = page.html;
-        /* 若本次会话里有该作品的图片，注入到 HTML不写磁盘 */
         if (sessionImages[page.id]) {
           html = injectSessionImage(html, sessionImages[page.id]);
         }
         appEl.dataset.currentPageId = String(page.id);
       } else if (window.__previewHtml) {
-        /* AI触发的临时预览：走同一渲染路径，但不关联作品、不保存 */
         html = window.__previewHtml;
         window.__previewHtml = null;
         delete appEl.dataset.currentPageId;
@@ -1256,7 +1205,6 @@
     });
     appEl.appendChild(iframe);
 
-    /* 只对预览/AI临时预览（非随机）显示截图 */
     if (runner.mode === "page") {
       appEl.appendChild(buildScreenshotButton(iframe));
     }
@@ -1275,9 +1223,7 @@
     if (getRoute() === "/") render();
     else location.hash = "#/";
   }
-
-  /* 16.作品操作 */
-
+  
   function deletePage(id) {
     var pages = getPages();
     var page = pages.find(function (p) {
@@ -1293,7 +1239,6 @@
         });
         savePages(list);
         updateSidebarPages();
-        /* 顺带清掉内存中的图片缓存 */
         if (sessionImages[id]) delete sessionImages[id];
         if (runner.mode === "page" && runner.pageId === id) {
           runner.mode = "random";
@@ -1318,9 +1263,7 @@
       render();
     });
   }
-
-  /* 17.侧边栏开关 */
-
+  
   function openSidebar() {
     sidebarEl.classList.add("open");
     overlayEl.classList.add("show");
@@ -1333,9 +1276,7 @@
     document.body.classList.remove("sidebar-open");
     hamburgerBtn.setAttribute("aria-expanded", "false");
   }
-
-  /* 18.主题 */
-
+  
   function applyTheme(theme) {
     var lightTheme = $("#cm-theme-light");
     var darkTheme = $("#cm-theme-dark");
@@ -1364,9 +1305,7 @@
       localStorage.setItem(THEME_KEY, next);
     } catch (e) {}
   }
-
-  /* 19.路由 */
-
+  
   function getRoute() {
     var hash = location.hash;
     if (!hash || hash === "#" || hash === "#/") return "/";
@@ -1389,9 +1328,7 @@
       editor = null;
     }
   }
-
-  /* 20.关于页 */
-
+  
   function renderAbout() {
     var wrap = document.createElement("div");
     wrap.appendChild(el("h1", null, T("about.title")));
@@ -1403,25 +1340,19 @@
     });
     return wrap;
   }
-
-  /* 21.编写脚本页 */
-
+  
   function renderGenerator() {
     var wrap = el("div", "generator-page");
     wrap.appendChild(el("h1", null, T("generator.title")));
     wrap.appendChild(el("p", null, T("generator.subtitle")));
 
-    /* 脚本代码（无标签，仅输入区） */
     var g2 = el("div", "form-group");
     var ta = document.createElement("textarea");
     ta.id = "script";
     g2.appendChild(ta);
     wrap.appendChild(g2);
-
-    /* AI输入框+状态区（无外框，状态区在上） */
     wrap.appendChild(buildGeneratorAIPanel());
 
-    /* 上传图片（标签在按钮下方） */
     var g3 = el("div", "form-group");
     var fileInput = document.createElement("input");
     fileInput.type = "file";
@@ -1436,7 +1367,6 @@
     g3.appendChild(previewBox);
     wrap.appendChild(g3);
 
-    /* 标题输入+提交按钮并列一行 */
     var row = el("div", "gen-inline-row");
     var titleInput = document.createElement("input");
     titleInput.type = "text";
@@ -1569,9 +1499,7 @@
     var btn = $("#genSendBtn");
     if (btn) btn.disabled = !!busy;
   }
-
-  /* 工具注册表 */
-
+  
   function executeToolCall(toolName, args) {
     try {
       if (toolName === "insert_code") {
@@ -1651,7 +1579,6 @@
         if (!script) {
           return { ok: false, text: "编辑器为空，无法保存" };
         }
-        /* 存储时不嵌图片，但标记原作品含图 */
         var html = generatePageHtml(
           t2,
           script,
@@ -1667,7 +1594,6 @@
           timestamp: new Date().toISOString(),
         });
         if (savePages(pages)) {
-          /* 图片只存内存 */
           if (uploadedImageDataUrl) {
             sessionImages[newId] = uploadedImageDataUrl;
             var ids2 = Object.keys(sessionImages);
@@ -1688,8 +1614,6 @@
           ($("#title") ? $("#title").value.trim() : "") ||
           T("generator.untitled");
         var h2 = generatePageHtml(t3, s2, uploadedImageDataUrl || "");
-        /* 存临时预览HTML跳首页由renderRunner统一渲染；
-         * 不调用clearDraft()编辑器内容保留在草稿里 */
         window.__previewHtml = h2;
         runner.mode = "page";
         runner.pageId = null;
@@ -1706,9 +1630,7 @@
       };
     }
   }
-
-  /* 从文本提取代码（降级） */
-
+  
   function extractCodeFromText(text) {
     if (!text) return null;
     var t = String(text);
@@ -1733,9 +1655,7 @@
     }
     return null;
   }
-
-  /* 内部消息Gemini消息转换 */
-
+  
   function findToolCallName(msgs, toolCallId) {
     for (var i = 0; i < msgs.length; i++) {
       var m = msgs[i];
@@ -1798,9 +1718,7 @@
     }
     return { systemInstruction: systemInstruction, contents: contents };
   }
-
-  /* 流式请求（含超时） */
-
+  
   function streamAI(model, key, messages, systemPrompt, onDelta, onRaw, opts) {
     var conf = aiModelConf(model);
     var url, options;
@@ -1955,9 +1873,7 @@
         clearTimeout(timeoutId);
       });
   }
-
-  /* 结构化累积器 */
-
+  
   function createStructuredAccumulator() {
     var meta = {
       id: null,
@@ -2054,9 +1970,7 @@
 
     return { consume: consume, finalize: finalize };
   }
-
-  /* 编写页AI主流程 */
-
+  
   function genApplyCode(code, intent) {
     if (!editor || !code) return;
     if (intent === "append") {
@@ -2095,9 +2009,6 @@
     });
 
     var userContent = "[intent: " + userIntent + "]\n";
-
-    /* 有图片时加"复合标记"：含上传状态+图片宽高
-     * 两项信息齐备，AI才判定有imageUrl可用 */
     if (uploadedImageDataUrl) {
       var info = uploadedImageInfo;
       var w = info && info.width ? info.width : "?";
@@ -2355,9 +2266,7 @@
 
     refreshGenModelBtn();
   }
-
-  /* 编写脚本页：交互 */
-
+  
   function bindGenerator() {
     var titleInput = $("#title");
     var textarea = $("#script");
@@ -2448,8 +2357,7 @@
         img.className = "preview-img";
         img.alt = T("generator.imageAlt");
         previewEl.replaceChildren(tip, img);
-
-        /* 异步读取图片宽高 */
+        
         uploadedImageInfo = null;
         var probe = new Image();
         probe.onload = function () {
@@ -2483,7 +2391,6 @@
         return;
       }
       var imageDataUrl = uploadedImageDataUrl || "";
-      /* 生成HTML时不嵌图片，但用hasImage标记原作品含图 */
       var htmlContent = generatePageHtml(
         title,
         script,
@@ -2500,8 +2407,7 @@
         timestamp: new Date().toISOString(),
       });
       if (!savePages(pages)) return;
-
-      /* 图片只存内存，限制数量 */
+      
       if (imageDataUrl) {
         sessionImages[newId] = imageDataUrl;
         var ids = Object.keys(sessionImages);
@@ -2551,8 +2457,6 @@
     bindGeneratorAIPanel();
   }
   
-  /* 22.AI聊天页骨架 */
-
   function renderAIAssistant() {
     var page = el("div", "ai-page");
 
@@ -2611,9 +2515,7 @@
     page.appendChild(inputWrap);
     return page;
   }
-
-  /* 23.模型菜单（AI聊天页） */
-
+  
   function buildAIModelMenu() {
     var menu = $("#aiModelMenu");
     if (!menu) return;
@@ -2714,10 +2616,6 @@
     menu.classList.toggle("show");
   }
   
-   /* 24.AI消息渲染 */
-
-  /* 剪贴板工具 */
-
   function copyToClipboard(text) {
     if (!text) return;
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -2741,8 +2639,7 @@
       document.body.removeChild(ta);
     } catch (e) {}
   }
-
-  /* 在指定元素内浮现"已复制"提示，1.2 秒后自动消失 */
+  
   function flashTip(anchorEl, text) {
     if (!anchorEl) return;
     var tip = el("div", "msg-flash-tip", text);
@@ -2751,9 +2648,7 @@
       if (tip.parentNode) tip.parentNode.removeChild(tip);
     }, 1200);
   }
-
-  /* 用户消息：左侧操作栏（复制+删除） */
-
+  
   function buildMsgActions(m, index) {
     var bar = el("div", "msg-actions");
 
@@ -2778,13 +2673,10 @@
 
     return bar;
   }
-
-  /* AI消息：底部工具栏 */
-
+  
   function buildAssistantToolbar(m, index) {
     var toolbar = el("div", "assistant-toolbar");
-
-    /*  左侧组 */
+    
     var left = el("div", "toolbar-left");
 
     var chat = aiState.chats[aiState.currentModel] || [];
@@ -2824,8 +2716,7 @@
     }
 
     toolbar.appendChild(left);
-
-    /* 右侧组 */
+    
     var right = el("div", "toolbar-right");
     var copyBtn = el("button", "assistant-tool-btn", "⧉ " + T("msg.copy"));
     copyBtn.type = "button";
@@ -2840,9 +2731,7 @@
 
     return toolbar;
   }
-
-  /* 消息行通用交互：点击/长按切换 */
-
+  
   function bindRowToggleActions(row) {
     var pressTimer = null;
     var longPressed = false;
@@ -2885,9 +2774,7 @@
     row.addEventListener("pointerleave", cancelPress);
 
     row.addEventListener("click", function (e) {
-      /* 点在按钮上：不切换（按钮自己处理） */
       if (e.target.closest("button")) return;
-      /* 长按刚触发过：忽略这次click */
       if (longPressed) {
         longPressed = false;
         return;
@@ -2895,9 +2782,7 @@
       toggle();
     });
   }
-
-  /* 构建单条消息节点 */
-
+  
   function buildMsgNode(m, index) {
     var row = el(
       "div",
@@ -2906,7 +2791,6 @@
     row.dataset.index = String(index);
 
     if (m.role === "assistant") {
-      /* AI消息：整框+底部工具栏默认隐藏 */
       var body = el("div", "assistant-body");
       if (!m.content) {
         body.textContent = T("ai.thinking");
@@ -2919,27 +2803,22 @@
       var toolbar = buildAssistantToolbar(m, index);
       row.appendChild(toolbar);
     } else {
-      /* 用户消息：气泡+左侧操作栏默认隐藏） */
       var b = el("div", "bubble");
       b.textContent = m.content;
       var actions = buildMsgActions(m, index);
       row.appendChild(actions);
       row.appendChild(b);
     }
-
-    /* 统一交互：点击/长按切换 */
+    
     bindRowToggleActions(row);
 
     return row;
   }
-
-  /* 空状态节点 */
+  
   function buildEmptyNode(text) {
     return el("div", "ai-empty", text);
   }
-
-  /* 移动端长按菜单（已弃用，保留备用） */
-
+  
   function showMsgMobileMenu(m, index) {
     openModal(function (box) {
       var list = el("div", "msg-mobile-menu");
@@ -2992,15 +2871,12 @@
       box.appendChild(cancel);
     });
   }
-
-  /* 25.渲染消息列表（增量渲染） */
-
+  
   function renderAIMessages() {
     var box = $("#aiMessages");
     if (!box) return;
     var model = aiState.currentModel;
-
-    /* 未选模型 */
+    
     if (!model) {
       if (!box.firstChild || !box.querySelector(".ai-empty")) {
         box.replaceChildren(buildEmptyNode(T("ai.emptyNoModel")));
@@ -3010,8 +2886,7 @@
       updateStatsBar();
       return;
     }
-
-    /* 切换模型：清空重建 */
+    
     if (renderedModelId !== model) {
       renderedModelId = model;
       renderedMsgCount = 0;
@@ -3020,7 +2895,6 @@
 
     var chat = aiState.chats[model] || [];
 
-    /* 空对话 */
     if (!chat.length) {
       if (!box.firstChild || !box.querySelector(".ai-empty")) {
         box.replaceChildren(
@@ -3032,10 +2906,8 @@
       return;
     }
 
-    /* 数量回退（清空/pop）→ 全量重建 */
     if (renderedMsgCount > chat.length) renderedMsgCount = 0;
 
-    /* 全量重建 */
     if (renderedMsgCount === 0) {
       var frag = document.createDocumentFragment();
       for (var i = 0; i < chat.length; i++) {
@@ -3047,10 +2919,8 @@
       updateStatsBar();
       return;
     }
-
-    /* 增量追加 */
+    
     if (renderedMsgCount < chat.length) {
-      /* 若当前是空状态，先清空 */
       var emptyEl = box.querySelector(".ai-empty");
       if (emptyEl && box.children.length === 1) {
         box.replaceChildren();
@@ -3073,9 +2943,7 @@
     }
     updateStatsBar();
   }
-
-  /* 底部会话累计（Token统计） */
-
+  
   function updateStatsBar() {
     var bar = $("#aiStats");
     if (!bar) return;
@@ -3106,17 +2974,13 @@
       total: total.toLocaleString(),
     });
   }
-
-  /* 发送按钮可用状态 */
-
+  
   function updateAISendBtn() {
     var btn = $("#aiSendBtn");
     if (!btn) return;
     btn.disabled = !!aiState.busy;
   }
-
-  /* 取最后一条的正文节点（用于流式追加） */
-
+  
   function getLastAssistantBubble() {
     var box = $("#aiMessages");
     if (!box) return null;
@@ -3128,15 +2992,11 @@
     }
     return null;
   }
-
-  /* 判断消息容器是否接近底部 */
   function isNearBottom(box) {
     if (!box) return true;
     return box.scrollHeight - box.scrollTop - box.clientHeight < 80;
   }
-
-  /* 25.消息操作：删除 / 重新生成 */
-
+  
   function deleteMessageFrom(index) {
     var model = aiState.currentModel;
     if (!model) return;
@@ -3309,8 +3169,6 @@
       });
   }
   
-  /* 26.自定义模型编辑弹窗 */
-
   function showModelEditor(modelId) {
     var isEdit = !!modelId;
     var existing = isEdit ? aiModelConf(modelId) : null;
@@ -3485,9 +3343,7 @@
       true,
     );
   }
-
-  /* 测试连接 */
-
+  
   function testAIModelConnection(model) {
     var conf = aiModelConf(model);
     if (!conf) return;
@@ -3563,9 +3419,7 @@
         showAlert(T("test.failTitle"), msg, true);
       });
   }
-
-  /* Key / 提示词 */
-
+  
   function promptAPIKey(model, onSaved) {
     showPrompt(
       T("ai.setKeyTitle", { model: aiModelName(model) }),
@@ -3627,9 +3481,7 @@
     renderAIMessages();
     updateAISendBtn();
   }
-
-  /* 导出 / 导入 */
-
+  
   function triggerDownload(content, mime, filename) {
     var blob = new Blob([content], { type: mime });
     var url = URL.createObjectURL(blob);
@@ -3853,9 +3705,7 @@
     };
     reader.readAsText(file);
   }
-
-  /* 27.AI聊天页：发送 / 清空 / 绑定 */
-
+  
   function aiSend() {
     if (aiState.busy) return;
     var model = aiState.currentModel;
@@ -4039,9 +3889,7 @@
       });
     }
   }
-
-  /* 28.总渲染入口 */
-
+  
   function render() {
     var path = getRoute();
 
@@ -4097,9 +3945,7 @@
       appEl.appendChild(wrap);
     }
   }
-
-  /* 29.静态初始化 */
-
+  
   function initStatic() {
     modalBackdrop = $("#modalBackdrop");
     modalBox = $("#modalBox");
@@ -4300,10 +4146,7 @@
       }, 100);
     });
   }
-
-
-  /* 30.加载json */
-
+  
   function loadContent() {
     return fetch(CONTENT_URL, { cache: "no-cache" })
       .then(function (r) {
@@ -4317,9 +4160,7 @@
         LANG = detectLang();
       });
   }
-
-  /* 31.启动 */
-
+  
   function boot() {
     initStatic();
     initAIState();
