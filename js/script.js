@@ -2583,20 +2583,17 @@
       row.appendChild(body);
       var toolbar = buildAssistantToolbar(m, index);
       row.appendChild(toolbar);
-      
       } else {
-      /* 用户消息：仅气泡（右对齐），无操作栏 */
       var b = el("div", "bubble");
       b.textContent = m.content;
       row.appendChild(b);
     }
-    /* 交互：仅AI消息可点击/长按展开工具栏 */
     if (m.role === "assistant") {
       bindRowToggleActions(row);
     }
     return row;
     }
-      /*
+    /*
     } else {
       var b = el("div", "bubble");
       b.textContent = m.content;
