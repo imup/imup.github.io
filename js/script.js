@@ -2595,6 +2595,7 @@
       bindRowToggleActions(row);
     }
     return row;
+    }
       /*
     } else {
       var b = el("div", "bubble");
