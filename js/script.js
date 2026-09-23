@@ -3728,7 +3728,6 @@ function setupVisualViewport() {
     raf = requestAnimationFrame(function () {
       raf = null;
       root.style.setProperty("--vv-height", vv.height + "px");
-      root.style.setProperty("--vv-top", vv.offsetTop + "px");
     });
   }
   vv.addEventListener("resize", update);
