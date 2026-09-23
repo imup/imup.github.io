@@ -710,7 +710,7 @@ button:disabled {
   justify-content: flex-end;
   position: relative;
 }
-
+/*
 .ai-msg.user .msg-actions {
   position: absolute;
   right: 100%;
@@ -718,7 +718,7 @@ button:disabled {
   transform: translateY(-50%);
   margin-right: 6px;
 }
-
+*/
 .ai-msg.user .bubble {
   max-width: 84%;
   padding: 9px 13px;
@@ -742,6 +742,7 @@ button:disabled {
   pointer-events line: none;
   transition: opacity-height:  0.18s ease;
 }
+/*
 .ai-msg.actions-visible .msg-actions {
   opacity: 1;
   pointer-events: auto;
@@ -770,7 +771,7 @@ button:disabled {
   background: var(--hover) !important;
   color: var(--primary);
 }
-
+*/
 .msg-flash-tip {
   position: absolute;
   top: -20px;
