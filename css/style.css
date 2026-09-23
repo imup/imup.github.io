@@ -111,8 +111,7 @@ body.preview-lock {
 /* C3 汉堡按钮 */
 .hamburger-btn {
   position: fixed;
-  top: calc(clamp(8px, 2vw, 14px) + var(--vv-top, 0px));
-  /* top: clamp(8px, 2vw, 14px); */
+  top: clamp(8px, 2vw, 14px);
   left: clamp(10px, 3vw, 18px);
   z-index: 300;
   background: none;
@@ -657,14 +656,14 @@ button:disabled {
 
 */
 .ai-page {
-  position: relative;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--vv-height, 100dvh);
   display: flex;
   flex-direction: column;
-  height: var(--vv-height, 100dvh);
-  width: 100%;
   overflow: hidden;
-  /* 【修复】iOS 键盘弹起时补偿 layout viewport 滚动 */
-  transform: translateY(var(--vv-top, 0px));
 }
 
 .ai-clear-btn {
