@@ -615,6 +615,42 @@
       box.appendChild(a);
     });
   }
+  
+  function showPrompt(title, defaultValue, onOk, inputType, hint) {
+  openModal(function (box) {
+    box.appendChild(el("h3", null, title));
+    /* 【新增】F1: 可选提示行 */
+    if (hint) box.appendChild(el("div", "modal-hint", hint));
+    var input = document.createElement("input");
+    input.type = inputType || "text";
+    input.value = defaultValue || "";
+    input.autocomplete = "off";
+    input.spellcheck = false;
+    var a = el("div", "modal-actions");
+    var rg = rightGroup();
+    var cancel = el("button", "cancel", T("common.cancel"));
+    cancel.addEventListener("click", closeModal);
+    var ok = el("button", null, T("common.save"));
+    ok.addEventListener("click", function () {
+      var v = input.value.trim();
+      if (!v) {
+        input.focus();
+        return;
+      }
+      closeModal();
+      onOk(v);
+    });
+    input.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") ok.click();
+    });
+    rg.appendChild(cancel);
+    rg.appendChild(ok);
+    a.appendChild(rg);
+    box.appendChild(input);
+    box.appendChild(a);
+  });
+}
+  /*
   function showPrompt(title, defaultValue, onOk, inputType) {
     openModal(function (box) {
       box.appendChild(el("h3", null, title));
@@ -647,6 +683,7 @@
       box.appendChild(a);
     });
   }
+  */
   function showPromptArea(opts) {
     openModal(function (box) {
       box.appendChild(el("h3", null, opts.title));
@@ -3154,6 +3191,22 @@
         showAlert(T("test.failTitle"), msg, true);
       });
   }
+  
+  function promptAPIKey(model, onSaved) {
+  showPrompt(
+    T("ai.setKeyTitle", { model: aiModelName(model) }),
+    aiState.keys[model] || "",
+    function (v) {
+      aiState.keys[model] = v;
+      saveAIKeys();
+      if (onSaved) onSaved();
+    },
+    "password",
+    /* 【新增】F1: 安全提示 */
+    T("ai.keySecurityHint"),
+    );
+  }
+  /*
   function promptAPIKey(model, onSaved) {
     showPrompt(
       T("ai.setKeyTitle", { model: aiModelName(model) }),
@@ -3166,6 +3219,7 @@
       "password",
     );
   }
+  */
   function promptSystemPrompt(model) {
     var existing = aiState.prompts[model] || "";
     showPromptArea({
