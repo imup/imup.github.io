@@ -654,6 +654,7 @@ button:disabled {
   width: 100%;
   overflow: hidden;
 }
+
 */
 .ai-page {
   position: relative;
@@ -662,6 +663,8 @@ button:disabled {
   height: var(--vv-height, 100dvh);
   width: 100%;
   overflow: hidden;
+  /* 【修复】iOS 键盘弹起时补偿 layout viewport 滚动 */
+  transform: translateY(var(--vv-top, 0px));
 }
 
 .ai-clear-btn {
