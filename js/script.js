@@ -1,5 +1,6 @@
 (function () {
   "use strict";
+  /* J1 常量声明 */
   var STORAGE_KEY = "p5_pages";
   var THEME_KEY = "p5_theme";
   var LANG_KEY = "p5_lang";
@@ -14,225 +15,166 @@
   var AI_CHAT_STORAGE = "p5_ai_chats";
   var AI_PROMPT_STORAGE = "p5_ai_prompts";
   var AI_CUSTOM_MODELS_STORAGE = "p5_ai_custom_models";
+  var AI_CURRENT_MODEL_STORAGE = "p5_ai_current_model";
   var MAX_CONTEXT_MESSAGES = 30;
   var MAX_TOOL_LOOP = 5;
   var REQUEST_TIMEOUT_MS = 60000;
+  var TEST_TIMEOUT_MS = 15000;
   var MAX_TITLE_LEN = 60;
   var CONTENT_URL = "data/content.json";
-  var TOOL_DECLARATIONS_OPENAI = [
+  var LONG_PRESS_MS = 500;
+  var FLASH_TIP_MS = 1200;
+  var NEAR_BOTTOM_PX = 80;
+  var SEARCH_DEBOUNCE_MS = 150;
+  var STORAGE_KB_MULTIPLIER = 2;
+
+  var TOOL_SPECS = [
     {
-      type: "function",
-      function: {
-        name: "insert_code",
-        description:
-          "用新代码完全替换编辑器中的内容。适用于：从零开始写、要求重写、修改较大时。",
-        parameters: {
-          type: "object",
-          properties: {
-            code: {
-              type: "string",
-              description:
-                "完整的 p5.js 代码（含 setup / draw 等），不要加 markdown 代码块标记",
-            },
+      name: "insert_code",
+      description:
+        "用新代码完全替换编辑器中的内容。适用于：从零开始写、要求重写、修改较大时。",
+      params: {
+        type: "object",
+        properties: {
+          code: {
+            type: "string",
+            description:
+              "完整的 p5.js 代码（含 setup / draw 等），不要加 markdown 代码块标记",
           },
-          required: ["code"],
         },
+        required: ["code"],
       },
     },
     {
-      type: "function",
-      function: {
-        name: "append_code",
-        description:
-          "在编辑器现有内容末尾追加代码。适用于：用户明确说“追加”“再加一段”“在末尾添加”时。",
-        parameters: {
-          type: "object",
-          properties: {
-            code: {
-              type: "string",
-              description:
-                "要追加的 p5.js 代码片段，不要加 markdown 代码块标记",
-            },
+      name: "append_code",
+      description:
+        "在编辑器现有内容末尾追加代码。适用于：用户明确说“追加”“再加一段”“在末尾添加”时。",
+      params: {
+        type: "object",
+        properties: {
+          code: {
+            type: "string",
+            description:
+              "要追加的 p5.js 代码片段，不要加 markdown 代码块标记",
           },
-          required: ["code"],
         },
+        required: ["code"],
       },
     },
     {
-      type: "function",
-      function: {
-        name: "get_current_code",
-        description:
-          "读取编辑器当前内容。适用于：需要在已有代码基础上修改时，先读取再决定怎么改。",
-        parameters: {
-          type: "object",
-          properties: {},
-        },
-      },
+      name: "get_current_code",
+      description:
+        "读取编辑器当前内容。适用于：需要在已有代码基础上修改时，先读取再决定怎么改。",
+      params: { type: "object", properties: {} },
     },
     {
-      type: "function",
-      function: {
-        name: "replace_selection",
-        description:
-          "替换编辑器当前选中的文本。适用于：用户要求只改某段代码，且已选中时。",
-        parameters: {
-          type: "object",
-          properties: {
-            code: {
-              type: "string",
-              description: "替换选中内容的 p5.js 代码片段",
-            },
+      name: "replace_selection",
+      description:
+        "替换编辑器当前选中的文本。适用于：用户要求只改某段代码，且已选中时。",
+      params: {
+        type: "object",
+        properties: {
+          code: {
+            type: "string",
+            description: "替换选中内容的 p5.js 代码片段",
           },
-          required: ["code"],
         },
+        required: ["code"],
       },
     },
     {
-      type: "function",
-      function: {
-        name: "get_canvas_size",
-        description:
-          "获取当前画布尺寸（宽 × 高）。适用于：需要根据画布尺寸生成代码时。",
-        parameters: {
-          type: "object",
-          properties: {},
-        },
-      },
+      name: "get_canvas_size",
+      description:
+        "获取当前画布尺寸（宽 × 高）。适用于：需要根据画布尺寸生成代码时。",
+      params: { type: "object", properties: {} },
     },
     {
-      type: "function",
-      function: {
-        name: "set_color_palette",
-        description:
-          "设置配色方案。适用于：用户要求换一组配色，或需要统一色彩风格时。",
-        parameters: {
-          type: "object",
-          properties: {
-            colors: {
-              type: "array",
-              description: "颜色数组，RGB 十六进制字符串，如 #FF0000",
-              items: { type: "string" },
-            },
+      name: "set_color_palette",
+      description:
+        "设置配色方案。适用于：用户要求换一组配色，或需要统一色彩风格时。",
+      params: {
+        type: "object",
+        properties: {
+          colors: {
+            type: "array",
+            description: "颜色数组，RGB 十六进制字符串，如 #FF0000",
+            items: { type: "string" },
           },
-          required: ["colors"],
         },
+        required: ["colors"],
       },
     },
     {
-      type: "function",
-      function: {
-        name: "save_page",
-        description:
-          "保存当前编辑器内容为作品。适用于：用户明确说“保存”且希望直接保存时。",
-        parameters: {
-          type: "object",
-          properties: {
-            title: {
-              type: "string",
-              description: "作品标题，可选，默认使用编辑器标题栏的内容",
-            },
+      name: "save_page",
+      description:
+        "保存当前编辑器内容为作品。适用于：用户明确说“保存”且希望直接保存时。",
+      params: {
+        type: "object",
+        properties: {
+          title: {
+            type: "string",
+            description: "作品标题，可选，默认使用编辑器标题栏的内容",
           },
         },
       },
     },
     {
-      type: "function",
-      function: {
-        name: "open_preview",
-        description:
-          "打开当前编辑器内容的预览。适用于：用户说“看一下效果”“预览”时。",
-        parameters: {
-          type: "object",
-          properties: {},
-        },
-      },
+      name: "open_preview",
+      description:
+        "打开当前编辑器内容的预览。适用于：用户说“看一下效果”“预览”时。",
+      params: { type: "object", properties: {} },
     },
   ];
-  var TOOL_DECLARATIONS_GEMINI = [
-    {
-      functionDeclarations: [
-        {
-          name: "insert_code",
-          description:
-            "用新代码完全替换编辑器中的内容。适用于：从零开始写、要求重写、修改较大时。",
-          parameters: {
-            type: "OBJECT",
-            properties: {
-              code: { type: "STRING", description: "完整的 p5.js 代码" },
-            },
-            required: ["code"],
-          },
+
+  function _toGeminiType(t) {
+    return String(t || "").toUpperCase();
+  }
+  function _toGeminiSchema(schema) {
+    if (!schema || typeof schema !== "object") return schema;
+    var out = { type: _toGeminiType(schema.type) };
+    if (schema.description) out.description = schema.description;
+    if (schema.properties) {
+      out.properties = {};
+      Object.keys(schema.properties).forEach(function (k) {
+        out.properties[k] = _toGeminiSchema(schema.properties[k]);
+      });
+    }
+    if (schema.items) out.items = _toGeminiSchema(schema.items);
+    if (schema.required) out.required = schema.required.slice();
+    return out;
+  }
+  function buildOpenAITools() {
+    return TOOL_SPECS.map(function (t) {
+      return {
+        type: "function",
+        function: {
+          name: t.name,
+          description: t.description,
+          parameters: t.params,
         },
-        {
-          name: "append_code",
-          description: "在编辑器现有内容末尾追加代码。",
-          parameters: {
-            type: "OBJECT",
-            properties: {
-              code: { type: "STRING", description: "要追加的代码片段" },
-            },
-            required: ["code"],
-          },
-        },
-        {
-          name: "get_current_code",
-          description: "读取编辑器当前内容。",
-          parameters: { type: "OBJECT", properties: {} },
-        },
-        {
-          name: "replace_selection",
-          description: "替换编辑器当前选中的文本。",
-          parameters: {
-            type: "OBJECT",
-            properties: {
-              code: { type: "STRING", description: "替换内容" },
-            },
-            required: ["code"],
-          },
-        },
-        {
-          name: "get_canvas_size",
-          description: "获取当前画布尺寸。",
-          parameters: { type: "OBJECT", properties: {} },
-        },
-        {
-          name: "set_color_palette",
-          description: "设置配色方案。",
-          parameters: {
-            type: "OBJECT",
-            properties: {
-              colors: {
-                type: "ARRAY",
-                description: "颜色数组",
-                items: { type: "STRING" },
-              },
-            },
-            required: ["colors"],
-          },
-        },
-        {
-          name: "save_page",
-          description: "保存当前编辑器内容为作品。",
-          parameters: {
-            type: "OBJECT",
-            properties: {
-              title: { type: "STRING", description: "作品标题" },
-            },
-          },
-        },
-        {
-          name: "open_preview",
-          description: "打开当前编辑器内容的预览。",
-          parameters: { type: "OBJECT", properties: {} },
-        },
-      ],
-    },
-  ];
+      };
+    });
+  }
+  function buildGeminiTools() {
+    return [
+      {
+        functionDeclarations: TOOL_SPECS.map(function (t) {
+          return {
+            name: t.name,
+            description: t.description,
+            parameters: _toGeminiSchema(t.params),
+          };
+        }),
+      },
+    ];
+  }
+
   var AI_MODELS = [];
   var I18N = {};
   var LANG = "zh";
   var CONTENT = null;
+
+  /* J2 全局状态 */
   var aiState = {
     currentModel: null,
     keys: {},
@@ -255,8 +197,9 @@
   var sidebarPagesEl, sidebarEl, overlayEl, hamburgerBtn;
   var sidebarSearchEl;
   var sidebarSearchKeyword = "";
+  var sidebarSearchTimer = null;
   var appEl;
-  var runner = { mode: "random", pageId: null };
+  var runner = { mode: "random", pageId: null, tempHtml: null };
   var currentRandomFile = null;
   var editor = null;
   var uploadedImageDataUrl = null;
@@ -265,6 +208,8 @@
   var generatorDraft = { title: "", script: "" };
   var renderedMsgCount = 0;
   var renderedModelId = null;
+
+  /* J3 i18n */
   function T(key, params) {
     var pack = I18N[LANG] || I18N.zh || {};
     var text = pack[key];
@@ -283,10 +228,24 @@
     } catch (e) {}
     var nav = (navigator.language || "zh").toLowerCase();
     if (nav.indexOf("zh") === 0) return "zh";
+    if (nav.indexOf("en") === 0) return "en";
+    if (CONTENT && CONTENT.defaultLang && I18N[CONTENT.defaultLang]) {
+      return CONTENT.defaultLang;
+    }
     return "en";
   }
+  var _i18nCache = null;
+  function _collectI18nNodes() {
+    _i18nCache = {
+      text: $$("[data-i18n]"),
+      placeholder: $$("[data-i18n-placeholder]"),
+      title: $$("[data-i18n-title]"),
+      aria: $$("[data-i18n-aria]"),
+    };
+  }
   function applyI18nToStatic() {
-    document.querySelectorAll("[data-i18n]").forEach(function (el) {
+    if (!_i18nCache) _collectI18nNodes();
+    _i18nCache.text.forEach(function (el) {
       var text = T(el.getAttribute("data-i18n"));
       var span = el.querySelector("span");
       if (span) {
@@ -295,19 +254,24 @@
         el.textContent = text;
       }
     });
-    document.querySelectorAll("[data-i18n-placeholder]").forEach(function (el) {
+    _i18nCache.placeholder.forEach(function (el) {
       var k = el.getAttribute("data-i18n-placeholder");
       el.setAttribute("placeholder", T(k));
       el.setAttribute("aria-label", T(k));
     });
-    document.querySelectorAll("[data-i18n-title]").forEach(function (el) {
+    _i18nCache.title.forEach(function (el) {
       el.setAttribute("title", T(el.getAttribute("data-i18n-title")));
+    });
+    _i18nCache.aria.forEach(function (el) {
+      el.setAttribute("aria-label", T(el.getAttribute("data-i18n-aria")));
     });
     try {
       document.title = T("site.title");
       document.documentElement.lang = LANG === "zh" ? "zh-CN" : "en";
     } catch (e) {}
   }
+
+  /* J4 模型查询 */
   function getAllModels() {
     return AI_MODELS.concat(aiState.customModels || []);
   }
@@ -327,6 +291,8 @@
     var c = aiModelConf(id);
     return c ? c.name : id;
   }
+
+  /* J5 AI存储 */
   function loadAIKeys() {
     try {
       var raw = localStorage.getItem(AI_KEY_STORAGE);
@@ -345,6 +311,19 @@
       return false;
     }
   }
+  function loadCurrentModel() {
+    try {
+      return localStorage.getItem(AI_CURRENT_MODEL_STORAGE) || null;
+    } catch (e) {
+      return null;
+    }
+  }
+  function saveCurrentModel(id) {
+    try {
+      if (id) localStorage.setItem(AI_CURRENT_MODEL_STORAGE, id);
+      else localStorage.removeItem(AI_CURRENT_MODEL_STORAGE);
+    } catch (e) {}
+  }
   function loadAIChats() {
     var result = {};
     getAllModels().forEach(function (m) {
@@ -356,51 +335,10 @@
         result[m.id] = [];
       }
     });
-    try {
-      var oldRaw = localStorage.getItem(AI_CHAT_STORAGE);
-      if (oldRaw) {
-        var old = JSON.parse(oldRaw);
-        if (old && typeof old === "object") {
-          var allOk = true;
-          getAllModels().forEach(function (m) {
-            if (
-              Array.isArray(old[m.id]) &&
-              old[m.id].length &&
-              (!result[m.id] || !result[m.id].length)
-            ) {
-              result[m.id] = old[m.id];
-              try {
-                localStorage.setItem(
-                  AI_CHAT_STORAGE + "_" + m.id,
-                  JSON.stringify(old[m.id]),
-                );
-              } catch (e) {
-                allOk = false;
-              }
-            }
-          });
-          if (allOk) localStorage.removeItem(AI_CHAT_STORAGE);
-        }
-      }
-    } catch (e) {}
     return result;
   }
   function saveAIChats(modelId) {
-    if (!modelId) {
-      var ok = true;
-      getAllModels().forEach(function (m) {
-        try {
-          localStorage.setItem(
-            AI_CHAT_STORAGE + "_" + m.id,
-            JSON.stringify(aiState.chats[m.id] || []),
-          );
-        } catch (e) {
-          handleStorageQuotaError(e, "storage.ctxChats");
-          ok = false;
-        }
-      });
-      return ok;
-    }
+    if (!modelId) return true;
     try {
       localStorage.setItem(
         AI_CHAT_STORAGE + "_" + modelId,
@@ -454,6 +392,21 @@
       return false;
     }
   }
+  function initAIState() {
+    aiState.keys = loadAIKeys();
+    aiState.customModels = loadCustomModels();
+    aiState.chats = loadAIChats();
+    aiState.prompts = loadAIPrompts();
+    getAllModels().forEach(function (m) {
+      if (!Array.isArray(aiState.chats[m.id])) aiState.chats[m.id] = [];
+      if (typeof aiState.prompts[m.id] !== "string") aiState.prompts[m.id] = "";
+    });
+    /* 【新增】A1: 恢复上次模型 */
+    var saved = loadCurrentModel();
+    aiState.currentModel = saved && aiModelConf(saved) ? saved : null;
+  }
+
+  /* J6 页面与草稿存储 */
   function getPages() {
     try {
       var raw = localStorage.getItem(STORAGE_KEY);
@@ -496,16 +449,8 @@
       localStorage.removeItem(DRAFT_KEY);
     } catch (e) {}
   }
-  function initAIState() {
-    aiState.keys = loadAIKeys();
-    aiState.customModels = loadCustomModels();
-    aiState.chats = loadAIChats();
-    aiState.prompts = loadAIPrompts();
-    getAllModels().forEach(function (m) {
-      if (!Array.isArray(aiState.chats[m.id])) aiState.chats[m.id] = [];
-      if (typeof aiState.prompts[m.id] !== "string") aiState.prompts[m.id] = "";
-    });
-  }
+
+  /* J7 存储配额 */
   function isQuotaError(e) {
     if (!e) return false;
     if (e.name === "QuotaExceededError") return true;
@@ -524,7 +469,7 @@
     } catch (e) {
       return -1;
     }
-    return Math.round((total * 2) / 1024);
+    return Math.round((total * STORAGE_KB_MULTIPLIER) / 1024);
   }
   function handleStorageQuotaError(e, contextKey) {
     if (!isQuotaError(e)) {
@@ -546,6 +491,8 @@
       true,
     );
   }
+
+  /* J8 DOM工具 */
   function $(sel, root) {
     return (root || document).querySelector(sel);
   }
@@ -586,16 +533,52 @@
   function rightGroup() {
     return el("div", "right-group");
   }
-  
+
+  /* J9 模态框系统 */
+  var _modalFocusHandler = null;
+  function _installFocusTrap(box) {
+    _removeFocusTrap();
+    _modalFocusHandler = function (e) {
+      if (e.key !== "Tab") return;
+      var focusables = box.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      );
+      if (!focusables.length) return;
+      var first = focusables[0];
+      var last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    box.addEventListener("keydown", _modalFocusHandler);
+  }
+  function _removeFocusTrap() {
+    if (_modalFocusHandler && modalBox) {
+      modalBox.removeEventListener("keydown", _modalFocusHandler);
+    }
+    _modalFocusHandler = null;
+  }
   function openModal(builder) {
     lastFocused = document.activeElement;
     modalBox.innerHTML = "";
+    modalBox.removeAttribute("aria-labelledby");
     builder(modalBox);
+    var h3 = modalBox.querySelector("h3");
+    if (h3) {
+      if (!h3.id) h3.id = "modalTitle_" + Date.now();
+      modalBox.setAttribute("aria-labelledby", h3.id);
+    }
     modalBackdrop.classList.add("show");
+    _installFocusTrap(modalBox);
     var f = $("input, textarea, button", modalBox);
     if (f && f.focus) f.focus();
   }
   function closeModal() {
+    _removeFocusTrap();
     modalBackdrop.classList.remove("show");
     modalBox.innerHTML = "";
     if (lastFocused && lastFocused.focus) lastFocused.focus();
@@ -735,6 +718,8 @@
       box.appendChild(a);
     });
   }
+  
+  /* J10 页面生成与导出 */
   function generatePageHtml(title, script, imageDataUrl, hasImage) {
     var safeTitle = escapeHtml(
       (title || T("generator.untitledPage")).slice(0, MAX_TITLE_LEN),
@@ -848,6 +833,8 @@
         );
       });
   }
+
+  /* J11 随机p5与srcdoc */
   function pickRandomP5File() {
     if (!P5_FILES || !P5_FILES.length) return null;
     if (P5_FILES.length === 1) return P5_FILES[0];
@@ -888,6 +875,8 @@
       "</html>"
     );
   }
+
+  /* J12 侧边栏页面列表 */
   function updateSidebarPages() {
     var pages = getPages();
     var kw = sidebarSearchKeyword.trim().toLowerCase();
@@ -930,6 +919,9 @@
     });
     sidebarPagesEl.replaceChildren(frag);
   }
+
+
+  /* J13 iframe代理 */
   function bindIframeProxy(iframe) {
     var iwin, idoc;
     try {
@@ -941,16 +933,27 @@
     }
     if (!iwin || !idoc) return;
 
-    var tries = 0;
-    function tryFindCanvas() {
+    function tryAttach() {
       var canvas = idoc.querySelector("canvas");
       if (canvas) {
         attachProxy(canvas, iwin, idoc);
-        return;
+        return true;
       }
-      if (++tries < 150) setTimeout(tryFindCanvas, 100);
+      return false;
     }
-    tryFindCanvas();
+    if (tryAttach()) return;
+    var observer = new MutationObserver(function () {
+      if (tryAttach()) observer.disconnect();
+    });
+    observer.observe(idoc.documentElement || idoc, {
+      childList: true,
+      subtree: true,
+    });
+    setTimeout(function () {
+      try {
+        observer.disconnect();
+      } catch (e) {}
+    }, 15000);
   }
   function attachProxy(canvas, iwin, idoc) {
     if (canvas.__proxyAttached) return;
@@ -1038,6 +1041,8 @@
       });
     });
   }
+
+  /* J14 预览锁定与截图 */
   function lockAppSize() {
     document.body.classList.add("preview-lock");
     var w = window.innerWidth;
@@ -1089,6 +1094,8 @@
     });
     return btn;
   }
+
+  /* J15 首页运行器 */
   function renderRunner() {
     destroyEditor();
     appEl.replaceChildren();
@@ -1106,14 +1113,16 @@
           html = injectSessionImage(html, sessionImages[page.id]);
         }
         appEl.dataset.currentPageId = String(page.id);
-      } else if (window.__previewHtml) {
-        html = window.__previewHtml;
-        window.__previewHtml = null;
-        delete appEl.dataset.currentPageId;
       } else {
         runner.mode = "random";
         runner.pageId = null;
       }
+    }
+    if (runner.mode === "temp") {
+      html = runner.tempHtml || null;
+      runner.mode = "random";
+      runner.tempHtml = null;
+      delete appEl.dataset.currentPageId;
     }
     if (html === null) {
       var file = pickRandomP5File();
@@ -1148,12 +1157,14 @@
   function setRandom() {
     runner.mode = "random";
     runner.pageId = null;
+    runner.tempHtml = null;
     if (getRoute() === "/") render();
     else location.hash = "#/";
   }
   function runPage(id) {
     runner.mode = "page";
     runner.pageId = id;
+    runner.tempHtml = null;
     if (getRoute() === "/") render();
     else location.hash = "#/";
   }
@@ -1195,6 +1206,8 @@
       render();
     });
   }
+
+  /* J16 侧边栏与主题 */
   function openSidebar() {
     sidebarEl.classList.add("open");
     overlayEl.classList.add("show");
@@ -1235,6 +1248,9 @@
       localStorage.setItem(THEME_KEY, next);
     } catch (e) {}
   }
+
+
+  /* J17 路由与静态页 */
   function getRoute() {
     var hash = location.hash;
     if (!hash || hash === "#" || hash === "#/") return "/";
@@ -1338,6 +1354,8 @@
     frag.appendChild(bar);
     return frag;
   }
+
+  /* J18 生成器模型菜单 */
   function refreshGenModelBtn() {
     var btn = $("#genModelBtn");
     if (!btn) return;
@@ -1388,6 +1406,8 @@
     genState.menuOpen = willShow;
     if (willShow) buildGenModelMenu();
   }
+
+  /* J19 生成器AI状态与工具 */
   function genStatusClear() {
     var box = $("#genStatus");
     if (box) box.replaceChildren();
@@ -1455,6 +1475,16 @@
       if (toolName === "get_canvas_size") {
         var W = window.innerWidth;
         var H = window.innerHeight;
+        if (editor) {
+          var src = editor.getValue() || "";
+          var cm = src.match(
+            /createCanvas\s*\(\s*(\d+)\s*,\s*(\d+)\s*\)/,
+          );
+          if (cm) {
+            W = parseInt(cm[1], 10);
+            H = parseInt(cm[2], 10);
+          }
+        }
         return {
           ok: true,
           text: JSON.stringify({ width: W, height: H }),
@@ -1520,8 +1550,9 @@
           ($("#title") ? $("#title").value.trim() : "") ||
           T("generator.untitled");
         var h2 = generatePageHtml(t3, s2, uploadedImageDataUrl || "");
-        window.__previewHtml = h2;
-        runner.mode = "page";
+        /* 【改】A4 */
+        runner.mode = "temp";
+        runner.tempHtml = h2;
         runner.pageId = null;
         destroyEditor();
         if (getRoute() === "/") render();
@@ -1557,6 +1588,8 @@
     }
     return null;
   }
+
+  /* J20 AI流式请求核心 */
   function findToolCallName(msgs, toolCallId) {
     for (var i = 0; i < msgs.length; i++) {
       var m = msgs[i];
@@ -1617,10 +1650,18 @@
     }
     return { systemInstruction: systemInstruction, contents: contents };
   }
-  function streamAI(model, key, messages, systemPrompt, onDelta, onRaw, opts) {
+  function streamAI(opts) {
+    var model = opts.model;
+    var key = opts.key;
+    var messages = opts.messages;
+    var systemPrompt = opts.systemPrompt;
+    var onDelta = opts.onDelta;
+    var onRaw = opts.onRaw;
+    var enableTools = !!opts.tools;
+    var extSignal = opts.signal || null;
+
     var conf = aiModelConf(model);
     var url, options;
-    var enableTools = opts && opts.tools;
     if (conf.protocol === "gemini") {
       var conv = convertToGeminiMessages(messages);
       var body = { contents: conv.contents };
@@ -1629,7 +1670,7 @@
       } else if (conv.systemInstruction) {
         body.systemInstruction = conv.systemInstruction;
       }
-      if (enableTools) body.tools = TOOL_DECLARATIONS_GEMINI;
+      if (enableTools) body.tools = buildGeminiTools();
       url =
         conf.endpoint.replace(":generateContent", ":streamGenerateContent") +
         "?alt=sse&key=" +
@@ -1652,7 +1693,7 @@
         stream: true,
         stream_options: { include_usage: true },
       };
-      if (enableTools) reqBody.tools = TOOL_DECLARATIONS_OPENAI;
+      if (enableTools) reqBody.tools = buildOpenAITools();
       options = {
         method: "POST",
         headers: {
@@ -1669,20 +1710,18 @@
       } catch (e) {}
     }, REQUEST_TIMEOUT_MS);
 
-    if (opts && opts.signal) {
-      options.signal = opts.signal;
-    } else if (aiState.abortController && !opts) {
-      options.signal = aiState.abortController.signal;
+    var baseSignal = extSignal;
+    if (!baseSignal && aiState.abortController) {
+      baseSignal = aiState.abortController.signal;
     }
-    if (options.signal) {
-      var extSig = options.signal;
+    if (baseSignal) {
       var combined = new AbortController();
       var onAbort = function () {
         try {
           combined.abort();
         } catch (e) {}
       };
-      extSig.addEventListener("abort", onAbort);
+      baseSignal.addEventListener("abort", onAbort);
       timeoutCtl.signal.addEventListener("abort", onAbort);
       options.signal = combined.signal;
     } else {
@@ -1854,6 +1893,8 @@
     }
     return { consume: consume, finalize: finalize };
   }
+
+  /* J21 生成器AI循环 */
   function genApplyCode(code, intent) {
     if (!editor || !code) return;
     if (intent === "append") {
@@ -1938,17 +1979,18 @@
           }
         }
       };
-      streamAI(
-        model,
-        key,
-        genState.messages.slice(),
-        null,
-        onDelta,
-        function (obj) {
+      streamAI({
+        model: model,
+        key: key,
+        messages: genState.messages.slice(),
+        systemPrompt: null,
+        onDelta: onDelta,
+        onRaw: function (obj) {
           acc.consume(obj);
         },
-        { tools: true, signal: mySignal },
-      )
+        tools: true,
+        signal: mySignal,
+      })
         .then(function () {
           if (genState.streamToken !== myToken) return;
           var meta = acc.finalize();
@@ -2087,6 +2129,8 @@
         e.stopPropagation();
         closeGenMenu();
         aiState.currentModel = item.dataset.model;
+        /* 【新增】A1 */
+        saveCurrentModel(aiState.currentModel);
         refreshGenModelBtn();
         refreshAIModelUI();
       });
@@ -2115,6 +2159,9 @@
     }
     refreshGenModelBtn();
   }
+
+
+  /* J22 生成器主体 */
   function bindGenerator() {
     var titleInput = $("#title");
     var textarea = $("#script");
@@ -2241,7 +2288,7 @@
         timestamp: new Date().toISOString(),
       });
       if (!savePages(pages)) return;
-      
+
       if (imageDataUrl) {
         sessionImages[newId] = imageDataUrl;
         var ids = Object.keys(sessionImages);
@@ -2286,6 +2333,8 @@
     });
     bindGeneratorAIPanel();
   }
+
+  /* J23 AI页面骨架 */
   function renderAIAssistant() {
     var page = el("div", "ai-page");
     var clearBtn = el("button", "ai-clear-btn", "−");
@@ -2299,6 +2348,9 @@
     fileInput.style.display = "none";
     var messages = el("div", "ai-messages");
     messages.id = "aiMessages";
+    messages.setAttribute("role", "log");
+    messages.setAttribute("aria-live", "polite");
+    messages.setAttribute("aria-relevant", "additions");
     var statsBar = el("div", "ai-stats");
     statsBar.id = "aiStats";
     statsBar.style.display = "none";
@@ -2332,6 +2384,8 @@
     page.appendChild(inputWrap);
     return page;
   }
+
+  /* J24 AI模型菜单 */
   function buildAIModelMenu() {
     var menu = $("#aiModelMenu");
     if (!menu) return;
@@ -2421,6 +2475,8 @@
     if (!menu) return;
     menu.classList.toggle("show");
   }
+
+  /* J25 剪贴板与提示 */
   function copyToClipboard(text) {
     if (!text) return;
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -2449,29 +2505,10 @@
     anchorEl.appendChild(tip);
     setTimeout(function () {
       if (tip.parentNode) tip.parentNode.removeChild(tip);
-    }, 1200);
+    }, FLASH_TIP_MS);
   }
-  function buildMsgActions(m, index) {
-    var bar = el("div", "msg-actions");
-    var copyBtn = el("button", "msg-action-btn", "⧉");
-    copyBtn.type = "button";
-    copyBtn.title = T("msg.copy");
-    copyBtn.addEventListener("click", function (e) {
-      e.stopPropagation();
-      copyToClipboard(m.content || "");
-      flashTip(bar, T("msg.copied"));
-    });
-    bar.appendChild(copyBtn);
-    var delBtn = el("button", "msg-action-btn", "✕");
-    delBtn.type = "button";
-    delBtn.title = T("msg.delete");
-    delBtn.addEventListener("click", function (e) {
-      e.stopPropagation();
-      deleteMessageFrom(index);
-    });
-    bar.appendChild(delBtn);
-    return bar;
-  }
+
+  /* J26 消息工具栏与节点 */
   function buildAssistantToolbar(m, index) {
     var toolbar = el("div", "assistant-toolbar");
     var left = el("div", "toolbar-left");
@@ -2545,7 +2582,7 @@
         pressTimer = null;
         longPressed = true;
         show();
-      }, 500);
+      }, LONG_PRESS_MS);
     }
     function cancelPress() {
       if (pressTimer) {
@@ -2583,77 +2620,20 @@
       row.appendChild(body);
       var toolbar = buildAssistantToolbar(m, index);
       row.appendChild(toolbar);
-      } else {
-      var b = el("div", "bubble");
-      b.textContent = m.content;
-      row.appendChild(b);
-    }
-    if (m.role === "assistant") {
       bindRowToggleActions(row);
-    }
-    return row;
-    }
-    /*
     } else {
       var b = el("div", "bubble");
       b.textContent = m.content;
-      var actions = buildMsgActions(m, index);
-      row.appendChild(actions);
       row.appendChild(b);
     }
-    bindRowToggleActions(row);
     return row;
   }
-  */
   function buildEmptyNode(text) {
     return el("div", "ai-empty", text);
   }
-  function showMsgMobileMenu(m, index) {
-    openModal(function (box) {
-      var list = el("div", "msg-mobile-menu");
-      var items = [];
-      items.push({
-        icon: "⧉",
-        label: T("msg.copy"),
-        onTap: function () {
-          closeModal();
-          copyToClipboard(m.content || "");
-        },
-      });
-      var chat = aiState.chats[aiState.currentModel] || [];
-      if (m.role === "assistant" && index === chat.length - 1 && index > 0) {
-        items.push({
-          icon: "↻",
-          label: T("msg.regen"),
-          onTap: function () {
-            closeModal();
-            regenerateMessage(index);
-          },
-        });
-      }
-      items.push({
-        icon: "✕",
-        label: T("msg.delete"),
-        danger: true,
-        onTap: function () {
-          closeModal();
-          deleteMessageFrom(index);
-        },
-      });
-      items.forEach(function (it) {
-        var row = el("div", "msg-mobile-item" + (it.danger ? " danger" : ""));
-        row.appendChild(el("span", "msg-mobile-icon", it.icon));
-        row.appendChild(el("span", "msg-mobile-label", it.label));
-        row.addEventListener("click", it.onTap);
-        list.appendChild(row);
-      });
-      var cancel = el("button", "msg-mobile-cancel", T("common.cancel"));
-      cancel.type = "button";
-      cancel.addEventListener("click", closeModal);
-      box.appendChild(list);
-      box.appendChild(cancel);
-    });
-  }
+
+
+  /* J27 AI消息渲染 */
   function renderAIMessages() {
     var box = $("#aiMessages");
     if (!box) return;
@@ -2766,8 +2746,10 @@
   }
   function isNearBottom(box) {
     if (!box) return true;
-    return box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+    return box.scrollHeight - box.scrollTop - box.clientHeight < NEAR_BOTTOM_PX;
   }
+
+  /* J28 消息操作 */
   function deleteMessageFrom(index) {
     var model = aiState.currentModel;
     if (!model) return;
@@ -2875,10 +2857,21 @@
       });
     if (payload.length > MAX_CONTEXT_MESSAGES) {
       payload = payload.slice(-MAX_CONTEXT_MESSAGES);
+      /* 【新增】A2: 裁剪后确保首条为 user */
+      while (payload.length && payload[0].role !== "user") {
+        payload.shift();
+      }
     }
     var systemPrompt = aiState.prompts[model] || "";
-    streamAI(model, key, payload, systemPrompt, onDelta, function (raw) {
-      acc.consume(raw);
+    streamAI({
+      model: model,
+      key: key,
+      messages: payload,
+      systemPrompt: systemPrompt,
+      onDelta: onDelta,
+      onRaw: function (raw) {
+        acc.consume(raw);
+      },
     })
       .then(function () {
         if (aiState.streamToken !== myToken) return;
@@ -2925,6 +2918,8 @@
         }
       });
   }
+
+  /* J29 模型编辑与选择 */
   function showModelEditor(modelId) {
     var isEdit = !!modelId;
     var existing = isEdit ? aiModelConf(modelId) : null;
@@ -3072,6 +3067,7 @@
         saveCustomModels();
         if (aiState.currentModel === modelId) {
           aiState.currentModel = null;
+          saveCurrentModel(null);
           renderedModelId = null;
           renderedMsgCount = 0;
         }
@@ -3122,7 +3118,7 @@
       try {
         testAbort.abort();
       } catch (e) {}
-    }, 15000);
+    }, TEST_TIMEOUT_MS);
     fetch(url, {
       method: "POST",
       headers: headers,
@@ -3206,6 +3202,8 @@
     if (!aiState.keys[model]) {
       promptAPIKey(model, function () {
         aiState.currentModel = model;
+        /* 【新增】A1 */
+        saveCurrentModel(model);
         refreshAIModelUI();
         renderAIMessages();
         updateAISendBtn();
@@ -3213,10 +3211,14 @@
       return;
     }
     aiState.currentModel = model;
+    /* 【新增】A1 */
+    saveCurrentModel(model);
     refreshAIModelUI();
     renderAIMessages();
     updateAISendBtn();
   }
+
+  /* J30 对话导入导出 */
   function triggerDownload(content, mime, filename) {
     var blob = new Blob([content], { type: mime });
     var url = URL.createObjectURL(blob);
@@ -3429,6 +3431,8 @@
     };
     reader.readAsText(file);
   }
+  
+  /* J31 AI发送与清空 */
   function aiSend() {
     if (aiState.busy) return;
     var model = aiState.currentModel;
@@ -3480,7 +3484,12 @@
       true,
     );
   }
+
+
+  /* J32 AI助手绑定  */
   function bindAIAssistant() {
+    renderedModelId = null;
+    renderedMsgCount = 0;
     buildAIModelMenu();
     refreshAIModelUI();
     renderAIMessages();
@@ -3601,6 +3610,8 @@
       });
     }
   }
+
+  /* J33 主路由渲染 */
   function render() {
     var path = getRoute();
 
@@ -3650,6 +3661,8 @@
       appEl.appendChild(wrap);
     }
   }
+
+  /* J34 初始化 */
   function initStatic() {
     modalBackdrop = $("#modalBackdrop");
     modalBox = $("#modalBox");
@@ -3732,8 +3745,13 @@
     });
     if (sidebarSearchEl) {
       sidebarSearchEl.addEventListener("input", function () {
-        sidebarSearchKeyword = this.value || "";
-        updateSidebarPages();
+        var v = this.value || "";
+        sidebarSearchKeyword = v;
+        if (sidebarSearchTimer) clearTimeout(sidebarSearchTimer);
+        sidebarSearchTimer = setTimeout(function () {
+          sidebarSearchTimer = null;
+          updateSidebarPages();
+        }, SEARCH_DEBOUNCE_MS);
       });
       sidebarSearchEl.addEventListener("keydown", function (e) {
         if (e.key === "Escape") {
@@ -3835,6 +3853,8 @@
       }, 100);
     });
   }
+
+  /* J35 启动 */
   function loadContent() {
     return fetch(CONTENT_URL, { cache: "no-cache" })
       .then(function (r) {
