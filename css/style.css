@@ -111,7 +111,8 @@ body.preview-lock {
 /* C3 汉堡按钮 */
 .hamburger-btn {
   position: fixed;
-  top: clamp(8px, 2vw, 14px);
+  top: calc(clamp(8px, 2vw, 14px) + var(--vv-top, 0px));
+  /* top: clamp(8px, 2vw, 14px); */
   left: clamp(10px, 3vw, 18px);
   z-index: 300;
   background: none;
@@ -401,11 +402,20 @@ body.sidebar-open .hamburger-btn {
 #app.ai-mode {
   padding: 0;
   max-width: none;
+  height: var(--vv-height, 100dvh);
+  min-height: 0;
+  overflow: hidden;
+}
+/*
+#app.ai-mode {
+  padding: 0;
+  max-width: none;
   height: 100vh;
   height: 100dvh;
   min-height: 0;
   overflow: hidden;
-}
+} 
+*/
 #app.ai-mode > div {
   max-width: none;
   margin: 0;
@@ -634,12 +644,22 @@ button:disabled {
 }
 
 /* C10 AI页面骨架 */
+/*
 .ai-page {
   position: relative;
   display: flex;
   flex-direction: column;
   height: 100vh;
   height: 100dvh;
+  width: 100%;
+  overflow: hidden;
+}
+*/
+.ai-page {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: var(--vv-height, 100dvh);
   width: 100%;
   overflow: hidden;
 }
