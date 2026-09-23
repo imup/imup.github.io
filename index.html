@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="zh-CN">
   <head>
+    <!--  H1 头部资源  -->
     <meta charset="UTF-8" />
     <meta
       name="viewport"
@@ -24,22 +25,25 @@
       disabled
     />
     <link rel="stylesheet" href="css/style.css" />
-    
+
     <link rel="manifest" href="manifest.json" />
-    
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   </head>
   <body>
+    
+    <!--  H2 汉堡按钮  -->
     <button
       class="hamburger-btn"
       id="hamburgerBtn"
-      aria-label="打开菜单"
+      data-i18n-aria="nav.openMenu"
       aria-expanded="false"
       aria-controls="sidebar"
     >
       ☰
     </button>
 
+    <!--  H3 侧边栏导航  -->
     <nav class="sidebar" id="sidebar" aria-label="主导航">
       <div class="sidebar-search">
         <input
@@ -124,6 +128,8 @@
         </div>
       </div>
     </nav>
+
+    <!--  H4 主容器与模态框  -->
     <div class="overlay" id="overlay"></div>
 
     <main id="app" data-i18n="site.loading">加载中…</main>
@@ -137,21 +143,23 @@
       <div class="modal" id="modalBox"></div>
     </div>
 
+    <!--  H5 脚本引入  -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
 
     <script src="js/script.js"></script>
-    
+
+    <!--  H6 SW注册 -->
     <script>
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", function () {
-      navigator.serviceWorker
-        .register("./sw.js")
-        .catch(function (e) {
-          console.warn("[SW] 注册失败：", e);
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", function () {
+          navigator.serviceWorker
+            .register("./sw.js")
+            .catch(function (e) {
+              console.warn("[SW] 注册失败：", e);
+            });
         });
-    });
-  }
-</script>
+      }
+    </script>
   </body>
 </html>
