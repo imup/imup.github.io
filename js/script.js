@@ -3717,24 +3717,6 @@
   }
 
   /* J34 初始化 */
- /* 新增监听键盘 */
-function setupVisualViewport() {
-  var vv = window.visualViewport;
-  if (!vv) return;
-  var root = document.documentElement;
-  var raf = null;
-  function update() {
-    if (raf) return;
-    raf = requestAnimationFrame(function () {
-      raf = null;
-      root.style.setProperty("--vv-height", vv.height + "px");
-    });
-  }
-  vv.addEventListener("resize", update);
-  vv.addEventListener("scroll", update);
-  update();
-}
-
   function initStatic() {
     modalBackdrop = $("#modalBackdrop");
     modalBox = $("#modalBox");
@@ -3924,8 +3906,6 @@ function setupVisualViewport() {
         if (editor) editor.refresh();
       }, 100);
     });
-    /* 新增监听键盘 */
-    setupVisualViewport();
   }
 
   /* J35 启动 */
