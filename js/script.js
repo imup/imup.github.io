@@ -2522,6 +2522,102 @@
     toolbar.appendChild(right);
     return toolbar;
   }
+  
+  
+  
+  function bindRowToggleActions(row) {
+    var pressTimer = null;
+    var longPressed = false;
+    var startX = 0;
+    var startY = 0;
+    var moved = false;
+
+    function show() {
+      $$(".ai-msg.actions-visible").forEach(function (el) {
+        if (el !== row) el.classList.remove("actions-visible");
+      });
+      row.classList.add("actions-visible");
+    }
+
+    function toggle() {
+      if (row.classList.contains("actions-visible")) {
+        row.classList.remove("actions-visible");
+      } else {
+        show();
+      }
+    }
+
+    function clearTimer() {
+      if (pressTimer) {
+        clearTimeout(pressTimer);
+        pressTimer = null;
+      }
+    }
+
+    /* 触摸开始 */
+    row.addEventListener(
+      "touchstart",
+      function (e) {
+        longPressed = false;
+        moved = false;
+        var t = e.touches[0];
+        startX = t.clientX;
+        startY = t.clientY;
+        clearTimer();
+        pressTimer = setTimeout(function () {
+          pressTimer = null;
+          longPressed = true;
+          show();
+        }, 500);
+      },
+      { passive: true },
+    );
+
+    /* 触摸移动：超过 10px 认为在滚动，取消长按 */
+    row.addEventListener(
+      "touchmove",
+      function (e) {
+        if (moved) return;
+        var t = e.touches[0];
+        var dx = Math.abs(t.clientX - startX);
+        var dy = Math.abs(t.clientY - startY);
+        if (dx > 10 || dy > 10) {
+          moved = true;
+          clearTimer();
+        }
+      },
+      { passive: true },
+    );
+
+    /* 触摸结束：取消计时器 */
+    row.addEventListener("touchend", clearTimer);
+    row.addEventListener("touchcancel", clearTimer);
+
+    /* 桌面鼠标长按 */
+    row.addEventListener("mousedown", function (e) {
+      if (e.button !== 0) return;
+      longPressed = false;
+      clearTimer();
+      pressTimer = setTimeout(function () {
+        pressTimer = null;
+        longPressed = true;
+        show();
+      }, 500);
+    });
+    row.addEventListener("mouseup", clearTimer);
+    row.addEventListener("mouseleave", clearTimer);
+
+    /* 点击切换 */
+    row.addEventListener("click", function (e) {
+      if (e.target.closest("button")) return;
+      if (longPressed) {
+        longPressed = false;
+        return;
+      }
+      toggle();
+    });
+  }
+  /*
   function bindRowToggleActions(row) {
     var pressTimer = null;
     var longPressed = false;
@@ -2566,6 +2662,7 @@
       toggle();
     });
   }
+  */
   function buildMsgNode(m, index) {
     var row = el(
       "div",
