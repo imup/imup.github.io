@@ -1,6 +1,6 @@
 (function () {
   "use strict";
-  /* J1 常量声明 */
+
   var STORAGE_KEY = "p5_pages";
   var THEME_KEY = "p5_theme";
   var LANG_KEY = "p5_lang";
@@ -27,7 +27,6 @@
   var NEAR_BOTTOM_PX = 80;
   var SEARCH_DEBOUNCE_MS = 150;
   var STORAGE_KB_MULTIPLIER = 2;
-
   var TOOL_SPECS = [
     {
       name: "insert_code",
@@ -125,7 +124,6 @@
       params: { type: "object", properties: {} },
     },
   ];
-
   function _toGeminiType(t) {
     return String(t || "").toUpperCase();
   }
@@ -174,7 +172,6 @@
   var LANG = "zh";
   var CONTENT = null;
 
-  /* J2 全局状态 */
   var aiState = {
     currentModel: null,
     keys: {},
@@ -209,7 +206,6 @@
   var renderedMsgCount = 0;
   var renderedModelId = null;
 
-  /* J3 i18n */
   function T(key, params) {
     var pack = I18N[LANG] || I18N.zh || {};
     var text = pack[key];
@@ -271,7 +267,6 @@
     } catch (e) {}
   }
 
-  /* J4 模型查询 */
   function getAllModels() {
     return AI_MODELS.concat(aiState.customModels || []);
   }
@@ -292,7 +287,6 @@
     return c ? c.name : id;
   }
 
-  /* J5 AI存储 */
   function loadAIKeys() {
     try {
       var raw = localStorage.getItem(AI_KEY_STORAGE);
@@ -401,12 +395,10 @@
       if (!Array.isArray(aiState.chats[m.id])) aiState.chats[m.id] = [];
       if (typeof aiState.prompts[m.id] !== "string") aiState.prompts[m.id] = "";
     });
-    /* 【新增】A1: 恢复上次模型 */
     var saved = loadCurrentModel();
     aiState.currentModel = saved && aiModelConf(saved) ? saved : null;
   }
 
-  /* J6 页面与草稿存储 */
   function getPages() {
     try {
       var raw = localStorage.getItem(STORAGE_KEY);
@@ -450,7 +442,6 @@
     } catch (e) {}
   }
 
-  /* J7 存储配额 */
   function isQuotaError(e) {
     if (!e) return false;
     if (e.name === "QuotaExceededError") return true;
@@ -492,7 +483,6 @@
     );
   }
 
-  /* J8 DOM工具 */
   function $(sel, root) {
     return (root || document).querySelector(sel);
   }
@@ -534,7 +524,6 @@
     return el("div", "right-group");
   }
 
-  /* J9 模态框系统 */
   var _modalFocusHandler = null;
   function _installFocusTrap(box) {
     _removeFocusTrap();
@@ -615,7 +604,6 @@
       box.appendChild(a);
     });
   }
-  
 function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
   openModal(function (box) {
     box.appendChild(el("h3", null, title));
@@ -626,7 +614,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     input.autocomplete = "off";
     input.spellcheck = false;
     var a = el("div", "modal-actions");
-    /* 【新增】F1+: 可选左侧清除按钮 */
     var leftWrap = document.createElement("div");
     if (opts && opts.onClear) {
       var clearBtn = el(
@@ -665,40 +652,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     box.appendChild(a);
   });
 }
-  /*
-  function showPrompt(title, defaultValue, onOk, inputType) {
-    openModal(function (box) {
-      box.appendChild(el("h3", null, title));
-      var input = document.createElement("input");
-      input.type = inputType || "text";
-      input.value = defaultValue || "";
-      input.autocomplete = "off";
-      input.spellcheck = false;
-      var a = el("div", "modal-actions");
-      var rg = rightGroup();
-      var cancel = el("button", "cancel", T("common.cancel"));
-      cancel.addEventListener("click", closeModal);
-      var ok = el("button", null, T("common.save"));
-      ok.addEventListener("click", function () {
-        var v = input.value.trim();
-        if (!v) {
-          input.focus();
-          return;
-        }
-        closeModal();
-        onOk(v);
-      });
-      input.addEventListener("keydown", function (e) {
-        if (e.key === "Enter") ok.click();
-      });
-      rg.appendChild(cancel);
-      rg.appendChild(ok);
-      a.appendChild(rg);
-      box.appendChild(input);
-      box.appendChild(a);
-    });
-  }
-  */
   function showPromptArea(opts) {
     openModal(function (box) {
       box.appendChild(el("h3", null, opts.title));
@@ -771,7 +724,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     });
   }
   
-  /* J10 页面生成与导出 */
   function generatePageHtml(title, script, imageDataUrl, hasImage) {
     var safeTitle = escapeHtml(
       (title || T("generator.untitledPage")).slice(0, MAX_TITLE_LEN),
@@ -921,123 +873,7 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
         );
       });
   }
-  /* J10 页面生成与导出 /
-  function generatePageHtml(title, script, imageDataUrl, hasImage) {
-    var safeTitle = escapeHtml(
-      (title || T("generator.untitledPage")).slice(0, MAX_TITLE_LEN),
-    );
-    var imgVar;
-    if (imageDataUrl) {
-      imgVar = 'var imageUrl = "' + imageDataUrl + '";';
-    } else if (hasImage) {
-      imgVar =
-        "/* 原作品含用户上传的图片，因存储优化未嵌入此文件。\n" +
-        "   预览时可在本工具中查看图片效果；\n" +
-        "   若要在下载的文件里使用图片，请在工具中重新上传后再导出。 /\n" +
-        "    var imageUrl = null;";
-    } else {
-      imgVar = "var imageUrl = null;";
-    }
-    var safeImgVar = escapeScriptClose(imgVar);
-    var safeScript = escapeScriptClose(script);
 
-    return (
-      "<!DOCTYPE html>\n" +
-      '<html lang="zh-CN">\n' +
-      "<head>\n" +
-      '  <meta charset="UTF-8">\n' +
-      '  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">\n' +
-      "  <title>" +
-      safeTitle +
-      "</title>\n" +
-      "  <style>\n" +
-      "    html, body { margin: 0; padding: 0; touch-action: none; }\n" +
-      "    canvas { display: block; touch-action: none; }\n" +
-      "  </style>\n" +
-      '  \x3Cscript src="' +
-      P5_CDN +
-      '">\x3C/script>\n' +
-      "</head>\n" +
-      "<body>\n" +
-      "  \x3Cscript>\n" +
-      "    " +
-      safeImgVar +
-      "\n" +
-      "    " +
-      safeScript +
-      "\n" +
-      "  \x3C/script>\n" +
-      "</body>\n" +
-      "</html>"
-    );
-  }
-  function injectSessionImage(html, dataUrl) {
-    if (!html || !dataUrl) return html;
-    var escaped = String(dataUrl)
-      .replace(/\\/g, "\\\\")
-      .replace(/"/g, '\\"');
-    return html.replace(
-      /var imageUrl = (?:null|"[^"]*");/,
-      'var imageUrl = "' + escaped + '";',
-    );
-  }
-  function downloadSingleHtml(filename, html) {
-    try {
-      var blob = new Blob([html], { type: "text/html;charset=utf-8" });
-      var url = URL.createObjectURL(blob);
-      var link = document.createElement("a");
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      setTimeout(function () {
-        URL.revokeObjectURL(url);
-      }, 1000);
-    } catch (err) {
-      showAlert(
-        T("page.downloadFailTitle"),
-        String((err && err.message) || err),
-        true,
-      );
-    }
-  }
-  function exportZip() {
-    var pages = getPages();
-    if (!pages.length) {
-      showAlert(T("page.exportEmptyTitle"), T("page.exportEmptyBody"));
-      return;
-    }
-    var zip = new JSZip();
-    pages.forEach(function (page, idx) {
-      var base = safeFileName(page.title);
-      zip.file("p5_" + base + "_" + (idx + 1) + ".html", page.html);
-    });
-    zip
-      .generateAsync({ type: "blob" })
-      .then(function (blob) {
-        var url = URL.createObjectURL(blob);
-        var link = document.createElement("a");
-        link.href = url;
-        link.download = "p5_works.zip";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        setTimeout(function () {
-          URL.revokeObjectURL(url);
-        }, 1000);
-      })
-      .catch(function (err) {
-        showAlert(
-          T("page.exportFailTitle"),
-          String((err && err.message) || err),
-          true,
-        );
-      });
-  }
-  */
-
-  /* J11 随机p5与srcdoc */
   function pickRandomP5File() {
     if (!P5_FILES || !P5_FILES.length) return null;
     if (P5_FILES.length === 1) return P5_FILES[0];
@@ -1079,7 +915,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     );
   }
 
-  /* J12 侧边栏页面列表 */
   function updateSidebarPages() {
     var pages = getPages();
     var kw = sidebarSearchKeyword.trim().toLowerCase();
@@ -1123,8 +958,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     sidebarPagesEl.replaceChildren(frag);
   }
 
-
-  /* J13 iframe代理 */
   function bindIframeProxy(iframe) {
     var iwin, idoc;
     try {
@@ -1245,7 +1078,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     });
   }
 
-  /* J14 预览锁定与截图 */
   function lockAppSize() {
     document.body.classList.add("preview-lock");
     var w = window.innerWidth;
@@ -1298,7 +1130,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     return btn;
   }
 
-  /* J15 首页运行器 */
   function renderRunner() {
     destroyEditor();
     appEl.replaceChildren();
@@ -1410,7 +1241,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     });
   }
 
-  /* J16 侧边栏与主题 */
   function openSidebar() {
     sidebarEl.classList.add("open");
     overlayEl.classList.add("show");
@@ -1452,8 +1282,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     } catch (e) {}
   }
 
-
-  /* J17 路由与静态页 */
   function getRoute() {
     var hash = location.hash;
     if (!hash || hash === "#" || hash === "#/") return "/";
@@ -1558,7 +1386,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     return frag;
   }
 
-  /* J18 生成器模型菜单 */
   function refreshGenModelBtn() {
     var btn = $("#genModelBtn");
     if (!btn) return;
@@ -1610,7 +1437,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     if (willShow) buildGenModelMenu();
   }
 
-  /* J19 生成器AI状态与工具 */
   function genStatusClear() {
     var box = $("#genStatus");
     if (box) box.replaceChildren();
@@ -1792,7 +1618,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     return null;
   }
 
-  /* J20 AI流式请求核心 */
   function findToolCallName(msgs, toolCallId) {
     for (var i = 0; i < msgs.length; i++) {
       var m = msgs[i];
@@ -2097,7 +1922,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     return { consume: consume, finalize: finalize };
   }
 
-  /* J21 生成器AI循环 */
   function genApplyCode(code, intent) {
     if (!editor || !code) return;
     if (intent === "append") {
@@ -2332,7 +2156,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
         e.stopPropagation();
         closeGenMenu();
         aiState.currentModel = item.dataset.model;
-        /* 【新增】A1 */
         saveCurrentModel(aiState.currentModel);
         refreshGenModelBtn();
         refreshAIModelUI();
@@ -2363,8 +2186,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     refreshGenModelBtn();
   }
 
-
-  /* J22 生成器主体 */
   function bindGenerator() {
     var titleInput = $("#title");
     var textarea = $("#script");
@@ -2537,7 +2358,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     bindGeneratorAIPanel();
   }
 
-  /* J23 AI页面骨架 */
   function renderAIAssistant() {
     var page = el("div", "ai-page");
     var clearBtn = el("button", "ai-clear-btn", "−");
@@ -2588,7 +2408,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     return page;
   }
 
-  /* J24 AI模型菜单 */
   function buildAIModelMenu() {
     var menu = $("#aiModelMenu");
     if (!menu) return;
@@ -2679,7 +2498,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     menu.classList.toggle("show");
   }
 
-  /* J25 剪贴板与提示 */
   function copyToClipboard(text) {
     if (!text) return;
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -2711,7 +2529,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     }, FLASH_TIP_MS);
   }
 
-  /* J26 消息工具栏与节点 */
   function buildAssistantToolbar(m, index) {
     var toolbar = el("div", "assistant-toolbar");
     var left = el("div", "toolbar-left");
@@ -2835,8 +2652,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     return el("div", "ai-empty", text);
   }
 
-
-  /* J27 AI消息渲染 */
   function renderAIMessages() {
     var box = $("#aiMessages");
     if (!box) return;
@@ -2952,7 +2767,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     return box.scrollHeight - box.scrollTop - box.clientHeight < NEAR_BOTTOM_PX;
   }
 
-  /* J28 消息操作 */
   function deleteMessageFrom(index) {
     var model = aiState.currentModel;
     if (!model) return;
@@ -3060,7 +2874,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
       });
     if (payload.length > MAX_CONTEXT_MESSAGES) {
       payload = payload.slice(-MAX_CONTEXT_MESSAGES);
-      /* 【新增】A2: 裁剪后确保首条为 user */
       while (payload.length && payload[0].role !== "user") {
         payload.shift();
       }
@@ -3122,7 +2935,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
       });
   }
 
-  /* J29 模型编辑与选择 */
   function showModelEditor(modelId) {
     var isEdit = !!modelId;
     var existing = isEdit ? aiModelConf(modelId) : null;
@@ -3357,7 +3169,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
         showAlert(T("test.failTitle"), msg, true);
       });
   }
-  
   function promptAPIKey(model, onSaved) {
   var hasKey = !!aiState.keys[model];
   showPrompt(
@@ -3381,21 +3192,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
       : null,
       );
   }
-  
-  /*
-  function promptAPIKey(model, onSaved) {
-    showPrompt(
-      T("ai.setKeyTitle", { model: aiModelName(model) }),
-      aiState.keys[model] || "",
-      function (v) {
-        aiState.keys[model] = v;
-        saveAIKeys();
-        if (onSaved) onSaved();
-      },
-      "password",
-    );
-  }
-  */
   function promptSystemPrompt(model) {
     var existing = aiState.prompts[model] || "";
     showPromptArea({
@@ -3441,31 +3237,12 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
       return;
     }
     aiState.currentModel = model;
-    /* 【新增】A1 */
     saveCurrentModel(model);
     refreshAIModelUI();
     renderAIMessages();
     updateAISendBtn();
   }
-
-  /* J30 对话导入导出 */
-  /*
   function triggerDownload(content, mime, filename) {
-    var blob = new Blob([content], { type: mime });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(function () {
-      URL.revokeObjectURL(url);
-    }, 1000);
-  }
-  */
-  function triggerDownload(content, mime, filename) {
-  /* iOS Safari 中 blob URL 只预览不下载，改用 data URL */
   try {
     var encoded = btoa(unescape(encodeURIComponent(content)));
     var url = "data:" + mime + ";base64," + encoded;
@@ -3477,7 +3254,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     a.click();
     document.body.removeChild(a);
   } catch (e) {
-    /* 极端情况（超大内容 / btoa 失败）回退到 blob */
     var blob = new Blob([content], { type: mime });
     var burl = URL.createObjectURL(blob);
     var b = document.createElement("a");
@@ -3492,7 +3268,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     }, 1000);
   }
 }
-
   function downloadAIChatMd(model) {
     var chat = aiState.chats[model] || [];
     if (!chat.length) {
@@ -3693,7 +3468,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     reader.readAsText(file);
   }
   
-  /* J31 AI发送与清空 */
   function aiSend() {
     if (aiState.busy) return;
     var model = aiState.currentModel;
@@ -3746,8 +3520,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     );
   }
 
-
-  /* J32 AI助手绑定  */
   function bindAIAssistant() {
     renderedModelId = null;
     renderedMsgCount = 0;
@@ -3871,8 +3643,7 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
       });
     }
   }
-
-  /* J33 主路由渲染 */
+  
   function render() {
     var path = getRoute();
 
@@ -3923,7 +3694,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     }
   }
 
-  /* J34 初始化 */
   function initStatic() {
     modalBackdrop = $("#modalBackdrop");
     modalBox = $("#modalBox");
@@ -4115,7 +3885,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     });
   }
 
-  /* J35 启动 */
   function loadContent() {
     return fetch(CONTENT_URL, { cache: "no-cache" })
       .then(function (r) {
