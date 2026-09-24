@@ -3298,6 +3298,7 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
   }
 
   /* J30 对话导入导出 */
+  /*
   function triggerDownload(content, mime, filename) {
     var blob = new Blob([content], { type: mime });
     var url = URL.createObjectURL(blob);
@@ -3311,6 +3312,36 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
       URL.revokeObjectURL(url);
     }, 1000);
   }
+  */
+  function triggerDownload(content, mime, filename) {
+  /* iOS Safari 中 blob URL 只预览不下载，改用 data URL */
+  try {
+    var encoded = btoa(unescape(encodeURIComponent(content)));
+    var url = "data:" + mime + ";base64," + encoded;
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.style.display = "none";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  } catch (e) {
+    /* 极端情况（超大内容 / btoa 失败）回退到 blob */
+    var blob = new Blob([content], { type: mime });
+    var burl = URL.createObjectURL(blob);
+    var b = document.createElement("a");
+    b.href = burl;
+    b.download = filename;
+    b.style.display = "none";
+    document.body.appendChild(b);
+    b.click();
+    document.body.removeChild(b);
+    setTimeout(function () {
+      URL.revokeObjectURL(burl);
+    }, 1000);
+  }
+}
+
   function downloadAIChatMd(model) {
     var chat = aiState.chats[model] || [];
     if (!chat.length) {
