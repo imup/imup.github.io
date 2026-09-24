@@ -310,6 +310,7 @@
       "ai.menuDownloadJson": "Download chat (JSON, with structured metadata)",
       "ai.setKeyTitle": "Set {model} API Key",
       "ai.keySecurityHint": "The key is stored only in this browser's local storage. Do not use it on shared devices.",
+      "ai.clearKey": "Delete API Key",
       "ai.setPromptTitle": "Set {model} system prompt",
       "ai.setPromptHint": "This prompt is sent as a system message with each request. Leave empty to skip. Ctrl+Enter to save.",
       "ai.setPromptPlaceholder": "e.g. You are a p5.js generative art assistant. Be concise and add comments to code.",
