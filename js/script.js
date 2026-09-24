@@ -933,7 +933,7 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
       imgVar =
         "/* 原作品含用户上传的图片，因存储优化未嵌入此文件。\n" +
         "   预览时可在本工具中查看图片效果；\n" +
-        "   若要在下载的文件里使用图片，请在工具中重新上传后再导出。 */\n" +
+        "   若要在下载的文件里使用图片，请在工具中重新上传后再导出。 /\n" +
         "    var imageUrl = null;";
     } else {
       imgVar = "var imageUrl = null;";
