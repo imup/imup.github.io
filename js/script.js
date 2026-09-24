@@ -616,10 +616,9 @@
     });
   }
   
-  function showPrompt(title, defaultValue, onOk, inputType, hint) {
+function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
   openModal(function (box) {
     box.appendChild(el("h3", null, title));
-    /* 【新增】F1: 可选提示行 */
     if (hint) box.appendChild(el("div", "modal-hint", hint));
     var input = document.createElement("input");
     input.type = inputType || "text";
@@ -627,6 +626,21 @@
     input.autocomplete = "off";
     input.spellcheck = false;
     var a = el("div", "modal-actions");
+    /* 【新增】F1+: 可选左侧清除按钮 */
+    var leftWrap = document.createElement("div");
+    if (opts && opts.onClear) {
+      var clearBtn = el(
+        "button",
+        "link-btn",
+        opts.clearText || T("common.delete"),
+      );
+      clearBtn.type = "button";
+      clearBtn.addEventListener("click", function () {
+        closeModal();
+        opts.onClear();
+      });
+      leftWrap.appendChild(clearBtn);
+    }
     var rg = rightGroup();
     var cancel = el("button", "cancel", T("common.cancel"));
     cancel.addEventListener("click", closeModal);
@@ -645,6 +659,7 @@
     });
     rg.appendChild(cancel);
     rg.appendChild(ok);
+    a.appendChild(leftWrap);
     a.appendChild(rg);
     box.appendChild(input);
     box.appendChild(a);
@@ -3193,6 +3208,7 @@
   }
   
   function promptAPIKey(model, onSaved) {
+  var hasKey = !!aiState.keys[model];
   showPrompt(
     T("ai.setKeyTitle", { model: aiModelName(model) }),
     aiState.keys[model] || "",
@@ -3202,10 +3218,19 @@
       if (onSaved) onSaved();
     },
     "password",
-    /* 【新增】F1: 安全提示 */
     T("ai.keySecurityHint"),
-    );
+    hasKey
+      ? {
+          clearText: T("ai.clearKey"),
+          onClear: function () {
+            delete aiState.keys[model];
+            saveAIKeys();
+          },
+        }
+      : null,
+      );
   }
+  
   /*
   function promptAPIKey(model, onSaved) {
     showPrompt(
