@@ -165,7 +165,6 @@
       },
     ];
   }
-
   var AI_MODELS = [];
   var I18N = {};
   var LANG = "zh";
@@ -204,7 +203,6 @@
   var generatorDraft = { title: "", script: "" };
   var renderedMsgCount = 0;
   var renderedModelId = null;
-
   function T(key, params) {
     var pack = I18N[LANG] || I18N.zh || {};
     var text = pack[key];
@@ -265,7 +263,6 @@
       document.documentElement.lang = LANG === "zh" ? "zh-CN" : "en";
     } catch (e) {}
   }
-
   function getAllModels() {
     return AI_MODELS.concat(aiState.customModels || []);
   }
@@ -285,7 +282,6 @@
     var c = aiModelConf(id);
     return c ? c.name : id;
   }
-
   function loadAIKeys() {
     try {
       var raw = localStorage.getItem(AI_KEY_STORAGE);
@@ -397,7 +393,6 @@
     var saved = loadCurrentModel();
     aiState.currentModel = saved && aiModelConf(saved) ? saved : null;
   }
-
   function getPages() {
     try {
       var raw = localStorage.getItem(STORAGE_KEY);
@@ -440,7 +435,6 @@
       localStorage.removeItem(DRAFT_KEY);
     } catch (e) {}
   }
-
   function isQuotaError(e) {
     if (!e) return false;
     if (e.name === "QuotaExceededError") return true;
@@ -481,7 +475,6 @@
       true,
     );
   }
-
   function $(sel, root) {
     return (root || document).querySelector(sel);
   }
@@ -522,7 +515,6 @@
   function rightGroup() {
     return el("div", "right-group");
   }
-
   var _modalFocusHandler = null;
   function _installFocusTrap(box) {
     _removeFocusTrap();
@@ -722,7 +714,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
       box.appendChild(a);
     });
   }
-  
   function generatePageHtml(title, script, imageDataUrl, hasImage) {
     var safeTitle = escapeHtml(
       (title || T("generator.untitledPage")).slice(0, MAX_TITLE_LEN),
@@ -872,7 +863,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
         );
       });
   }
-
   function pickRandomP5File() {
     if (!P5_FILES || !P5_FILES.length) return null;
     if (P5_FILES.length === 1) return P5_FILES[0];
@@ -913,7 +903,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
       "</html>"
     );
   }
-
   function updateSidebarPages() {
     var pages = getPages();
     var kw = sidebarSearchKeyword.trim().toLowerCase();
@@ -956,7 +945,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     });
     sidebarPagesEl.replaceChildren(frag);
   }
-
   function bindIframeProxy(iframe) {
     var iwin, idoc;
     try {
@@ -1076,7 +1064,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
       });
     });
   }
-
   function lockAppSize() {
     document.body.classList.add("preview-lock");
     var w = window.innerWidth;
@@ -1128,7 +1115,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     });
     return btn;
   }
-
   function renderRunner() {
     destroyEditor();
     appEl.replaceChildren();
@@ -1239,7 +1225,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
       render();
     });
   }
-
   function openSidebar() {
     sidebarEl.classList.add("open");
     overlayEl.classList.add("show");
@@ -1280,7 +1265,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
       localStorage.setItem(THEME_KEY, next);
     } catch (e) {}
   }
-
   function getRoute() {
     var hash = location.hash;
     if (!hash || hash === "#" || hash === "#/") return "/";
@@ -1384,7 +1368,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     frag.appendChild(bar);
     return frag;
   }
-
   function refreshGenModelBtn() {
     var btn = $("#genModelBtn");
     if (!btn) return;
@@ -1435,7 +1418,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     genState.menuOpen = willShow;
     if (willShow) buildGenModelMenu();
   }
-
   function genStatusClear() {
     var box = $("#genStatus");
     if (box) box.replaceChildren();
@@ -1578,7 +1560,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
           ($("#title") ? $("#title").value.trim() : "") ||
           T("generator.untitled");
         var h2 = generatePageHtml(t3, s2, uploadedImageDataUrl || "");
-        /* 【改】A4 */
         runner.mode = "temp";
         runner.tempHtml = h2;
         runner.pageId = null;
@@ -1616,7 +1597,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     }
     return null;
   }
-
   function findToolCallName(msgs, toolCallId) {
     for (var i = 0; i < msgs.length; i++) {
       var m = msgs[i];
@@ -2184,7 +2164,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     }
     refreshGenModelBtn();
   }
-
   function bindGenerator() {
     var titleInput = $("#title");
     var textarea = $("#script");
@@ -2356,7 +2335,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     });
     bindGeneratorAIPanel();
   }
-
   function renderAIAssistant() {
     var page = el("div", "ai-page");
     var clearBtn = el("button", "ai-clear-btn", "−");
@@ -2406,7 +2384,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     page.appendChild(inputWrap);
     return page;
   }
-
   function buildAIModelMenu() {
     var menu = $("#aiModelMenu");
     if (!menu) return;
@@ -2496,7 +2473,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     if (!menu) return;
     menu.classList.toggle("show");
   }
-
   function copyToClipboard(text) {
     if (!text) return;
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -2527,7 +2503,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
       if (tip.parentNode) tip.parentNode.removeChild(tip);
     }, FLASH_TIP_MS);
   }
-
   function buildAssistantToolbar(m, index) {
     var toolbar = el("div", "assistant-toolbar");
     var left = el("div", "toolbar-left");
@@ -2650,7 +2625,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
   function buildEmptyNode(text) {
     return el("div", "ai-empty", text);
   }
-
   function renderAIMessages() {
     var box = $("#aiMessages");
     if (!box) return;
@@ -2765,7 +2739,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     if (!box) return true;
     return box.scrollHeight - box.scrollTop - box.clientHeight < NEAR_BOTTOM_PX;
   }
-
   function deleteMessageFrom(index) {
     var model = aiState.currentModel;
     if (!model) return;
@@ -2933,7 +2906,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
         }
       });
   }
-
   function showModelEditor(modelId) {
     var isEdit = !!modelId;
     var existing = isEdit ? aiModelConf(modelId) : null;
@@ -3227,7 +3199,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     if (!aiState.keys[model]) {
       promptAPIKey(model, function () {
         aiState.currentModel = model;
-        /* 【新增】A1 */
         saveCurrentModel(model);
         refreshAIModelUI();
         renderAIMessages();
@@ -3466,7 +3437,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     };
     reader.readAsText(file);
   }
-  
   function aiSend() {
     if (aiState.busy) return;
     var model = aiState.currentModel;
@@ -3518,7 +3488,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
       true,
     );
   }
-
   function bindAIAssistant() {
     renderedModelId = null;
     renderedMsgCount = 0;
@@ -3642,7 +3611,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
       });
     }
   }
-  
   function render() {
     var path = getRoute();
 
@@ -3692,7 +3660,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
       appEl.appendChild(wrap);
     }
   }
-
   function initStatic() {
     modalBackdrop = $("#modalBackdrop");
     modalBox = $("#modalBox");
@@ -3883,7 +3850,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
       }, 100);
     });
   }
-
   function loadContent() {
     return fetch(CONTENT_URL, { cache: "no-cache" })
       .then(function (r) {
