@@ -833,6 +833,156 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
   }
   function downloadSingleHtml(filename, html) {
     try {
+      var encoded = btoa(unescape(encodeURIComponent(html)));
+      var url = "data:text/html;charset=utf-8;base64," + encoded;
+      var link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      link.style.display = "none";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      try {
+        var blob = new Blob([html], { type: "text/html;charset=utf-8" });
+        var burl = URL.createObjectURL(blob);
+        var b = document.createElement("a");
+        b.href = burl;
+        b.download = filename;
+        b.style.display = "none";
+        document.body.appendChild(b);
+        b.click();
+        document.body.removeChild(b);
+        setTimeout(function () {
+          URL.revokeObjectURL(burl);
+        }, 1000);
+      } catch (err2) {
+        showAlert(
+          T("page.downloadFailTitle"),
+          String((err2 && err2.message) || err2),
+          true,
+        );
+      }
+    }
+  }
+  function exportZip() {
+    var pages = getPages();
+    if (!pages.length) {
+      showAlert(T("page.exportEmptyTitle"), T("page.exportEmptyBody"));
+      return;
+    }
+    var zip = new JSZip();
+    pages.forEach(function (page, idx) {
+      var base = safeFileName(page.title);
+      zip.file("p5_" + base + "_" + (idx + 1) + ".html", page.html);
+    });
+    zip
+      .generateAsync({ type: "base64" })
+      .then(function (base64) {
+        try {
+          var url = "data:application/zip;base64," + base64;
+          var link = document.createElement("a");
+          link.href = url;
+          link.download = "p5_works.zip";
+          link.style.display = "none";
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        } catch (e) {
+          zip
+            .generateAsync({ type: "blob" })
+            .then(function (blob) {
+              var burl = URL.createObjectURL(blob);
+              var b = document.createElement("a");
+              b.href = burl;
+              b.download = "p5_works.zip";
+              b.style.display = "none";
+              document.body.appendChild(b);
+              b.click();
+              document.body.removeChild(b);
+              setTimeout(function () {
+                URL.revokeObjectURL(burl);
+              }, 1000);
+            })
+            .catch(function (err2) {
+              showAlert(
+                T("page.exportFailTitle"),
+                String((err2 && err2.message) || err2),
+                true,
+              );
+            });
+        }
+      })
+      .catch(function (err) {
+        showAlert(
+          T("page.exportFailTitle"),
+          String((err && err.message) || err),
+          true,
+        );
+      });
+  }
+  /* J10 页面生成与导出 /
+  function generatePageHtml(title, script, imageDataUrl, hasImage) {
+    var safeTitle = escapeHtml(
+      (title || T("generator.untitledPage")).slice(0, MAX_TITLE_LEN),
+    );
+    var imgVar;
+    if (imageDataUrl) {
+      imgVar = 'var imageUrl = "' + imageDataUrl + '";';
+    } else if (hasImage) {
+      imgVar =
+        "/* 原作品含用户上传的图片，因存储优化未嵌入此文件。\n" +
+        "   预览时可在本工具中查看图片效果；\n" +
+        "   若要在下载的文件里使用图片，请在工具中重新上传后再导出。 */\n" +
+        "    var imageUrl = null;";
+    } else {
+      imgVar = "var imageUrl = null;";
+    }
+    var safeImgVar = escapeScriptClose(imgVar);
+    var safeScript = escapeScriptClose(script);
+
+    return (
+      "<!DOCTYPE html>\n" +
+      '<html lang="zh-CN">\n' +
+      "<head>\n" +
+      '  <meta charset="UTF-8">\n' +
+      '  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">\n' +
+      "  <title>" +
+      safeTitle +
+      "</title>\n" +
+      "  <style>\n" +
+      "    html, body { margin: 0; padding: 0; touch-action: none; }\n" +
+      "    canvas { display: block; touch-action: none; }\n" +
+      "  </style>\n" +
+      '  \x3Cscript src="' +
+      P5_CDN +
+      '">\x3C/script>\n' +
+      "</head>\n" +
+      "<body>\n" +
+      "  \x3Cscript>\n" +
+      "    " +
+      safeImgVar +
+      "\n" +
+      "    " +
+      safeScript +
+      "\n" +
+      "  \x3C/script>\n" +
+      "</body>\n" +
+      "</html>"
+    );
+  }
+  function injectSessionImage(html, dataUrl) {
+    if (!html || !dataUrl) return html;
+    var escaped = String(dataUrl)
+      .replace(/\\/g, "\\\\")
+      .replace(/"/g, '\\"');
+    return html.replace(
+      /var imageUrl = (?:null|"[^"]*");/,
+      'var imageUrl = "' + escaped + '";',
+    );
+  }
+  function downloadSingleHtml(filename, html) {
+    try {
       var blob = new Blob([html], { type: "text/html;charset=utf-8" });
       var url = URL.createObjectURL(blob);
       var link = document.createElement("a");
@@ -885,6 +1035,7 @@ function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
         );
       });
   }
+  */
 
   /* J11 随机p5与srcdoc */
   function pickRandomP5File() {
