@@ -36,7 +36,6 @@
   --hover-key: rgba(240, 173, 78, 0.15);
   --hover-prompt: rgba(155, 89, 182, 0.15);
   --hover-dl: rgba(0, 0, 0, 0.08);
-
   --sidebar-w: min(280px, 78vw);
 }
 body.dark-mode {
@@ -100,7 +99,6 @@ body.preview-lock {
   overscroll-behavior: none;
   touch-action: none;
 }
-
 .hamburger-btn {
   position: fixed;
   top: clamp(8px, 2vw, 14px);
@@ -123,7 +121,6 @@ body.preview-lock {
 .hamburger-btn:hover {
   transform: scale(1.1);
 }
-
 body.preview-lock .hamburger-btn {
   color: #fff;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
@@ -133,7 +130,6 @@ body.sidebar-open .hamburger-btn {
   transform: scale(0.6);
   pointer-events: none;
 }
-
 .sidebar {
   position: fixed;
   top: 0;
@@ -322,7 +318,6 @@ body.sidebar-open .hamburger-btn {
   flex: 0 0 1px;
   background: var(--line);
 }
-
 .overlay {
   display: none;
   position: fixed;
@@ -336,7 +331,6 @@ body.sidebar-open .hamburger-btn {
   display: block;
   opacity: 1;
 }
-
 #app {
   width: 100%;
   min-height: 100vh;
@@ -397,7 +391,6 @@ body.sidebar-open .hamburger-btn {
   line-height: 1.6;
   margin: 0.3em 0;
 }
-
 .form-group {
   margin-bottom: 15px;
 }
@@ -455,7 +448,6 @@ body.sidebar-open .hamburger-btn {
   user-select: none;
   overflow: hidden;
 }
-
 button {
   background: var(--primary);
   color: white;
@@ -501,7 +493,6 @@ button:disabled {
 .action-buttons button.download {
   background: var(--success);
 }
-
 .modal-backdrop {
   display: none;
   position: fixed;
@@ -598,7 +589,6 @@ button:disabled {
   background: var(--hover-strong);
   color: var(--danger);
 }
-
 .ai-page {
   position: relative;
   display: flex;
@@ -668,7 +658,6 @@ button:disabled {
   text-align: center;
   font-family: ui-monospace, Menlo, Consolas, monospace;
 }
-
 .ai-msg {
   margin-bottom: 12px;
   display: flex;
@@ -813,7 +802,6 @@ button:disabled {
   white-space: nowrap;
   line-height: 1.2;
 }
-
 .ai-input-wrap {
   flex: 0 0 auto;
   padding: 10px 12px calc(12px + env(safe-area-inset-bottom));
@@ -1073,7 +1061,6 @@ button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
-
 .gen-ai-bar {
   display: flex;
   align-items: flex-end;
@@ -1148,7 +1135,6 @@ button:disabled {
   flex: 0 0 auto;
   white-space: nowrap;
 }
-
 .preview-screenshot-btn {
   position: fixed;
   top: clamp(8px, 2vw, 14px);
@@ -1157,7 +1143,7 @@ button:disabled {
   background: none;
   border: none;
   color: #fff;
-  font-size: clamp(24px, 4.5vw, 32px);
+  font-size: clamp(20px, 4.5vw, 32px);
   cursor: pointer;
   padding: 4px 8px;
   line-height: 1;
@@ -1171,7 +1157,6 @@ button:disabled {
 .preview-screenshot-btn:active {
   transform: scale(0.95);
 }
-
 @media (max-width: 420px) {
   .hamburger-btn {
     font-size: 28px;
