@@ -1,6 +1,5 @@
 (function () {
   "use strict";
-
   var STORAGE_KEY = "p5_pages";
   var THEME_KEY = "p5_theme";
   var LANG_KEY = "p5_lang";
