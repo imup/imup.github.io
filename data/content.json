@@ -104,6 +104,7 @@
       "ai.menuDownloadJson": "下载对话 (JSON，含结构化响应元数据)",
       "ai.setKeyTitle": "设置{model}的API Key",
       "ai.keySecurityHint": "Key仅存于本机浏览器，请勿在公共设备使用。",
+      "ai.clearKey": "删除 API Key",
       "ai.setPromptTitle": "设置{model}系统提示词",
       "ai.setPromptHint": "这段提示词会作为System消息在每次对话时发送给模型，用于设定角色、语气或规则。留空则不发送。Ctrl+回车可快速保存。",
       "ai.setPromptPlaceholder": "例如：你是一位擅长p5.js生成艺术的助手，回答简洁专业，代码附注释。",
