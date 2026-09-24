@@ -1,15 +1,12 @@
 <!doctype html>
 <html lang="zh-CN">
   <head>
-    <!--  H1 头部资源  -->
     <meta charset="UTF-8" />
     <meta
   name="viewport"
   content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content"
   />
-
     <title>randomArt可视化创意编程</title>
-
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"
@@ -26,14 +23,11 @@
       disabled
     />
     <link rel="stylesheet" href="css/style.css" />
-
     <link rel="manifest" href="manifest.json" />
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   </head>
   <body>
-    
-    <!--  H2 汉堡按钮  -->
     <button
       class="hamburger-btn"
       id="hamburgerBtn"
@@ -43,8 +37,6 @@
     >
       ☰
     </button>
-
-    <!--  H3 侧边栏导航  -->
     <nav class="sidebar" id="sidebar" aria-label="主导航">
       <div class="sidebar-search">
         <input
@@ -56,7 +48,6 @@
           data-i18n-placeholder="nav.searchPlaceholder"
         />
       </div>
-
       <div
         class="nav-item"
         data-path="#/"
@@ -102,7 +93,6 @@
       <div id="sidebar-pages">
         <div class="no-pages" data-i18n="nav.noScripts">暂无编写的脚本</div>
       </div>
-
       <div class="sidebar-footer">
         <div class="footer-row">
           <div
@@ -129,12 +119,8 @@
         </div>
       </div>
     </nav>
-
-    <!--  H4 主容器与模态框  -->
     <div class="overlay" id="overlay"></div>
-
     <main id="app" data-i18n="site.loading">加载中…</main>
-
     <div
       class="modal-backdrop"
       id="modalBackdrop"
@@ -143,14 +129,9 @@
     >
       <div class="modal" id="modalBox"></div>
     </div>
-
-    <!--  H5 脚本引入  -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
-
     <script src="js/script.js"></script>
-
-    <!--  H6 SW注册 -->
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", function () {
