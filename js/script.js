@@ -7,8 +7,7 @@
   var MAX_IMAGE_BYTES = 1.5 * 1024 * 1024;
   var MAX_SESSION_IMAGES = 10;
   var P5_DIR = "p5/";
-  var P5_CDN =
-    "https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js";
+  var P5_CDN = "https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js";
   var P5_FILES = ["sketch1.js", "sketch2.js", "sketch3.js"];
   var AI_KEY_STORAGE = "p5_ai_keys";
   var AI_CHAT_STORAGE = "p5_ai_chats";
