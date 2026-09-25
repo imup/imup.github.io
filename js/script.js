@@ -1,4019 +1,1440 @@
-(function () {
-  "use strict";
-  /* J1 常量声明 */
-  var STORAGE_KEY = "p5_pages";
-  var THEME_KEY = "p5_theme";
-  var LANG_KEY = "p5_lang";
-  var DRAFT_KEY = "p5_gen_draft";
-  var MAX_IMAGE_BYTES = 1.5 * 1024 * 1024;
-  var MAX_SESSION_IMAGES = 10;
-  var P5_DIR = "p5/";
-  var P5_CDN =
-    "https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js";
-  var P5_FILES = ["sketch1.js", "sketch2.js", "sketch3.js"];
-  var AI_KEY_STORAGE = "p5_ai_keys";
-  var AI_CHAT_STORAGE = "p5_ai_chats";
-  var AI_PROMPT_STORAGE = "p5_ai_prompts";
-  var AI_CUSTOM_MODELS_STORAGE = "p5_ai_custom_models";
+/* ============================================================
+   C1 主题变量
+   作用：全站 CSS 变量定义，供所有块引用
+   机制：:root 为亮色默认值；body.dark-mode 覆盖为暗色值
+   切换：仅需给 body 增删 dark-mode 类（J16 toggleTheme）
+   ============================================================ */
+:root {
+  /*  品牌色：主色 / 危险 / 成功 / 警告 / 强调 / 中性按钮  */
+  --primary: #007bff;
+  --primary-hover: #0056b3;
+  --primary-focus: #007bff;
+  --danger: #d9534f;
+  --success: #28a745;
+  --warn: #f0ad4e;
+  --purple: #9b59b6;
+  --neutral-btn: #6c757d;
 
-  var AI_CURRENT_MODEL_STORAGE = "p5_ai_current_model";
-  var MAX_CONTEXT_MESSAGES = 30;
-  var MAX_TOOL_LOOP = 5;
-  var REQUEST_TIMEOUT_MS = 60000;
-  var TEST_TIMEOUT_MS = 15000;
-  var MAX_TITLE_LEN = 60;
-  var CONTENT_URL = "data/content.json";
+  /*  基础色：页面底色 / 卡片 / 正文 / 汉堡图标  */
+  --bg: #f5f5f5;
+  --surface: #ffffff;
+  --text: #222222;
+  --hamburger: #333333;
 
-  var LONG_PRESS_MS = 500;
-  var FLASH_TIP_MS = 1200;
-  var NEAR_BOTTOM_PX = 80;
-  var SEARCH_DEBOUNCE_MS = 150;
-  var STORAGE_KB_MULTIPLIER = 2;
+  /*  文字层级：主 / 次要 / 三级 / 占位  */
+  --text-muted: #888888;
+  --text-secondary: #888888;
+  --text-tertiary: #999999;
+  --text-placeholder: #9aa0a6;
 
-  var TOOL_SPECS = [
-    {
-      name: "insert_code",
-      description:
-        "用新代码完全替换编辑器中的内容。适用于：从零开始写、要求重写、修改较大时。",
-      params: {
-        type: "object",
-        properties: {
-          code: {
-            type: "string",
-            description:
-              "完整的 p5.js 代码（含 setup / draw 等），不要加 markdown 代码块标记",
-          },
-        },
-        required: ["code"],
-      },
-    },
-    {
-      name: "append_code",
-      description:
-        "在编辑器现有内容末尾追加代码。适用于：用户明确说“追加”“再加一段”“在末尾添加”时。",
-      params: {
-        type: "object",
-        properties: {
-          code: {
-            type: "string",
-            description:
-              "要追加的 p5.js 代码片段，不要加 markdown 代码块标记",
-          },
-        },
-        required: ["code"],
-      },
-    },
-    {
-      name: "get_current_code",
-      description:
-        "读取编辑器当前内容。适用于：需要在已有代码基础上修改时，先读取再决定怎么改。",
-      params: { type: "object", properties: {} },
-    },
-    {
-      name: "replace_selection",
-      description:
-        "替换编辑器当前选中的文本。适用于：用户要求只改某段代码，且已选中时。",
-      params: {
-        type: "object",
-        properties: {
-          code: {
-            type: "string",
-            description: "替换选中内容的 p5.js 代码片段",
-          },
-        },
-        required: ["code"],
-      },
-    },
-    {
-      name: "get_canvas_size",
-      description:
-        "获取当前画布尺寸（宽 × 高）。适用于：需要根据画布尺寸生成代码时。",
-      params: { type: "object", properties: {} },
-    },
-    {
-      name: "set_color_palette",
-      description:
-        "设置配色方案。适用于：用户要求换一组配色，或需要统一色彩风格时。",
-      params: {
-        type: "object",
-        properties: {
-          colors: {
-            type: "array",
-            description: "颜色数组，RGB 十六进制字符串，如 #FF0000",
-            items: { type: "string" },
-          },
-        },
-        required: ["colors"],
-      },
-    },
-    {
-      name: "save_page",
-      description:
-        "保存当前编辑器内容为作品。适用于：用户明确说“保存”且希望直接保存时。",
-      params: {
-        type: "object",
-        properties: {
-          title: {
-            type: "string",
-            description: "作品标题，可选，默认使用编辑器标题栏的内容",
-          },
-        },
-      },
-    },
-    {
-      name: "open_preview",
-      description:
-        "打开当前编辑器内容的预览。适用于：用户说“看一下效果”“预览”时。",
-      params: { type: "object", properties: {} },
-    },
-  ];
+  /*  交互反馈：通用 hover / 强 hover / 特殊按钮 hover  */
+  --hover: rgba(0, 0, 0, 0.055);
+  --hover-strong: rgba(0, 0, 0, 0.06);
+  --hover-key: rgba(240, 173, 78, 0.15);
+  --hover-prompt: rgba(155, 89, 182, 0.15);
+  --hover-dl: rgba(0, 0, 0, 0.08);
 
-  function _toGeminiType(t) {
-    return String(t || "").toUpperCase();
-  }
-  function _toGeminiSchema(schema) {
-    if (!schema || typeof schema !== "object") return schema;
-    var out = { type: _toGeminiType(schema.type) };
-    if (schema.description) out.description = schema.description;
-    if (schema.properties) {
-      out.properties = {};
-      Object.keys(schema.properties).forEach(function (k) {
-        out.properties[k] = _toGeminiSchema(schema.properties[k]);
-      });
-    }
-    if (schema.items) out.items = _toGeminiSchema(schema.items);
-    if (schema.required) out.required = schema.required.slice();
-    return out;
-  }
-  function buildOpenAITools() {
-    return TOOL_SPECS.map(function (t) {
-      return {
-        type: "function",
-        function: {
-          name: t.name,
-          description: t.description,
-          parameters: t.params,
-        },
-      };
-    });
-  }
-  function buildGeminiTools() {
-    return [
-      {
-        functionDeclarations: TOOL_SPECS.map(function (t) {
-          return {
-            name: t.name,
-            description: t.description,
-            parameters: _toGeminiSchema(t.params),
-          };
-        }),
-      },
-    ];
-  }
+  /*  边框线：分割线 / 输入框 / CodeMirror  */
+  --line: rgba(0, 0, 0, 0.08);
+  --border-input: #cccccc;
+  --cm-border: #cccccc;
 
-  var AI_MODELS = [];
-  var I18N = {};
-  var LANG = "zh";
-  var CONTENT = null;
+  /*  输入与结果：输入背景 / 填充背景 / 结果区  */
+  --input-bg: transparent;
+  --input-bg-fill: #ffffff;
+  --result-bg: #e9f7fe;
 
-/* J2 全局状态 */
-  var aiState = {
-    currentModel: null,
-    keys: {},
-    chats: {},
-    prompts: {},
-    customModels: [],
-    busy: false,
-    abortController: null,
-    streamToken: 0,
-  };
-  var genState = {
-    messages: [],
-    busy: false,
-    abortController: null,
-    streamToken: 0,
-    menuOpen: false,
-    palette: null,
-  };
-  var modalBackdrop, modalBox, lastFocused;
-  var sidebarPagesEl, sidebarEl, overlayEl, hamburgerBtn;
-  var sidebarSearchEl;
-  var sidebarSearchKeyword = "";
-  var sidebarSearchTimer = null;
-  var appEl;
-  var runner = { mode: "random", pageId: null, tempHtml: null };
-  var currentRandomFile = null;
-  var editor = null;
-  var uploadedImageDataUrl = null;
-  var uploadedImageInfo = null;
-  var sessionImages = {};
-  var generatorDraft = { title: "", script: "" };
-  var renderedMsgCount = 0;
-  var renderedModelId = null;
+  /*  模态框：背景 / 文字 / 阴影  */
+  --modal-bg: #ffffff;
+  --modal-text: #222222;
+  --shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.4);
 
-  /* J3 i18n */
-  function T(key, params) {
-    var pack = I18N[LANG] || I18N.zh || {};
-    var text = pack[key];
-    if (text == null) text = (I18N.zh && I18N.zh[key]) || key;
-    if (params) {
-      text = String(text).replace(/\{(\w+)\}/g, function (m, k) {
-        return params[k] != null ? String(params[k]) : m;
-      });
-    }
-    return text;
-  }
-  function detectLang() {
-    try {
-      var saved = localStorage.getItem(LANG_KEY);
-      if (saved && I18N[saved]) return saved;
-    } catch (e) {}
-    var nav = (navigator.language || "zh").toLowerCase();
-    if (nav.indexOf("zh") === 0) return "zh";
-    if (nav.indexOf("en") === 0) return "en";
-    if (CONTENT && CONTENT.defaultLang && I18N[CONTENT.defaultLang]) {
-      return CONTENT.defaultLang;
-    }
-    return "en";
-  }
-  var _i18nCache = null;
-  function _collectI18nNodes() {
-    _i18nCache = {
-      text: $$("[data-i18n]"),
-      placeholder: $$("[data-i18n-placeholder]"),
-      title: $$("[data-i18n-title]"),
-      aria: $$("[data-i18n-aria]"),
-    };
-  }
-  function applyI18nToStatic() {
-    if (!_i18nCache) _collectI18nNodes();
-    _i18nCache.text.forEach(function (el) {
-      var text = T(el.getAttribute("data-i18n"));
-      var span = el.querySelector("span");
-      if (span) {
-        span.textContent = text;
-      } else {
-        el.textContent = text;
-      }
-    });
-    _i18nCache.placeholder.forEach(function (el) {
-      var k = el.getAttribute("data-i18n-placeholder");
-      el.setAttribute("placeholder", T(k));
-      el.setAttribute("aria-label", T(k));
-    });
-    _i18nCache.title.forEach(function (el) {
-      el.setAttribute("title", T(el.getAttribute("data-i18n-title")));
-    });
+  /*  聊天气泡：用户 / 助手  */
+  --bubble-user-bg: #007bff;
+  --bubble-user-text: #ffffff;
+  --bubble-assistant-bg: #e9ecef;
+  --bubble-assistant-text: #222222;
 
-    _i18nCache.aria.forEach(function (el) {
-      el.setAttribute("aria-label", T(el.getAttribute("data-i18n-aria")));
-    });
-    try {
-      document.title = T("site.title");
-      document.documentElement.lang = LANG === "zh" ? "zh-CN" : "en";
-    } catch (e) {}
-  }
+  /*  AI 输入栏：渐变背景 / 浮起阴影  */
+  --ai-input-grad: linear-gradient(to top, #ffffff 62%, rgba(255, 255, 255, 0));
+  --shadow-ai-bar: 0 8px 26px rgba(0, 0, 0, 0.16);
 
-
-  /* J4 模型查询 */
-  function getAllModels() {
-    return AI_MODELS.concat(aiState.customModels || []);
-  }
-  function getToolModels() {
-    return getAllModels().filter(function (m) {
-      return m.supportsTools === true;
-    });
-  }
-  function aiModelConf(id) {
-    var all = getAllModels();
-    for (var i = 0; i < all.length; i++) {
-      if (all[i].id === id) return all[i];
-    }
-    return null;
-  }
-  function aiModelName(id) {
-    var c = aiModelConf(id);
-    return c ? c.name : id;
-  }
-
-
-  /* J5 AI存储 */
-  function loadAIKeys() {
-    try {
-      var raw = localStorage.getItem(AI_KEY_STORAGE);
-      var o = raw ? JSON.parse(raw) : {};
-      return o && typeof o === "object" ? o : {};
-    } catch (e) {
-      return {};
-    }
-  }
-  function saveAIKeys() {
-    try {
-      localStorage.setItem(AI_KEY_STORAGE, JSON.stringify(aiState.keys));
-      return true;
-    } catch (e) {
-      handleStorageQuotaError(e, "storage.ctxKeys");
-      return false;
-    }
-  }
-  function loadCurrentModel() {
-    try {
-      return localStorage.getItem(AI_CURRENT_MODEL_STORAGE) || null;
-    } catch (e) {
-      return null;
-    }
-  }
-  function saveCurrentModel(id) {
-    try {
-      if (id) localStorage.setItem(AI_CURRENT_MODEL_STORAGE, id);
-      else localStorage.removeItem(AI_CURRENT_MODEL_STORAGE);
-    } catch (e) {}
-  }
-  function loadAIChats() {
-    var result = {};
-    getAllModels().forEach(function (m) {
-      try {
-        var raw = localStorage.getItem(AI_CHAT_STORAGE + "_" + m.id);
-        var v = raw ? JSON.parse(raw) : [];
-        result[m.id] = Array.isArray(v) ? v : [];
-      } catch (e) {
-        result[m.id] = [];
-      }
-    });
-    return result;
-  }
-  function saveAIChats(modelId) {
-    if (!modelId) return true;
-    try {
-      localStorage.setItem(
-        AI_CHAT_STORAGE + "_" + modelId,
-        JSON.stringify(aiState.chats[modelId] || []),
-      );
-      return true;
-    } catch (e) {
-      handleStorageQuotaError(e, "storage.ctxChats");
-      return false;
-    }
-  }
-  function loadAIPrompts() {
-    try {
-      var raw = localStorage.getItem(AI_PROMPT_STORAGE);
-      var o = raw ? JSON.parse(raw) : {};
-      return o && typeof o === "object" ? o : {};
-    } catch (e) {
-      return {};
-    }
-  }
-  function saveAIPrompts() {
-    try {
-      localStorage.setItem(
-        AI_PROMPT_STORAGE,
-        JSON.stringify(aiState.prompts),
-      );
-      return true;
-    } catch (e) {
-      handleStorageQuotaError(e, "storage.ctxPrompts");
-      return false;
-    }
-  }
-  function loadCustomModels() {
-    try {
-      var raw = localStorage.getItem(AI_CUSTOM_MODELS_STORAGE);
-      var list = raw ? JSON.parse(raw) : [];
-      return Array.isArray(list) ? list : [];
-    } catch (e) {
-      return [];
-    }
-  }
-  function saveCustomModels() {
-    try {
-      localStorage.setItem(
-        AI_CUSTOM_MODELS_STORAGE,
-        JSON.stringify(aiState.customModels || []),
-      );
-      return true;
-    } catch (e) {
-      handleStorageQuotaError(e, "storage.ctxCustomModels");
-      return false;
-    }
-  }
-  function initAIState() {
-    aiState.keys = loadAIKeys();
-    aiState.customModels = loadCustomModels();
-    aiState.chats = loadAIChats();
-    aiState.prompts = loadAIPrompts();
-    getAllModels().forEach(function (m) {
-      if (!Array.isArray(aiState.chats[m.id])) aiState.chats[m.id] = [];
-      if (typeof aiState.prompts[m.id] !== "string") aiState.prompts[m.id] = "";
-    });
-    var saved = loadCurrentModel();
-    aiState.currentModel = saved && aiModelConf(saved) ? saved : null;
-  }
-
-
-  /* J6 页面与草稿存储 */
-  function getPages() {
-    try {
-      var raw = localStorage.getItem(STORAGE_KEY);
-      var list = raw ? JSON.parse(raw) : [];
-      return Array.isArray(list) ? list : [];
-    } catch (e) {
-      return [];
-    }
-  }
-  function savePages(pages) {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(pages));
-      return true;
-    } catch (e) {
-      handleStorageQuotaError(e, "storage.ctxPages");
-      return false;
-    }
-  }
-  function loadDraft() {
-    try {
-      var raw = localStorage.getItem(DRAFT_KEY);
-      var o = raw ? JSON.parse(raw) : null;
-      if (o && typeof o === "object") {
-        return {
-          title: typeof o.title === "string" ? o.title : "",
-          script: typeof o.script === "string" ? o.script : "",
-        };
-      }
-    } catch (e) {}
-    return { title: "", script: "" };
-  }
-  function saveDraft() {
-    try {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(generatorDraft));
-    } catch (e) {}
-  }
-  function clearDraft() {
-    generatorDraft = { title: "", script: "" };
-    try {
-      localStorage.removeItem(DRAFT_KEY);
-    } catch (e) {}
-  }
-
-
-  /* J7 存储配额 */
-  function isQuotaError(e) {
-    if (!e) return false;
-    if (e.name === "QuotaExceededError") return true;
-    if (e.name === "NS_ERROR_DOM_QUOTA_REACHED") return true;
-    if (e.code === 22 || e.code === 1014) return true;
-    return false;
-  }
-  function estimateLocalStorageKB() {
-    var total = 0;
-    try {
-      for (var i = 0; i < localStorage.length; i++) {
-        var k = localStorage.key(i);
-        var v = localStorage.getItem(k) || "";
-        total += k.length + v.length;
-      }
-    } catch (e) {
-      return -1;
-    }
-    return Math.round((total * STORAGE_KB_MULTIPLIER) / 1024);
-  }
-  function handleStorageQuotaError(e, contextKey) {
-    if (!isQuotaError(e)) {
-      showAlert(
-        T("storage.saveFailTitle"),
-        String((e && e.message) || e || "?"),
-        true,
-      );
-      return;
-    }
-    var usedKB = estimateLocalStorageKB();
-    var usedText = usedKB >= 0 ? T("storage.used", { kb: usedKB }) : "";
-    showAlert(
-      T("storage.fullTitle"),
-      T("storage.fullBody", {
-        context: contextKey ? T(contextKey) : "?",
-        used: usedText,
-      }),
-      true,
-    );
-  }
-
-
-  /* J8 DOM工具 */
-  function $(sel, root) {
-    return (root || document).querySelector(sel);
-  }
-  function $$(sel, root) {
-    return Array.prototype.slice.call(
-      (root || document).querySelectorAll(sel),
-    );
-  }
-  function escapeHtml(text) {
-    return String(text)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#39;");
-  }
-
-  function escapeScriptClose(str) {
-    var LT = "\x3C";
-    return String(str)
-      .replace(new RegExp(LT + "/script", "gi"), LT + "\\/script")
-      .replace(new RegExp(LT + "!--", "g"), LT + "\\!--")
-      .replace(new RegExp(LT + "script", "gi"), LT + "\\script");
-  }
-  function safeFileName(name) {
-    var n = String(name || "")
-      .replace(/[\\/:*?"<>|~#%&{}]/g, "_")
-      .replace(/\s+/g, "_")
-      .trim();
-    if (n.length > MAX_TITLE_LEN) n = n.slice(0, MAX_TITLE_LEN);
-    return n || "untitled";
-  }
-  function el(tag, className, text) {
-    var e = document.createElement(tag);
-    if (className) e.className = className;
-    if (text != null) e.textContent = text;
-    return e;
-  }
-  function rightGroup() {
-    return el("div", "right-group");
-  }
-
-
-  /* J9 模态框系统 */
-  var _modalFocusHandler = null;
-  function _installFocusTrap(box) {
-    _removeFocusTrap();
-    _modalFocusHandler = function (e) {
-      if (e.key !== "Tab") return;
-      var focusables = box.querySelectorAll(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-      );
-      if (!focusables.length) return;
-      var first = focusables[0];
-      var last = focusables[focusables.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-    box.addEventListener("keydown", _modalFocusHandler);
-  }
-  function _removeFocusTrap() {
-    if (_modalFocusHandler && modalBox) {
-      modalBox.removeEventListener("keydown", _modalFocusHandler);
-    }
-    _modalFocusHandler = null;
-  }
-  function openModal(builder) {
-    lastFocused = document.activeElement;
-    modalBox.innerHTML = "";
-    modalBox.removeAttribute("aria-labelledby");
-    builder(modalBox);
-    var h3 = modalBox.querySelector("h3");
-    if (h3) {
-      if (!h3.id) h3.id = "modalTitle_" + Date.now();
-      modalBox.setAttribute("aria-labelledby", h3.id);
-    }
-    modalBackdrop.classList.add("show");
-    _installFocusTrap(modalBox);
-    var f = $("input, textarea, button", modalBox);
-    if (f && f.focus) f.focus();
-  }
-  function closeModal() {
-    _removeFocusTrap();
-    modalBackdrop.classList.remove("show");
-    modalBox.innerHTML = "";
-    if (lastFocused && lastFocused.focus) lastFocused.focus();
-  }
-  function showAlert(title, message, isError) {
-    openModal(function (box) {
-      box.appendChild(el("h3", null, title));
-      if (message) box.appendChild(el("p", null, message));
-      var a = el("div", "modal-actions");
-      var rg = rightGroup();
-      var ok = el("button", isError ? "danger" : null, T("common.know"));
-      ok.addEventListener("click", closeModal);
-      rg.appendChild(ok);
-      a.appendChild(rg);
-      box.appendChild(a);
-    });
-  }
-
-  function showConfirm(title, message, onConfirm, danger) {
-    openModal(function (box) {
-      box.appendChild(el("h3", null, title));
-      if (message) box.appendChild(el("p", null, message));
-      var a = el("div", "modal-actions");
-      var rg = rightGroup();
-      var cancel = el("button", "cancel", T("common.cancel"));
-      cancel.addEventListener("click", closeModal);
-      var ok = el("button", danger ? "danger" : null, T("common.ok"));
-      ok.addEventListener("click", function () {
-        closeModal();
-        onConfirm();
-      });
-      rg.appendChild(cancel);
-      rg.appendChild(ok);
-      a.appendChild(rg);
-      box.appendChild(a);
-    });
-  }
-
-function showPrompt(title, defaultValue, onOk, inputType, hint) {
-  openModal(function (box) {
-    box.appendChild(el("h3", null, title));
-    if (hint) box.appendChild(el("div", "modal-hint", hint));
-    var input = document.createElement("input");
-    input.type = inputType || "text";
-    input.value = defaultValue || "";
-    input.autocomplete = "off";
-    input.spellcheck = false;
-    var a = el("div", "modal-actions");
-    var rg = rightGroup();
-    var cancel = el("button", "cancel", T("common.cancel"));
-    cancel.addEventListener("click", closeModal);
-    var ok = el("button", null, T("common.save"));
-    ok.addEventListener("click", function () {
-      var v = input.value.trim();
-      if (!v) {
-        input.focus();
-        return;
-      }
-      closeModal();
-      onOk(v);
-    });
-    input.addEventListener("keydown", function (e) {
-      if (e.key === "Enter") ok.click();
-    });
-    rg.appendChild(cancel);
-    rg.appendChild(ok);
-    a.appendChild(rg);
-    box.appendChild(input);
-    box.appendChild(a);
-  });
+  /*  侧边栏：内阴影 / 宽度  */
+  --sidebar-shadow: rgba(0, 0, 0, 0.55);
+  --sidebar-w: min(280px, 78vw);
 }
-  function showPromptArea(opts) {
-    openModal(function (box) {
-      box.appendChild(el("h3", null, opts.title));
-      box.appendChild(
-        el("div", "modal-hint", opts.hint || T("ai.setPromptHint")),
-      );
-      var ta = document.createElement("textarea");
-      ta.value = opts.value || "";
-      ta.placeholder = opts.placeholder || "";
-      ta.rows = 7;
-      ta.spellcheck = false;
-      var a = el("div", "modal-actions");
-      var leftWrap = document.createElement("div");
-      if (opts.value && opts.value.trim()) {
-        var clearBtn = el("button", "link-btn", T("ai.clearPrompt"));
-        clearBtn.addEventListener("click", function () {
-          closeModal();
-          if (opts.onClear) opts.onClear();
-        });
-        leftWrap.appendChild(clearBtn);
-      }
-      var rg = rightGroup();
-      var cancel = el("button", "cancel", T("common.cancel"));
-      cancel.addEventListener("click", closeModal);
-      var ok = el("button", null, T("common.save"));
-      ok.addEventListener("click", function () {
-        var v = ta.value;
-        closeModal();
-        opts.onOk(v);
-      });
-      ta.addEventListener("keydown", function (e) {
-        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-          e.preventDefault();
-          ok.click();
-        }
-      });
-      rg.appendChild(cancel);
-      rg.appendChild(ok);
-      a.appendChild(leftWrap);
-      a.appendChild(rg);
-      box.appendChild(ta);
-      box.appendChild(a);
-    });
-  }
-  function showIntentChoice(title, message, onOverwrite, onModify) {
-    openModal(function (box) {
-      box.appendChild(el("h3", null, title));
-      box.appendChild(el("p", null, message));
-      var a = el("div", "modal-actions");
-      var leftWrap = document.createElement("div");
-      var cancel = el("button", "link-btn", T("common.cancel"));
-      cancel.addEventListener("click", closeModal);
-      leftWrap.appendChild(cancel);
-      var rg = rightGroup();
-      var modifyBtn = el("button", "cancel", T("gen.intentModify"));
-      modifyBtn.addEventListener("click", function () {
-        closeModal();
-        onModify();
-      });
-      var overwriteBtn = el("button", "danger", T("gen.intentOverwrite"));
-      overwriteBtn.addEventListener("click", function () {
-        closeModal();
-        onOverwrite();
-      });
-      rg.appendChild(modifyBtn);
-      rg.appendChild(overwriteBtn);
-      a.appendChild(leftWrap);
-      a.appendChild(rg);
-      box.appendChild(a);
-    });
-  }
+
+/*  暗色模式：覆盖同名变量；仅改色值，不改结构  */
+body.dark-mode {
+  /* 基础色 */
+  --bg: #1e1e1e;
+  --surface: #2d2d2d;
+  --text: #dddddd;
+  --hamburger: #ffffff;
+
+  /* 文字层级 */
+  --text-secondary: #999999;
+  --text-tertiary: #888888;
+  --text-placeholder: #8a8a8a;
+
+  /* 交互反馈 */
+  --hover: rgba(255, 255, 255, 0.07);
+  --hover-strong: rgba(255, 255, 255, 0.08);
+  --hover-key: rgba(240, 173, 78, 0.2);
+  --hover-prompt: rgba(155, 89, 182, 0.25);
+  --hover-dl: rgba(255, 255, 255, 0.14);
+
+  /* 边框线 */
+  --line: rgba(255, 255, 255, 0.08);
+  --border-input: #555555;
+  --cm-border: #555555;
+
+  /* 输入与结果 */
+  --input-bg: #3a3a3a;
+  --input-bg-fill: #3a3a3a;
+  --result-bg: #2a4a5a;
+
+  /* 模态框 */
+  --modal-bg: #2d2d2d;
+  --modal-text: #dddddd;
+
+  /* 聊天气泡（仅助手） */
+  --bubble-assistant-bg: #3a3a3a;
+  --bubble-assistant-text: #dddddd;
+
+  /* 品牌色覆盖（仅焦点色） */
+  --primary-focus: #4da3ff;
+
+  /* AI 输入栏 */
+  --ai-input-grad: linear-gradient(to top, #2d2d2d 62%, rgba(45, 45, 45, 0));
+  --shadow-ai-bar: 0 8px 26px rgba(0, 0, 0, 0.55);
+
+  /* 侧边栏 */
+  --sidebar-shadow: rgba(0, 0, 0, 1);
+}
 
 
-  /* J10 页面生成与导出 */
-  function generatePageHtml(title, script, imageDataUrl, hasImage) {
-    var safeTitle = escapeHtml(
-      (title || T("generator.untitledPage")).slice(0, MAX_TITLE_LEN),
+/* ============================================================
+   C2 基础重置
+   作用：全局盒模型 / 页面基础样式 / 预览锁屏态
+   机制：box-sizing 统一；html/body 去边距；禁用双指缩放
+   ============================================================ */
+* {
+  box-sizing: border-box;
+}
+
+/* --- 页面根：铺满视口 + 主题色过渡 --- */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100%;
+  font-family: Arial, "Helvetica Neue", system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  touch-action: pan-x pan-y;
+  overscroll-behavior: none;
+  transition:
+    background 0.3s,
+    color 0.3s;
+}
+
+/* --- 预览锁屏：固定全屏 + 禁用滚动与手势 --- */
+body.preview-lock {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+}
+
+
+/* ============================================================
+   C3 汉堡按钮
+   作用：左上角侧边栏开关按钮
+   机制：fixed 定位；侧边栏打开时隐藏；预览模式下加白描边
+   ============================================================ */
+.hamburger-btn {
+  position: fixed;
+  top: clamp(8px, 2vw, 14px);
+  left: clamp(10px, 3vw, 18px);
+  z-index: 300;
+  background: none;
+  border: none;
+  color: var(--hamburger);
+  font-size: clamp(30px, 6vw, 40px);
+  font-weight: bold;
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
+  user-select: none;
+  transition:
+    color 0.3s,
+    opacity 0.22s ease,
+    transform 0.22s ease;
+}
+.hamburger-btn:hover {
+  transform: scale(1.1);
+}
+
+/* --- 预览模式下：白字 + 阴影，保证在画布上可见 --- */
+body.preview-lock .hamburger-btn {
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+/* --- 侧边栏打开时：淡出并禁用点击，避免遮挡 --- */
+body.sidebar-open .hamburger-btn {
+  opacity: 0;
+  transform: scale(0.6);
+  pointer-events: none;
+}
+
+
+/* ============================================================
+   C4 侧边栏
+   作用：左侧抽屉导航，含搜索 / 导航项 / 我的脚本 / 页脚
+   机制：transform 平移；flex 纵向布局；页脚自动贴底
+   ============================================================ */
+/* --- 骨架：固定左侧抽屉，默认平移出视口 --- */
+.sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: var(--sidebar-w);
+  height: 100vh;
+  height: 100dvh;
+  background: var(--bg);
+  color: var(--text);
+  transform: translateX(-100%);
+  transition:
+    transform 0.3s ease,
+    background 0.3s,
+    color 0.3s;
+  z-index: 200;
+  padding: clamp(14px, 3vw, 20px) 0 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  -webkit-overflow-scrolling: touch;
+  box-shadow: inset -22px 0 28px -26px var(--sidebar-shadow);
+  border-right: 1px solid var(--line);
+  touch-action: pan-y;
+}
+.sidebar.open {
+  transform: translateX(0);
+}
+
+/* --- 搜索框：顶部输入，含自定义清除按钮 --- */
+.sidebar-search {
+  padding: 0 clamp(14px, 4vw, 18px) 12px;
+  margin-top: -4px;
+}
+.sidebar-search input {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--input-bg);
+  color: inherit;
+  font-size: 16px;
+  font-family: inherit;
+  outline: none;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+.sidebar-search input:focus {
+  border-color: var(--primary-focus);
+}
+.sidebar-search input::placeholder {
+  color: var(--text-placeholder);
+}
+/* 搜索框清除按钮：用 CSS 画叉，代替浏览器默认 */
+.sidebar-search input[type="search"]::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 14px;
+  width: 14px;
+  background:
+    linear-gradient(
+      45deg,
+      transparent 45%,
+      #888 45%,
+      #888 55%,
+      transparent 55%
+    ),
+    linear-gradient(
+      -45deg,
+      transparent 45%,
+      #888 45%,
+      #888 55%,
+      transparent 55%
     );
-    var imgVar;
-    if (imageDataUrl) {
-      imgVar = 'var imageUrl = "' + imageDataUrl + '";';
-    } else if (hasImage) {
-      imgVar =
-        "/* 原作品含用户上传的图片，因存储优化未嵌入此文件。\n" +
-        "   预览时可在本工具中查看图片效果；\n" +
-        "   若要在下载的文件里使用图片，请在工具中重新上传后再导出。 */\n" +
-        "    var imageUrl = null;";
-    } else {
-      imgVar = "var imageUrl = null;";
-    }
-    var safeImgVar = escapeScriptClose(imgVar);
-    var safeScript = escapeScriptClose(script);
+  cursor: pointer;
+}
 
-    return (
-      "<!DOCTYPE html>\n" +
-      '<html lang="zh-CN">\n' +
-      "<head>\n" +
-      '  <meta charset="UTF-8">\n' +
-      '  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">\n' +
-      "  <title>" +
-      safeTitle +
-      "</title>\n" +
-      "  <style>\n" +
-      "    html, body { margin: 0; padding: 0; touch-action: none; }\n" +
-      "    canvas { display: block; touch-action: none; }\n" +
-      "  </style>\n" +
-      '  \x3Cscript src="' +
-      P5_CDN +
-      '">\x3C/script>\n' +
-      "</head>\n" +
-      "<body>\n" +
-      "  \x3Cscript>\n" +
-      "    " +
-      safeImgVar +
-      "\n" +
-      "    " +
-      safeScript +
-      "\n" +
-      "  \x3C/script>\n" +
-      "</body>\n" +
-      "</html>"
-    );
-  }
-  function injectSessionImage(html, dataUrl) {
-    if (!html || !dataUrl) return html;
-    var escaped = String(dataUrl)
-      .replace(/\\/g, "\\\\")
-      .replace(/"/g, '\\"');
-    return html.replace(
-      /var imageUrl = (?:null|"[^"]*");/,
-      'var imageUrl = "' + escaped + '";',
-    );
-  }
-  function downloadSingleHtml(filename, html) {
-    try {
-      var blob = new Blob([html], { type: "text/html;charset=utf-8" });
-      var url = URL.createObjectURL(blob);
-      var link = document.createElement("a");
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      setTimeout(function () {
-        URL.revokeObjectURL(url);
-      }, 1000);
-    } catch (err) {
-      showAlert(
-        T("page.downloadFailTitle"),
-        String((err && err.message) || err),
-        true,
-      );
-    }
-  }
-  function exportZip() {
-    var pages = getPages();
-    if (!pages.length) {
-      showAlert(T("page.exportEmptyTitle"), T("page.exportEmptyBody"));
-      return;
-    }
-    var zip = new JSZip();
-    pages.forEach(function (page, idx) {
-      var base = safeFileName(page.title);
-      zip.file("p5_" + base + "_" + (idx + 1) + ".html", page.html);
-    });
-    zip
-      .generateAsync({ type: "blob" })
-      .then(function (blob) {
-        var url = URL.createObjectURL(blob);
-        var link = document.createElement("a");
-        link.href = url;
-        link.download = "p5_works.zip";
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        setTimeout(function () {
-          URL.revokeObjectURL(url);
-        }, 1000);
-      })
-      .catch(function (err) {
-        showAlert(
-          T("page.exportFailTitle"),
-          String((err && err.message) || err),
-          true,
-        );
-      });
-  }
+/* --- 导航项：首页 / 关于 / AI / 编写脚本 --- */
+.sidebar .nav-item {
+  display: flex;
+  align-items: center;
+  padding: 12px clamp(16px, 4vw, 20px);
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.sidebar .nav-item .nav-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-right: 10px;
+  stroke: currentColor;
+  fill: none;
+  color: inherit;
+}
+.sidebar .nav-item > span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sidebar .nav-item:hover {
+  background: var(--hover);
+}
+.sidebar .nav-item[aria-current="page"] {
+  background: var(--hover);
+}
 
+/* --- 分割线与分组标题 --- */
+.sidebar .divider {
+  border-top: 1px solid var(--line);
+  margin: 10px 0;
+}
+.sidebar .section-title {
+  padding: 8px clamp(16px, 4vw, 20px);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  font-weight: bold;
+}
 
-  /* J11 随机p5与srcdoc */
-  function pickRandomP5File() {
-    if (!P5_FILES || !P5_FILES.length) return null;
-    if (P5_FILES.length === 1) return P5_FILES[0];
-    var pool = P5_FILES.filter(function (f) {
-      return f !== currentRandomFile;
-    });
-    if (!pool.length) pool = P5_FILES.slice();
-    return pool[Math.floor(Math.random() * pool.length)];
-  }
-  function encodePath(fileName) {
-    return String(fileName)
-      .split("/")
-      .map(function (seg) {
-        return encodeURIComponent(seg);
-      })
-      .join("/");
-  }
-  function buildP5SrcDoc(fileName) {
-    var src = P5_DIR + encodePath(fileName);
-    return (
-      "<!DOCTYPE html>\n" +
-      '<html lang="zh-CN">\n' +
-      "<head>\n" +
-      '  <meta charset="UTF-8">\n' +
-      '  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">\n' +
-      "  <style>\n" +
-      "    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; touch-action: none; }\n" +
-      "    canvas { display: block; touch-action: none; }\n" +
-      "  </style>\n" +
-      '  \x3Cscript src="' +
-      P5_CDN +
-      '">\x3C/script>\n' +
-      '  \x3Cscript src="' +
-      src +
-      '">\x3C/script>\n' +
-      "</head>\n" +
-      "<body></body>\n" +
-      "</html>"
-    );
-  }
+/* --- 页面列表项：作品标题 + 重命名 / 删除 --- */
+.sidebar .page-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px clamp(16px, 4vw, 20px) 8px clamp(22px, 6vw, 30px);
+  border-bottom: 1px solid var(--line);
+}
+.sidebar .page-item:hover {
+  background: var(--hover);
+}
+.sidebar .page-item .page-title {
+  flex: 1;
+  color: inherit;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sidebar .page-item .actions button {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 2px 5px;
+  transition: color 0.15s;
+}
+.sidebar .page-item .actions .rename:hover {
+  color: #5bc0de;
+}
+.sidebar .page-item .actions .del:hover {
+  color: var(--danger);
+}
+
+/* --- 空状态：无作品 / 无匹配 --- */
+.sidebar .no-pages {
+  padding: 12px clamp(16px, 4vw, 20px);
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* --- 页脚：导出 ZIP / 主题切换，flex 自动贴底 --- */
+.sidebar-footer {
+  margin-top: auto;
+  border-top: 1px solid var(--line);
+  padding: 0;
+}
+.sidebar-footer .footer-row {
+  display: flex;
+  align-items: stretch;
+}
+.sidebar-footer .footer-item {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 12px clamp(8px, 2vw, 14px)
+    calc(12px + env(safe-area-inset-bottom, 0px));
+  border-bottom: none;
+  justify-content: center;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.sidebar-footer .footer-item > span {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sidebar-footer .footer-item .nav-icon {
+  width: 16px;
+  height: 16px;
+  margin-right: 6px;
+}
+.sidebar-footer .footer-vdivider {
+  width: 1px;
+  flex: 0 0 1px;
+  background: var(--line);
+}
 
 
-  /* J12 侧边栏页面列表 */
-  function updateSidebarPages() {
-    var pages = getPages();
-    var kw = sidebarSearchKeyword.trim().toLowerCase();
-    var filtered = pages;
-    if (kw) {
-      filtered = pages.filter(function (p) {
-        return (
-          String(p.title || "")
-            .toLowerCase()
-            .indexOf(kw) !== -1
-        );
-      });
-    }
-    if (!filtered.length) {
-      var empty = el("div", "no-pages");
-      empty.textContent = kw ? T("nav.noMatch") : T("nav.noScripts");
-      sidebarPagesEl.replaceChildren(empty);
-      return;
-    }
-    var frag = document.createDocumentFragment();
-    filtered.forEach(function (page) {
-      var item = el("div", "page-item");
-      var title = el("span", "page-title", page.title);
-      title.dataset.action = "open";
-      title.dataset.id = String(page.id);
-      var actions = el("div", "actions");
-      var renameBtn = el("button", "rename", "✎ ");
-      renameBtn.title = T("common.rename");
-      renameBtn.dataset.action = "rename";
-      renameBtn.dataset.id = String(page.id);
-      var delBtn = el("button", "del", " ✕");
-      delBtn.title = T("common.delete");
-      delBtn.dataset.action = "delete";
-      delBtn.dataset.id = String(page.id);
-      actions.appendChild(renameBtn);
-      actions.appendChild(delBtn);
-      item.appendChild(title);
-      item.appendChild(actions);
-      frag.appendChild(item);
-    });
-    sidebarPagesEl.replaceChildren(frag);
-  }
+/* ============================================================
+   C5 遮罩层
+   作用：侧边栏打开时的半透明背景层
+   机制：默认 display:none；.show 时显示 + 淡入
+   ============================================================ */
+.overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 150;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.overlay.show {
+  display: block;
+  opacity: 1;
+}
 
 
-  /* J13 iframe代理 */
-  function bindIframeProxy(iframe) {
-    var iwin, idoc;
-    try {
-      iwin = iframe.contentWindow;
-      idoc = iframe.contentDocument;
-    } catch (e) {
-      console.warn("Cannot access iframe document:", e);
-      return;
-    }
-    if (!iwin || !idoc) return;
+/* ============================================================
+   C6 主容器与排版
+   作用：#app 主体容器、三种模式（普通 / 预览 / AI）、标题段落
+   机制：默认卡片式 padding；预览/AI 模式覆盖为全屏
+   ============================================================ */
+/* --- 默认模式：卡片式，带内边距与居中内容 --- */
+#app {
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: clamp(56px, 10vw, 78px) clamp(14px, 5vw, 32px)
+    clamp(28px, 7vw, 52px);
+  background: var(--surface);
+  color: var(--text);
+  transition:
+    background 0.3s,
+    color 0.3s;
+  overflow-x: hidden;
+}
+/* 内容限宽 940px 居中；generator-page 例外（不限制） */
+#app > div {
+  width: 100%;
+  max-width: 940px;
+  margin: 0 auto;
+}
+#app > div.generator-page {
+  max-width: none;
+}
 
-    function tryAttach() {
-      var canvas = idoc.querySelector("canvas");
-      if (canvas) {
-        attachProxy(canvas, iwin, idoc);
-        return true;
-      }
-      return false;
-    }
-    if (tryAttach()) return;
-    var observer = new MutationObserver(function () {
-      if (tryAttach()) observer.disconnect();
-    });
-    observer.observe(idoc.documentElement || idoc, {
-      childList: true,
-      subtree: true,
-    });
-    setTimeout(function () {
-      try {
-        observer.disconnect();
-      } catch (e) {}
-    }, 15000);
-  }
-  function attachProxy(canvas, iwin, idoc) {
-    if (canvas.__proxyAttached) return;
-    canvas.__proxyAttached = true;
-    var MOUSE_TYPES = [
-      "mousemove",
-      "mousedown",
-      "mouseup",
-      "click",
-      "dblclick",
-    ];
-    var TOUCH_TYPES = ["touchstart", "touchmove", "touchend", "touchcancel"];
-    function relayMouse(e) {
-      if (e.target === canvas) return;
-      if (
-        (e.type === "mousedown" ||
-          e.type === "mouseup" ||
-          e.type === "click" ||
-          e.type === "dblclick") &&
-        e.button !== 0
-      )
-        return;
-      var ev;
-      try {
-        ev = new iwin.MouseEvent(e.type, {
-          bubbles: true,
-          cancelable: true,
-          view: iwin,
-          detail: e.detail || 1,
-          screenX: e.screenX,
-          screenY: e.screenY,
-          clientX: e.clientX,
-          clientY: e.clientY,
-          ctrlKey: e.ctrlKey,
-          shiftKey: e.shiftKey,
-          altKey: e.altKey,
-          metaKey: e.metaKey,
-          button: e.button,
-          buttons: e.buttons,
-          relatedTarget: null,
-        });
-      } catch (err) {
-        return;
-      }
-      canvas.dispatchEvent(ev);
-    }
-    function relayTouch(e) {
-      if (e.target === canvas) return;
-      if (!e.touches || !e.touches.length) return;
-      var t = e.touches[0];
-      var type =
-        e.type === "touchstart"
-          ? "mousedown"
-          : e.type === "touchmove"
-            ? "mousemove"
-            : e.type === "touchend"
-              ? "mouseup"
-              : null;
-      if (!type) return;
-      var ev;
-      try {
-        ev = new iwin.MouseEvent(type, {
-          bubbles: true,
-          cancelable: true,
-          view: iwin,
-          clientX: t.clientX,
-          clientY: t.clientY,
-          screenX: t.screenX,
-          screenY: t.screenY,
-          button: 0,
-          buttons: type === "mouseup" ? 0 : 1,
-        });
-      } catch (err) {
-        return;
-      }
-      canvas.dispatchEvent(ev);
-    }
-    MOUSE_TYPES.forEach(function (type) {
-      idoc.addEventListener(type, relayMouse, true);
-    });
-    TOUCH_TYPES.forEach(function (type) {
-      idoc.addEventListener(type, relayTouch, {
-        capture: true,
-        passive: true,
-      });
-    });
-  }
+/* --- 预览模式：全屏 + 黑底 + iframe 铺满 --- */
+#app.preview-mode {
+  padding: 0;
+  max-width: none;
+  min-height: 0;
+  background: #000;
+  overflow: hidden;
+  z-index: 100;
+}
+#app.preview-mode iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+  background: #fff;
+  touch-action: none;
+}
+
+/* --- AI 模式：全屏 + 高度锁定 + 内容不限制 --- */
+#app.ai-mode {
+  padding: 0;
+  max-width: none;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+#app.ai-mode > div {
+  max-width: none;
+  margin: 0;
+}
+
+/* --- 基础排版：h1 / p 字号自适应 --- */
+#app h1 {
+  font-size: clamp(1.35rem, 4.5vw, 1.9rem);
+  margin: 0 0 0.4em;
+  line-height: 1.25;
+  word-break: break-word;
+}
+#app p {
+  font-size: clamp(0.9rem, 2.6vw, 1rem);
+  line-height: 1.6;
+  margin: 0.3em 0;
+}
 
 
-  /* J14 预览锁定与截图 */
-  function lockAppSize() {
-    document.body.classList.add("preview-lock");
-    var w = window.innerWidth;
-    var h = window.innerHeight;
-    appEl.style.position = "fixed";
-    appEl.style.top = "0";
-    appEl.style.left = "0";
-    appEl.style.width = w + "px";
-    appEl.style.height = h + "px";
-    appEl.style.overflow = "hidden";
-  }
-  function unlockAppSize() {
-    document.body.classList.remove("preview-lock");
-    appEl.style.position = "";
-    appEl.style.top = "";
-    appEl.style.left = "";
-    appEl.style.width = "";
-    appEl.style.height = "";
-    appEl.style.overflow = "";
-  }
-  function buildScreenshotButton(iframe) {
-    var btn = el("button", "preview-screenshot-btn", "📷");
-    btn.id = "screenshotBtn";
-    btn.type = "button";
-    btn.title = T("preview.screenshot");
-    btn.addEventListener("click", function () {
-      try {
-        var doc = iframe.contentDocument;
-        if (!doc) throw new Error("no doc");
-        var canvas = doc.querySelector("canvas");
-        if (!canvas) {
-          showAlert(T("preview.screenshot"), T("preview.noCanvas"), true);
-          return;
-        }
-        var dataUrl = canvas.toDataURL("image/png");
-        var a = document.createElement("a");
-        a.href = dataUrl;
-        a.download = "canvas_" + Date.now() + ".png";
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      } catch (e) {
-        showAlert(
-          T("preview.screenshot"),
-          T("preview.screenshotFail"),
-          true,
-        );
-      }
-    });
-    return btn;
-  }
+/* ============================================================
+   C7 表单与编辑器
+   作用：编辑器页表单控件 + CodeMirror 容器 + 占位浮层
+   机制：输入框统一等宽字体；CodeMirror 高度固定
+   ============================================================ */
+.form-group {
+  margin-bottom: 15px;
+}
+.form-group label {
+  display: block;
+  font-weight: bold;
+  margin-bottom: 5px;
+  font-size: clamp(0.85rem, 2.5vw, 0.95rem);
+}
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border-input);
+  border-radius: 4px;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 16px;
+  background: var(--input-bg-fill);
+  color: var(--modal-text);
+}
+/* --- CodeMirror 容器：固定高度，避免抖动 --- */
+.form-group .CodeMirror {
+  border: 1px solid var(--cm-border);
+  border-radius: 4px;
+  height: clamp(160px, 32vh, 240px) !important;
+  font-size: 14px;
+}
+
+/* --- 文件输入：去掉默认边框，仅保留内容 --- */
+.form-group input[type="file"] {
+  width: auto;
+  max-width: 100%;
+  border: none;
+  padding: 0;
+  background: transparent;
+  display: inline-block;
+  cursor: pointer;
+}
+
+/* --- 图片下方小字标签 --- */
+.form-group label.image-label-below {
+  margin-top: 2px;
+  margin-bottom: 0;
+  font-weight: normal;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+/* --- CodeMirror 占位浮层：编辑器空时提示 --- */
+.cm-placeholder-overlay {
+  position: absolute;
+  top: 5px;
+  right: 8px;
+  color: var(--text-placeholder);
+  pointer-events: none;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  z-index: 5;
+  user-select: none;
+  overflow: hidden;
+}
 
 
-  /* J15 首页运行器 */
-  function renderRunner() {
-    destroyEditor();
-    appEl.replaceChildren();
-    appEl.classList.remove("preview-mode");
-    appEl.classList.remove("ai-mode");
-    setActiveNav("/");
-    var html = null;
-    if (runner.mode === "page") {
-      var page = getPages().find(function (p) {
-        return p.id === runner.pageId;
-      });
-      if (page) {
-        html = page.html;
-        if (sessionImages[page.id]) {
-          html = injectSessionImage(html, sessionImages[page.id]);
-        }
-        appEl.dataset.currentPageId = String(page.id);
-      } else {
-        runner.mode = "random";
-        runner.pageId = null;
-      }
-    }
-    if (runner.mode === "temp") {
-      html = runner.tempHtml || null;
-      runner.mode = "random";
-      runner.tempHtml = null;
-      delete appEl.dataset.currentPageId;
-    }
-    if (html === null) {
-      var file = pickRandomP5File();
-      if (!file) {
-        unlockAppSize();
-        delete appEl.dataset.currentPageId;
-        var wrap = document.createElement("div");
-        wrap.appendChild(el("h1", null, T("runner.noScriptTitle")));
-        wrap.appendChild(el("p", null, T("runner.noScriptBody")));
-        appEl.appendChild(wrap);
-        return;
-      }
-      currentRandomFile = file;
-      html = buildP5SrcDoc(file);
-      delete appEl.dataset.currentPageId;
-    }
-    lockAppSize();
-    appEl.classList.add("preview-mode");
+/* ============================================================
+   C8 按钮与结果
+   作用：通用按钮 / 结果区 / 图片预览 / 操作按钮组
+   机制：主色按钮 + hover 加深；action-buttons 为横向按钮组
+   ============================================================ */
+/* --- 通用按钮：主色，主色 hover，禁用态降透明度 --- */
+button {
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 10px clamp(14px, 4vw, 20px);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  transition: background 0.2s;
+}
+button:hover {
+  background: var(--primary-hover);
+}
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 
-    var iframe = document.createElement("iframe");
-    iframe.setAttribute("title", "p5");
-    iframe.setAttribute("scrolling", "no");
-    iframe.srcdoc = html;
-    iframe.addEventListener("load", function () {
-      bindIframeProxy(iframe);
-    });
-    appEl.appendChild(iframe);
-    if (runner.mode === "page") {
-      appEl.appendChild(buildScreenshotButton(iframe));
-    }
-  }
-  function setRandom() {
-    runner.mode = "random";
-    runner.pageId = null;
-    runner.tempHtml = null;
-    if (getRoute() === "/") render();
-    else location.hash = "#/";
-  }
-  function runPage(id) {
-    runner.mode = "page";
-    runner.pageId = id;
-    runner.tempHtml = null;
-    if (getRoute() === "/") render();
-    else location.hash = "#/";
-  }
-  function deletePage(id) {
-    var pages = getPages();
-    var page = pages.find(function (p) {
-      return p.id === id;
-    });
-    if (!page) return;
-    showConfirm(
-      T("page.deleteTitle"),
-      T("page.deleteBody", { title: page.title }),
-      function () {
-        var list = getPages().filter(function (p) {
-          return p.id !== id;
-        });
-        savePages(list);
-        updateSidebarPages();
-        if (sessionImages[id]) delete sessionImages[id];
-        if (runner.mode === "page" && runner.pageId === id) {
-          runner.mode = "random";
-          runner.pageId = null;
-        }
-        render();
-      },
-      true,
-    );
-  }
-  function renamePage(id) {
-    var pages = getPages();
-    var page = pages.find(function (p) {
-      return p.id === id;
-    });
-    if (!page) return;
-    showPrompt(T("page.renameTitle"), page.title, function (newTitle) {
-      page.title = newTitle;
-      savePages(pages);
-      updateSidebarPages();
-      render();
-    });
-  }
+/* --- 结果区：浅蓝底 + 自动换行 --- */
+.result {
+  margin-top: 20px;
+  padding: 12px;
+  background: var(--result-bg);
+  border-radius: 4px;
+  word-break: break-word;
+}
+
+/* --- 图片预览缩略图 --- */
+.preview-img {
+  max-width: min(200px, 60vw);
+  max-height: 200px;
+  margin-top: 10px;
+  border: 1px solid var(--border-input);
+  border-radius: 4px;
+  display: block;
+}
+
+/* --- 操作按钮组：保存弹窗中的按钮行 --- */
+.action-buttons {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.action-buttons button {
+  background: var(--neutral-btn);
+}
+.action-buttons button.preview,
+.action-buttons button.download {
+  background: var(--success);
+}
 
 
-  /* J16 侧边栏与主题 */
-  function openSidebar() {
-    sidebarEl.classList.add("open");
-    overlayEl.classList.add("show");
-    document.body.classList.add("sidebar-open");
-    hamburgerBtn.setAttribute("aria-expanded", "true");
-  }
-  function closeSidebar() {
-    sidebarEl.classList.remove("open");
-    overlayEl.classList.remove("show");
-    document.body.classList.remove("sidebar-open");
-    hamburgerBtn.setAttribute("aria-expanded", "false");
-  }
-  function applyTheme(theme) {
-    var lightTheme = $("#cm-theme-light");
-    var darkTheme = $("#cm-theme-dark");
-    if (theme === "dark") {
-      document.body.classList.add("dark-mode");
-      if (lightTheme) lightTheme.disabled = true;
-      if (darkTheme) darkTheme.disabled = false;
-    } else {
-      document.body.classList.remove("dark-mode");
-      if (lightTheme) lightTheme.disabled = false;
-      if (darkTheme) darkTheme.disabled = true;
-    }
-    if (editor) {
-      try {
-        editor.setOption("theme", theme === "dark" ? "dracula" : "default");
-      } catch (e) {}
-    }
-  }
-  function currentTheme() {
-    return document.body.classList.contains("dark-mode") ? "dark" : "light";
-  }
-  function toggleTheme() {
-    var next = currentTheme() === "dark" ? "light" : "dark";
-    applyTheme(next);
-    try {
-      localStorage.setItem(THEME_KEY, next);
-    } catch (e) {}
-  }
+/* ============================================================
+   C9 模态框
+   作用：全站弹窗（alert / confirm / prompt / 自定义内容）
+   机制：backdrop 固定全屏 + modal 居中；modal-actions 左右分布
+   ============================================================ */
+/* --- 背景层：半透明黑，flex 居中 --- */
+.modal-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 400;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.modal-backdrop.show {
+  display: flex;
+}
+
+/* --- 弹窗容器：最大 480px，限高 88vh --- */
+.modal {
+  background: var(--modal-bg);
+  color: var(--modal-text);
+  border-radius: 8px;
+  width: min(480px, 100%);
+  max-height: 88vh;
+  overflow-y: auto;
+  padding: clamp(16px, 4vw, 22px);
+  box-shadow: var(--shadow-modal);
+}
+.modal h3 {
+  margin: 0 0 12px;
+  font-size: 1.1rem;
+}
+.modal p {
+  margin: 0 0 16px;
+  line-height: 1.55;
+  word-break: break-word;
+}
+
+/* --- 输入控件：单行 input + 多行 textarea --- */
+.modal input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border-input);
+  border-radius: 4px;
+  margin-bottom: 16px;
+  font-size: 16px;
+  background: var(--input-bg-fill);
+  color: var(--modal-text);
+}
+.modal textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--border-input);
+  border-radius: 4px;
+  margin-bottom: 16px;
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 1.5;
+  resize: vertical;
+  min-height: 120px;
+  outline: none;
+  background: var(--input-bg-fill);
+  color: var(--modal-text);
+}
+.modal textarea:focus {
+  border-color: var(--primary-focus);
+}
+
+/* --- 提示行：灰色小字，紧贴输入控件上方 --- */
+.modal .modal-hint {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  margin: -8px 0 12px;
+  line-height: 1.5;
+}
+
+/* --- 底部按钮区：左（link-btn）+ 右（cancel / ok） --- */
+.modal-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.modal-actions .right-group {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.modal-actions .cancel {
+  background: var(--neutral-btn);
+}
+.modal-actions .danger {
+  background: var(--danger);
+}
+.modal-actions .link-btn {
+  background: transparent;
+  color: var(--text-muted);
+  padding: 8px 10px;
+  font-size: 0.88rem;
+  border-radius: 4px;
+  text-decoration: underline;
+}
+.modal-actions .link-btn:hover {
+  background: var(--hover-strong);
+  color: var(--danger);
+}
 
 
-  /* J17 路由与静态页 */
-  function getRoute() {
-    var hash = location.hash;
-    if (!hash || hash === "#" || hash === "#/") return "/";
-    return hash.replace(/^#/, "") || "/";
-  }
-  function setActiveNav(path) {
-    $$(".sidebar .nav-item[data-path]").forEach(function (el) {
-      if (el.getAttribute("data-path") === "#" + path) {
-        el.setAttribute("aria-current", "page");
-      } else {
-        el.removeAttribute("aria-current");
-      }
-    });
-  }
-  function destroyEditor() {
-    if (editor) {
-      try {
-        editor.toTextArea();
-      } catch (e) {}
-      editor = null;
-    }
-  }
-  function renderAbout() {
-    var wrap = document.createElement("div");
-    wrap.appendChild(el("h1", null, T("about.title")));
-    ["p1", "p2", "p3", "p4", "p5", "p6", "p7"].forEach(function (k) {
-      var text = T("about." + k);
-      if (text && text !== "about." + k) {
-        wrap.appendChild(el("p", null, text));
-      }
-    });
-    return wrap;
-  }
-  function renderGenerator() {
-    var wrap = el("div", "generator-page");
-    wrap.appendChild(el("h1", null, T("generator.title")));
-    wrap.appendChild(el("p", null, T("generator.subtitle")));
-    var g2 = el("div", "form-group");
-    var ta = document.createElement("textarea");
-    ta.id = "script";
-    g2.appendChild(ta);
-    wrap.appendChild(g2);
-    wrap.appendChild(buildGeneratorAIPanel());
-    var g3 = el("div", "form-group");
-    var fileInput = document.createElement("input");
-    fileInput.type = "file";
-    fileInput.id = "image";
-    fileInput.accept = "image/*";
-    var l3 = el("label", "image-label-below");
-    l3.textContent = T("generator.labelImage");
-    var previewBox = el("div");
-    previewBox.id = "image-preview";
-    g3.appendChild(fileInput);
-    g3.appendChild(l3);
-    g3.appendChild(previewBox);
-    wrap.appendChild(g3);
-    var row = el("div", "gen-inline-row");
-    var titleInput = document.createElement("input");
-    titleInput.type = "text";
-    titleInput.id = "title";
-    titleInput.placeholder = T("generator.titlePlaceholder");
-    titleInput.maxLength = MAX_TITLE_LEN;
-    var submit = el("button", null, T("generator.submit"));
-    submit.id = "buildBtn";
-    submit.type = "button";
-    row.appendChild(titleInput);
-    row.appendChild(submit);
-    wrap.appendChild(row);
-    var result = el("div", "result");
-    result.id = "result";
-    result.style.display = "none";
-    wrap.appendChild(result);
-    return wrap;
-  }
-  function buildGeneratorAIPanel() {
-    var frag = document.createDocumentFragment();
-    var bar = el("div", "gen-ai-bar gen-ai-bar-bare");
-    var picker = el("div", "ai-model-picker");
-    var modelBtn = el("button", "ai-model-btn", "+");
-    modelBtn.id = "genModelBtn";
-    modelBtn.type = "button";
-    modelBtn.title = T("gen.modelPickerTitle");
-    var menu = el("div", "ai-model-menu");
-    menu.id = "genModelMenu";
-    picker.appendChild(modelBtn);
-    picker.appendChild(menu);
-    var input = document.createElement("textarea");
-    input.id = "genInput";
-    input.rows = 1;
-    input.placeholder = T("gen.placeholder");
-    var sendBtn = el("button", "ai-send-btn", "↑");
-    sendBtn.id = "genSendBtn";
-    sendBtn.type = "button";
-    sendBtn.title = T("gen.sendTitle");
-    bar.appendChild(picker);
-    bar.appendChild(input);
-    bar.appendChild(sendBtn);
-    var status = el("div", "gen-status");
-    status.id = "genStatus";
-    frag.appendChild(status);
-    frag.appendChild(bar);
-    return frag;
-  }
+/* ============================================================
+   C10 AI 页面骨架
+   作用：AI 聊天页最外层结构（清空按钮 / 消息区 / 统计条）
+   机制：flex 纵向布局；消息区 flex:1 可滚动
+   ============================================================ */
+.ai-page {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* --- 右上角清除按钮：圆形无边框 --- */
+.ai-clear-btn {
+  position: absolute;
+  top: clamp(16px, 2vw, 14px);
+  right: clamp(16px, 3vw, 18px);
+  z-index: 60;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  padding: 0;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  color: inherit;
+  font-size: 32px;
+  font-weight: 400;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.7;
+  transition:
+    opacity 0.15s,
+    color 0.15s,
+    transform 0.15s;
+  overflow: visible;
+}
+.ai-clear-btn:hover {
+  opacity: 1;
+  color: var(--danger);
+  transform: scale(1.15);
+}
+.ai-clear-btn:active {
+  transform: scale(0.95);
+}
+
+/* --- 消息列表：flex:1 占满中间，可滚动 --- */
+.ai-messages {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 64px 14px 16px;
+  scroll-behavior: smooth;
+  touch-action: pan-y;
+}
+
+/* --- 空状态文案：居中，保留换行 --- */
+.ai-empty {
+  color: var(--text-tertiary);
+  text-align: center;
+  padding: 48px 12px;
+  font-size: 0.92rem;
+  line-height: 1.8;
+  white-space: pre-line;
+}
+
+/* --- 统计条：会话轮次 + token 汇总 --- */
+.ai-stats {
+  flex: 0 0 auto;
+  padding: 6px 14px 0;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-align: center;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+}
 
 
-  /* J18 生成器模型菜单 */
-  function refreshGenModelBtn() {
-    var btn = $("#genModelBtn");
-    if (!btn) return;
-    var cur = aiState.currentModel;
-    var conf = cur ? aiModelConf(cur) : null;
-    if (cur && conf && conf.supportsTools) {
-      btn.classList.add("has-model");
-      btn.textContent = conf.name.charAt(0);
-    } else {
-      btn.classList.remove("has-model");
-      btn.textContent = "+";
-    }
+/* ============================================================
+   C11 AI 消息与工具栏
+   作用：聊天气泡 / 助手工具栏 / 复制提示 / 长按展开
+   机制：user 右对齐气泡；assistant 块级 + 工具栏按需展开
+   ============================================================ */
+/* --- 消息行：默认 flex 横向，用户消息右对齐 --- */
+.ai-msg {
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+}
+.ai-msg:last-child {
+  margin-bottom: 0;
+}
+.ai-msg.user {
+  justify-content: flex-end;
+  position: relative;
+}
+
+/* --- 用户气泡：主色底 + 白字 + 右下角小圆角 --- */
+.ai-msg.user .bubble {
+  max-width: 84%;
+  padding: 9px 13px;
+  border-radius: 16px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.55;
+  font-size: 0.95rem;
+  background: var(--bubble-user-bg);
+  color: var(--bubble-user-text);
+  border-bottom-right-radius: 4px;
+}
+
+/* --- 复制提示：短暂浮现在按钮上方的气泡 --- */
+.msg-flash-tip {
+  position: absolute;
+  top: -20px;
+  right: 0;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  background: var(--modal-bg);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 2px 6px;
+  pointer-events: none;
+  animation: flashFade 1.2s ease forwards;
+}
+@keyframes flashFade {
+  0% {
+    opacity: 0;
+    transform: translateY(4px);
   }
-  function buildGenModelMenu() {
-    var menu = $("#genModelMenu");
-    if (!menu) return;
-    var frag = document.createDocumentFragment();
-    var models = getToolModels();
-    if (!models.length) {
-      var empty = el("div", "ai-model-item");
-      empty.style.cursor = "default";
-      empty.style.color = "var(--text-muted)";
-      empty.textContent = T("gen.menuNoToolsModels");
-      frag.appendChild(empty);
-      menu.replaceChildren(frag);
-      return;
-    }
-    models.forEach(function (m) {
-      var item = el("div", "ai-model-item");
-      if (aiState.currentModel === m.id) item.classList.add("active");
-      item.dataset.model = m.id;
-      item.appendChild(el("span", "ai-check", "✓"));
-      item.appendChild(el("span", "ai-model-name-text", m.name));
-      frag.appendChild(item);
-    });
-    menu.replaceChildren(frag);
+  20% {
+    opacity: 1;
+    transform: translateY(0);
   }
-  function closeGenMenu() {
-    var menu = $("#genModelMenu");
-    if (menu) menu.classList.remove("show");
-    genState.menuOpen = false;
+  80% {
+    opacity: 1;
   }
-  function toggleGenMenu() {
-    var menu = $("#genModelMenu");
-    if (!menu) return;
-    var willShow = !menu.classList.contains("show");
-    menu.classList.toggle("show");
-    genState.menuOpen = willShow;
-    if (willShow) buildGenModelMenu();
+  100% {
+    opacity: 0;
   }
+}
+
+/* --- 助手消息：块级布局 + 正文 --- */
+.ai-msg.assistant {
+  display: block;
+  align-items: stretch;
+  margin-bottom: 18px;
+}
+.ai-msg.assistant .assistant-body {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--bubble-assistant-text);
+  word-break: break-word;
+  white-space: pre-wrap;
+  padding: 2px 0;
+}
+.ai-msg.assistant .assistant-body.pending {
+  opacity: 0.65;
+  font-style: italic;
+}
+
+/* --- 助手工具栏：默认收起，actions-visible 时展开 --- */
+.assistant-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+  position: relative;
+  transition:
+    max-height 0.2s ease,
+    opacity 0.18s ease,
+    margin-top 0.2s ease,
+    padding-top 0.2s ease;
+}
+.ai-msg.actions-visible .assistant-toolbar {
+  max-height: 60px;
+  opacity: 1;
+  margin-top: 6px;
+  padding-top: 4px;
+  border-top: 1px solid var(--line);
+}
+
+.assistant-toolbar .toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.assistant-toolbar .toolbar-right {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+/* --- 工具栏按钮：极小号，hover 主色 --- */
+.assistant-tool-btn {
+  background: transparent !important;
+  color: var(--text-muted);
+  border: none !important;
+  padding: 0 6px;
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: normal;
+  line-height: 1.2;
+  height: auto;
+  min-height: 0;
+  min-width: 0;
+  border-radius: 3px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+  white-space: nowrap;
+  box-shadow: none;
+  text-shadow: none;
+  letter-spacing: normal;
+}
+.assistant-tool-btn:hover {
+  background: var(--hover) !important;
+  color: var(--primary);
+}
+
+/* --- token 计数：等宽小字 --- */
+.assistant-token {
+  color: var(--text-muted);
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.68rem;
+  padding: 0 4px;
+  white-space: nowrap;
+  line-height: 1.2;
+}
 
 
-/* J19 生成器AI状态与工具 */
-  function genStatusClear() {
-    var box = $("#genStatus");
-    if (box) box.replaceChildren();
-  }
-  function genStatusLine(text, kind) {
-    var box = $("#genStatus");
-    if (!box) return;
-    box.appendChild(
-      el("div", "gen-status-line" + (kind ? " " + kind : ""), text),
-    );
-    while (box.children.length > 12) box.removeChild(box.firstChild);
-    box.scrollTop = box.scrollHeight;
-  }
-  function genSetBusy(busy) {
-    genState.busy = busy;
-    var btn = $("#genSendBtn");
-    if (btn) btn.disabled = !!busy;
-  }
+/* ============================================================
+   C12 AI 输入栏
+   作用：底部输入框 + 模型选择器 + 发送按钮
+   机制：圆形输入条；模型菜单浮于上方；textarea 自适应高度
+   ============================================================ */
+/* --- 输入容器：渐变背景 + 底部安全区 --- */
+.ai-input-wrap {
+  flex: 0 0 auto;
+  padding: 10px 12px calc(12px + env(safe-area-inset-bottom));
+  background: var(--ai-input-grad);
+  pointer-events: none;
+}
 
-  var TOOL_HANDLERS = {
-    insert_code: function (args) {
-      var code = args && typeof args.code === "string" ? args.code : "";
-      if (!editor) throw new Error("editor not found");
-      editor.setValue(code);
-      generatorDraft.script = code;
-      saveDraft();
-      return { ok: true, text: T("gen.toolInsert", { n: code.length }) };
-    },
-    append_code: function (args) {
-      var code = args && typeof args.code === "string" ? args.code : "";
-      if (!editor) throw new Error("editor not found");
-      var cur = editor.getValue() || "";
-      var next = cur.trim().length === 0 ? code : cur + "\n\n" + code;
-      editor.setValue(next);
-      generatorDraft.script = next;
-      saveDraft();
-      return { ok: true, text: T("gen.toolAppend", { n: code.length }) };
-    },
-    get_current_code: function (args) {
-      if (!editor) throw new Error("editor not found");
-      var v = editor.getValue() || "";
-      return {
-        ok: true,
-        text: v.length ? v : "(empty)",
-        displayText: T("gen.toolRead", { n: v.length }),
-      };
-    },
-    replace_selection: function (args) {
-      if (!editor) throw new Error("editor not found");
-      var code = args && typeof args.code === "string" ? args.code : "";
-      var sel = editor.getSelection();
-      if (!sel) {
-        editor.setValue(code);
-      } else {
-        editor.replaceSelection(code);
-      }
-      generatorDraft.script = editor.getValue();
-      saveDraft();
-      return {
-        ok: true,
-        text: T("gen.toolReplace", { n: code.length }),
-      };
-    },
-    get_canvas_size: function (args) {
-      var src = editor ? editor.getValue() || "" : "";
-      var cmNum = src.match(/createCanvas\s*\(\s*(\d+)\s*,\s*(\d+)\s*\)/);
-      if (cmNum) {
-        var w = parseInt(cmNum[1], 10);
-        var h = parseInt(cmNum[2], 10);
-        return {
-          ok: true,
-          text: JSON.stringify({ width: w, height: h }),
-          displayText: T("gen.toolCanvasSize", { w: w, h: h }),
-        };
-      }
-      return {
-        ok: true,
-        text: JSON.stringify({
-          width: "windowWidth",
-          height: "windowHeight",
-          note: "响应式画布：使用 createCanvas(windowWidth, windowHeight)",
-        }),
-        displayText: T("gen.toolCanvasResponsive"),
-      };
-    },
-    set_color_palette: function (args) {
-      var colors = args && Array.isArray(args.colors) ? args.colors : [];
-      if (!colors.length) {
-        return {
-          ok: false,
-          text: T("gen.toolUnknown", { name: "set_color_palette" }),
-        };
-      }
-      genState.palette = colors;
-      return {
-        ok: true,
-        text: "已记录配色：" + colors.join(", "),
-        displayText: T("gen.toolPalette", { n: colors.length }),
-      };
-    },
-    save_page: function (args) {
-      var title =
-        args && typeof args.title === "string" && args.title.trim()
-          ? args.title.trim()
-          : ($("#title") ? $("#title").value.trim() : "") ||
-            T("generator.untitled");
-      if (!editor) throw new Error("editor not found");
-      var script = editor.getValue().trim();
-      if (!script) {
-        return { ok: false, text: "编辑器为空，无法保存" };
-      }
-      var html = generatePageHtml(
-        title,
-        script,
-        "",
-        !!uploadedImageDataUrl,
-      );
-      var newId = Date.now() + Math.floor(Math.random() * 1000);
-      var pages = getPages();
-      pages.push({
-        id: newId,
-        title: title,
-        html: html,
-        timestamp: new Date().toISOString(),
-      });
-      if (savePages(pages)) {
-        if (uploadedImageDataUrl) {
-          sessionImages[newId] = uploadedImageDataUrl;
-          var ids = Object.keys(sessionImages);
-          if (ids.length > MAX_SESSION_IMAGES) {
-            delete sessionImages[ids[0]];
-          }
-        }
-        updateSidebarPages();
-        return { ok: true, text: T("gen.toolSaved", { title: title }) };
-      }
-      return { ok: false, text: "保存失败" };
-    },
-    open_preview: function (args) {
-      if (!editor) throw new Error("editor not found");
-      var script = editor.getValue().trim();
-      if (!script) return { ok: false, text: "编辑器为空，无法预览" };
-      var title =
-        ($("#title") ? $("#title").value.trim() : "") ||
-        T("generator.untitled");
-      var html = generatePageHtml(title, script, uploadedImageDataUrl || "");
-      runner.mode = "temp";
-      runner.tempHtml = html;
-      runner.pageId = null;
-      destroyEditor();
-      if (getRoute() === "/") render();
-      else location.hash = "#/";
-      return { ok: true, text: "已打开预览" };
-    },
-  };
+/* --- 输入条：圆角胶囊 + 阴影 --- */
+.ai-input-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  width: 100%;
+  max-width: 940px;
+  margin: 0 auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 26px;
+  padding: 6px;
+  box-shadow: var(--shadow-ai-bar);
+  pointer-events: auto;
+  transition:
+    background 0.3s,
+    border-color 0.3s;
+}
 
-  function executeToolCall(toolName, args) {
-    var handler = TOOL_HANDLERS[toolName];
-    if (!handler) {
-      return { ok: false, text: T("gen.toolUnknown", { name: toolName }) };
-    }
-    try {
-      return handler(args);
-    } catch (e) {
-      return {
-        ok: false,
-        text: T("gen.toolError", { msg: String((e && e.message) || e) }),
-      };
-    }
-  }
+/* --- 模型选择器：圆形按钮 + 弹出菜单 --- */
+.ai-model-picker {
+  position: relative;
+  flex: 0 0 auto;
+}
+.ai-model-btn {
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  padding: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  border: none;
+  font-size: 26px;
+  font-weight: 300;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    transform 0.15s;
+}
+.ai-model-btn:hover {
+  background: var(--hover);
+}
+.ai-model-btn:active {
+  transform: scale(0.94);
+}
+.ai-model-btn.has-model {
+  font-size: 18px;
+  font-weight: bold;
+  background: rgba(0, 123, 255, 0.12);
+}
 
-  function extractCodeFromText(text) {
-    if (!text) return null;
-    var t = String(text);
-    var jsBlocks = [];
-    var reJs = /```(?:js|javascript)\s*\n([\s\S]*?)```/gi;
-    var m;
-    while ((m = reJs.exec(t))) {
-      if (m[1]) jsBlocks.push(m[1].replace(/\s+$/, ""));
-    }
-    if (jsBlocks.length) return jsBlocks.join("\n\n");
-    var blocks = [];
-    var re = /```\s*\n([\s\S]*?)```/g;
-    while ((m = re.exec(t))) {
-      if (m[1]) blocks.push(m[1].replace(/\s+$/, ""));
-    }
-    if (blocks.length) return blocks.join("\n\n");
-    if (/function\s+setup\s*\(/.test(t) || /function\s+draw\s*\(/.test(t)) {
-      return t.trim();
-    }
-    return null;
-  }
+/* --- 模型菜单：向上弹出，含顶行（＋/导入）与列表 --- */
+.ai-model-menu {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 0;
+  background: var(--modal-bg);
+  color: var(--modal-text);
+  border: 1px solid var(--border-input);
+  border-radius: 12px;
+  box-shadow: 0 12px 34px rgba(0, 0, 0, 0.32);
+  min-width: 320px;
+  z-index: 500;
+  overflow: hidden;
+}
+.ai-model-menu.show {
+  display: block;
+}
 
+/* --- 顶行：自定义 / 导入 --- */
+.ai-model-toprow {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--line);
+}
+.ai-model-toprow .ai-model-topbtn {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 10px 12px;
+  text-align: center;
+  font-size: 0.92rem;
+  font-weight: bold;
+  color: var(--primary);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ai-model-toprow .ai-model-topbtn:hover {
+  background: rgba(0, 123, 255, 0.08);
+}
+.ai-model-toprow .ai-model-topbtn + .ai-model-topbtn {
+  border-left: 1px solid var(--line);
+}
 
-/* J20 AI流式请求核心 */
-  function findToolCallName(msgs, toolCallId) {
-    for (var i = 0; i < msgs.length; i++) {
-      var m = msgs[i];
-      if (m.role === "assistant" && m.tool_calls) {
-        for (var j = 0; j < m.tool_calls.length; j++) {
-          if (m.tool_calls[j].id === toolCallId) {
-            return m.tool_calls[j].function.name;
-          }
-        }
-      }
-    }
-    return "unknown";
-  }
-  function convertToGeminiMessages(internalMsgs) {
-    var systemInstruction = null;
-    var contents = [];
-    for (var i = 0; i < internalMsgs.length; i++) {
-      var m = internalMsgs[i];
-      if (m.role === "system") {
-        systemInstruction = { parts: [{ text: m.content || "" }] };
-      } else if (m.role === "user") {
-        if (Array.isArray(m.content)) {
-          var uParts = [];
-          m.content.forEach(function (c) {
-            if (!c) return;
-            if (c.type === "text") {
-              uParts.push({ text: c.text || "" });
-            } else if (
-              c.type === "image_url" &&
-              c.image_url &&
-              c.image_url.url
-            ) {
-              var match = /^data:([^;]+);base64,(.+)$/.exec(c.image_url.url);
-              if (match) {
-                uParts.push({
-                  inlineData: { mimeType: match[1], data: match[2] },
-                });
-              }
-            }
-          });
-          contents.push({ role: "user", parts: uParts });
-        } else {
-          contents.push({ role: "user", parts: [{ text: m.content || "" }] });
-        }
-      } else if (m.role === "assistant") {
-        if (m.tool_calls && m.tool_calls.length) {
-          var parts = [];
-          m.tool_calls.forEach(function (tc) {
-            var argsObj = {};
-            try {
-              argsObj =
-                typeof tc.function.arguments === "string"
-                  ? JSON.parse(tc.function.arguments)
-                  : tc.function.arguments || {};
-            } catch (e) {
-              argsObj = {};
-            }
-            parts.push({
-              functionCall: { name: tc.function.name, args: argsObj },
-            });
-          });
-          contents.push({ role: "model", parts: parts });
-        } else {
-          contents.push({ role: "model", parts: [{ text: m.content || "" }] });
-        }
-      } else if (m.role === "tool") {
-        var tcName = findToolCallName(internalMsgs, m.tool_call_id);
-        contents.push({
-          role: "function",
-          parts: [
-            {
-              functionResponse: {
-                name: tcName,
-                response: { result: m.content || "" },
-              },
-            },
-          ],
-        });
-      }
-    }
-    return { systemInstruction: systemInstruction, contents: contents };
-  }
-  function streamAI(opts) {
-    var model = opts.model;
-    var key = opts.key;
-    var messages = opts.messages;
-    var systemPrompt = opts.systemPrompt;
-    var onDelta = opts.onDelta;
-    var onRaw = opts.onRaw;
-    var enableTools = !!opts.tools;
-    var extSignal = opts.signal || null;
+/* --- 模型项：勾选 + 名称 + T/K/P/J/M 按钮 --- */
+.ai-model-item {
+  display: flex;
+  align-items: center;
+  padding: 9px 10px;
+  cursor: pointer;
+  gap: 4px;
+  font-size: 0.93rem;
+  user-select: none;
+}
+.ai-model-item:hover {
+  background: var(--hover);
+}
+.ai-model-item .ai-check {
+  width: 16px;
+  flex: 0 0 16px;
+  display: inline-block;
+  color: var(--success);
+  font-weight: bold;
+  text-align: center;
+  visibility: hidden;
+}
+.ai-model-item.active .ai-check {
+  visibility: visible;
+}
+.ai-model-item .ai-model-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+}
+.ai-model-item .ai-model-name-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ai-model-item .ai-model-edit {
+  flex: 0 0 auto;
+  padding: 1px 5px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
+}
+.ai-model-item .ai-model-edit:hover {
+  background: rgba(0, 123, 255, 0.12);
+  color: var(--primary);
+  border-color: var(--primary);
+}
+/* T/K/J/M 小按钮：透明底 + 细边 */
+.ai-model-item .ai-key,
+.ai-model-item .ai-prompt,
+.ai-model-item .ai-dl {
+  background: transparent;
+  color: var(--text-muted);
+  padding: 4px 6px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+  flex: 0 0 auto;
+}
+.ai-model-item .ai-key:hover {
+  background: var(--hover-key);
+  color: var(--warn);
+}
+.ai-model-item .ai-prompt:hover {
+  background: var(--hover-prompt);
+  color: var(--purple);
+}
+.ai-model-item .ai-dl:hover {
+  background: var(--hover-dl);
+  color: var(--primary);
+}
+/* 已设置提示词：紫色 + 圆点 */
+.ai-model-item .ai-prompt.has-prompt {
+  color: var(--purple);
+}
+.ai-model-item .ai-prompt.has-prompt::after {
+  content: "•";
+  margin-left: 1px;
+  color: var(--purple);
+}
 
-    var conf = aiModelConf(model);
-    var url, options;
-    if (conf.protocol === "gemini") {
-      var conv = convertToGeminiMessages(messages);
-      var body = { contents: conv.contents };
-      if (systemPrompt) {
-        body.systemInstruction = { parts: [{ text: systemPrompt }] };
-      } else if (conv.systemInstruction) {
-        body.systemInstruction = conv.systemInstruction;
-      }
-      if (enableTools) body.tools = buildGeminiTools();
-      url =
-        conf.endpoint.replace(":generateContent", ":streamGenerateContent") +
-        "?alt=sse&key=" +
-        encodeURIComponent(key);
-      options = {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      };
-    } else {
-      var msgs = [];
-      if (systemPrompt) msgs.push({ role: "system", content: systemPrompt });
-      messages.forEach(function (m) {
-        msgs.push(m);
-      });
-      url = conf.endpoint;
-      var reqBody = {
-        model: conf.apiModel,
-        messages: msgs,
-        stream: true,
-        stream_options: { include_usage: true },
-      };
-      if (enableTools) reqBody.tools = buildOpenAITools();
-      options = {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + key,
-        },
-        body: JSON.stringify(reqBody),
-      };
-    }
-    var timeoutCtl = new AbortController();
-    var timeoutId = setTimeout(function () {
-      try {
-        timeoutCtl.abort();
-      } catch (e) {}
-    }, REQUEST_TIMEOUT_MS);
-    var baseSignal = extSignal;
-    if (!baseSignal && aiState.abortController) {
-      baseSignal = aiState.abortController.signal;
-    }
-    if (baseSignal) {
-      var combined = new AbortController();
-      var onAbort = function () {
-        try {
-          combined.abort();
-        } catch (e) {}
-      };
-      baseSignal.addEventListener("abort", onAbort);
-      timeoutCtl.signal.addEventListener("abort", onAbort);
-      options.signal = combined.signal;
-    } else {
-      options.signal = timeoutCtl.signal;
-    }
-    return fetch(url, options)
-      .then(function (res) {
-        if (!res.ok) {
-          return res.text().then(function (t) {
-            var msg = "HTTP " + res.status;
-            try {
-              var d = JSON.parse(t);
-              msg =
-                (d.error && d.error.message) ||
-                d.message ||
-                (d.error && d.error.status) ||
-                msg;
-            } catch (e) {}
-            throw new Error(msg);
-          });
-        }
-        if (!res.body || !res.body.getReader) {
-          throw new Error(T("chat.errStreamUnsupported"));
-        }
-        var reader = res.body.getReader();
-        var decoder = new TextDecoder();
-        var buffer = "";
-        function dispatchData(data) {
-          if (!data) return;
-          if (data === "[DONE]") {
-            if (onRaw) onRaw("[DONE]");
-            return;
-          }
-          try {
-            var obj = JSON.parse(data);
-            if (onRaw) onRaw(obj);
-            onDelta(obj);
-          } catch (e) {}
-        }
-        function processBuffer(flush) {
-          if (buffer.indexOf("\r") !== -1) {
-            buffer = buffer.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-          }
-          var sepIndex;
-          while ((sepIndex = buffer.indexOf("\n\n")) !== -1) {
-            var evt = buffer.slice(0, sepIndex);
-            buffer = buffer.slice(sepIndex + 2);
-            var lines = evt.split("\n");
-            for (var i = 0; i < lines.length; i++) {
-              var line = lines[i].trim();
-              if (line.indexOf("data:") === 0) {
-                dispatchData(line.slice(5).trim());
-              }
-            }
-          }
-          if (flush && buffer.trim()) {
-            var tail = buffer.trim();
-            if (tail.indexOf("data:") === 0) {
-              dispatchData(tail.slice(5).trim());
-            }
-            buffer = "";
-          }
-        }
-        function pump() {
-          return reader.read().then(function (result) {
-            if (result.done) {
-              processBuffer(true);
-              return;
-            }
-            buffer += decoder.decode(result.value, { stream: true });
-            processBuffer(false);
-            return pump();
-          });
-        }
-        return pump();
-      })
-      .finally(function () {
-        clearTimeout(timeoutId);
-      });
-  }
-  function createStructuredAccumulator() {
-    var meta = {
-      id: null,
-      model: null,
-      created: null,
-      finish_reason: null,
-      usage: null,
-      tool_calls: null,
-    };
-    var tcBuf = {};
-    var hasToolCall = false;
-    function consume(obj) {
-      if (!obj || obj === "[DONE]") return;
-      if (obj.id && !meta.id) meta.id = obj.id;
-      if (obj.model && !meta.model) meta.model = obj.model;
-      if (obj.created && !meta.created) meta.created = obj.created;
-      if (obj.usage) meta.usage = obj.usage;
-      var ch = obj.choices && obj.choices[0];
-      if (ch) {
-        if (ch.finish_reason) meta.finish_reason = ch.finish_reason;
-        var delta = ch.delta || {};
-        var tcs = delta.tool_calls;
-        if (tcs && tcs.length) {
-          hasToolCall = true;
-          tcs.forEach(function (t) {
-            var idx = t.index != null ? t.index : 0;
-            if (!tcBuf[idx]) {
-              tcBuf[idx] = {
-                id: "",
-                type: "function",
-                function: { name: "", arguments: "" },
-              };
-            }
-            var buf = tcBuf[idx];
-            if (t.id) buf.id = t.id;
-            if (t.type) buf.type = t.type;
-            if (t.function) {
-              if (t.function.name) buf.function.name += t.function.name;
-              if (t.function.arguments)
-                buf.function.arguments += t.function.arguments;
-            }
-          });
-        }
-      }
-      var cand = obj.candidates && obj.candidates[0];
-      if (cand) {
-        if (cand.finishReason && !meta.finish_reason) {
-          meta.finish_reason = cand.finishReason;
-        }
-        if (cand.content && cand.content.parts) {
-          cand.content.parts.forEach(function (p) {
-            if (p.functionCall) {
-              hasToolCall = true;
-              var idx = Object.keys(tcBuf).length;
-              tcBuf[idx] = {
-                id: "call_" + Date.now() + "_" + idx,
-                type: "function",
-                function: {
-                  name: p.functionCall.name || "",
-                  arguments: JSON.stringify(p.functionCall.args || {}),
-                },
-              };
-            }
-          });
-        }
-      }
-      if (obj.usageMetadata) {
-        meta.usage = {
-          prompt_tokens: obj.usageMetadata.promptTokenCount,
-          completion_tokens: obj.usageMetadata.candidatesTokenCount,
-          total_tokens: obj.usageMetadata.totalTokenCount,
-        };
-      }
-    }
-    function finalize() {
-      if (hasToolCall) {
-        var arr = [];
-        Object.keys(tcBuf)
-          .sort(function (a, b) {
-            return a - b;
-          })
-          .forEach(function (k) {
-            var t = tcBuf[k];
-            if (t.function && t.function.name) arr.push(t);
-          });
-        if (arr.length) meta.tool_calls = arr;
-      }
-      return meta;
-    }
-    return { consume: consume, finalize: finalize };
-  }
+/* --- textarea：自适应高度，隐藏原生滚动条 --- */
+.ai-input-bar textarea,
+.gen-ai-bar textarea {
+  flex: 1 1 auto;
+  min-width: 0;
+  resize: none;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  min-height: 38px;
+  max-height: 140px;
+  padding: 9px 6px;
+  font-family: inherit;
+  font-size: 16px;
+  line-height: 1.45;
+  overflow-y: auto;
+}
+.ai-input-bar textarea::placeholder,
+.gen-ai-bar textarea::placeholder {
+  color: var(--text-placeholder);
+}
+
+/* --- 隐藏原生滚动条（Android 灰竖条问题） --- */
+.ai-input-bar textarea::-webkit-scrollbar,
+.gen-ai-bar textarea::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+.ai-input-bar textarea,
+.gen-ai-bar textarea {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+/* --- 发送按钮：圆形主色 --- */
+.ai-send-btn {
+  flex: 0 0 auto;
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  font-size: 18px;
+  font-weight: bold;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    transform 0.15s;
+}
+.ai-send-btn:hover {
+  background: var(--primary-hover);
+}
+.ai-send-btn:active {
+  transform: scale(0.94);
+}
+.ai-send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 
-/* J21 生成器AI循环 */
-  function genApplyCode(code, intent) {
-    if (!editor || !code) return;
-    if (intent === "append") {
-      var cur = editor.getValue() || "";
-      editor.setValue(cur.trim() ? cur + "\n\n" + code : code);
-    } else {
-      editor.setValue(code);
-    }
-    generatorDraft.script = editor.getValue();
-    saveDraft();
-  }
-  function userTextHasCode(text) {
-    if (!text) return false;
-    if (/```/.test(text)) return true;
-    if (/function\s+setup\s*\(/.test(text)) return true;
-    if (/function\s+draw\s*\(/.test(text)) return true;
-    return false;
-  }
-  function genRunLoop(userIntent, userText) {
-    var model = aiState.currentModel;
-    var key = aiState.keys[model];
-    var conf = aiModelConf(model);
-    if (!conf || !conf.supportsTools) {
-      genStatusLine(T("gen.statusModelNoTools"), "error");
-      genSetBusy(false);
-      return;
-    }
-    genState.messages = [];
-    genState.messages.push({
-      role: "system",
-      content: T("gen.systemPrompt"),
-    });
-    var userContent = "[intent: " + userIntent + "]\n";
-    if (uploadedImageDataUrl) {
-      var info = uploadedImageInfo;
-      var w = info && info.width ? info.width : "?";
-      var h = info && info.height ? info.height : "?";
-      userContent += "[图片已上传 | 尺寸: " + w + "×" + h + "]\n";
-    }
-    if (userIntent === "modify" && editor && !userTextHasCode(userText)) {
-      var currentCode = editor.getValue() || "";
-      if (currentCode.trim()) {
-        userContent += "\n当前代码：\n```js\n" + currentCode + "\n```\n";
-      }
-    }
-    userContent += "\n用户要求：" + userText;
+/* ============================================================
+   C13 生成器 AI 面板
+   作用：编辑器页内嵌的 AI 生成栏 + 状态输出 + 标题输入行
+   机制：区别于 C12 的圆形输入条，这里是方角简约风格
+   ============================================================ */
+/* --- 生成器 AI 输入条：方角 + 细边 --- */
+.gen-ai-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border-input);
+  border-radius: 4px;
+  padding: 6px;
+}
+.gen-ai-bar-bare {
+  margin: 12px 0;
+}
 
-    var useVision = !!uploadedImageDataUrl && conf.vision === true;
-    if (useVision) {
-      genState.messages.push({
-        role: "user",
-        content: [
-          { type: "text", text: userContent },
-          {
-            type: "image_url",
-            image_url: { url: uploadedImageDataUrl },
-          },
-        ],
-      });
-    } else {
-      genState.messages.push({ role: "user", content: userContent });
-    }
+/* --- 生成器的发送按钮：透明底 + 细边，与 AI 页区分 --- */
+.gen-ai-bar .ai-send-btn {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border-input);
+}
+.gen-ai-bar .ai-send-btn:hover {
+  background: var(--hover);
+  color: var(--primary);
+  border-color: var(--primary-focus);
+}
+.gen-ai-bar .ai-send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
-    genStatusClear();
-    genStatusLine(T("gen.statusRequest", { model: aiModelName(model) }));
-    genState.streamToken += 1;
-    var myToken = genState.streamToken;
-    if (genState.abortController) {
-      try {
-        genState.abortController.abort();
-      } catch (e) {}
-    }
-    genState.abortController = new AbortController();
-    var mySignal = genState.abortController.signal;
-    var loopCount = 0;
-    function runOne() {
-      loopCount += 1;
-      if (loopCount > MAX_TOOL_LOOP) {
-        genStatusLine(T("gen.statusMaxLoop"), "warn");
-        genSetBusy(false);
-        return;
-      }
-      var accumulated = "";
-      var acc = createStructuredAccumulator();
-      var onDelta = function (obj) {
-        if (conf.protocol === "gemini") {
-          var cand = obj.candidates && obj.candidates[0];
-          if (cand && cand.content && cand.content.parts) {
-            for (var i = 0; i < cand.content.parts.length; i++) {
-              var p = cand.content.parts[i];
-              if (p && typeof p.text === "string") accumulated += p.text;
-            }
-          }
-        } else {
-          var ch = obj.choices && obj.choices[0];
-          if (ch && ch.delta && typeof ch.delta.content === "string") {
-            accumulated += ch.delta.content;
-          }
-        }
-      };
-      streamAI({
-        model: model,
-        key: key,
-        messages: genState.messages.slice(),
-        systemPrompt: null,
-        onDelta: onDelta,
-        onRaw: function (obj) {
-          acc.consume(obj);
-        },
-        tools: true,
-        signal: mySignal,
-      })
-        .then(function () {
-          if (genState.streamToken !== myToken) return;
-          var meta = acc.finalize();
-          if (meta.tool_calls && meta.tool_calls.length) {
-            genState.messages.push({
-              role: "assistant",
-              content: accumulated || null,
-              tool_calls: meta.tool_calls,
-            });
-            meta.tool_calls.forEach(function (tc) {
-              var name = tc.function.name;
-              var args = {};
-              try {
-                args =
-                  typeof tc.function.arguments === "string"
-                    ? JSON.parse(tc.function.arguments)
-                    : tc.function.arguments || {};
-              } catch (e) {
-                args = {};
-              }
-              genStatusLine(T("gen.statusToolCall", { name: name }));
-              var res = executeToolCall(name, args);
-              var display = res.displayText ? res.displayText : res.text;
-              genStatusLine(
-                T("gen.statusToolDone", { result: display }),
-                res.ok ? "ok" : "error",
-              );
-              genState.messages.push({
-                role: "tool",
-                tool_call_id: tc.id,
-                content: res.text,
-              });
-            });
-            genStatusLine(T("gen.statusSummary"));
-            runOne();
-            return;
-          }
-          if (accumulated && accumulated.trim()) {
-            var code = extractCodeFromText(accumulated);
-            if (code) {
-              genStatusLine(T("gen.statusDegrade"), "warn");
-              genApplyCode(code, userIntent);
-              genStatusLine(T("gen.statusDone"), "ok");
-            } else {
-              genStatusLine(accumulated.trim(), "ok");
-              genStatusLine(T("gen.statusNoCode"), "warn");
-            }
-          } else {
-            genStatusLine(T("gen.statusNoCode"), "warn");
-          }
-          genSetBusy(false);
-        })
-        .catch(function (err) {
-          if (genState.streamToken !== myToken) return;
-          var msg = String((err && err.message) || err);
-          if (err && err.name === "AbortError") {
-            genStatusLine(T("gen.statusTimeout"), "error");
-            genSetBusy(false);
-            return;
-          }
-          genStatusLine(T("gen.statusError", { msg: msg }), "error");
-          genSetBusy(false);
-        });
-    }
-    runOne();
-  }
-  function genSend() {
-    if (genState.busy) return;
-    var model = aiState.currentModel;
-    if (!model || !aiModelConf(model)) {
-      showAlert(T("gen.statusNoModel"), "", true);
-      return;
-    }
-    var conf = aiModelConf(model);
-    if (!conf.supportsTools) {
-      showAlert(T("gen.statusModelNoTools"), "", true);
-      return;
-    }
-    var key = aiState.keys[model];
-    if (!key) {
-      promptAPIKey(model, function () {
-        if (aiState.keys[model]) genSend();
-      });
-      return;
-    }
-    var input = $("#genInput");
-    if (!input) return;
-    var userText = (input.value || "").trim();
-    if (!userText) {
-      genStatusClear();
-      genStatusLine(T("gen.statusEmptyInput"), "warn");
-      return;
-    }
-    var currentCode = editor ? editor.getValue() || "" : "";
-    var hasContent = currentCode.trim().length > 0;
-    var doSend = function (intent) {
-      input.value = "";
-      input.style.height = "auto";
-      genSetBusy(true);
-      genRunLoop(intent, userText);
-    };
-    if (!hasContent) {
-      if (userTextHasCode(userText)) {
-        doSend("modify");
-      } else {
-        doSend("overwrite");
-      }
-    } else {
-      showIntentChoice(
-        T("gen.editorNotEmptyTitle"),
-        T("gen.editorNotEmptyBody"),
-        function () {
-          doSend("overwrite");
-        },
-        function () {
-          doSend("modify");
-        },
-      );
-    }
-  }
-  function bindGeneratorAIPanel() {
-    var modelBtn = $("#genModelBtn");
-    var menu = $("#genModelMenu");
-    var input = $("#genInput");
-    var sendBtn = $("#genSendBtn");
-    if (modelBtn) {
-      modelBtn.addEventListener("click", function (e) {
-        e.stopPropagation();
-        toggleGenMenu();
-      });
-    }
-    if (menu) {
-      menu.addEventListener("click", function (e) {
-        var item = e.target.closest(".ai-model-item");
-        if (!item || !item.dataset.model) return;
-        e.stopPropagation();
-        closeGenMenu();
-        aiState.currentModel = item.dataset.model;
-        saveCurrentModel(aiState.currentModel);
-        refreshGenModelBtn();
-        refreshAIModelUI();
-      });
-    }
-    if (input) {
-      input.addEventListener("input", function () {
-        this.style.height = "auto";
-        this.style.height = Math.min(this.scrollHeight, 120) + "px";
-      });
-      input.addEventListener("keydown", function (e) {
-        if (
-          e.key === "Enter" &&
-          !e.shiftKey &&
-          !e.isComposing &&
-          e.keyCode !== 229
-        ) {
-          e.preventDefault();
-          genSend();
-        }
-      });
-    }
-    if (sendBtn) {
-      sendBtn.addEventListener("click", function () {
-        genSend();
-      });
-    }
-    refreshGenModelBtn();
-  }
+/* --- 状态输出区：等宽小字，最多展示若干行 --- */
+.gen-status {
+  margin-top: 10px;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  max-height: 160px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.gen-status:empty {
+  display: none;
+}
+.gen-status .gen-status-line {
+  padding: 2px 0;
+}
+.gen-status .gen-status-line.error {
+  color: var(--danger);
+}
+.gen-status .gen-status-line.warn {
+  color: var(--warn);
+}
+.gen-status .gen-status-line.ok {
+  color: var(--success);
+}
+
+/* --- 标题 + 提交按钮行 --- */
+.gen-inline-row {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+  margin-top: 20px;
+}
+.gen-inline-row input[type="text"] {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--border-input);
+  border-radius: 4px;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  font-size: 16px;
+  background: var(--input-bg-fill);
+  color: var(--modal-text);
+}
+.gen-inline-row button {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
 
 
-/* J22 生成器主体 */
-  function compressImage(dataUrl, maxDim, quality, callback) {
-    var img = new Image();
-    img.onload = function () {
-      try {
-        var w0 = img.naturalWidth;
-        var h0 = img.naturalHeight;
-        var scale = Math.min(1, maxDim / Math.max(w0, h0));
-        var w = Math.max(1, Math.round(w0 * scale));
-        var h = Math.max(1, Math.round(h0 * scale));
-        var canvas = document.createElement("canvas");
-        canvas.width = w;
-        canvas.height = h;
-        var ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0, w, h);
-        var out = canvas.toDataURL("image/jpeg", quality);
-        callback(out && out.length < dataUrl.length ? out : dataUrl);
-      } catch (e) {
-        callback(dataUrl);
-      }
-    };
-    img.onerror = function () {
-      callback(dataUrl);
-    };
-    img.src = dataUrl;
-  }
-  function bindGenerator() {
-    var titleInput = $("#title");
-    var textarea = $("#script");
-    var fileInput = $("#image");
-    var previewEl = $("#image-preview");
-    var resultEl = $("#result");
-    var buildBtn = $("#buildBtn");
-    uploadedImageDataUrl = null;
-    uploadedImageInfo = null;
-    generatorDraft = loadDraft();
-    titleInput.value = generatorDraft.title || "";
-    destroyEditor();
-    if (window.CodeMirror) {
-      var themeName = currentTheme() === "dark" ? "dracula" : "default";
-      editor = window.CodeMirror.fromTextArea(textarea, {
-        mode: "javascript",
-        lineNumbers: true,
-        theme: themeName,
-        tabSize: 2,
-        indentUnit: 2,
-        autofocus: true,
-      });
-      editor.setSize(null, "100%");
-      if (generatorDraft.script) editor.setValue(generatorDraft.script);
-      var cmWrapper = editor.getWrapperElement();
-      if (getComputedStyle(cmWrapper).position === "static") {
-        cmWrapper.style.position = "relative";
-      }
-      var cmPlaceholderEl = el("div", "cm-placeholder-overlay");
-      cmPlaceholderEl.textContent = T("generator.scriptPlaceholder");
-      cmWrapper.appendChild(cmPlaceholderEl);
-      var gutters = cmWrapper.querySelector(".CodeMirror-gutters");
-      var leftOffset = gutters ? gutters.offsetWidth + 8 : 44;
-      cmPlaceholderEl.style.left = leftOffset + "px";
-      function updateCmPlaceholder() {
-        cmPlaceholderEl.style.display =
-          editor.getValue().length === 0 ? "block" : "none";
-      }
-      editor.on("change", updateCmPlaceholder);
-      editor.on("optionChange", function () {
-        var g = cmWrapper.querySelector(".CodeMirror-gutters");
-        if (g) cmPlaceholderEl.style.left = g.offsetWidth + 8 + "px";
-      });
-      updateCmPlaceholder();
-      editor.on("change", function () {
-        generatorDraft.script = editor.getValue();
-        saveDraft();
-      });
-    }
-    titleInput.addEventListener("input", function () {
-      generatorDraft.title = this.value;
-      saveDraft();
-    });
-    fileInput.addEventListener("change", function () {
-      var file = this.files && this.files[0];
-      if (!file) return;
-      if (!/^image\//.test(file.type)) {
-        showAlert(T("page.badImageTitle"), T("page.badImageBody"), true);
-        this.value = "";
-        return;
-      }
-      if (file.size > MAX_IMAGE_BYTES) {
-        showAlert(
-          T("page.imageTooLargeTitle"),
-          T("page.imageTooLargeBody"),
-          true,
-        );
-        this.value = "";
-        return;
-      }
-      var reader = new FileReader();
-      reader.onload = function (e) {
-        var originalDataUrl = e.target.result;
-        uploadedImageDataUrl = null;
-        uploadedImageInfo = null;
-        compressImage(originalDataUrl, 1024, 0.85, function (compressed) {
-          uploadedImageDataUrl = compressed;
-          var tip = el("p", null, T("generator.imageOk"));
-          var img = document.createElement("img");
-          img.src = compressed;
-          img.className = "preview-img";
-          img.alt = T("generator.imageAlt");
-          previewEl.replaceChildren(tip, img);
-
-          var probe = new Image();
-          probe.onload = function () {
-            uploadedImageInfo = {
-              width: probe.naturalWidth,
-              height: probe.naturalHeight,
-            };
-          };
-          probe.onerror = function () {
-            uploadedImageInfo = null;
-          };
-          probe.src = compressed;
-        });
-      };
-      reader.onerror = function () {
-        showAlert(
-          T("page.imageReadFailTitle"),
-          T("page.imageReadFailBody"),
-          true,
-        );
-      };
-      reader.readAsDataURL(file);
-    });
-    buildBtn.addEventListener("click", function () {
-      var title =
-        titleInput.value.trim().slice(0, MAX_TITLE_LEN) ||
-        T("generator.untitled");
-      var script = (editor ? editor.getValue() : textarea.value).trim();
-      if (!script) {
-        showAlert(T("page.noScriptTitle"), T("page.noScriptBody"), true);
-        return;
-      }
-      var imageDataUrl = uploadedImageDataUrl || "";
-      var htmlContent = generatePageHtml(
-        title,
-        script,
-        "",
-        !!imageDataUrl,
-      );
-      var newId = Date.now() + Math.floor(Math.random() * 1000);
-      var pages = getPages();
-      pages.push({
-        id: newId,
-        title: title,
-        html: htmlContent,
-        timestamp: new Date().toISOString(),
-      });
-      if (!savePages(pages)) return;
-
-      if (imageDataUrl) {
-        sessionImages[newId] = imageDataUrl;
-        var ids = Object.keys(sessionImages);
-        if (ids.length > MAX_SESSION_IMAGES) {
-          delete sessionImages[ids[0]];
-        }
-      }
-      updateSidebarPages();
-      openModal(function (box) {
-        box.appendChild(el("h3", null, T("generator.buildOk")));
-        var actions = el("div", "modal-actions");
-        var leftWrap = document.createElement("div");
-        var closeBtn = el("button", "link-btn", T("common.cancel"));
-        closeBtn.addEventListener("click", closeModal);
-        leftWrap.appendChild(closeBtn);
-        var rg = rightGroup();
-        var previewBtn = el("button", null, T("generator.preview"));
-        previewBtn.addEventListener("click", function () {
-          closeModal();
-          runPage(newId);
-        });
-        var downloadBtn = el("button", "cancel", T("generator.download"));
-        downloadBtn.addEventListener("click", function () {
-          downloadSingleHtml(
-            "p5_" + safeFileName(title) + "_" + newId + ".html",
-            htmlContent,
-          );
-        });
-        rg.appendChild(previewBtn);
-        rg.appendChild(downloadBtn);
-        actions.appendChild(leftWrap);
-        actions.appendChild(rg);
-        box.appendChild(actions);
-      });
-      titleInput.value = "";
-      if (editor) editor.setValue("");
-      clearDraft();
-      uploadedImageDataUrl = "";
-      uploadedImageInfo = null;
-      previewEl.replaceChildren();
-      fileInput.value = "";
-    });
-    bindGeneratorAIPanel();
-  }
+/* ============================================================
+   C14 预览截图按钮
+   作用：预览模式下右上角截图按钮
+   机制：fixed 白字 + 阴影，与汉堡按钮风格一致
+   ============================================================ */
+.preview-screenshot-btn {
+  position: fixed;
+  top: clamp(8px, 2vw, 14px);
+  right: clamp(10px, 3vw, 18px);
+  z-index: 300;
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: clamp(24px, 4.5vw, 32px);
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
+  user-select: none;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  transition: transform 0.15s;
+}
+.preview-screenshot-btn:hover {
+  transform: scale(1.1);
+}
+.preview-screenshot-btn:active {
+  transform: scale(0.95);
+}
 
 
-  /* J23 AI页面骨架 */
-  function renderAIAssistant() {
-    var page = el("div", "ai-page");
-    var clearBtn = el("button", "ai-clear-btn", "−");
-    clearBtn.id = "aiClearBtn";
-    clearBtn.type = "button";
-    clearBtn.title = T("ai.clearTitle");
-    var fileInput = document.createElement("input");
-    fileInput.type = "file";
-    fileInput.id = "aiImportFile";
-    fileInput.accept = ".json,application/json";
-    fileInput.style.display = "none";
-    var messages = el("div", "ai-messages");
-    messages.id = "aiMessages";
-    messages.setAttribute("role", "log");
-    messages.setAttribute("aria-live", "polite");
-    messages.setAttribute("aria-relevant", "additions");
-    var statsBar = el("div", "ai-stats");
-    statsBar.id = "aiStats";
-    statsBar.style.display = "none";
-    var inputWrap = el("div", "ai-input-wrap");
-    var bar = el("div", "ai-input-bar");
-    var picker = el("div", "ai-model-picker");
-    var modelBtn = el("button", "ai-model-btn", "+");
-    modelBtn.id = "aiModelBtn";
-    modelBtn.type = "button";
-    modelBtn.title = T("ai.modelPickerTitle");
-    var menu = el("div", "ai-model-menu");
-    menu.id = "aiModelMenu";
-    picker.appendChild(modelBtn);
-    picker.appendChild(menu);
-    var input = document.createElement("textarea");
-    input.id = "aiInput";
-    input.rows = 1;
-    input.placeholder = T("ai.inputPlaceholder");
-    var sendBtn = el("button", "ai-send-btn", "↑");
-    sendBtn.id = "aiSendBtn";
-    sendBtn.type = "button";
-    sendBtn.title = T("ai.sendTitle");
-    bar.appendChild(picker);
-    bar.appendChild(input);
-    bar.appendChild(sendBtn);
-    inputWrap.appendChild(bar);
-    page.appendChild(clearBtn);
-    page.appendChild(fileInput);
-    page.appendChild(messages);
-    page.appendChild(statsBar);
-    page.appendChild(inputWrap);
-    return page;
+/* ============================================================
+   C15 媒体查询
+   作用：小屏 / 矮屏适配
+   机制：窄屏缩小字号与间距；矮屏压缩编辑器高度
+   ============================================================ */
+@media (max-width: 420px) {
+  .hamburger-btn {
+    font-size: 28px;
   }
+  .action-buttons button {
+    flex: 1 1 auto;
+  }
+  .sidebar-footer .footer-item {
+    font-size: 0.82rem;
+    padding: 10px 6px calc(10px + env(safe-area-inset-bottom, 0px));
+  }
+  .ai-clear-btn {
+    width: 26px;
+    height: 26px;
+    min-width: 26px;
+    font-size: 24px;
+  }
+  .ai-model-menu {
+    min-width: 280px;
+  }
+  .assistant-tool-btn {
+    font-size: 0.68rem;
+    padding: 0 4px;
+  }
+  .assistant-token {
+    font-size: 0.62rem;
+  }
+}
 
-
-  /* J24 AI模型菜单 */
-  function buildAIModelMenu() {
-    var menu = $("#aiModelMenu");
-    if (!menu) return;
-    var frag = document.createDocumentFragment();
-    var topRow = el("div", "ai-model-toprow");
-    var addBtn = el("div", "ai-model-topbtn ai-model-add", T("ai.topRowAdd"));
-    addBtn.dataset.add = "1";
-    var importBtn = el("div", "ai-model-topbtn", T("ai.topRowImport"));
-    importBtn.dataset.import = "1";
-    topRow.appendChild(addBtn);
-    topRow.appendChild(importBtn);
-    frag.appendChild(topRow);
-    getAllModels().forEach(function (m) {
-      var item = el("div", "ai-model-item");
-      if (aiState.currentModel === m.id) item.classList.add("active");
-      item.dataset.model = m.id;
-      item.appendChild(el("span", "ai-check", "✓"));
-      var name = el("span", "ai-model-name");
-      var nameText = el("span", "ai-model-name-text", m.name);
-      name.appendChild(nameText);
-      if (!m.builtin) {
-        var editBtn = el("button", "ai-model-edit", "✎");
-        editBtn.type = "button";
-        editBtn.title = T("ai.editModelTitle");
-        editBtn.dataset.edit = m.id;
-        name.appendChild(editBtn);
-      }
-      item.appendChild(name);
-      var testBtn = el("button", "ai-dl", "T");
-      testBtn.type = "button";
-      testBtn.title = T("ai.menuTest");
-      testBtn.dataset.test = m.id;
-      var keyBtn = el("button", "ai-key", "K");
-      keyBtn.type = "button";
-      keyBtn.title = T("ai.menuKey");
-      keyBtn.dataset.key = m.id;
-      var promptBtn = el("button", "ai-prompt", "P");
-      promptBtn.type = "button";
-      promptBtn.title = T("ai.menuPrompt");
-      promptBtn.dataset.prompt = m.id;
-      if (aiState.prompts[m.id] && aiState.prompts[m.id].trim()) {
-        promptBtn.classList.add("has-prompt");
-      }
-      var jsonBtn = el("button", "ai-dl", "J");
-      jsonBtn.type = "button";
-      jsonBtn.title = T("ai.menuDownloadJson");
-      jsonBtn.dataset.json = m.id;
-      var mdBtn = el("button", "ai-dl", "M");
-      mdBtn.type = "button";
-      mdBtn.title = T("ai.menuDownloadMd");
-      mdBtn.dataset.md = m.id;
-      item.appendChild(testBtn);
-      item.appendChild(keyBtn);
-      item.appendChild(promptBtn);
-      item.appendChild(jsonBtn);
-      item.appendChild(mdBtn);
-      frag.appendChild(item);
-    });
-    menu.replaceChildren(frag);
+@media (max-height: 480px) {
+  .form-group .CodeMirror {
+    height: 140px !important;
   }
-  function refreshAIModelUI() {
-    $$(".ai-model-item").forEach(function (el) {
-      if (aiState.currentModel && el.dataset.model === aiState.currentModel) {
-        el.classList.add("active");
-      } else {
-        el.classList.remove("active");
-      }
-    });
-    var btn = $("#aiModelBtn");
-    if (btn) {
-      if (aiState.currentModel) {
-        btn.classList.add("has-model");
-        btn.textContent = aiModelName(aiState.currentModel).charAt(0);
-      } else {
-        btn.classList.remove("has-model");
-        btn.textContent = "+";
-      }
-    }
-    refreshGenModelBtn();
+  .ai-messages {
+    padding-top: 54px;
   }
-  function closeAIModelMenu() {
-    var menu = $("#aiModelMenu");
-    if (menu) menu.classList.remove("show");
-  }
-  function toggleAIModelMenu() {
-    var menu = $("#aiModelMenu");
-    if (!menu) return;
-    menu.classList.toggle("show");
-  }
-
-
-  /* J25 剪贴板与提示 */
-  function copyToClipboard(text) {
-    if (!text) return;
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).catch(function () {
-        fallbackCopy(text);
-      });
-      return;
-    }
-    fallbackCopy(text);
-  }
-  function fallbackCopy(text) {
-    try {
-      var ta = document.createElement("textarea");
-      ta.value = text;
-      ta.style.cssText =
-        "position:fixed;left:-9999px;top:-9999px;opacity:0;";
-      document.body.appendChild(ta);
-      ta.select();
-      document.execCommand("copy");
-      document.body.removeChild(ta);
-    } catch (e) {}
-  }
-  function flashTip(anchorEl, text) {
-    if (!anchorEl) return;
-    var tip = el("div", "msg-flash-tip", text);
-    anchorEl.appendChild(tip);
-    setTimeout(function () {
-      if (tip.parentNode) tip.parentNode.removeChild(tip);
-    }, FLASH_TIP_MS);
-  }
-
-
-  /* J26 消息工具栏与节点 */
-  function buildAssistantToolbar(m, index) {
-    var toolbar = el("div", "assistant-toolbar");
-    var left = el("div", "toolbar-left");
-    var chat = aiState.chats[aiState.currentModel] || [];
-    var isLastAssistant =
-      m.role === "assistant" && index === chat.length - 1 && index > 0;
-    if (isLastAssistant) {
-      var regenBtn = el(
-        "button",
-        "assistant-tool-btn",
-        "↻ " + T("msg.regen"),
-      );
-      regenBtn.type = "button";
-      regenBtn.title = T("msg.regen");
-      regenBtn.addEventListener("click", function (e) {
-        e.stopPropagation();
-        regenerateMessage(index);
-      });
-      left.appendChild(regenBtn);
-    }
-    var delBtn = el("button", "assistant-tool-btn", "✕ " + T("msg.delete"));
-    delBtn.type = "button";
-    delBtn.title = T("msg.delete");
-    delBtn.addEventListener("click", function (e) {
-      e.stopPropagation();
-      deleteMessageFrom(index);
-    });
-    left.appendChild(delBtn);
-    if (m.usage) {
-      var up = m.usage.prompt_tokens || 0;
-      var down = m.usage.completion_tokens || 0;
-      var total = m.usage.total_tokens || up + down;
-      var tok = el("span", "assistant-token", "↑" + up + " ↓" + down);
-      tok.title = total + " tokens";
-      left.appendChild(tok);
-    }
-    toolbar.appendChild(left);
-    var right = el("div", "toolbar-right");
-    var copyBtn = el("button", "assistant-tool-btn", "⧉ " + T("msg.copy"));
-    copyBtn.type = "button";
-    copyBtn.title = T("msg.copy");
-    copyBtn.addEventListener("click", function (e) {
-      e.stopPropagation();
-      copyToClipboard(m.content || "");
-      flashTip(toolbar, T("msg.copied"));
-    });
-    right.appendChild(copyBtn);
-    toolbar.appendChild(right);
-    return toolbar;
-  }
-  function bindRowToggleActions(row) {
-    var pressTimer = null;
-    var longPressed = false;
-    function show() {
-      $$(".ai-msg.actions-visible").forEach(function (el) {
-        if (el !== row) el.classList.remove("actions-visible");
-      });
-      row.classList.add("actions-visible");
-    }
-    function toggle() {
-      if (row.classList.contains("actions-visible")) {
-        row.classList.remove("actions-visible");
-      } else {
-        show();
-      }
-    }
-    function startPress() {
-      longPressed = false;
-      if (pressTimer) clearTimeout(pressTimer);
-      pressTimer = setTimeout(function () {
-        pressTimer = null;
-        longPressed = true;
-        show();
-      }, LONG_PRESS_MS);
-    }
-    function cancelPress() {
-      if (pressTimer) {
-        clearTimeout(pressTimer);
-        pressTimer = null;
-      }
-    }
-    row.addEventListener("pointerdown", startPress);
-    row.addEventListener("pointerup", cancelPress);
-    row.addEventListener("pointercancel", cancelPress);
-    row.addEventListener("pointerleave", cancelPress);
-    row.addEventListener("click", function (e) {
-      if (e.target.closest("button")) return;
-      if (longPressed) {
-        longPressed = false;
-        return;
-      }
-      toggle();
-    });
-  }
-  function buildMsgNode(m, index) {
-    var row = el(
-      "div",
-      "ai-msg " + (m.role === "assistant" ? "assistant" : "user"),
-    );
-    row.dataset.index = String(index);
-    if (m.role === "assistant") {
-      var body = el("div", "assistant-body");
-      if (!m.content) {
-        body.textContent = T("ai.thinking");
-        body.classList.add("pending");
-      } else {
-        body.textContent = m.content;
-      }
-      row.appendChild(body);
-      var toolbar = buildAssistantToolbar(m, index);
-      row.appendChild(toolbar);
-      bindRowToggleActions(row);
-    } else {
-      var b = el("div", "bubble");
-      b.textContent = m.content;
-      row.appendChild(b);
-    }
-    return row;
-  }
-  function buildEmptyNode(text) {
-    return el("div", "ai-empty", text);
-  }
-
-
-  /* J27 AI消息渲染 */
-  function renderAIMessages() {
-    var box = $("#aiMessages");
-    if (!box) return;
-    var model = aiState.currentModel;
-    if (!model) {
-      if (!box.firstChild || !box.querySelector(".ai-empty")) {
-        box.replaceChildren(buildEmptyNode(T("ai.emptyNoModel")));
-      }
-      renderedModelId = null;
-      renderedMsgCount = 0;
-      updateStatsBar();
-      return;
-    }
-    if (renderedModelId !== model) {
-      renderedModelId = model;
-      renderedMsgCount = 0;
-      box.replaceChildren();
-    }
-    var chat = aiState.chats[model] || [];
-    if (!chat.length) {
-      if (!box.firstChild || !box.querySelector(".ai-empty")) {
-        box.replaceChildren(
-          buildEmptyNode(T("ai.emptyStart", { model: aiModelName(model) })),
-        );
-      }
-      renderedMsgCount = 0;
-      updateStatsBar();
-      return;
-    }
-    if (renderedMsgCount > chat.length) renderedMsgCount = 0;
-    if (renderedMsgCount === 0) {
-      var frag = document.createDocumentFragment();
-      for (var i = 0; i < chat.length; i++) {
-        frag.appendChild(buildMsgNode(chat[i], i));
-      }
-      box.replaceChildren(frag);
-      renderedMsgCount = chat.length;
-      box.scrollTop = box.scrollHeight;
-      updateStatsBar();
-      return;
-    }
-    if (renderedMsgCount < chat.length) {
-      var emptyEl = box.querySelector(".ai-empty");
-      if (emptyEl && box.children.length === 1) {
-        box.replaceChildren();
-        renderedMsgCount = 0;
-        var frag2 = document.createDocumentFragment();
-        for (var k = 0; k < chat.length; k++) {
-          frag2.appendChild(buildMsgNode(chat[k], k));
-        }
-        box.replaceChildren(frag2);
-        renderedMsgCount = chat.length;
-        box.scrollTop = box.scrollHeight;
-        updateStatsBar();
-        return;
-      }
-      for (var j = renderedMsgCount; j < chat.length; j++) {
-        box.appendChild(buildMsgNode(chat[j], j));
-      }
-      renderedMsgCount = chat.length;
-      box.scrollTop = box.scrollHeight;
-    }
-    updateStatsBar();
-  }
-  function updateStatsBar() {
-    var bar = $("#aiStats");
-    if (!bar) return;
-    var model = aiState.currentModel;
-    if (!model) {
-      bar.style.display = "none";
-      return;
-    }
-    var chat = aiState.chats[model] || [];
-    var totalPrompt = 0;
-    var totalCompletion = 0;
-    var turns = 0;
-    chat.forEach(function (m) {
-      if (m.role === "assistant" && m.usage) {
-        totalPrompt += m.usage.prompt_tokens || 0;
-        totalCompletion += m.usage.completion_tokens || 0;
-        turns += 1;
-      }
-    });
-    if (!turns) {
-      bar.style.display = "none";
-      return;
-    }
-    var total = totalPrompt + totalCompletion;
-    bar.style.display = "block";
-    bar.textContent = T("ai.stats", {
-      turns: turns,
-      total: total.toLocaleString(),
-    });
-  }
-  function updateAISendBtn() {
-    var btn = $("#aiSendBtn");
-    if (!btn) return;
-    btn.disabled = !!aiState.busy;
-  }
-  function getLastAssistantBubble() {
-    var box = $("#aiMessages");
-    if (!box) return null;
-    var kids = box.children;
-    for (var i = kids.length - 1; i >= 0; i--) {
-      if (kids[i].classList.contains("assistant")) {
-        return kids[i].querySelector(".assistant-body");
-      }
-    }
-    return null;
-  }
-  function isNearBottom(box) {
-    if (!box) return true;
-    return box.scrollHeight - box.scrollTop - box.clientHeight < NEAR_BOTTOM_PX;
-  }
-
-
-  /* J28 消息操作 */
-  function deleteMessageFrom(index) {
-    var model = aiState.currentModel;
-    if (!model) return;
-    var chat = aiState.chats[model] || [];
-    if (index < 0 || index >= chat.length) return;
-    var after = chat.length - index - 1;
-    var msgText = after > 0
-      ? T("msg.deleteConfirmBody", { n: after })
-      : T("msg.deleteConfirmBodyShort");
-    showConfirm(
-      T("msg.deleteConfirmTitle"),
-      msgText,
-      function () {
-        chat.splice(index);
-        saveAIChats(model);
-        renderedMsgCount = 0;
-        renderAIMessages();
-      },
-      true,
-    );
-  }
-  function regenerateMessage(index) {
-    var model = aiState.currentModel;
-    if (!model) return;
-    var chat = aiState.chats[model] || [];
-    if (index < 1) return;
-    var userMsg = chat[index - 1];
-    if (!userMsg || userMsg.role !== "user") return;
-    chat.splice(index);
-    saveAIChats(model);
-    renderedMsgCount = 0;
-    renderAIMessages();
-    var text = userMsg.content || "";
-    if (!text.trim()) return;
-    aiSendWithText(text);
-  }
-  function aiSendWithText(text) {
-    var model = aiState.currentModel;
-    if (!model) return;
-    var key = aiState.keys[model];
-    if (!key) {
-      promptAPIKey(model, function () {
-        if (aiState.keys[model]) aiSendWithText(text);
-      });
-      return;
-    }
-    var chat = aiState.chats[model];
-    if (!Array.isArray(chat)) chat = aiState.chats[model] = [];
-    var lastMsg = chat[chat.length - 1];
-    if (!(lastMsg && lastMsg.role === "user" && lastMsg.content === text)) {
-      chat.push({ role: "user", content: text });
-    }
-    chat.push({ role: "assistant", content: "" });
-    saveAIChats(model);
-    if (aiState.abortController) {
-      try {
-        aiState.abortController.abort();
-      } catch (e) {}
-    }
-    aiState.streamToken += 1;
-    var myToken = aiState.streamToken;
-    aiState.abortController = new AbortController();
-    aiState.busy = true;
-    updateAISendBtn();
-    renderAIMessages();
-    var bubble = getLastAssistantBubble();
-    if (bubble) {
-      bubble.textContent = "";
-      bubble.classList.remove("pending");
-    }
-    var accumulated = "";
-    var conf = aiModelConf(model);
-    var isGemini = conf && conf.protocol === "gemini";
-    var box = $("#aiMessages");
-    var acc = createStructuredAccumulator();
-    function pushDelta(t2) {
-      if (aiState.streamToken !== myToken) return;
-      if (!t2) return;
-      accumulated += t2;
-      if (bubble) bubble.appendChild(document.createTextNode(t2));
-      if (box && isNearBottom(box)) box.scrollTop = box.scrollHeight;
-    }
-    var onDelta = function (obj) {
-      if (isGemini) {
-        var cand = obj.candidates && obj.candidates[0];
-        if (cand && cand.content && cand.content.parts) {
-          var t = "";
-          for (var i = 0; i < cand.content.parts.length; i++) {
-            t += cand.content.parts[i].text || "";
-          }
-          pushDelta(t);
-        }
-      } else {
-        var d = obj.choices && obj.choices[0] && obj.choices[0].delta;
-        if (d && d.content) pushDelta(d.content);
-      }
-    };
-    var payload = chat
-      .slice(0, -1)
-      .filter(function (m) {
-        return m.role === "user" || m.role === "assistant";
-      })
-      .map(function (m) {
-        return { role: m.role, content: m.content || "" };
-      });
-    if (payload.length > MAX_CONTEXT_MESSAGES) {
-      payload = payload.slice(-MAX_CONTEXT_MESSAGES);
-      while (payload.length && payload[0].role !== "user") {
-        payload.shift();
-      }
-    }
-    var systemPrompt = aiState.prompts[model] || "";
-    streamAI({
-      model: model,
-      key: key,
-      messages: payload,
-      systemPrompt: systemPrompt,
-      onDelta: onDelta,
-      onRaw: function (raw) {
-        acc.consume(raw);
-      },
-    })
-      .then(function () {
-        if (aiState.streamToken !== myToken) return;
-        var meta = acc.finalize();
-        var msg = chat[chat.length - 1];
-        msg.content = accumulated || T("ai.emptyReply");
-        if (meta.id) msg.id = meta.id;
-        if (meta.model) msg.model = meta.model;
-        if (meta.created) msg.created = meta.created;
-        if (meta.finish_reason) msg.finish_reason = meta.finish_reason;
-        if (meta.usage) msg.usage = meta.usage;
-        if (meta.tool_calls) msg.tool_calls = meta.tool_calls;
-        saveAIChats(model);
-        aiState.busy = false;
-        updateAISendBtn();
-        renderAIMessages();
-      })
-      .catch(function (err) {
-        if (aiState.streamToken !== myToken) return;
-        aiState.busy = false;
-        updateAISendBtn();
-        var meta = acc.finalize();
-        var isAbort = err && (err.name === "AbortError" || err.code === 20);
-        if (accumulated) {
-          var msg = chat[chat.length - 1];
-          msg.content = accumulated;
-          if (meta.id) msg.id = meta.id;
-          if (meta.model) msg.model = meta.model;
-          if (meta.created) msg.created = meta.created;
-          if (meta.finish_reason) msg.finish_reason = meta.finish_reason;
-          if (meta.usage) msg.usage = meta.usage;
-          if (meta.tool_calls) msg.tool_calls = meta.tool_calls;
-        } else {
-          chat.pop();
-        }
-        saveAIChats(model);
-        renderAIMessages();
-        if (!isAbort) {
-          showAlert(
-            T("chat.errRequestTitle"),
-            String((err && err.message) || err) || T("chat.errRequestBody"),
-            true,
-          );
-        }
-      });
-  }
-
-
-/* J29 模型编辑与选择 */
-  function showModelEditor(modelId) {
-    var isEdit = !!modelId;
-    var existing = isEdit ? aiModelConf(modelId) : null;
-    if (isEdit && (!existing || existing.builtin)) return;
-    openModal(function (box) {
-      box.appendChild(
-        el("h3", null, isEdit ? T("ai.editModelTitle") : T("model.addTitle")),
-      );
-      box.appendChild(
-        el("div", "modal-hint", T("model.hint", { endpoint: "{endpoint}" })),
-      );
-      var l1 = el("label", null, T("model.labelName"));
-      l1.style.cssText =
-        "display:block;font-weight:bold;font-size:0.9rem;margin:8px 0 4px;";
-      var nameInput = document.createElement("input");
-      nameInput.type = "text";
-      nameInput.placeholder = T("model.placeholderName");
-      nameInput.value = isEdit ? existing.name : "";
-      nameInput.autocomplete = "off";
-      nameInput.spellcheck = false;
-      var l2 = el("label", null, T("model.labelEndpoint"));
-      l2.style.cssText = l1.style.cssText;
-      var epInput = document.createElement("input");
-      epInput.type = "text";
-      epInput.placeholder = T("model.placeholderEndpoint");
-      epInput.value = isEdit ? existing.endpoint : "";
-      epInput.autocomplete = "off";
-      epInput.spellcheck = false;
-      var l3 = el("label", null, T("model.labelApiModel"));
-      l3.style.cssText = l1.style.cssText;
-      var apiInput = document.createElement("input");
-      apiInput.type = "text";
-      apiInput.placeholder = T("model.placeholderApiModel");
-      apiInput.value = isEdit ? existing.apiModel : "";
-      apiInput.autocomplete = "off";
-      apiInput.spellcheck = false;
-      var toolsRow = document.createElement("label");
-      toolsRow.style.cssText =
-        "display:flex;align-items:center;gap:8px;margin:8px 0 4px;font-weight:bold;font-size:0.9rem;cursor:pointer;";
-      var toolsCb = document.createElement("input");
-      toolsCb.type = "checkbox";
-      toolsCb.style.cssText = "width:auto;margin:0;";
-      toolsCb.checked = isEdit ? !!existing.supportsTools : false;
-      toolsRow.appendChild(toolsCb);
-      toolsRow.appendChild(document.createTextNode("支持函数调用（Tools）"));
-      /* 【新增】vision 勾选 */
-      var visionRow = document.createElement("label");
-      visionRow.style.cssText = toolsRow.style.cssText;
-      var visionCb = document.createElement("input");
-      visionCb.type = "checkbox";
-      visionCb.style.cssText = "width:auto;margin:0;";
-      visionCb.checked = isEdit ? !!existing.vision : false;
-      visionRow.appendChild(visionCb);
-      visionRow.appendChild(document.createTextNode(T("model.labelVision")));
-      var actions = el("div", "modal-actions");
-      var leftWrap = document.createElement("div");
-      if (isEdit) {
-        var delBtn = el("button", "link-btn", T("model.deleteBtn"));
-        delBtn.type = "button";
-        delBtn.addEventListener("click", function () {
-          closeModal();
-          deleteCustomModel(modelId);
-        });
-        leftWrap.appendChild(delBtn);
-      }
-      var rg = rightGroup();
-      var cancel = el("button", "cancel", T("common.cancel"));
-      cancel.addEventListener("click", closeModal);
-      var ok = el("button", null, isEdit ? T("common.save") : T("common.ok"));
-      ok.addEventListener("click", function () {
-        var name = nameInput.value.trim();
-        var ep = epInput.value.trim();
-        var apiModel = apiInput.value.trim();
-        if (!name) {
-          nameInput.focus();
-          return;
-        }
-        if (!ep) {
-          epInput.focus();
-          return;
-        }
-        if (!/^https?:\/\//i.test(ep)) {
-          showAlert(T("model.errFormat"), T("model.errFormatBody"), true);
-          return;
-        }
-        if (!apiModel) {
-          apiInput.focus();
-          return;
-        }
-        var supportsTools = !!toolsCb.checked;
-        var vision = !!visionCb.checked;
-        if (isEdit) {
-          existing.name = name;
-          existing.endpoint = ep;
-          existing.apiModel = apiModel;
-          existing.supportsTools = supportsTools;
-          existing.vision = vision;
-          saveCustomModels();
-          closeModal();
-          buildAIModelMenu();
-          refreshAIModelUI();
-          showAlert(T("model.editOk"), T("model.editOkBody", { name: name }));
-        } else {
-          var newId = "custom_" + Date.now();
-          aiState.customModels.push({
-            id: newId,
-            name: name,
-            endpoint: ep,
-            apiModel: apiModel,
-            protocol: "openai",
-            builtin: false,
-            supportsTools: supportsTools,
-            vision: vision,
-          });
-          aiState.chats[newId] = [];
-          aiState.prompts[newId] = "";
-          saveCustomModels();
-          saveAIPrompts();
-          closeModal();
-          buildAIModelMenu();
-          refreshAIModelUI();
-          showAlert(T("model.addOk"), T("model.addOkBody", { name: name }));
-        }
-      });
-      rg.appendChild(cancel);
-      rg.appendChild(ok);
-      actions.appendChild(leftWrap);
-      actions.appendChild(rg);
-      box.appendChild(l1);
-      box.appendChild(nameInput);
-      box.appendChild(l2);
-      box.appendChild(epInput);
-      box.appendChild(l3);
-      box.appendChild(apiInput);
-      box.appendChild(toolsRow);
-      box.appendChild(visionRow);
-      box.appendChild(actions);
-    });
-  }
-  function deleteCustomModel(modelId) {
-    var conf = aiModelConf(modelId);
-    if (!conf || conf.builtin) return;
-    showConfirm(
-      T("model.deleteConfirmTitle"),
-      T("model.deleteConfirmBody", { name: conf.name }),
-      function () {
-        delete aiState.keys[modelId];
-        delete aiState.chats[modelId];
-        delete aiState.prompts[modelId];
-        saveAIKeys();
-        saveAIPrompts();
-        try {
-          localStorage.removeItem(AI_CHAT_STORAGE + "_" + modelId);
-        } catch (e) {}
-        aiState.customModels = aiState.customModels.filter(function (m) {
-          return m.id !== modelId;
-        });
-        saveCustomModels();
-        if (aiState.currentModel === modelId) {
-          aiState.currentModel = null;
-          saveCurrentModel(null);
-          renderedModelId = null;
-          renderedMsgCount = 0;
-        }
-        buildAIModelMenu();
-        refreshAIModelUI();
-        renderAIMessages();
-        updateAISendBtn();
-        showAlert(
-          T("model.deleteOk"),
-          T("model.deleteOkBody", { name: conf.name }),
-        );
-      },
-      true,
-    );
-  }
-  function testAIModelConnection(model) {
-    var conf = aiModelConf(model);
-    if (!conf) return;
-    var key = aiState.keys[model];
-    if (!key) {
-      showAlert(
-        T("test.noKeyTitle"),
-        T("test.noKeyBody", { model: aiModelName(model) }),
-        true,
-      );
-      return;
-    }
-    var url, body, headers;
-    if (conf.protocol === "gemini") {
-      url = conf.endpoint + "?key=" + encodeURIComponent(key);
-      body = { contents: [{ role: "user", parts: [{ text: "hi" }] }] };
-      headers = { "Content-Type": "application/json" };
-    } else {
-      url = conf.endpoint;
-      body = {
-        model: conf.apiModel,
-        messages: [{ role: "user", content: "hi" }],
-        max_tokens: 1,
-      };
-      headers = {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + key,
-      };
-    }
-    showAlert(T("test.title"), T("test.body", { model: aiModelName(model) }));
-    var testAbort = new AbortController();
-    var timeoutId = setTimeout(function () {
-      try {
-        testAbort.abort();
-      } catch (e) {}
-    }, TEST_TIMEOUT_MS);
-    fetch(url, {
-      method: "POST",
-      headers: headers,
-      body: JSON.stringify(body),
-      signal: testAbort.signal,
-    })
-      .then(function (res) {
-        clearTimeout(timeoutId);
-        return res.text().then(function (t) {
-          if (res.ok) {
-            showAlert(
-              T("test.okTitle"),
-              T("test.okBody", { model: aiModelName(model) }),
-            );
-          } else {
-            var msg = "HTTP " + res.status;
-            try {
-              var d = JSON.parse(t);
-              msg =
-                (d.error && d.error.message) ||
-                d.message ||
-                (d.error && d.error.status) ||
-                msg;
-            } catch (e) {}
-            showAlert(T("test.failTitle"), msg, true);
-          }
-        });
-      })
-      .catch(function (err) {
-        clearTimeout(timeoutId);
-        var msg = String((err && err.message) || err);
-        if (err && err.name === "AbortError") msg = T("test.timeout");
-        showAlert(T("test.failTitle"), msg, true);
-      });
-  }
-  function promptAPIKey(model, onSaved) {
-    var hasKey = !!aiState.keys[model];
-    showPrompt(
-      T("ai.setKeyTitle", { model: aiModelName(model) }),
-      aiState.keys[model] || "",
-      function (v) {
-        aiState.keys[model] = v;
-        saveAIKeys();
-        if (onSaved) onSaved();
-      },
-      "password",
-      T("ai.keySecurityHint"),
-      hasKey
-        ? {
-            clearText: T("ai.clearKey"),
-            onClear: function () {
-              delete aiState.keys[model];
-              saveAIKeys();
-            },
-          }
-        : null,
-    );
-  }
-  function promptSystemPrompt(model) {
-    var existing = aiState.prompts[model] || "";
-    showPromptArea({
-      title: T("ai.setPromptTitle", { model: aiModelName(model) }),
-      hint: T("ai.setPromptHint"),
-      value: existing,
-      placeholder: T("ai.setPromptPlaceholder"),
-      onOk: function (v) {
-        aiState.prompts[model] = v.trim();
-        saveAIPrompts();
-        buildAIModelMenu();
-        refreshAIModelUI();
-      },
-      onClear: function () {
-        aiState.prompts[model] = "";
-        saveAIPrompts();
-        buildAIModelMenu();
-        refreshAIModelUI();
-      },
-    });
-  }
-  function selectAIModel(model) {
-    if (!aiModelConf(model)) return;
-    if (aiState.busy) {
-      if (aiState.abortController) {
-        try {
-          aiState.abortController.abort();
-        } catch (e) {}
-      }
-      aiState.streamToken += 1;
-      aiState.busy = false;
-      updateAISendBtn();
-    }
-    if (!aiState.keys[model]) {
-      promptAPIKey(model, function () {
-        aiState.currentModel = model;
-        saveCurrentModel(model);
-        refreshAIModelUI();
-        renderAIMessages();
-        updateAISendBtn();
-      });
-      return;
-    }
-    aiState.currentModel = model;
-    saveCurrentModel(model);
-    refreshAIModelUI();
-    renderAIMessages();
-    updateAISendBtn();
-  }
-
-
-  /* J30 对话导入导出 */
-  function triggerDownload(content, mime, filename) {
-    var blob = new Blob([content], { type: mime });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(function () {
-      URL.revokeObjectURL(url);
-    }, 1000);
-  }
-  function downloadAIChatMd(model) {
-    var chat = aiState.chats[model] || [];
-    if (!chat.length) {
-      showAlert(
-        T("chat.errNoDownloadTitle"),
-        T("chat.errNoDownloadBody", { model: aiModelName(model) }),
-      );
-      return;
-    }
-    var lines = ["# " + aiModelName(model), ""];
-    var sys = aiState.prompts[model];
-    if (sys && sys.trim()) {
-      lines.push("## system");
-      lines.push("");
-      lines.push(sys);
-      lines.push("");
-    }
-    chat.forEach(function (m) {
-      lines.push("## " + m.role);
-      lines.push("");
-      lines.push(m.content || "");
-      lines.push("");
-    });
-    triggerDownload(
-      lines.join("\n"),
-      "text/markdown;charset=utf-8",
-      "ai_chat_" + model + "_" + Date.now() + ".md",
-    );
-  }
-  function downloadAIChatJson(model) {
-    var chat = aiState.chats[model] || [];
-    if (!chat.length) {
-      showAlert(
-        T("chat.errNoDownloadTitle"),
-        T("chat.errNoDownloadBody", { model: aiModelName(model) }),
-      );
-      return;
-    }
-    var sys = aiState.prompts[model];
-    var data = {
-      schemaVersion: 1,
-      model: model,
-      modelName: aiModelName(model),
-      exportedAt: new Date().toISOString(),
-      systemPrompt: sys && sys.trim() ? sys : null,
-      messages: chat.map(function (m) {
-        var out = { role: m.role, content: m.content };
-        if (m.id) out.id = m.id;
-        if (m.model) out.model = m.model;
-        if (m.created) out.created = m.created;
-        if (m.finish_reason) out.finish_reason = m.finish_reason;
-        if (m.usage) out.usage = m.usage;
-        if (m.tool_calls && m.tool_calls.length) out.tool_calls = m.tool_calls;
-        return out;
-      }),
-    };
-    triggerDownload(
-      JSON.stringify(data, null, 2),
-      "application/json;charset=utf-8",
-      "ai_chat_" + model + "_" + Date.now() + ".json",
-    );
-  }
-  function importAIChatFromFile(file) {
-    if (!file) return;
-    var reader = new FileReader();
-    reader.onload = function (e) {
-      var data;
-      try {
-        data = JSON.parse(e.target.result);
-      } catch (err) {
-        showAlert(T("import.failTitle"), T("import.badJson"), true);
-        return;
-      }
-      if (!data || !Array.isArray(data.messages)) {
-        showAlert(T("import.failTitle"), T("import.badShape"), true);
-        return;
-      }
-      var targetModel = data.model;
-      if (!targetModel || !aiModelConf(targetModel)) {
-        var name = String(data.modelName || "").toLowerCase();
-        var allModels = getAllModels();
-        for (var i = 0; i < allModels.length; i++) {
-          if (allModels[i].name.toLowerCase() === name) {
-            targetModel = allModels[i].id;
-            break;
-          }
-        }
-      }
-      if (!targetModel || !aiModelConf(targetModel)) {
-        showAlert(
-          T("import.failTitle"),
-          T("import.unknownModel", { model: data.model || "?" }),
-          true,
-        );
-        return;
-      }
-      var cleaned = data.messages
-        .filter(function (m) {
-          return m && typeof m.role === "string";
-        })
-        .map(function (m) {
-          var out = {
-            role: m.role,
-            content: typeof m.content === "string" ? m.content : "",
-          };
-          if (m.id) out.id = m.id;
-          if (m.model) out.model = m.model;
-          if (m.created) out.created = m.created;
-          if (m.finish_reason) out.finish_reason = m.finish_reason;
-          if (m.usage) out.usage = m.usage;
-          if (m.tool_calls && m.tool_calls.length) out.tool_calls = m.tool_calls;
-          return out;
-        });
-      if (!cleaned.length) {
-        showAlert(T("import.failTitle"), T("import.noMessages"), true);
-        return;
-      }
-      var applyImport = function (mode) {
-        var existing = aiState.chats[targetModel] || [];
-        if (mode === "replace") aiState.chats[targetModel] = cleaned;
-        else aiState.chats[targetModel] = existing.concat(cleaned);
-        if (
-          data.systemPrompt &&
-          String(data.systemPrompt).trim() &&
-          !(aiState.prompts[targetModel] || "").trim()
-        ) {
-          aiState.prompts[targetModel] = String(data.systemPrompt).trim();
-          saveAIPrompts();
-        }
-        saveAIChats(targetModel);
-        if (aiState.currentModel === targetModel) {
-          renderedMsgCount = 0;
-          renderAIMessages();
-          showAlert(
-            T("import.okTitle"),
-            T("import.okBody", {
-              n: cleaned.length,
-              model: aiModelName(targetModel),
-            }),
-          );
-        } else {
-          showConfirm(
-            T("import.okTitle"),
-            T("import.askSwitch", {
-              n: cleaned.length,
-              model: aiModelName(targetModel),
-            }),
-            function () {
-              selectAIModel(targetModel);
-            },
-          );
-        }
-      };
-      var existing = aiState.chats[targetModel] || [];
-      if (!existing.length) {
-        applyImport("replace");
-        return;
-      }
-      openModal(function (box) {
-        box.appendChild(el("h3", null, T("import.conflictTitle")));
-        box.appendChild(
-          el(
-            "p",
-            null,
-            T("import.conflictBody", {
-              model: aiModelName(targetModel),
-              existing: existing.length,
-              incoming: cleaned.length,
-            }),
-          ),
-        );
-        var actions = el("div", "modal-actions");
-        var leftWrap = document.createElement("div");
-        var cancelBtn = el("button", "link-btn", T("common.cancel"));
-        cancelBtn.addEventListener("click", closeModal);
-        leftWrap.appendChild(cancelBtn);
-        var rg = rightGroup();
-        var appendBtn = el("button", "cancel", T("common.append"));
-        appendBtn.addEventListener("click", function () {
-          closeModal();
-          applyImport("append");
-        });
-        var replaceBtn = el("button", "danger", T("common.replace"));
-        replaceBtn.addEventListener("click", function () {
-          closeModal();
-          applyImport("replace");
-        });
-        rg.appendChild(appendBtn);
-        rg.appendChild(replaceBtn);
-        actions.appendChild(leftWrap);
-        actions.appendChild(rg);
-        box.appendChild(actions);
-      });
-    };
-    reader.onerror = function () {
-      showAlert(T("import.failTitle"), T("import.readFail"), true);
-    };
-    reader.readAsText(file);
-  }
-
-
-  /* J31 AI发送与清空 */
-  function aiSend() {
-    if (aiState.busy) return;
-    var model = aiState.currentModel;
-    if (!model) {
-      showAlert(T("chat.errNoModelTitle"), T("chat.errNoModelBody"), true);
-      return;
-    }
-    var inputEl = $("#aiInput");
-    if (!inputEl) return;
-    var text = (inputEl.value || "").trim();
-    if (!text) return;
-    inputEl.value = "";
-    inputEl.style.height = "auto";
-    aiSendWithText(text);
-  }
-  function clearAIChat() {
-    var model = aiState.currentModel;
-    if (!model) {
-      showAlert(T("chat.errNoClearTitle"), T("chat.errNoClearNoModel"));
-      return;
-    }
-    var chat = aiState.chats[model] || [];
-    if (!chat.length) {
-      showAlert(
-        T("chat.errNoClearTitle"),
-        T("chat.errNoClearNoChat", { model: aiModelName(model) }),
-      );
-      return;
-    }
-    showConfirm(
-      T("chat.clearConfirmTitle"),
-      T("chat.clearConfirmBody", { model: aiModelName(model) }),
-      function () {
-        if (aiState.busy) {
-          if (aiState.abortController) {
-            try {
-              aiState.abortController.abort();
-            } catch (e) {}
-          }
-          aiState.streamToken += 1;
-          aiState.busy = false;
-          updateAISendBtn();
-        }
-        aiState.chats[model] = [];
-        saveAIChats(model);
-        renderedMsgCount = 0;
-        renderAIMessages();
-      },
-      true,
-    );
-  }
-
-
-  /* J32 AI助手绑定 */
-  function bindAIAssistant() {
-    renderedModelId = null;
-    renderedMsgCount = 0;
-    buildAIModelMenu();
-    refreshAIModelUI();
-    renderAIMessages();
-    updateAISendBtn();
-    var modelBtn = $("#aiModelBtn");
-    var modelMenu = $("#aiModelMenu");
-    var inputEl = $("#aiInput");
-    var sendBtn = $("#aiSendBtn");
-    var clearBtn = $("#aiClearBtn");
-    if (modelBtn) {
-      modelBtn.addEventListener("click", function (e) {
-        e.stopPropagation();
-        toggleAIModelMenu();
-      });
-    }
-    if (modelMenu) {
-      modelMenu.addEventListener("click", function (e) {
-        var importItem = e.target.closest("[data-import]");
-        if (importItem) {
-          e.stopPropagation();
-          closeAIModelMenu();
-          var importFile = $("#aiImportFile");
-          if (importFile) {
-            importFile.value = "";
-            importFile.click();
-          }
-          return;
-        }
-        var addBtn = e.target.closest("[data-add]");
-        if (addBtn) {
-          e.stopPropagation();
-          closeAIModelMenu();
-          showModelEditor();
-          return;
-        }
-        var editBtn = e.target.closest("[data-edit]");
-        if (editBtn) {
-          e.stopPropagation();
-          e.preventDefault();
-          closeAIModelMenu();
-          showModelEditor(editBtn.dataset.edit);
-          return;
-        }
-        var promptBtn = e.target.closest("[data-prompt]");
-        if (promptBtn) {
-          e.stopPropagation();
-          closeAIModelMenu();
-          promptSystemPrompt(promptBtn.dataset.prompt);
-          return;
-        }
-        var keyBtn = e.target.closest("[data-key]");
-        if (keyBtn) {
-          e.stopPropagation();
-          promptAPIKey(keyBtn.dataset.key);
-          return;
-        }
-        var testBtn = e.target.closest("[data-test]");
-        if (testBtn) {
-          e.stopPropagation();
-          closeAIModelMenu();
-          testAIModelConnection(testBtn.dataset.test);
-          return;
-        }
-        var mdBtn = e.target.closest("[data-md]");
-        if (mdBtn) {
-          e.stopPropagation();
-          downloadAIChatMd(mdBtn.dataset.md);
-          return;
-        }
-        var jsonBtn = e.target.closest("[data-json]");
-        if (jsonBtn) {
-          e.stopPropagation();
-          downloadAIChatJson(jsonBtn.dataset.json);
-          return;
-        }
-        var item = e.target.closest(".ai-model-item");
-        if (item) {
-          e.stopPropagation();
-          closeAIModelMenu();
-          selectAIModel(item.dataset.model);
-        }
-      });
-    }
-    if (inputEl) {
-      inputEl.addEventListener("input", function () {
-        this.style.height = "auto";
-        this.style.height = Math.min(this.scrollHeight, 140) + "px";
-      });
-      inputEl.addEventListener("keydown", function (e) {
-        if (
-          e.key === "Enter" &&
-          !e.shiftKey &&
-          !e.isComposing &&
-          e.keyCode !== 229
-        ) {
-          e.preventDefault();
-          aiSend();
-        }
-      });
-    }
-    if (sendBtn) {
-      sendBtn.addEventListener("click", function () {
-        aiSend();
-      });
-    }
-    var importFile = $("#aiImportFile");
-    if (importFile) {
-      importFile.addEventListener("change", function () {
-        var f = this.files && this.files[0];
-        if (!f) return;
-        importAIChatFromFile(f);
-        this.value = "";
-      });
-    }
-    if (clearBtn) {
-      clearBtn.addEventListener("click", function () {
-        clearAIChat();
-      });
-    }
-  }
-
-
-  /* J33 主路由渲染 */
-  function render() {
-    var path = getRoute();
-
-    if (genState.busy) {
-      if (genState.abortController) {
-        try {
-          genState.abortController.abort();
-        } catch (e) {}
-      }
-      genState.streamToken += 1;
-      genSetBusy(false);
-    }
-    if (path !== "/" && path !== "" && path !== "/index.html") {
-      if (runner.mode === "page") {
-        runner.mode = "random";
-        runner.pageId = null;
-      }
-    }
-    if (path === "/" || path === "" || path === "/index.html") {
-      renderRunner();
-      return;
-    }
-    if (appEl.classList.contains("preview-mode")) {
-      appEl.classList.remove("preview-mode");
-    }
-    appEl.classList.remove("ai-mode");
-    delete appEl.dataset.currentPageId;
-    unlockAppSize();
-    destroyEditor();
-    appEl.replaceChildren();
-    setActiveNav(path);
-    if (path === "/ai") {
-      appEl.classList.add("ai-mode");
-      appEl.appendChild(renderAIAssistant());
-      bindAIAssistant();
-      return;
-    }
-    if (path === "/about") {
-      appEl.appendChild(renderAbout());
-    } else if (path === "/generator") {
-      appEl.appendChild(renderGenerator());
-      bindGenerator();
-    } else {
-      var wrap = document.createElement("div");
-      wrap.appendChild(el("h1", null, T("page.notFoundTitle", { path: path })));
-      wrap.appendChild(el("p", null, T("page.notFoundBody")));
-      appEl.appendChild(wrap);
-    }
-  }
-
-
-  /* J34 初始化 */
-  function initStatic() {
-    modalBackdrop = $("#modalBackdrop");
-    modalBox = $("#modalBox");
-    sidebarPagesEl = $("#sidebar-pages");
-    sidebarEl = $("#sidebar");
-    overlayEl = $("#overlay");
-    hamburgerBtn = $("#hamburgerBtn");
-    appEl = $("#app");
-    sidebarSearchEl = $("#sidebarSearch");
-    var savedTheme = "light";
-    try {
-      savedTheme = localStorage.getItem(THEME_KEY) || "light";
-    } catch (e) {}
-    applyTheme(savedTheme);
-    ["gesturestart", "gesturechange", "gestureend"].forEach(function (type) {
-      document.addEventListener(
-        type,
-        function (e) {
-          e.preventDefault();
-        },
-        { passive: false },
-      );
-    });
-    document.addEventListener(
-      "touchstart",
-      function (e) {
-        if (e.touches && e.touches.length > 1) e.preventDefault();
-      },
-      { passive: false },
-    );
-    document.addEventListener(
-      "touchmove",
-      function (e) {
-        if (e.touches && e.touches.length > 1) e.preventDefault();
-      },
-      { passive: false },
-    );
-    var lastTouchEnd = 0;
-    document.addEventListener(
-      "touchend",
-      function (e) {
-        var now = Date.now();
-        if (now - lastTouchEnd <= 300) {
-          var t = e.target;
-          var tag = t && t.tagName ? t.tagName.toLowerCase() : "";
-          if (
-            tag !== "input" &&
-            tag !== "textarea" &&
-            tag !== "button" &&
-            tag !== "select" &&
-            tag !== "a"
-          ) {
-            e.preventDefault();
-          }
-        }
-        lastTouchEnd = now;
-      },
-      { passive: false },
-    );
-    document.addEventListener("click", function (e) {
-      var aiMenu = $("#aiModelMenu");
-      if (aiMenu && aiMenu.classList.contains("show")) {
-        var picker = aiMenu.parentNode;
-        if (picker && !picker.contains(e.target)) {
-          aiMenu.classList.remove("show");
-        }
-      }
-      var genMenu = $("#genModelMenu");
-      if (genMenu && genMenu.classList.contains("show")) {
-        var gPicker = genMenu.parentNode;
-        if (gPicker && !gPicker.contains(e.target)) {
-          closeGenMenu();
-        }
-      }
-      if (!e.target.closest(".ai-msg")) {
-        $$(".ai-msg.actions-visible").forEach(function (el) {
-          el.classList.remove("actions-visible");
-        });
-      }
-    });
-    if (sidebarSearchEl) {
-      sidebarSearchEl.addEventListener("input", function () {
-        var v = this.value || "";
-        sidebarSearchKeyword = v;
-        if (sidebarSearchTimer) clearTimeout(sidebarSearchTimer);
-        sidebarSearchTimer = setTimeout(function () {
-          sidebarSearchTimer = null;
-          updateSidebarPages();
-        }, SEARCH_DEBOUNCE_MS);
-      });
-      sidebarSearchEl.addEventListener("keydown", function (e) {
-        if (e.key === "Escape") {
-          if (this.value) {
-            this.value = "";
-            sidebarSearchKeyword = "";
-            updateSidebarPages();
-          }
-          e.stopPropagation();
-        } else {
-          e.stopPropagation();
-        }
-      });
-      sidebarSearchEl.addEventListener("click", function (e) {
-        e.stopPropagation();
-      });
-    }
-    hamburgerBtn.addEventListener("click", openSidebar);
-    overlayEl.addEventListener("click", closeSidebar);
-    modalBackdrop.addEventListener("click", function (e) {
-      if (e.target === modalBackdrop) closeModal();
-    });
-    document.addEventListener("keydown", function (e) {
-      if (e.key === "Escape") {
-        if (modalBackdrop.classList.contains("show")) {
-          closeModal();
-        } else if (sidebarEl.classList.contains("open")) {
-          closeSidebar();
-        } else if (runner.mode === "page" && getRoute() === "/") {
-          setRandom();
-        }
-      }
-    });
-    var exportZipBtn = $("#exportZipSidebar");
-    if (exportZipBtn) {
-      var runExport = function () {
-        closeSidebar();
-        exportZip();
-      };
-      exportZipBtn.addEventListener("click", runExport);
-      exportZipBtn.addEventListener("keydown", function (e) {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          runExport();
-        }
-      });
-    }
-    var themeBtn = $("#themeToggleSidebar");
-    if (themeBtn) themeBtn.addEventListener("click", toggleTheme);
-    $$(".sidebar .nav-item[data-path]").forEach(function (el) {
-      var go = function () {
-        var path = el.getAttribute("data-path");
-        closeSidebar();
-        if (path === "#/") {
-          setRandom();
-          return;
-        }
-        if (location.hash === path) render();
-        else location.hash = path;
-      };
-      el.addEventListener("click", go);
-      el.addEventListener("keydown", function (e) {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          go();
-        }
-      });
-    });
-    sidebarPagesEl.addEventListener("click", function (e) {
-      var btn = e.target.closest("[data-action]");
-      if (!btn) return;
-      var id = Number(btn.dataset.id);
-      var action = btn.dataset.action;
-      if (action === "open") {
-        closeSidebar();
-        runPage(id);
-      } else if (action === "rename") {
-        renamePage(id);
-      } else if (action === "delete") {
-        deletePage(id);
-      }
-    });
-    window.addEventListener("hashchange", function () {
-      render();
-      closeSidebar();
-    });
-    window.addEventListener("orientationchange", function () {
-      if (editor) editor.refresh();
-    });
-    var resizeTimer = null;
-    window.addEventListener("resize", function () {
-      if (appEl.classList.contains("preview-mode")) {
-        appEl.style.width = window.innerWidth + "px";
-        appEl.style.height = window.innerHeight + "px";
-      }
-      if (resizeTimer) clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(function () {
-        if (editor) editor.refresh();
-      }, 100);
-    });
-  }
-
-
-  /* J35 启动 */
-  function loadContent() {
-    return fetch(CONTENT_URL, { cache: "no-cache" })
-      .then(function (r) {
-        if (!r.ok) throw new Error("HTTP " + r.status);
-        return r.json();
-      })
-      .then(function (json) {
-        CONTENT = json || {};
-        I18N = CONTENT.i18n || {};
-        AI_MODELS = (CONTENT.models || []).slice();
-        LANG = detectLang();
-      });
-  }
-  function boot() {
-    initStatic();
-    initAIState();
-    applyI18nToStatic();
-    updateSidebarPages();
-    render();
-  }
-  loadContent()
-    .then(function () {
-      boot();
-    })
-    .catch(function (e) {
-      console.warn("[content.json] 加载失败，使用默认文案：", e);
-      boot();
-    });
-
-})();
+}
