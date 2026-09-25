@@ -1,12 +1,6 @@
-/* ============================================================
-     J1 常量声明
-     作用：全模块共享常量 + 工具声明单一数据源 + 双协议派生
-     机制：TOOL_SPECS 为唯一源；OpenAI 直接引用，Gemini 递归大写化
-     ============================================================ */
+/* J1 常量声明 */
   (function () {
     "use strict";
-
-    /* --- 存储键：localStorage 各键名 --- */
     var STORAGE_KEY = "p5_pages";
     var THEME_KEY = "p5_theme";
     var LANG_KEY = "p5_lang";
@@ -16,37 +10,23 @@
     var AI_PROMPT_STORAGE = "p5_ai_prompts";
     var AI_CUSTOM_MODELS_STORAGE = "p5_ai_custom_models";
     var AI_CURRENT_MODEL_STORAGE = "p5_ai_current_model";
-
-    /* --- 业务常量：上限控制 --- */
-    var MAX_IMAGE_BYTES = 1.5 * 1024 * 1024;  // 单图上传上限 1.5MB
-    var MAX_SESSION_IMAGES = 10;      // 本次会话内存保留图片数
-    var MAX_TITLE_LEN = 60; // 作品标题最大字符数
-
-    /* --- 运行时常量：首页随机脚本 --- */
+    var MAX_IMAGE_BYTES = 1.5 * 1024 * 1024;  
+    var MAX_SESSION_IMAGES = 10;
+    var MAX_TITLE_LEN = 60;
     var P5_DIR = "p5/";
     var P5_CDN =
       "https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js";
     var P5_FILES = ["sketch1.js", "sketch2.js", "sketch3.js"];
-
-    /* --- AI 参数：请求与循环控制 --- */
-    var MAX_CONTEXT_MESSAGES = 30;      // 上下文消息上限（裁剪）
-    var MAX_TOOL_LOOP = 5;              // 工具调用最大轮次
-    var REQUEST_TIMEOUT_MS = 60000;     // 流式请求超时 60s
-    var TEST_TIMEOUT_MS = 15000;        // 测试连接超时 15s
-
-    /* --- UI 常量：交互阈值 --- */
-    var LONG_PRESS_MS = 500;            // 长按识别毫秒
-    var FLASH_TIP_MS = 1200;            // 复制提示显示时长
-    var NEAR_BOTTOM_PX = 80;            // 判定"接近底部"像素
-    var SEARCH_DEBOUNCE_MS = 150;       // 侧边栏搜索防抖
-    var STORAGE_KB_MULTIPLIER = 2;      // UTF-16 每字符 2 字节
-
-    /* --- 数据源：内容配置 --- */
+    var MAX_CONTEXT_MESSAGES = 30;
+    var MAX_TOOL_LOOP = 5;
+    var REQUEST_TIMEOUT_MS = 60000;
+    var TEST_TIMEOUT_MS = 15000;
+    var LONG_PRESS_MS = 500;
+    var FLASH_TIP_MS = 1200;
+    var NEAR_BOTTOM_PX = 80;
+    var SEARCH_DEBOUNCE_MS = 150;
+    var STORAGE_KB_MULTIPLIER = 2;
     var CONTENT_URL = "data/content.json";
-
-    /* --- 工具声明：单一数据源 ---
-       每个工具：{ name, description, params }
-       params 使用 OpenAI 小写 schema，Gemini 侧由 _toGeminiSchema 派生 */
     var TOOL_SPECS = [
       {
         name: "insert_code",
@@ -144,14 +124,9 @@
         params: { type: "object", properties: {} },
       },
     ];
-
-    /* --- 派生函数：类型大写化（object → OBJECT） --- */
     function _toGeminiType(t) {
       return String(t || "").toUpperCase();
     }
-
-    /* --- 派生函数：递归转换 schema 为 Gemini 风格 ---
-       仅搬白名单字段：type / description / properties / items / required */
     function _toGeminiSchema(schema) {
       if (!schema || typeof schema !== "object") return schema;
       var out = { type: _toGeminiType(schema.type) };
@@ -166,8 +141,6 @@
       if (schema.required) out.required = schema.required.slice();
       return out;
     }
-
-    /* --- 派生：OpenAI 格式声明（type: "function" 包裹） --- */
     function buildOpenAITools() {
       return TOOL_SPECS.map(function (t) {
         return {
@@ -180,8 +153,6 @@
         };
       });
     }
-
-    /* --- 派生：Gemini 格式声明（functionDeclarations 包裹 + 大写化） --- */
     function buildGeminiTools() {
       return [
         {
@@ -195,19 +166,12 @@
         },
       ];
     }
-
-    /* --- 运行时数据（由 loadContent 填充） --- */
     var AI_MODELS = [];
     var I18N = {};
     var LANG = "zh";
     var CONTENT = null;
 
-/* ============================================================
-     J2 全局状态
-     作用：全模块共享的可变状态 + DOM 引用
-     机制：单一 IIFE 内闭包，所有块可见；无响应式，需手动同步
-     ============================================================ */
-  /* --- AI 状态：聊天页 + 生成器页共享 --- */
+/* J2 全局状态 */
   var aiState = {
     currentModel: null,
     keys: {},
@@ -218,7 +182,6 @@
     abortController: null,
     streamToken: 0,
   };
-  /* --- 生成器状态：编辑器页 AI 面板临时态 --- */
   var genState = {
     messages: [],
     busy: false,
@@ -227,32 +190,23 @@
     menuOpen: false,
     palette: null,
   };
-  /* --- DOM 引用：initStatic 赋值 --- */
   var modalBackdrop, modalBox, lastFocused;
   var sidebarPagesEl, sidebarEl, overlayEl, hamburgerBtn;
   var sidebarSearchEl;
   var sidebarSearchKeyword = "";
   var sidebarSearchTimer = null;
   var appEl;
-  /* --- 首页运行器状态：random / page / temp --- */
   var runner = { mode: "random", pageId: null, tempHtml: null };
   var currentRandomFile = null;
-  /* --- 编辑器相关内存态 --- */
   var editor = null;
   var uploadedImageDataUrl = null;
   var uploadedImageInfo = null;
   var sessionImages = {};
   var generatorDraft = { title: "", script: "" };
-  /* --- 消息增量渲染缓存 --- */
   var renderedMsgCount = 0;
   var renderedModelId = null;
 
-
-/* ============================================================
-     J3 i18n
-     作用：文案国际化，支持中英文切换
-     机制：T() 取文案；静态节点一次性填充；节点列表首次收集后缓存
-     ============================================================ */
+/* J3 i18n */
   function T(key, params) {
     var pack = I18N[LANG] || I18N.zh || {};
     var text = pack[key];
@@ -264,7 +218,6 @@
     }
     return text;
   }
-  /* --- 语言检测：保存值 > 浏览器语言 > defaultLang > en --- */
   function detectLang() {
     try {
       var saved = localStorage.getItem(LANG_KEY);
@@ -278,7 +231,6 @@
     }
     return "en";
   }
-  /* --- 节点缓存：首次 applyI18nToStatic 时收集一次 --- */
   var _i18nCache = null;
   function _collectI18nNodes() {
     _i18nCache = {
@@ -288,7 +240,6 @@
       aria: $$("[data-i18n-aria]"),
     };
   }
-  /* --- 静态节点填充：text / placeholder / title / aria 四类 --- */
   function applyI18nToStatic() {
     if (!_i18nCache) _collectI18nNodes();
     _i18nCache.text.forEach(function (el) {
@@ -317,11 +268,7 @@
     } catch (e) {}
   }
 
-/* ============================================================
-     J4 模型查询
-     作用：模型配置的只读查询
-     机制：内置 AI_MODELS + 自定义 customModels 合并遍历
-     ============================================================ */
+/* J4 模型查询 */
   function getAllModels() {
     return AI_MODELS.concat(aiState.customModels || []);
   }
@@ -342,12 +289,7 @@
     return c ? c.name : id;
   }
 
-/* ============================================================
-     J5 AI 存储
-     作用：AI 相关配置与对话的 localStorage 读写
-     机制：每模型独立键（p5_ai_chats_<id>），避免全量重写；
-           配额错误统一走 handleStorageQuotaError
-     ============================================================ */
+/* J5 AI存储 */
   function loadAIKeys() {
     try {
       var raw = localStorage.getItem(AI_KEY_STORAGE);
@@ -366,7 +308,6 @@
       return false;
     }
   }
-  /* --- 当前模型：跨刷新保持 --- */
   function loadCurrentModel() {
     try {
       return localStorage.getItem(AI_CURRENT_MODEL_STORAGE) || null;
@@ -380,7 +321,6 @@
       else localStorage.removeItem(AI_CURRENT_MODEL_STORAGE);
     } catch (e) {}
   }
-  /* --- 对话记录：每模型独立键 --- */
   function loadAIChats() {
     var result = {};
     getAllModels().forEach(function (m) {
@@ -407,7 +347,6 @@
       return false;
     }
   }
-  /* --- 系统提示词：所有模型一份 JSON --- */
   function loadAIPrompts() {
     try {
       var raw = localStorage.getItem(AI_PROMPT_STORAGE);
@@ -429,7 +368,6 @@
       return false;
     }
   }
-  /* --- 自定义模型：所有模型一份数组 --- */
   function loadCustomModels() {
     try {
       var raw = localStorage.getItem(AI_CUSTOM_MODELS_STORAGE);
@@ -451,7 +389,6 @@
       return false;
     }
   }
-  /* --- 初始化：启动时统一填充 aiState --- */
   function initAIState() {
     aiState.keys = loadAIKeys();
     aiState.customModels = loadCustomModels();
@@ -461,16 +398,11 @@
       if (!Array.isArray(aiState.chats[m.id])) aiState.chats[m.id] = [];
       if (typeof aiState.prompts[m.id] !== "string") aiState.prompts[m.id] = "";
     });
-    /* 恢复上次模型（校验是否仍存在） */
     var saved = loadCurrentModel();
     aiState.currentModel = saved && aiModelConf(saved) ? saved : null;
   }
 
-/* ============================================================
-     J6 页面与草稿存储
-     作用：作品列表 + 编辑器草稿的 localStorage 读写
-     机制：作品为数组；草稿为 { title, script } 对象
-     ============================================================ */
+/* J6 页面与草稿存储 */
   function getPages() {
     try {
       var raw = localStorage.getItem(STORAGE_KEY);
@@ -489,7 +421,6 @@
       return false;
     }
   }
-  /* --- 编辑器草稿：输入即自动保存 --- */
   function loadDraft() {
     try {
       var raw = localStorage.getItem(DRAFT_KEY);
@@ -515,12 +446,7 @@
     } catch (e) {}
   }
 
-
-/* ============================================================
-     J7 存储配额
-     作用：localStorage 满时的统一检测与提示
-     机制：捕获 QuotaExceededError → 估算占用 → 弹窗建议清理
-     ============================================================ */
+/* J7 存储配额 */
   function isQuotaError(e) {
     if (!e) return false;
     if (e.name === "QuotaExceededError") return true;
@@ -528,7 +454,6 @@
     if (e.code === 22 || e.code === 1014) return true;
     return false;
   }
-  /* --- 估算：所有键值长度之和 × 2 字节 ÷ 1024 --- */
   function estimateLocalStorageKB() {
     var total = 0;
     try {
@@ -563,11 +488,7 @@
     );
   }
 
-/* ============================================================
-     J8 DOM 工具
-     作用：DOM 查询 / 创建 + 字符串转义工具
-     机制：$ / $$ 简写；escape* 防注入；el() 快速建元素
-     ============================================================ */
+/* J8 DOM工具 */
   function $(sel, root) {
     return (root || document).querySelector(sel);
   }
@@ -576,7 +497,6 @@
       (root || document).querySelectorAll(sel),
     );
   }
-  /* --- HTML 转义：五字符替换 --- */
   function escapeHtml(text) {
     return String(text)
       .replace(/&/g, "&amp;")
@@ -585,8 +505,6 @@
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#39;");
   }
-  /* --- 脚本闭合转义：防止用户脚本提前关闭 <script> ---
-     注意：对已转义的 \x3C/script 形式会二次转义（边缘场景） */
   function escapeScriptClose(str) {
     var LT = "\x3C";
     return String(str)
@@ -594,7 +512,6 @@
       .replace(new RegExp(LT + "!--", "g"), LT + "\\!--")
       .replace(new RegExp(LT + "script", "gi"), LT + "\\script");
   }
-  /* --- 文件名安全化：去除特殊字符，限长 --- */
   function safeFileName(name) {
     var n = String(name || "")
       .replace(/[\\/:*?"<>|~#%&{}]/g, "_")
@@ -603,25 +520,17 @@
     if (n.length > MAX_TITLE_LEN) n = n.slice(0, MAX_TITLE_LEN);
     return n || "untitled";
   }
-  /* --- 快速建元素 --- */
   function el(tag, className, text) {
     var e = document.createElement(tag);
     if (className) e.className = className;
     if (text != null) e.textContent = text;
     return e;
   }
-  /* --- 弹窗右侧按钮组容器（配合 modal-actions） --- */
   function rightGroup() {
     return el("div", "right-group");
   }
 
-
-/* ============================================================
-     J9 模态框系统
-     作用：全站弹窗统一封装
-     机制：backdrop 显示 + modalBox 注入；focus trap 循环 Tab
-     ============================================================ */
-  /* --- 焦点陷阱：Tab 在弹窗内循环 --- */
+/* J9 模态框系统 */
   var _modalFocusHandler = null;
   function _installFocusTrap(box) {
     _removeFocusTrap();
@@ -649,7 +558,6 @@
     }
     _modalFocusHandler = null;
   }
-  /* --- 打开弹窗：注入内容 + aria-labelledby + 焦点陷阱 --- */
   function openModal(builder) {
     lastFocused = document.activeElement;
     modalBox.innerHTML = "";
@@ -671,7 +579,6 @@
     modalBox.innerHTML = "";
     if (lastFocused && lastFocused.focus) lastFocused.focus();
   }
-  /* --- 提示弹窗 --- */
   function showAlert(title, message, isError) {
     openModal(function (box) {
       box.appendChild(el("h3", null, title));
@@ -685,7 +592,6 @@
       box.appendChild(a);
     });
   }
-  /* --- 确认弹窗 --- */
   function showConfirm(title, message, onConfirm, danger) {
     openModal(function (box) {
       box.appendChild(el("h3", null, title));
@@ -705,7 +611,6 @@
       box.appendChild(a);
     });
   }
-  /* --- 单行输入弹窗：支持 hint + opts.onClear 左侧清除按钮 --- */
   function showPrompt(title, defaultValue, onOk, inputType, hint, opts) {
     openModal(function (box) {
       box.appendChild(el("h3", null, title));
@@ -754,7 +659,6 @@
       box.appendChild(a);
     });
   }
-  /* --- 多行文本编辑弹窗（系统提示词）：Ctrl+Enter 保存 --- */
   function showPromptArea(opts) {
     openModal(function (box) {
       box.appendChild(el("h3", null, opts.title));
@@ -799,7 +703,6 @@
       box.appendChild(a);
     });
   }
-  /* --- 意图选择弹窗：覆盖 / 修改 --- */
   function showIntentChoice(title, message, onOverwrite, onModify) {
     openModal(function (box) {
       box.appendChild(el("h3", null, title));
@@ -828,13 +731,7 @@
     });
   }
 
-
-/* ============================================================
-     J10 页面生成与导出
-     作用：作品 HTML 生成 + 单文件下载 + ZIP 打包
-     机制：data URL 优先（iOS Safari 直接落盘）；失败回退 blob
-     ============================================================ */
-  /* --- 生成作品 HTML：含 p5 CDN + imageUrl 声明 + 用户脚本 --- */
+/* J10 页面生成与导出 */
   function generatePageHtml(title, script, imageDataUrl, hasImage) {
     var safeTitle = escapeHtml(
       (title || T("generator.untitledPage")).slice(0, MAX_TITLE_LEN),
@@ -884,7 +781,6 @@
       "</html>"
     );
   }
-  /* --- 内存注入：把 imageUrl = null 替换为真实 dataUrl（本次会话预览用） --- */
   function injectSessionImage(html, dataUrl) {
     if (!html || !dataUrl) return html;
     var escaped = String(dataUrl)
@@ -895,7 +791,6 @@
       'var imageUrl = "' + escaped + '";',
     );
   }
-  /* --- 下载单 HTML：data URL 优先（iOS 可直接落盘） --- */
   function downloadSingleHtml(filename, html) {
     try {
       var encoded = btoa(unescape(encodeURIComponent(html)));
@@ -930,7 +825,6 @@
       }
     }
   }
-  /* --- ZIP 打包：base64 → data URL --- */
   function exportZip() {
     var pages = getPages();
     if (!pages.length) {
@@ -988,12 +882,7 @@
       });
   }
 
-
-/* ============================================================
-     J11 随机 p5 与 srcdoc
-     作用：首页随机脚本抽取 + iframe srcdoc 生成
-     机制：currentRandomFile 排除上次；srcdoc 内嵌 CDN + 脚本
-     ============================================================ */
+/* J11 随机p5与srcdoc */
   function pickRandomP5File() {
     if (!P5_FILES || !P5_FILES.length) return null;
     if (P5_FILES.length === 1) return P5_FILES[0];
@@ -1003,7 +892,6 @@
     if (!pool.length) pool = P5_FILES.slice();
     return pool[Math.floor(Math.random() * pool.length)];
   }
-  /* --- 路径编码：中文 / 空格等安全化 --- */
   function encodePath(fileName) {
     return String(fileName)
       .split("/")
@@ -1012,7 +900,6 @@
       })
       .join("/");
   }
-  /* --- srcdoc：完整 HTML 字符串，交给 iframe.srcdoc --- */
   function buildP5SrcDoc(fileName) {
     var src = P5_DIR + encodePath(fileName);
     return (
@@ -1037,12 +924,7 @@
     );
   }
 
-
-/* ============================================================
-     J12 侧边栏页面列表
-     作用：渲染作品列表 + 关键词过滤
-     机制：documentFragment 批量插入；data-action 委托事件
-     ============================================================ */
+/* J12 侧边栏页面列表 */
   function updateSidebarPages() {
     var pages = getPages();
     var kw = sidebarSearchKeyword.trim().toLowerCase();
@@ -1086,13 +968,7 @@
     sidebarPagesEl.replaceChildren(frag);
   }
 
-
-/* ============================================================
-     J13 iframe 代理
-     作用：把外部事件转发到 iframe 内的 canvas，使预览可交互
-     机制：MutationObserver 等待 canvas 出现；document 捕获事件后
-           构造 MouseEvent 派发到 canvas
-     ============================================================ */
+/* J13 iframe代理 */
   function bindIframeProxy(iframe) {
     var iwin, idoc;
     try {
@@ -1120,7 +996,6 @@
       childList: true,
       subtree: true,
     });
-    /* 15s 后自动停止观察，避免长驻 */
     setTimeout(function () {
       try {
         observer.disconnect();
@@ -1138,7 +1013,6 @@
       "dblclick",
     ];
     var TOUCH_TYPES = ["touchstart", "touchmove", "touchend", "touchcancel"];
-    /* --- 鼠标事件转发 --- */
     function relayMouse(e) {
       if (e.target === canvas) return;
       if (
@@ -1173,7 +1047,6 @@
       }
       canvas.dispatchEvent(ev);
     }
-    /* --- 触摸事件 → 鼠标事件（p5 触摸兼容） --- */
     function relayTouch(e) {
       if (e.target === canvas) return;
       if (!e.touches || !e.touches.length) return;
@@ -1216,12 +1089,7 @@
     });
   }
 
-
-/* ============================================================
-     J14 预览锁定与截图
-     作用：预览模式下锁尺寸 + 截图按钮
-     机制：直接改 appEl 内联 style；截图用 canvas.toDataURL
-     ============================================================ */
+/* J14 预览锁定与截图 */
   function lockAppSize() {
     document.body.classList.add("preview-lock");
     var w = window.innerWidth;
@@ -1242,7 +1110,6 @@
     appEl.style.height = "";
     appEl.style.overflow = "";
   }
-  /* --- 截图按钮：注入 iframe，点击后 canvas → PNG 下载 --- */
   function buildScreenshotButton(iframe) {
     var btn = el("button", "preview-screenshot-btn", "📷");
     btn.id = "screenshotBtn";
@@ -1275,12 +1142,7 @@
     return btn;
   }
 
-
-/* ============================================================
-     J15 首页运行器
-     作用：首页根据 runner.mode 渲染；三种模式切换
-     机制：random 随机脚本 / page 指定作品 / temp 临时 HTML
-     ============================================================ */
+/* J15 首页运行器 */
   function renderRunner() {
     destroyEditor();
     appEl.replaceChildren();
@@ -1288,14 +1150,12 @@
     appEl.classList.remove("ai-mode");
     setActiveNav("/");
     var html = null;
-    /* ① 指定作品模式 */
     if (runner.mode === "page") {
       var page = getPages().find(function (p) {
         return p.id === runner.pageId;
       });
       if (page) {
         html = page.html;
-        /* 本次会话有内存图则注入 */
         if (sessionImages[page.id]) {
           html = injectSessionImage(html, sessionImages[page.id]);
         }
@@ -1305,14 +1165,12 @@
         runner.pageId = null;
       }
     }
-    /* ② 临时 HTML 模式（AI 生成后即时预览） */
     if (runner.mode === "temp") {
       html = runner.tempHtml || null;
       runner.mode = "random";
       runner.tempHtml = null;
       delete appEl.dataset.currentPageId;
     }
-    /* ③ 随机脚本模式（默认） */
     if (html === null) {
       var file = pickRandomP5File();
       if (!file) {
@@ -1339,7 +1197,6 @@
       bindIframeProxy(iframe);
     });
     appEl.appendChild(iframe);
-    /* 仅指定作品模式显示截图按钮 */
     if (runner.mode === "page") {
       appEl.appendChild(buildScreenshotButton(iframe));
     }
@@ -1397,12 +1254,7 @@
     });
   }
 
-
-/* ============================================================
-     J16 侧边栏与主题
-     作用：侧边栏开关 + 亮/暗主题切换
-     机制：body.dark-mode 类切换；CodeMirror 主题同步
-     ============================================================ */
+/* J16 侧边栏与主题 */
   function openSidebar() {
     sidebarEl.classList.add("open");
     overlayEl.classList.add("show");
@@ -1415,7 +1267,6 @@
     document.body.classList.remove("sidebar-open");
     hamburgerBtn.setAttribute("aria-expanded", "false");
   }
-  /* --- 应用主题：切 CSS 主题 + CodeMirror 主题 --- */
   function applyTheme(theme) {
     var lightTheme = $("#cm-theme-light");
     var darkTheme = $("#cm-theme-dark");
@@ -1445,18 +1296,12 @@
     } catch (e) {}
   }
 
-
-/* ============================================================
-     J17 路由与静态页
-     作用：hash 路由解析 + 静态页面 DOM 构建
-     机制：getRoute 从 hash 取路径；renderXxx 返回 DOM 节点
-     ============================================================ */
+/* J17 路由与静态页 */
   function getRoute() {
     var hash = location.hash;
     if (!hash || hash === "#" || hash === "#/") return "/";
     return hash.replace(/^#/, "") || "/";
   }
-  /* --- 侧边栏高亮：匹配 data-path --- */
   function setActiveNav(path) {
     $$(".sidebar .nav-item[data-path]").forEach(function (el) {
       if (el.getAttribute("data-path") === "#" + path) {
@@ -1474,7 +1319,6 @@
       editor = null;
     }
   }
-  /* --- 关于页：标题 + 7 段文案（按 i18n 键存在性渲染） --- */
   function renderAbout() {
     var wrap = document.createElement("div");
     wrap.appendChild(el("h1", null, T("about.title")));
@@ -1486,7 +1330,6 @@
     });
     return wrap;
   }
-  /* --- 生成器页：标题 + 编辑器 + AI 面板 + 上传 + 提交 --- */
   function renderGenerator() {
     var wrap = el("div", "generator-page");
     wrap.appendChild(el("h1", null, T("generator.title")));
@@ -1528,7 +1371,6 @@
     wrap.appendChild(result);
     return wrap;
   }
-  /* --- 生成器 AI 面板：状态区 + 输入条（模型选择 + 输入 + 发送） --- */
   function buildGeneratorAIPanel() {
     var frag = document.createDocumentFragment();
     var bar = el("div", "gen-ai-bar gen-ai-bar-bare");
@@ -1559,12 +1401,7 @@
     return frag;
   }
 
-
-/* ============================================================
-     J18 生成器模型菜单
-     作用：编辑器页 AI 面板的模型选择
-     机制：仅显示 supportsTools: true 的模型；比 AI 助手菜单精简
-     ============================================================ */
+/* J18 生成器模型菜单 */
   function refreshGenModelBtn() {
     var btn = $("#genModelBtn");
     if (!btn) return;
@@ -1616,13 +1453,7 @@
     if (willShow) buildGenModelMenu();
   }
 
-
-/* ============================================================
-     J19 生成器 AI 状态与工具
-     作用：状态输出 + 工具注册表 + 调度 + 代码兜底提取
-     机制：TOOL_HANDLERS 为注册表；executeToolCall 查表执行
-     ============================================================ */
-  /* --- 状态区清空 / 追加 / 忙碌切换 --- */
+/* J19 生成器AI状态与工具 */
   function genStatusClear() {
     var box = $("#genStatus");
     if (box) box.replaceChildren();
@@ -1641,8 +1472,6 @@
     var btn = $("#genSendBtn");
     if (btn) btn.disabled = !!busy;
   }
-
-  /* --- 工具注册表：name → handler(args) → { ok, text, displayText? } --- */
   var TOOL_HANDLERS = {
     insert_code: function (args) {
       var code = args && typeof args.code === "string" ? args.code : "";
@@ -1687,7 +1516,6 @@
         text: T("gen.toolReplace", { n: code.length }),
       };
     },
-    /* 画布尺寸：优先解析数字 createCanvas；否则返回响应式语义值 */
     get_canvas_size: function (args) {
       var src = editor ? editor.getValue() || "" : "";
       var cmNum = src.match(/createCanvas\s*\(\s*(\d+)\s*,\s*(\d+)\s*\)/);
@@ -1780,8 +1608,6 @@
       return { ok: true, text: "已打开预览" };
     },
   };
-
-  /* --- 工具调度：查表 + 异常包装 --- */
   function executeToolCall(toolName, args) {
     var handler = TOOL_HANDLERS[toolName];
     if (!handler) {
@@ -1796,12 +1622,9 @@
       };
     }
   }
-
-  /* --- 代码兜底提取：模型不调工具时，从文本中提取代码块 --- */
   function extractCodeFromText(text) {
     if (!text) return null;
     var t = String(text);
-    /* ① ```js / ```javascript 代码块 */
     var jsBlocks = [];
     var reJs = /```(?:js|javascript)\s*\n([\s\S]*?)```/gi;
     var m;
@@ -1809,27 +1632,19 @@
       if (m[1]) jsBlocks.push(m[1].replace(/\s+$/, ""));
     }
     if (jsBlocks.length) return jsBlocks.join("\n\n");
-    /* ② ``` 无语言代码块 */
     var blocks = [];
     var re = /```\s*\n([\s\S]*?)```/g;
     while ((m = re.exec(t))) {
       if (m[1]) blocks.push(m[1].replace(/\s+$/, ""));
     }
     if (blocks.length) return blocks.join("\n\n");
-    /* ③ 直接含 setup/draw 定义 */
     if (/function\s+setup\s*\(/.test(t) || /function\s+draw\s*\(/.test(t)) {
       return t.trim();
     }
     return null;
   }
 
-
-/* ============================================================
-     J20 AI 流式请求核心
-     作用：双协议 SSE 流式请求 + 结构化累积
-     机制：按 conf.protocol 分支构造请求；统一 SSE 解析
-     ============================================================ */
-  /* --- 反查工具名：Gemini functionResponse 需要 name --- */
+/* J20 AI流式请求核心 */
   function findToolCallName(msgs, toolCallId) {
     for (var i = 0; i < msgs.length; i++) {
       var m = msgs[i];
@@ -1843,7 +1658,6 @@
     }
     return "unknown";
   }
-  /* --- 内部消息 → Gemini contents --- */
   function convertToGeminiMessages(internalMsgs) {
     var systemInstruction = null;
     var contents = [];
@@ -1852,7 +1666,6 @@
       if (m.role === "system") {
         systemInstruction = { parts: [{ text: m.content || "" }] };
       } else if (m.role === "user") {
-        /* 多模态：content 为数组时含 text / image_url */
         if (Array.isArray(m.content)) {
           var uParts = [];
           m.content.forEach(function (c) {
@@ -1914,7 +1727,6 @@
     }
     return { systemInstruction: systemInstruction, contents: contents };
   }
-  /* --- 统一流式请求：双协议分支 + SSE 解析 --- */
   function streamAI(opts) {
     var model = opts.model;
     var key = opts.key;
@@ -1928,7 +1740,6 @@
     var conf = aiModelConf(model);
     var url, options;
     if (conf.protocol === "gemini") {
-      /* Gemini 分支 */
       var conv = convertToGeminiMessages(messages);
       var body = { contents: conv.contents };
       if (systemPrompt) {
@@ -1947,7 +1758,6 @@
         body: JSON.stringify(body),
       };
     } else {
-      /* OpenAI 兼容分支 */
       var msgs = [];
       if (systemPrompt) msgs.push({ role: "system", content: systemPrompt });
       messages.forEach(function (m) {
@@ -1970,15 +1780,12 @@
         body: JSON.stringify(reqBody),
       };
     }
-    /* --- 超时控制：内部 60s --- */
     var timeoutCtl = new AbortController();
     var timeoutId = setTimeout(function () {
       try {
         timeoutCtl.abort();
       } catch (e) {}
     }, REQUEST_TIMEOUT_MS);
-
-    /* --- signal 合并：外部 signal 优先，否则用全局；都与超时合并 --- */
     var baseSignal = extSignal;
     if (!baseSignal && aiState.abortController) {
       baseSignal = aiState.abortController.signal;
@@ -1996,7 +1803,6 @@
     } else {
       options.signal = timeoutCtl.signal;
     }
-    /* --- fetch + SSE 解析 --- */
     return fetch(url, options)
       .then(function (res) {
         if (!res.ok) {
@@ -2019,7 +1825,6 @@
         var reader = res.body.getReader();
         var decoder = new TextDecoder();
         var buffer = "";
-        /* 单条 data: 派发 */
         function dispatchData(data) {
           if (!data) return;
           if (data === "[DONE]") {
@@ -2032,7 +1837,6 @@
             onDelta(obj);
           } catch (e) {}
         }
-        /* 缓冲区解析：按 \n\n 分 SSE 事件 */
         function processBuffer(flush) {
           if (buffer.indexOf("\r") !== -1) {
             buffer = buffer.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
@@ -2057,7 +1861,6 @@
             buffer = "";
           }
         }
-        /* 递归读取流 */
         function pump() {
           return reader.read().then(function (result) {
             if (result.done) {
@@ -2075,7 +1878,6 @@
         clearTimeout(timeoutId);
       });
   }
-  /* --- 结构化累积器：id / usage / finish_reason / tool_calls --- */
   function createStructuredAccumulator() {
     var meta = {
       id: null,
@@ -2087,14 +1889,12 @@
     };
     var tcBuf = {};
     var hasToolCall = false;
-    /* 逐 chunk 累积 */
     function consume(obj) {
       if (!obj || obj === "[DONE]") return;
       if (obj.id && !meta.id) meta.id = obj.id;
       if (obj.model && !meta.model) meta.model = obj.model;
       if (obj.created && !meta.created) meta.created = obj.created;
       if (obj.usage) meta.usage = obj.usage;
-      /* OpenAI：delta.tool_calls 拼接 */
       var ch = obj.choices && obj.choices[0];
       if (ch) {
         if (ch.finish_reason) meta.finish_reason = ch.finish_reason;
@@ -2122,7 +1922,6 @@
           });
         }
       }
-      /* Gemini：candidates[0].content.parts[].functionCall */
       var cand = obj.candidates && obj.candidates[0];
       if (cand) {
         if (cand.finishReason && !meta.finish_reason) {
@@ -2145,7 +1944,6 @@
           });
         }
       }
-      /* Gemini usageMetadata 映射 */
       if (obj.usageMetadata) {
         meta.usage = {
           prompt_tokens: obj.usageMetadata.promptTokenCount,
@@ -2154,7 +1952,6 @@
         };
       }
     }
-    /* 结束：整理 tool_calls 数组 */
     function finalize() {
       if (hasToolCall) {
         var arr = [];
@@ -2173,14 +1970,7 @@
     return { consume: consume, finalize: finalize };
   }
 
-
-/* ============================================================
-     J21 生成器 AI 循环
-     作用：AI 生成代码的主流程（多轮工具调用）
-     机制：请求 → 提取 tool_calls → 逐个执行 → 回填 → 循环
-           达到 MAX_TOOL_LOOP 或无 tool_calls 时结束
-     ============================================================ */
-  /* --- 按意图写入编辑器 --- */
+/* J21 生成器AI循环 */
   function genApplyCode(code, intent) {
     if (!editor || !code) return;
     if (intent === "append") {
@@ -2192,7 +1982,6 @@
     generatorDraft.script = editor.getValue();
     saveDraft();
   }
-  /* --- 判断用户文本是否已含代码（有则跳过 modify 附代码） --- */
   function userTextHasCode(text) {
     if (!text) return false;
     if (/```/.test(text)) return true;
@@ -2200,7 +1989,6 @@
     if (/function\s+draw\s*\(/.test(text)) return true;
     return false;
   }
-  /* --- 主循环 --- */
   function genRunLoop(userIntent, userText) {
     var model = aiState.currentModel;
     var key = aiState.keys[model];
@@ -2215,7 +2003,6 @@
       role: "system",
       content: T("gen.systemPrompt"),
     });
-    /* --- 构建用户消息内容 --- */
     var userContent = "[intent: " + userIntent + "]\n";
     if (uploadedImageDataUrl) {
       var info = uploadedImageInfo;
@@ -2230,8 +2017,6 @@
       }
     }
     userContent += "\n用户要求：" + userText;
-
-    /* --- 有图 + vision 支持 → 多模态消息 --- */
     var useVision = !!uploadedImageDataUrl && conf.vision === true;
     if (useVision) {
       genState.messages.push({
@@ -2260,7 +2045,6 @@
     genState.abortController = new AbortController();
     var mySignal = genState.abortController.signal;
     var loopCount = 0;
-    /* --- 单轮执行：请求 → 判定工具调用 → 递归 --- */
     function runOne() {
       loopCount += 1;
       if (loopCount > MAX_TOOL_LOOP) {
@@ -2270,7 +2054,6 @@
       }
       var accumulated = "";
       var acc = createStructuredAccumulator();
-      /* 累积文本输出 */
       var onDelta = function (obj) {
         if (conf.protocol === "gemini") {
           var cand = obj.candidates && obj.candidates[0];
@@ -2302,7 +2085,6 @@
         .then(function () {
           if (genState.streamToken !== myToken) return;
           var meta = acc.finalize();
-          /* --- 有工具调用：执行 + 回填 + 递归 --- */
           if (meta.tool_calls && meta.tool_calls.length) {
             genState.messages.push({
               role: "assistant",
@@ -2337,7 +2119,6 @@
             runOne();
             return;
           }
-          /* --- 无工具调用：文本兜底提取 --- */
           if (accumulated && accumulated.trim()) {
             var code = extractCodeFromText(accumulated);
             if (code) {
@@ -2367,7 +2148,6 @@
     }
     runOne();
   }
-  /* --- 发送入口：校验 → 意图判定 → 调 genRunLoop --- */
   function genSend() {
     if (genState.busy) return;
     var model = aiState.currentModel;
@@ -2403,7 +2183,6 @@
       genSetBusy(true);
       genRunLoop(intent, userText);
     };
-    /* 编辑器空：按用户文本是否含代码判断意图 */
     if (!hasContent) {
       if (userTextHasCode(userText)) {
         doSend("modify");
@@ -2411,7 +2190,6 @@
         doSend("overwrite");
       }
     } else {
-      /* 编辑器非空：弹窗选择覆盖 / 修改 */
       showIntentChoice(
         T("gen.editorNotEmptyTitle"),
         T("gen.editorNotEmptyBody"),
@@ -2424,7 +2202,6 @@
       );
     }
   }
-  /* --- 面板事件绑定 --- */
   function bindGeneratorAIPanel() {
     var modelBtn = $("#genModelBtn");
     var menu = $("#genModelMenu");
@@ -2449,12 +2226,10 @@
       });
     }
     if (input) {
-      /* 自适应高度 */
       input.addEventListener("input", function () {
         this.style.height = "auto";
         this.style.height = Math.min(this.scrollHeight, 120) + "px";
       });
-      /* Enter 发送，Shift+Enter 换行 */
       input.addEventListener("keydown", function (e) {
         if (
           e.key === "Enter" &&
@@ -2475,13 +2250,7 @@
     refreshGenModelBtn();
   }
 
-
-/* ============================================================
-     J22 生成器主体
-     作用：编辑器初始化 + 图片处理 + 提交作品
-     机制：上传即压缩（丢弃原图）；提交时注解不嵌图
-     ============================================================ */
-  /* --- 图片压缩：长边 ≤ maxDim，JPEG 质量 quality --- */
+/* J22 生成器主体 */
   function compressImage(dataUrl, maxDim, quality, callback) {
     var img = new Image();
     img.onload = function () {
@@ -2497,7 +2266,6 @@
         var ctx = canvas.getContext("2d");
         ctx.drawImage(img, 0, 0, w, h);
         var out = canvas.toDataURL("image/jpeg", quality);
-        /* 压缩后反而更大时回退原图 */
         callback(out && out.length < dataUrl.length ? out : dataUrl);
       } catch (e) {
         callback(dataUrl);
@@ -2520,7 +2288,6 @@
     generatorDraft = loadDraft();
     titleInput.value = generatorDraft.title || "";
     destroyEditor();
-    /* --- CodeMirror 初始化 --- */
     if (window.CodeMirror) {
       var themeName = currentTheme() === "dark" ? "dracula" : "default";
       editor = window.CodeMirror.fromTextArea(textarea, {
@@ -2533,7 +2300,6 @@
       });
       editor.setSize(null, "100%");
       if (generatorDraft.script) editor.setValue(generatorDraft.script);
-      /* 占位浮层：编辑器空时显示提示 */
       var cmWrapper = editor.getWrapperElement();
       if (getComputedStyle(cmWrapper).position === "static") {
         cmWrapper.style.position = "relative";
@@ -2554,18 +2320,15 @@
         if (g) cmPlaceholderEl.style.left = g.offsetWidth + 8 + "px";
       });
       updateCmPlaceholder();
-      /* 草稿自动保存 */
       editor.on("change", function () {
         generatorDraft.script = editor.getValue();
         saveDraft();
       });
     }
-    /* --- 标题输入：草稿保存 --- */
     titleInput.addEventListener("input", function () {
       generatorDraft.title = this.value;
       saveDraft();
     });
-    /* --- 图片上传：立即压缩，丢弃原图 --- */
     fileInput.addEventListener("change", function () {
       var file = this.files && this.files[0];
       if (!file) return;
@@ -2588,7 +2351,6 @@
         var originalDataUrl = e.target.result;
         uploadedImageDataUrl = null;
         uploadedImageInfo = null;
-        /* 压缩完成后再显示与探测尺寸 */
         compressImage(originalDataUrl, 1024, 0.85, function (compressed) {
           uploadedImageDataUrl = compressed;
           var tip = el("p", null, T("generator.imageOk"));
@@ -2597,7 +2359,6 @@
           img.className = "preview-img";
           img.alt = T("generator.imageAlt");
           previewEl.replaceChildren(tip, img);
-          /* 探测压缩图尺寸（与模型看到一致） */
           var probe = new Image();
           probe.onload = function () {
             uploadedImageInfo = {
@@ -2620,7 +2381,6 @@
       };
       reader.readAsDataURL(file);
     });
-    /* --- 提交脚本 --- */
     buildBtn.addEventListener("click", function () {
       var title =
         titleInput.value.trim().slice(0, MAX_TITLE_LEN) ||
@@ -2631,7 +2391,6 @@
         return;
       }
       var imageDataUrl = uploadedImageDataUrl || "";
-      /* 保存时注解不嵌图 */
       var htmlContent = generatePageHtml(
         title,
         script,
@@ -2647,8 +2406,6 @@
         timestamp: new Date().toISOString(),
       });
       if (!savePages(pages)) return;
-
-      /* 内存保留图片供本次会话预览 */
       if (imageDataUrl) {
         sessionImages[newId] = imageDataUrl;
         var ids = Object.keys(sessionImages);
@@ -2657,7 +2414,6 @@
         }
       }
       updateSidebarPages();
-      /* 成功弹窗 */
       openModal(function (box) {
         box.appendChild(el("h3", null, T("generator.buildOk")));
         var actions = el("div", "modal-actions");
@@ -2684,7 +2440,6 @@
         actions.appendChild(rg);
         box.appendChild(actions);
       });
-      /* 重置状态 */
       titleInput.value = "";
       if (editor) editor.setValue("");
       clearDraft();
@@ -2696,36 +2451,26 @@
     bindGeneratorAIPanel();
   }
 
-
-/* ============================================================
-     J23 AI 页面骨架
-     作用：构建 /ai 页 DOM 结构
-     机制：纯 DOM 构建，返回节点由 render 注入 #app
-     ============================================================ */
+/* J23 AI页面骨架 */
   function renderAIAssistant() {
     var page = el("div", "ai-page");
-    /* 右上角清除按钮 */
     var clearBtn = el("button", "ai-clear-btn", "−");
     clearBtn.id = "aiClearBtn";
     clearBtn.type = "button";
     clearBtn.title = T("ai.clearTitle");
-    /* 隐藏的 JSON 导入 input */
     var fileInput = document.createElement("input");
     fileInput.type = "file";
     fileInput.id = "aiImportFile";
     fileInput.accept = ".json,application/json";
     fileInput.style.display = "none";
-    /* 消息列表 */
     var messages = el("div", "ai-messages");
     messages.id = "aiMessages";
     messages.setAttribute("role", "log");
     messages.setAttribute("aria-live", "polite");
     messages.setAttribute("aria-relevant", "additions");
-    /* 统计条 */
     var statsBar = el("div", "ai-stats");
     statsBar.id = "aiStats";
     statsBar.style.display = "none";
-    /* 底部输入栏 */
     var inputWrap = el("div", "ai-input-wrap");
     var bar = el("div", "ai-input-bar");
     var picker = el("div", "ai-model-picker");
@@ -2749,7 +2494,6 @@
     bar.appendChild(input);
     bar.appendChild(sendBtn);
     inputWrap.appendChild(bar);
-    /* 组装 */
     page.appendChild(clearBtn);
     page.appendChild(fileInput);
     page.appendChild(messages);
@@ -2758,17 +2502,11 @@
     return page;
   }
 
-
-/* ============================================================
-     J24 AI 模型菜单
-     作用：AI 助手页模型菜单（较生成器页更完整）
-     机制：每项含勾选 + 名称 + T/K/P/J/M 按钮；顶行含＋/导入
-     ============================================================ */
+/* J24 AI模型菜单 */
   function buildAIModelMenu() {
     var menu = $("#aiModelMenu");
     if (!menu) return;
     var frag = document.createDocumentFragment();
-    /* 顶行：自定义 + 导入 */
     var topRow = el("div", "ai-model-toprow");
     var addBtn = el("div", "ai-model-topbtn ai-model-add", T("ai.topRowAdd"));
     addBtn.dataset.add = "1";
@@ -2777,7 +2515,6 @@
     topRow.appendChild(addBtn);
     topRow.appendChild(importBtn);
     frag.appendChild(topRow);
-    /* 模型列表 */
     getAllModels().forEach(function (m) {
       var item = el("div", "ai-model-item");
       if (aiState.currentModel === m.id) item.classList.add("active");
@@ -2786,7 +2523,6 @@
       var name = el("span", "ai-model-name");
       var nameText = el("span", "ai-model-name-text", m.name);
       name.appendChild(nameText);
-      /* 自定义模型：编辑按钮 */
       if (!m.builtin) {
         var editBtn = el("button", "ai-model-edit", "✎");
         editBtn.type = "button";
@@ -2795,17 +2531,14 @@
         name.appendChild(editBtn);
       }
       item.appendChild(name);
-      /* T 测试连接 */
       var testBtn = el("button", "ai-dl", "T");
       testBtn.type = "button";
       testBtn.title = T("ai.menuTest");
       testBtn.dataset.test = m.id;
-      /* K 设置 Key */
       var keyBtn = el("button", "ai-key", "K");
       keyBtn.type = "button";
       keyBtn.title = T("ai.menuKey");
       keyBtn.dataset.key = m.id;
-      /* P 系统提示词 */
       var promptBtn = el("button", "ai-prompt", "P");
       promptBtn.type = "button";
       promptBtn.title = T("ai.menuPrompt");
@@ -2813,12 +2546,10 @@
       if (aiState.prompts[m.id] && aiState.prompts[m.id].trim()) {
         promptBtn.classList.add("has-prompt");
       }
-      /* J 下载 JSON */
       var jsonBtn = el("button", "ai-dl", "J");
       jsonBtn.type = "button";
       jsonBtn.title = T("ai.menuDownloadJson");
       jsonBtn.dataset.json = m.id;
-      /* M 下载 Markdown */
       var mdBtn = el("button", "ai-dl", "M");
       mdBtn.type = "button";
       mdBtn.title = T("ai.menuDownloadMd");
@@ -2832,7 +2563,6 @@
     });
     menu.replaceChildren(frag);
   }
-  /* --- 刷新选中态 + 模型按钮显示 --- */
   function refreshAIModelUI() {
     $$(".ai-model-item").forEach(function (el) {
       if (aiState.currentModel && el.dataset.model === aiState.currentModel) {
@@ -2863,12 +2593,7 @@
     menu.classList.toggle("show");
   }
 
-
-/* ============================================================
-     J25 剪贴板与提示
-     作用：复制文本 + 短暂视觉反馈
-     机制：clipboard API 优先，回退 execCommand；提示自动消失
-     ============================================================ */
+/* J25 剪贴板与提示 */
   function copyToClipboard(text) {
     if (!text) return;
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -2900,13 +2625,7 @@
     }, FLASH_TIP_MS);
   }
 
-
-/* ============================================================
-     J26 消息工具栏与节点
-     作用：单条消息 DOM + 助手工具栏 + 长按展开
-     机制：user 右对齐气泡；assistant 块级 + 工具栏默认收起
-     ============================================================ */
-  /* --- 助手工具栏：仅在最后一条助手消息上显示重新生成 --- */
+/* J26 消息工具栏与节点 */
   function buildAssistantToolbar(m, index) {
     var toolbar = el("div", "assistant-toolbar");
     var left = el("div", "toolbar-left");
@@ -2935,7 +2654,6 @@
       deleteMessageFrom(index);
     });
     left.appendChild(delBtn);
-    /* token 统计 */
     if (m.usage) {
       var up = m.usage.prompt_tokens || 0;
       var down = m.usage.completion_tokens || 0;
@@ -2958,11 +2676,9 @@
     toolbar.appendChild(right);
     return toolbar;
   }
-  /* --- 长按 / 点击展开工具栏 --- */
   function bindRowToggleActions(row) {
     var pressTimer = null;
     var longPressed = false;
-    /* 展开：关闭其他行，只显示当前 */
     function show() {
       $$(".ai-msg.actions-visible").forEach(function (el) {
         if (el !== row) el.classList.remove("actions-visible");
@@ -3004,7 +2720,6 @@
       toggle();
     });
   }
-  /* --- 单条消息：assistant 块级 / user 气泡 --- */
   function buildMsgNode(m, index) {
     var row = el(
       "div",
@@ -3034,17 +2749,11 @@
     return el("div", "ai-empty", text);
   }
 
-
-/* ============================================================
-     J27 AI 消息渲染
-     作用：消息列表渲染 + 统计 + 增量更新
-     机制：renderedMsgCount 记录已渲染数；新消息只追加
-     ============================================================ */
+/* J27 AI消息渲染 */
   function renderAIMessages() {
     var box = $("#aiMessages");
     if (!box) return;
     var model = aiState.currentModel;
-    /* 无模型：显示空状态 */
     if (!model) {
       if (!box.firstChild || !box.querySelector(".ai-empty")) {
         box.replaceChildren(buildEmptyNode(T("ai.emptyNoModel")));
@@ -3054,7 +2763,6 @@
       updateStatsBar();
       return;
     }
-    /* 模型切换：清空重建 */
     if (renderedModelId !== model) {
       renderedModelId = model;
       renderedMsgCount = 0;
@@ -3072,7 +2780,6 @@
       return;
     }
     if (renderedMsgCount > chat.length) renderedMsgCount = 0;
-    /* 首次全量渲染 */
     if (renderedMsgCount === 0) {
       var frag = document.createDocumentFragment();
       for (var i = 0; i < chat.length; i++) {
@@ -3084,11 +2791,9 @@
       updateStatsBar();
       return;
     }
-    /* 增量追加 */
     if (renderedMsgCount < chat.length) {
       var emptyEl = box.querySelector(".ai-empty");
       if (emptyEl && box.children.length === 1) {
-        /* 空状态 → 全量重建 */
         box.replaceChildren();
         renderedMsgCount = 0;
         var frag2 = document.createDocumentFragment();
@@ -3109,7 +2814,6 @@
     }
     updateStatsBar();
   }
-  /* --- 统计条：总轮次 + token --- */
   function updateStatsBar() {
     var bar = $("#aiStats");
     if (!bar) return;
@@ -3161,11 +2865,7 @@
     return box.scrollHeight - box.scrollTop - box.clientHeight < NEAR_BOTTOM_PX;
   }
 
-/* ============================================================
-     J28 消息操作
-     作用：删除 / 重新生成 / 发送核心
-     机制：aiSendWithText 为统一入口；流式逐字追加 DOM
-     ============================================================ */
+/* J28 消息操作 */
   function deleteMessageFrom(index) {
     var model = aiState.currentModel;
     if (!model) return;
@@ -3202,7 +2902,6 @@
     if (!text.trim()) return;
     aiSendWithText(text);
   }
-  /* --- 发送核心 --- */
   function aiSendWithText(text) {
     var model = aiState.currentModel;
     if (!model) return;
@@ -3215,15 +2914,12 @@
     }
     var chat = aiState.chats[model];
     if (!Array.isArray(chat)) chat = aiState.chats[model] = [];
-    /* 避免重复 push 相同用户消息（重生成时） */
     var lastMsg = chat[chat.length - 1];
     if (!(lastMsg && lastMsg.role === "user" && lastMsg.content === text)) {
       chat.push({ role: "user", content: text });
     }
-    /* 占位助手消息（流式填充） */
     chat.push({ role: "assistant", content: "" });
     saveAIChats(model);
-    /* 中断上一次请求 */
     if (aiState.abortController) {
       try {
         aiState.abortController.abort();
@@ -3245,7 +2941,6 @@
     var isGemini = conf && conf.protocol === "gemini";
     var box = $("#aiMessages");
     var acc = createStructuredAccumulator();
-    /* --- 逐字追加 --- */
     function pushDelta(t2) {
       if (aiState.streamToken !== myToken) return;
       if (!t2) return;
@@ -3268,7 +2963,6 @@
         if (d && d.content) pushDelta(d.content);
       }
     };
-    /* --- 上下文裁剪：仅 user / assistant，保留最近 N 条 --- */
     var payload = chat
       .slice(0, -1)
       .filter(function (m) {
@@ -3316,7 +3010,6 @@
         updateAISendBtn();
         var meta = acc.finalize();
         var isAbort = err && (err.name === "AbortError" || err.code === 20);
-        /* 有部分内容：保留；否则丢弃 */
         if (accumulated) {
           var msg = chat[chat.length - 1];
           msg.content = accumulated;
@@ -3341,12 +3034,7 @@
       });
   }
 
-
-/* ============================================================
-     J29 模型编辑与选择
-     作用：自定义模型管理 + 连接测试 + Key / Prompt 设置 + 切换
-     机制：新增 / 编辑走 showModelEditor；切换走 selectAIModel
-     ============================================================ */
+/* J29 模型编辑与选择 */
   function showModelEditor(modelId) {
     var isEdit = !!modelId;
     var existing = isEdit ? aiModelConf(modelId) : null;
@@ -3358,7 +3046,6 @@
       box.appendChild(
         el("div", "modal-hint", T("model.hint", { endpoint: "{endpoint}" })),
       );
-      /* --- 名称 --- */
       var l1 = el("label", null, T("model.labelName"));
       l1.style.cssText =
         "display:block;font-weight:bold;font-size:0.9rem;margin:8px 0 4px;";
@@ -3368,7 +3055,6 @@
       nameInput.value = isEdit ? existing.name : "";
       nameInput.autocomplete = "off";
       nameInput.spellcheck = false;
-      /* --- Endpoint --- */
       var l2 = el("label", null, T("model.labelEndpoint"));
       l2.style.cssText = l1.style.cssText;
       var epInput = document.createElement("input");
@@ -3377,7 +3063,6 @@
       epInput.value = isEdit ? existing.endpoint : "";
       epInput.autocomplete = "off";
       epInput.spellcheck = false;
-      /* --- API 模型 ID --- */
       var l3 = el("label", null, T("model.labelApiModel"));
       l3.style.cssText = l1.style.cssText;
       var apiInput = document.createElement("input");
@@ -3386,7 +3071,6 @@
       apiInput.value = isEdit ? existing.apiModel : "";
       apiInput.autocomplete = "off";
       apiInput.spellcheck = false;
-      /* --- 支持工具 --- */
       var toolsRow = document.createElement("label");
       toolsRow.style.cssText =
         "display:flex;align-items:center;gap:8px;margin:8px 0 4px;font-weight:bold;font-size:0.9rem;cursor:pointer;";
@@ -3396,7 +3080,6 @@
       toolsCb.checked = isEdit ? !!existing.supportsTools : false;
       toolsRow.appendChild(toolsCb);
       toolsRow.appendChild(document.createTextNode("支持函数调用（Tools）"));
-      /* --- 支持图片 --- */
       var visionRow = document.createElement("label");
       visionRow.style.cssText = toolsRow.style.cssText;
       var visionCb = document.createElement("input");
@@ -3405,7 +3088,6 @@
       visionCb.checked = isEdit ? !!existing.vision : false;
       visionRow.appendChild(visionCb);
       visionRow.appendChild(document.createTextNode(T("model.labelVision")));
-      /* --- 底部按钮 --- */
       var actions = el("div", "modal-actions");
       var leftWrap = document.createElement("div");
       if (isEdit) {
@@ -3491,7 +3173,6 @@
       box.appendChild(actions);
     });
   }
-  /* --- 删除自定义模型：含 Key / 对话 / Prompt 清理 --- */
   function deleteCustomModel(modelId) {
     var conf = aiModelConf(modelId);
     if (!conf || conf.builtin) return;
@@ -3529,7 +3210,6 @@
       true,
     );
   }
-  /* --- 测试连接：发一句 "hi"，仅验证 Key --- */
   function testAIModelConnection(model) {
     var conf = aiModelConf(model);
     if (!conf) return;
@@ -3601,7 +3281,6 @@
         showAlert(T("test.failTitle"), msg, true);
       });
   }
-  /* --- API Key 弹窗：已有 Key 时左侧显示删除 --- */
   function promptAPIKey(model, onSaved) {
     var hasKey = !!aiState.keys[model];
     showPrompt(
@@ -3646,7 +3325,6 @@
       },
     });
   }
-  /* --- 切换模型：中断当前请求，更新 UI --- */
   function selectAIModel(model) {
     if (!aiModelConf(model)) return;
     if (aiState.busy) {
@@ -3676,13 +3354,7 @@
     updateAISendBtn();
   }
 
-
-/* ============================================================
-     J30 对话导入导出
-     作用：MD / JSON 导出 + JSON 导入
-     机制：data URL 优先（iOS Safari 直接落盘）；导入支持追加/覆盖
-     ============================================================ */
-  /* --- 通用下载：data URL 优先 --- */
+/* J30 对话导入导出 */
   function triggerDownload(content, mime, filename) {
     try {
       var encoded = btoa(unescape(encodeURIComponent(content)));
@@ -3709,7 +3381,6 @@
       }, 1000);
     }
   }
-  /* --- 导出 Markdown：含 system prompt + 每轮 role/content --- */
   function downloadAIChatMd(model) {
     var chat = aiState.chats[model] || [];
     if (!chat.length) {
@@ -3739,7 +3410,6 @@
       "ai_chat_" + model + "_" + Date.now() + ".md",
     );
   }
-  /* --- 导出 JSON：含结构化元数据（id / usage / tool_calls） --- */
   function downloadAIChatJson(model) {
     var chat = aiState.chats[model] || [];
     if (!chat.length) {
@@ -3773,7 +3443,6 @@
       "ai_chat_" + model + "_" + Date.now() + ".json",
     );
   }
-  /* --- 导入 JSON：兼容 model 名匹配 + 冲突处理 --- */
   function importAIChatFromFile(file) {
     if (!file) return;
     var reader = new FileReader();
@@ -3789,7 +3458,6 @@
         showAlert(T("import.failTitle"), T("import.badShape"), true);
         return;
       }
-      /* --- 目标模型：优先 data.model，回退按名称匹配 --- */
       var targetModel = data.model;
       if (!targetModel || !aiModelConf(targetModel)) {
         var name = String(data.modelName || "").toLowerCase();
@@ -3809,7 +3477,6 @@
         );
         return;
       }
-      /* --- 清洗消息：仅保留必要字段 --- */
       var cleaned = data.messages
         .filter(function (m) {
           return m && typeof m.role === "string";
@@ -3831,12 +3498,10 @@
         showAlert(T("import.failTitle"), T("import.noMessages"), true);
         return;
       }
-      /* --- 应用：replace 或 append --- */
       var applyImport = function (mode) {
         var existing = aiState.chats[targetModel] || [];
         if (mode === "replace") aiState.chats[targetModel] = cleaned;
         else aiState.chats[targetModel] = existing.concat(cleaned);
-        /* 补系统提示词（仅当前为空时） */
         if (
           data.systemPrompt &&
           String(data.systemPrompt).trim() &&
@@ -3874,7 +3539,6 @@
         applyImport("replace");
         return;
       }
-      /* --- 冲突：追加 / 覆盖 --- */
       openModal(function (box) {
         box.appendChild(el("h3", null, T("import.conflictTitle")));
         box.appendChild(
@@ -3917,12 +3581,7 @@
     reader.readAsText(file);
   }
 
-
-/* ============================================================
-     J31 AI 发送与清空
-     作用：AI 助手页的发送入口 + 清空对话
-     机制：aiSend 取输入框文本 → aiSendWithText；清空走确认弹窗
-     ============================================================ */
+/* J31 AI发送与清空 */
   function aiSend() {
     if (aiState.busy) return;
     var model = aiState.currentModel;
@@ -3975,14 +3634,8 @@
     );
   }
 
-
-/* ============================================================
-     J32 AI 助手绑定
-     作用：AI 助手页事件绑定
-     机制：重置渲染缓存 → 初始化 UI → 绑定各交互
-     ============================================================ */
+/* J32 AI助手绑定 */
   function bindAIAssistant() {
-    /* 每次进入 /ai 页，DOM 重建 → 重置渲染缓存 */
     renderedModelId = null;
     renderedMsgCount = 0;
     buildAIModelMenu();
@@ -4000,7 +3653,6 @@
         toggleAIModelMenu();
       });
     }
-    /* --- 模型菜单：委托处理各类按钮 --- */
     if (modelMenu) {
       modelMenu.addEventListener("click", function (e) {
         var importItem = e.target.closest("[data-import]");
@@ -4069,7 +3721,6 @@
         }
       });
     }
-    /* --- 输入框：自适应高度 + Enter 发送 --- */
     if (inputEl) {
       inputEl.addEventListener("input", function () {
         this.style.height = "auto";
@@ -4092,7 +3743,6 @@
         aiSend();
       });
     }
-    /* --- 隐藏的导入 input --- */
     var importFile = $("#aiImportFile");
     if (importFile) {
       importFile.addEventListener("change", function () {
@@ -4109,16 +3759,10 @@
     }
   }
 
-
-/* ============================================================
-     J33 主路由渲染
-     作用：hash 路由分发到各页面
-     机制：切换前清理（中断 AI / 取消预览 / 销毁编辑器）
-     ============================================================ */
+/* J33 主路由渲染 */
   function render() {
     var path = getRoute();
 
-    /* --- 切换页面前：中断生成器请求 --- */
     if (genState.busy) {
       if (genState.abortController) {
         try {
@@ -4128,19 +3772,16 @@
       genState.streamToken += 1;
       genSetBusy(false);
     }
-    /* --- 非首页：重置 runner --- */
     if (path !== "/" && path !== "" && path !== "/index.html") {
       if (runner.mode === "page") {
         runner.mode = "random";
         runner.pageId = null;
       }
     }
-    /* --- 首页 --- */
     if (path === "/" || path === "" || path === "/index.html") {
       renderRunner();
       return;
     }
-    /* --- 其他页面：清理上一个页面的状态 --- */
     if (appEl.classList.contains("preview-mode")) {
       appEl.classList.remove("preview-mode");
     }
@@ -4150,23 +3791,19 @@
     destroyEditor();
     appEl.replaceChildren();
     setActiveNav(path);
-    /* --- AI 助手页 --- */
     if (path === "/ai") {
       appEl.classList.add("ai-mode");
       appEl.appendChild(renderAIAssistant());
       bindAIAssistant();
       return;
     }
-    /* --- 关于页 --- */
     if (path === "/about") {
       appEl.appendChild(renderAbout());
     }
-    /* --- 生成器页 --- */
     else if (path === "/generator") {
       appEl.appendChild(renderGenerator());
       bindGenerator();
     }
-    /* --- 404 --- */
     else {
       var wrap = document.createElement("div");
       wrap.appendChild(el("h1", null, T("page.notFoundTitle", { path: path })));
@@ -4175,14 +3812,8 @@
     }
   }
 
-
-/* ============================================================
-     J34 初始化
-     作用：DOM 引用 + 主题 + 全局事件绑定
-     机制：启动时调用一次；所有委托事件在此挂载
-     ============================================================ */
+/* J34 初始化 */
   function initStatic() {
-    /* --- DOM 引用 --- */
     modalBackdrop = $("#modalBackdrop");
     modalBox = $("#modalBox");
     sidebarPagesEl = $("#sidebar-pages");
@@ -4191,13 +3822,11 @@
     hamburgerBtn = $("#hamburgerBtn");
     appEl = $("#app");
     sidebarSearchEl = $("#sidebarSearch");
-    /* --- 主题：从 localStorage 恢复 --- */
     var savedTheme = "light";
     try {
       savedTheme = localStorage.getItem(THEME_KEY) || "light";
     } catch (e) {}
     applyTheme(savedTheme);
-    /* --- 禁用双指缩放手势（防误触） --- */
     ["gesturestart", "gesturechange", "gestureend"].forEach(function (type) {
       document.addEventListener(
         type,
@@ -4221,7 +3850,6 @@
       },
       { passive: false },
     );
-    /* --- 双击缩放屏蔽 --- */
     var lastTouchEnd = 0;
     document.addEventListener(
       "touchend",
@@ -4244,7 +3872,6 @@
       },
       { passive: false },
     );
-    /* --- 点击空白处关闭菜单 / 工具栏 --- */
     document.addEventListener("click", function (e) {
       var aiMenu = $("#aiModelMenu");
       if (aiMenu && aiMenu.classList.contains("show")) {
@@ -4266,7 +3893,6 @@
         });
       }
     });
-    /* --- 侧边栏搜索：防抖输入 + Esc 清空 --- */
     if (sidebarSearchEl) {
       sidebarSearchEl.addEventListener("input", function () {
         var v = this.value || "";
@@ -4293,13 +3919,11 @@
         e.stopPropagation();
       });
     }
-    /* --- 汉堡 / 遮罩 / 模态框背景 --- */
     hamburgerBtn.addEventListener("click", openSidebar);
     overlayEl.addEventListener("click", closeSidebar);
     modalBackdrop.addEventListener("click", function (e) {
       if (e.target === modalBackdrop) closeModal();
     });
-    /* --- Esc 键：模态框 > 侧边栏 > 退出预览 --- */
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape") {
         if (modalBackdrop.classList.contains("show")) {
@@ -4311,7 +3935,6 @@
         }
       }
     });
-    /* --- 导出 ZIP 按钮 --- */
     var exportZipBtn = $("#exportZipSidebar");
     if (exportZipBtn) {
       var runExport = function () {
@@ -4326,10 +3949,8 @@
         }
       });
     }
-    /* --- 主题切换按钮 --- */
     var themeBtn = $("#themeToggleSidebar");
     if (themeBtn) themeBtn.addEventListener("click", toggleTheme);
-    /* --- 侧边栏导航项 --- */
     $$(".sidebar .nav-item[data-path]").forEach(function (el) {
       var go = function () {
         var path = el.getAttribute("data-path");
@@ -4349,7 +3970,6 @@
         }
       });
     });
-    /* --- 侧边栏作品列表：委托处理 open / rename / delete --- */
     sidebarPagesEl.addEventListener("click", function (e) {
       var btn = e.target.closest("[data-action]");
       if (!btn) return;
@@ -4364,16 +3984,13 @@
         deletePage(id);
       }
     });
-    /* --- 路由变化 --- */
     window.addEventListener("hashchange", function () {
       render();
       closeSidebar();
     });
-    /* --- 屏幕旋转：刷新 CodeMirror --- */
     window.addEventListener("orientationchange", function () {
       if (editor) editor.refresh();
     });
-    /* --- 窗口 resize：预览适配 + 编辑器刷新（防抖） --- */
     var resizeTimer = null;
     window.addEventListener("resize", function () {
       if (appEl.classList.contains("preview-mode")) {
@@ -4387,12 +4004,7 @@
     });
   }
 
-
-/* ============================================================
-     J35 启动
-     作用：加载内容配置 + 启动引导
-     机制：loadContent 失败时仍 boot（用默认文案）
-     ============================================================ */
+/* J35 启动 */
   function loadContent() {
     return fetch(CONTENT_URL, { cache: "no-cache" })
       .then(function (r) {
