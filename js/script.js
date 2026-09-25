@@ -1,5 +1,4 @@
-/* J1 常量声明 */
-  (function () {
+ (function () {
     "use strict";
     var STORAGE_KEY = "p5_pages";
     var THEME_KEY = "p5_theme";
@@ -171,7 +170,6 @@
     var LANG = "zh";
     var CONTENT = null;
 
-/* J2 全局状态 */
   var aiState = {
     currentModel: null,
     keys: {},
@@ -268,7 +266,6 @@
     } catch (e) {}
   }
 
-/* J4 模型查询 */
   function getAllModels() {
     return AI_MODELS.concat(aiState.customModels || []);
   }
@@ -289,7 +286,6 @@
     return c ? c.name : id;
   }
 
-/* J5 AI存储 */
   function loadAIKeys() {
     try {
       var raw = localStorage.getItem(AI_KEY_STORAGE);
@@ -402,7 +398,6 @@
     aiState.currentModel = saved && aiModelConf(saved) ? saved : null;
   }
 
-/* J6 页面与草稿存储 */
   function getPages() {
     try {
       var raw = localStorage.getItem(STORAGE_KEY);
@@ -446,7 +441,6 @@
     } catch (e) {}
   }
 
-/* J7 存储配额 */
   function isQuotaError(e) {
     if (!e) return false;
     if (e.name === "QuotaExceededError") return true;
@@ -488,7 +482,6 @@
     );
   }
 
-/* J8 DOM工具 */
   function $(sel, root) {
     return (root || document).querySelector(sel);
   }
@@ -530,7 +523,6 @@
     return el("div", "right-group");
   }
 
-/* J9 模态框系统 */
   var _modalFocusHandler = null;
   function _installFocusTrap(box) {
     _removeFocusTrap();
@@ -731,7 +723,6 @@
     });
   }
 
-/* J10 页面生成与导出 */
   function generatePageHtml(title, script, imageDataUrl, hasImage) {
     var safeTitle = escapeHtml(
       (title || T("generator.untitledPage")).slice(0, MAX_TITLE_LEN),
@@ -882,7 +873,6 @@
       });
   }
 
-/* J11 随机p5与srcdoc */
   function pickRandomP5File() {
     if (!P5_FILES || !P5_FILES.length) return null;
     if (P5_FILES.length === 1) return P5_FILES[0];
@@ -924,7 +914,6 @@
     );
   }
 
-/* J12 侧边栏页面列表 */
   function updateSidebarPages() {
     var pages = getPages();
     var kw = sidebarSearchKeyword.trim().toLowerCase();
@@ -968,7 +957,6 @@
     sidebarPagesEl.replaceChildren(frag);
   }
 
-/* J13 iframe代理 */
   function bindIframeProxy(iframe) {
     var iwin, idoc;
     try {
@@ -1089,7 +1077,6 @@
     });
   }
 
-/* J14 预览锁定与截图 */
   function lockAppSize() {
     document.body.classList.add("preview-lock");
     var w = window.innerWidth;
@@ -1142,7 +1129,6 @@
     return btn;
   }
 
-/* J15 首页运行器 */
   function renderRunner() {
     destroyEditor();
     appEl.replaceChildren();
@@ -1254,7 +1240,6 @@
     });
   }
 
-/* J16 侧边栏与主题 */
   function openSidebar() {
     sidebarEl.classList.add("open");
     overlayEl.classList.add("show");
@@ -1296,7 +1281,6 @@
     } catch (e) {}
   }
 
-/* J17 路由与静态页 */
   function getRoute() {
     var hash = location.hash;
     if (!hash || hash === "#" || hash === "#/") return "/";
@@ -1401,7 +1385,6 @@
     return frag;
   }
 
-/* J18 生成器模型菜单 */
   function refreshGenModelBtn() {
     var btn = $("#genModelBtn");
     if (!btn) return;
@@ -1453,7 +1436,6 @@
     if (willShow) buildGenModelMenu();
   }
 
-/* J19 生成器AI状态与工具 */
   function genStatusClear() {
     var box = $("#genStatus");
     if (box) box.replaceChildren();
@@ -1644,7 +1626,6 @@
     return null;
   }
 
-/* J20 AI流式请求核心 */
   function findToolCallName(msgs, toolCallId) {
     for (var i = 0; i < msgs.length; i++) {
       var m = msgs[i];
@@ -1970,7 +1951,6 @@
     return { consume: consume, finalize: finalize };
   }
 
-/* J21 生成器AI循环 */
   function genApplyCode(code, intent) {
     if (!editor || !code) return;
     if (intent === "append") {
@@ -2250,7 +2230,6 @@
     refreshGenModelBtn();
   }
 
-/* J22 生成器主体 */
   function compressImage(dataUrl, maxDim, quality, callback) {
     var img = new Image();
     img.onload = function () {
@@ -2451,7 +2430,6 @@
     bindGeneratorAIPanel();
   }
 
-/* J23 AI页面骨架 */
   function renderAIAssistant() {
     var page = el("div", "ai-page");
     var clearBtn = el("button", "ai-clear-btn", "−");
@@ -2502,7 +2480,6 @@
     return page;
   }
 
-/* J24 AI模型菜单 */
   function buildAIModelMenu() {
     var menu = $("#aiModelMenu");
     if (!menu) return;
@@ -2593,7 +2570,6 @@
     menu.classList.toggle("show");
   }
 
-/* J25 剪贴板与提示 */
   function copyToClipboard(text) {
     if (!text) return;
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -2625,7 +2601,6 @@
     }, FLASH_TIP_MS);
   }
 
-/* J26 消息工具栏与节点 */
   function buildAssistantToolbar(m, index) {
     var toolbar = el("div", "assistant-toolbar");
     var left = el("div", "toolbar-left");
@@ -2749,7 +2724,6 @@
     return el("div", "ai-empty", text);
   }
 
-/* J27 AI消息渲染 */
   function renderAIMessages() {
     var box = $("#aiMessages");
     if (!box) return;
@@ -2865,7 +2839,6 @@
     return box.scrollHeight - box.scrollTop - box.clientHeight < NEAR_BOTTOM_PX;
   }
 
-/* J28 消息操作 */
   function deleteMessageFrom(index) {
     var model = aiState.currentModel;
     if (!model) return;
@@ -3034,7 +3007,6 @@
       });
   }
 
-/* J29 模型编辑与选择 */
   function showModelEditor(modelId) {
     var isEdit = !!modelId;
     var existing = isEdit ? aiModelConf(modelId) : null;
@@ -3354,7 +3326,6 @@
     updateAISendBtn();
   }
 
-/* J30 对话导入导出 */
   function triggerDownload(content, mime, filename) {
     try {
       var encoded = btoa(unescape(encodeURIComponent(content)));
@@ -3581,7 +3552,6 @@
     reader.readAsText(file);
   }
 
-/* J31 AI发送与清空 */
   function aiSend() {
     if (aiState.busy) return;
     var model = aiState.currentModel;
@@ -3634,7 +3604,6 @@
     );
   }
 
-/* J32 AI助手绑定 */
   function bindAIAssistant() {
     renderedModelId = null;
     renderedMsgCount = 0;
@@ -3759,7 +3728,6 @@
     }
   }
 
-/* J33 主路由渲染 */
   function render() {
     var path = getRoute();
 
@@ -3812,7 +3780,6 @@
     }
   }
 
-/* J34 初始化 */
   function initStatic() {
     modalBackdrop = $("#modalBackdrop");
     modalBox = $("#modalBox");
@@ -4004,7 +3971,6 @@
     });
   }
 
-/* J35 启动 */
   function loadContent() {
     return fetch(CONTENT_URL, { cache: "no-cache" })
       .then(function (r) {
