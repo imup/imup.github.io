@@ -1,10 +1,6 @@
 (function () {
   "use strict";
-  /* ============================================================
-     J1 常量声明
-     【改】C3: 工具声明合并为 TOOL_SPECS 单一数据源
-     【改】C4: 集中魔法数字（长按 / 阈值 / 超时 / 提示时长）
-     ============================================================ */
+  /* J1 常量声明 */
   var STORAGE_KEY = "p5_pages";
   var THEME_KEY = "p5_theme";
   var LANG_KEY = "p5_lang";
@@ -19,7 +15,7 @@
   var AI_CHAT_STORAGE = "p5_ai_chats";
   var AI_PROMPT_STORAGE = "p5_ai_prompts";
   var AI_CUSTOM_MODELS_STORAGE = "p5_ai_custom_models";
-  /* 【新增】A1: currentModel 持久化键 */
+
   var AI_CURRENT_MODEL_STORAGE = "p5_ai_current_model";
   var MAX_CONTEXT_MESSAGES = 30;
   var MAX_TOOL_LOOP = 5;
@@ -27,14 +23,13 @@
   var TEST_TIMEOUT_MS = 15000;
   var MAX_TITLE_LEN = 60;
   var CONTENT_URL = "data/content.json";
-  /* 【新增】C4: 集中时长 / 阈值 */
+
   var LONG_PRESS_MS = 500;
   var FLASH_TIP_MS = 1200;
   var NEAR_BOTTOM_PX = 80;
   var SEARCH_DEBOUNCE_MS = 150;
   var STORAGE_KB_MULTIPLIER = 2;
 
-  /* 【新增】C3: 工具定义单一数据源 */
   var TOOL_SPECS = [
     {
       name: "insert_code",
@@ -181,9 +176,7 @@
   var LANG = "zh";
   var CONTENT = null;
 
-/* ============================================================
-     J2 全局状态
-     ============================================================ */
+/* J2 全局状态 */
   var aiState = {
     currentModel: null,
     keys: {},
@@ -218,12 +211,7 @@
   var renderedMsgCount = 0;
   var renderedModelId = null;
 
-  /* ============================================================
-     J3 i18n
-     【改】B3: detectLang 读取 defaultLang
-     【改】D3: applyI18nToStatic 缓存节点
-     【改】修改 4: 支持 [data-i18n-aria]
-     ============================================================ */
+  /* J3 i18n */
   function T(key, params) {
     var pack = I18N[LANG] || I18N.zh || {};
     var text = pack[key];
@@ -276,7 +264,7 @@
     _i18nCache.title.forEach(function (el) {
       el.setAttribute("title", T(el.getAttribute("data-i18n-title")));
     });
-    /* 【新增】修改 4: 支持 [data-i18n-aria] */
+
     _i18nCache.aria.forEach(function (el) {
       el.setAttribute("aria-label", T(el.getAttribute("data-i18n-aria")));
     });
@@ -287,9 +275,7 @@
   }
 
 
-  /* ============================================================
-     J4 模型查询
-     ============================================================ */
+  /* J4 模型查询 */
   function getAllModels() {
     return AI_MODELS.concat(aiState.customModels || []);
   }
@@ -311,12 +297,7 @@
   }
 
 
-  /* ============================================================
-     J5 AI 存储
-     【改】A1: 新增 loadCurrentModel / saveCurrentModel
-     【改】B2: 删除旧格式迁移逻辑
-     【改】C5: saveAIChats 无参分支不再遍历
-     ============================================================ */
+  /* J5 AI存储 */
   function loadAIKeys() {
     try {
       var raw = localStorage.getItem(AI_KEY_STORAGE);
@@ -335,7 +316,6 @@
       return false;
     }
   }
-  /* 【新增】A1 */
   function loadCurrentModel() {
     try {
       return localStorage.getItem(AI_CURRENT_MODEL_STORAGE) || null;
@@ -426,15 +406,12 @@
       if (!Array.isArray(aiState.chats[m.id])) aiState.chats[m.id] = [];
       if (typeof aiState.prompts[m.id] !== "string") aiState.prompts[m.id] = "";
     });
-    /* 【新增】A1: 恢复上次模型 */
     var saved = loadCurrentModel();
     aiState.currentModel = saved && aiModelConf(saved) ? saved : null;
   }
 
 
-  /* ============================================================
-     J6 页面与草稿存储
-     ============================================================ */
+  /* J6 页面与草稿存储 */
   function getPages() {
     try {
       var raw = localStorage.getItem(STORAGE_KEY);
@@ -479,9 +456,7 @@
   }
 
 
-  /* ============================================================
-     J7 存储配额
-     ============================================================ */
+  /* J7 存储配额 */
   function isQuotaError(e) {
     if (!e) return false;
     if (e.name === "QuotaExceededError") return true;
@@ -524,10 +499,7 @@
   }
 
 
-  /* ============================================================
-     J8 DOM 工具
-     【改】C6: escapeScriptClose 加注释
-     ============================================================ */
+  /* J8 DOM工具 */
   function $(sel, root) {
     return (root || document).querySelector(sel);
   }
@@ -544,7 +516,7 @@
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#39;");
   }
-  // 注意：此函数对已转义的 \x3C/script 形式会再次转义，属于边缘场景
+
   function escapeScriptClose(str) {
     var LT = "\x3C";
     return String(str)
@@ -571,11 +543,7 @@
   }
 
 
-  /* ============================================================
-     J9 模态框系统
-     【改】E1: aria-labelledby 指向 h3
-     【改】E2: Tab 焦点陷阱
-     ============================================================ */
+  /* J9 模态框系统 */
   var _modalFocusHandler = null;
   function _installFocusTrap(box) {
     _removeFocusTrap();
@@ -608,7 +576,6 @@
     modalBox.innerHTML = "";
     modalBox.removeAttribute("aria-labelledby");
     builder(modalBox);
-    /* 【新增】E1: 首个 h3 作为 label */
     var h3 = modalBox.querySelector("h3");
     if (h3) {
       if (!h3.id) h3.id = "modalTitle_" + Date.now();
@@ -662,7 +629,6 @@
 function showPrompt(title, defaultValue, onOk, inputType, hint) {
   openModal(function (box) {
     box.appendChild(el("h3", null, title));
-    /* 【新增】F1: 可选提示行 */
     if (hint) box.appendChild(el("div", "modal-hint", hint));
     var input = document.createElement("input");
     input.type = inputType || "text";
@@ -766,9 +732,7 @@ function showPrompt(title, defaultValue, onOk, inputType, hint) {
   }
 
 
-  /* ============================================================
-     J10 页面生成与导出
-     ============================================================ */
+  /* J10 页面生成与导出 */
   function generatePageHtml(title, script, imageDataUrl, hasImage) {
     var safeTitle = escapeHtml(
       (title || T("generator.untitledPage")).slice(0, MAX_TITLE_LEN),
@@ -884,9 +848,7 @@ function showPrompt(title, defaultValue, onOk, inputType, hint) {
   }
 
 
-  /* ============================================================
-     J11 随机 p5 与 srcdoc
-     ============================================================ */
+  /* J11 随机p5与srcdoc */
   function pickRandomP5File() {
     if (!P5_FILES || !P5_FILES.length) return null;
     if (P5_FILES.length === 1) return P5_FILES[0];
@@ -929,9 +891,7 @@ function showPrompt(title, defaultValue, onOk, inputType, hint) {
   }
 
 
-  /* ============================================================
-     J12 侧边栏页面列表
-     ============================================================ */
+  /* J12 侧边栏页面列表 */
   function updateSidebarPages() {
     var pages = getPages();
     var kw = sidebarSearchKeyword.trim().toLowerCase();
@@ -976,10 +936,7 @@ function showPrompt(title, defaultValue, onOk, inputType, hint) {
   }
 
 
-  /* ============================================================
-     J13 iframe 代理
-     【改】D1: MutationObserver 替代轮询
-     ============================================================ */
+  /* J13 iframe代理 */
   function bindIframeProxy(iframe) {
     var iwin, idoc;
     try {
@@ -1101,9 +1058,7 @@ function showPrompt(title, defaultValue, onOk, inputType, hint) {
   }
 
 
-  /* ============================================================
-     J14 预览锁定与截图
-     ============================================================ */
+  /* J14 预览锁定与截图 */
   function lockAppSize() {
     document.body.classList.add("preview-lock");
     var w = window.innerWidth;
@@ -1157,10 +1112,7 @@ function showPrompt(title, defaultValue, onOk, inputType, hint) {
   }
 
 
-  /* ============================================================
-     J15 首页运行器
-     【改】A4: runner.tempHtml 替代 window.__previewHtml
-     ============================================================ */
+  /* J15 首页运行器 */
   function renderRunner() {
     destroyEditor();
     appEl.replaceChildren();
@@ -1273,9 +1225,7 @@ function showPrompt(title, defaultValue, onOk, inputType, hint) {
   }
 
 
-  /* ============================================================
-     J16 侧边栏与主题
-     ============================================================ */
+  /* J16 侧边栏与主题 */
   function openSidebar() {
     sidebarEl.classList.add("open");
     overlayEl.classList.add("show");
@@ -1318,9 +1268,7 @@ function showPrompt(title, defaultValue, onOk, inputType, hint) {
   }
 
 
-  /* ============================================================
-     J17 路由与静态页
-     ============================================================ */
+  /* J17 路由与静态页 */
   function getRoute() {
     var hash = location.hash;
     if (!hash || hash === "#" || hash === "#/") return "/";
@@ -1426,9 +1374,7 @@ function showPrompt(title, defaultValue, onOk, inputType, hint) {
   }
 
 
-  /* ============================================================
-     J18 生成器模型菜单
-     ============================================================ */
+  /* J18 生成器模型菜单 */
   function refreshGenModelBtn() {
     var btn = $("#genModelBtn");
     if (!btn) return;
@@ -1481,10 +1427,7 @@ function showPrompt(title, defaultValue, onOk, inputType, hint) {
   }
 
 
-/* ============================================================
-     J19 生成器 AI 状态与工具
-     【改】get_canvas_size：无数字画布时返回响应式语义
-     ============================================================ */
+/* J19 生成器AI状态与工具 */
   function genStatusClear() {
     var box = $("#genStatus");
     if (box) box.replaceChildren();
@@ -1504,7 +1447,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint) {
     if (btn) btn.disabled = !!busy;
   }
 
-  /* 工具注册表：工具名 → handler(args) → { ok, text, displayText? } */
   var TOOL_HANDLERS = {
     insert_code: function (args) {
       var code = args && typeof args.code === "string" ? args.code : "";
@@ -1561,7 +1503,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint) {
           displayText: T("gen.toolCanvasSize", { w: w, h: h }),
         };
       }
-      /* 无数字画布（编辑器无代码 / 使用响应式）→ 返回语义值 */
       return {
         ok: true,
         text: JSON.stringify({
@@ -1681,10 +1622,7 @@ function showPrompt(title, defaultValue, onOk, inputType, hint) {
   }
 
 
-/* ============================================================
-     J20 AI 流式请求核心
-     【改】convertToGeminiMessages: user 消息支持多模态数组 content
-     ============================================================ */
+/* J20 AI流式请求核心 */
   function findToolCallName(msgs, toolCallId) {
     for (var i = 0; i < msgs.length; i++) {
       var m = msgs[i];
@@ -1826,11 +1764,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint) {
         timeoutCtl.abort();
       } catch (e) {}
     }, REQUEST_TIMEOUT_MS);
-
-    /* signal 合并：
-       - 若调用方传入 extSignal，优先使用；
-       - 否则使用全局 aiState.abortController（若存在）；
-       - 无论哪种，都与内部 timeoutCtl 合并 */
     var baseSignal = extSignal;
     if (!baseSignal && aiState.abortController) {
       baseSignal = aiState.abortController.signal;
@@ -2016,10 +1949,7 @@ function showPrompt(title, defaultValue, onOk, inputType, hint) {
   }
 
 
-/* ============================================================
-     J21 生成器 AI 循环
-     【改】genRunLoop: uploadedImageDataUrl 即压缩图，多模态与标记统一用它
-     ============================================================ */
+/* J21 生成器AI循环 */
   function genApplyCode(code, intent) {
     if (!editor || !code) return;
     if (intent === "append") {
@@ -2067,7 +1997,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint) {
     }
     userContent += "\n用户要求：" + userText;
 
-    /* 有图 + 当前模型支持 vision → 发送多模态消息 */
     var useVision = !!uploadedImageDataUrl && conf.vision === true;
     if (useVision) {
       genState.messages.push({
@@ -2302,10 +2231,7 @@ function showPrompt(title, defaultValue, onOk, inputType, hint) {
   }
 
 
-/* ============================================================
-     J22 生成器主体
-     【改】上传即压缩：只保留压缩图；显示/尺寸/模型/预览均用压缩图
-     ============================================================ */
+/* J22 生成器主体 */
   function compressImage(dataUrl, maxDim, quality, callback) {
     var img = new Image();
     img.onload = function () {
@@ -2321,7 +2247,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint) {
         var ctx = canvas.getContext("2d");
         ctx.drawImage(img, 0, 0, w, h);
         var out = canvas.toDataURL("image/jpeg", quality);
-        /* 压缩后反而更大时回退原图 */
         callback(out && out.length < dataUrl.length ? out : dataUrl);
       } catch (e) {
         callback(dataUrl);
@@ -2407,7 +2332,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint) {
         var originalDataUrl = e.target.result;
         uploadedImageDataUrl = null;
         uploadedImageInfo = null;
-        /* 立即压缩，丢弃原图；压缩完成后再赋值并显示 */
         compressImage(originalDataUrl, 1024, 0.85, function (compressed) {
           uploadedImageDataUrl = compressed;
           var tip = el("p", null, T("generator.imageOk"));
@@ -2416,7 +2340,7 @@ function showPrompt(title, defaultValue, onOk, inputType, hint) {
           img.className = "preview-img";
           img.alt = T("generator.imageAlt");
           previewEl.replaceChildren(tip, img);
-          /* 探测压缩图尺寸（与模型看到的一致） */
+
           var probe = new Image();
           probe.onload = function () {
             uploadedImageInfo = {
@@ -2511,10 +2435,7 @@ function showPrompt(title, defaultValue, onOk, inputType, hint) {
   }
 
 
-  /* ============================================================
-     J23 AI 页面骨架
-     【改】E3: #aiMessages role="log" aria-live
-     ============================================================ */
+  /* J23 AI页面骨架 */
   function renderAIAssistant() {
     var page = el("div", "ai-page");
     var clearBtn = el("button", "ai-clear-btn", "−");
@@ -2528,7 +2449,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint) {
     fileInput.style.display = "none";
     var messages = el("div", "ai-messages");
     messages.id = "aiMessages";
-    /* 【新增】E3 */
     messages.setAttribute("role", "log");
     messages.setAttribute("aria-live", "polite");
     messages.setAttribute("aria-relevant", "additions");
@@ -2567,9 +2487,7 @@ function showPrompt(title, defaultValue, onOk, inputType, hint) {
   }
 
 
-  /* ============================================================
-     J24 AI 模型菜单
-     ============================================================ */
+  /* J24 AI模型菜单 */
   function buildAIModelMenu() {
     var menu = $("#aiModelMenu");
     if (!menu) return;
@@ -2661,9 +2579,7 @@ function showPrompt(title, defaultValue, onOk, inputType, hint) {
   }
 
 
-  /* ============================================================
-     J25 剪贴板与提示
-     ============================================================ */
+  /* J25 剪贴板与提示 */
   function copyToClipboard(text) {
     if (!text) return;
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -2696,13 +2612,7 @@ function showPrompt(title, defaultValue, onOk, inputType, hint) {
   }
 
 
-  /* ============================================================
-     J26 消息工具栏与节点
-     【删】修改 5: buildMsgActions
-     【删】修改 6: showMsgMobileMenu
-     【改】修改 7: buildMsgNode 清理
-     【改】C4: LONG_PRESS_MS 常量
-     ============================================================ */
+  /* J26 消息工具栏与节点 */
   function buildAssistantToolbar(m, index) {
     var toolbar = el("div", "assistant-toolbar");
     var left = el("div", "toolbar-left");
@@ -2827,10 +2737,7 @@ function showPrompt(title, defaultValue, onOk, inputType, hint) {
   }
 
 
-  /* ============================================================
-     J27 AI 消息渲染
-     【改】C4: NEAR_BOTTOM_PX 常量
-     ============================================================ */
+  /* J27 AI消息渲染 */
   function renderAIMessages() {
     var box = $("#aiMessages");
     if (!box) return;
@@ -2947,11 +2854,7 @@ function showPrompt(title, defaultValue, onOk, inputType, hint) {
   }
 
 
-  /* ============================================================
-     J28 消息操作
-     【改】A2: payload 截断后保证首条 user
-     【改】C1: streamAI 对象化调用
-     ============================================================ */
+  /* J28 消息操作 */
   function deleteMessageFrom(index) {
     var model = aiState.currentModel;
     if (!model) return;
@@ -3059,7 +2962,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint) {
       });
     if (payload.length > MAX_CONTEXT_MESSAGES) {
       payload = payload.slice(-MAX_CONTEXT_MESSAGES);
-      /* 【新增】A2: 裁剪后确保首条为 user */
       while (payload.length && payload[0].role !== "user") {
         payload.shift();
       }
@@ -3122,10 +3024,7 @@ function showPrompt(title, defaultValue, onOk, inputType, hint) {
   }
 
 
-/* ============================================================
-     J29 模型编辑与选择
-     【改】showModelEditor: 新增 vision 勾选
-     ============================================================ */
+/* J29 模型编辑与选择 */
   function showModelEditor(modelId) {
     var isEdit = !!modelId;
     var existing = isEdit ? aiModelConf(modelId) : null;
@@ -3447,9 +3346,7 @@ function showPrompt(title, defaultValue, onOk, inputType, hint) {
   }
 
 
-  /* ============================================================
-     J30 对话导入导出
-     ============================================================ */
+  /* J30 对话导入导出 */
   function triggerDownload(content, mime, filename) {
     var blob = new Blob([content], { type: mime });
     var url = URL.createObjectURL(blob);
@@ -3664,9 +3561,7 @@ function showPrompt(title, defaultValue, onOk, inputType, hint) {
   }
 
 
-  /* ============================================================
-     J31 AI 发送与清空
-     ============================================================ */
+  /* J31 AI发送与清空 */
   function aiSend() {
     if (aiState.busy) return;
     var model = aiState.currentModel;
@@ -3720,12 +3615,8 @@ function showPrompt(title, defaultValue, onOk, inputType, hint) {
   }
 
 
-  /* ============================================================
-     J32 AI 助手绑定
-     【改】修改 9: 重置渲染缓存（方案 A）
-     ============================================================ */
+  /* J32 AI助手绑定 */
   function bindAIAssistant() {
-    /* 【新增】修改 9: DOM 重建后强制全量渲染 */
     renderedModelId = null;
     renderedMsgCount = 0;
     buildAIModelMenu();
@@ -3850,9 +3741,7 @@ function showPrompt(title, defaultValue, onOk, inputType, hint) {
   }
 
 
-  /* ============================================================
-     J33 主路由渲染
-     ============================================================ */
+  /* J33 主路由渲染 */
   function render() {
     var path = getRoute();
 
@@ -3904,10 +3793,7 @@ function showPrompt(title, defaultValue, onOk, inputType, hint) {
   }
 
 
-  /* ============================================================
-     J34 初始化
-     【改】D2: 侧边栏搜索防抖
-     ============================================================ */
+  /* J34 初始化 */
   function initStatic() {
     modalBackdrop = $("#modalBackdrop");
     modalBox = $("#modalBox");
@@ -3992,7 +3878,6 @@ function showPrompt(title, defaultValue, onOk, inputType, hint) {
       sidebarSearchEl.addEventListener("input", function () {
         var v = this.value || "";
         sidebarSearchKeyword = v;
-        /* 【新增】D2: 防抖 */
         if (sidebarSearchTimer) clearTimeout(sidebarSearchTimer);
         sidebarSearchTimer = setTimeout(function () {
           sidebarSearchTimer = null;
@@ -4101,9 +3986,7 @@ function showPrompt(title, defaultValue, onOk, inputType, hint) {
   }
 
 
-  /* ============================================================
-     J35 启动
-     ============================================================ */
+  /* J35 启动 */
   function loadContent() {
     return fetch(CONTENT_URL, { cache: "no-cache" })
       .then(function (r) {
