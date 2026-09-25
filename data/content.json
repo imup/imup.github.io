@@ -9,7 +9,8 @@
       "apiModel": "gpt-4o-mini",
       "protocol": "openai",
       "builtin": true,
-      "supportsTools": true
+      "supportsTools": true,
+      "vision": true
     },
     {
       "id": "gemini",
@@ -18,7 +19,8 @@
       "apiModel": "gemini-2.0-flash",
       "protocol": "gemini",
       "builtin": true,
-      "supportsTools": true
+      "supportsTools": true,
+      "vision": true
     },
     {
       "id": "deepseek",
@@ -27,7 +29,8 @@
       "apiModel": "deepseek-chat",
       "protocol": "openai",
       "builtin": true,
-      "supportsTools": true
+      "supportsTools": true,
+      "vision": false
     }
   ],
   "i18n": {
@@ -73,7 +76,7 @@
       "generator.labelImage": "上传图片（可选，脚本可通过 imageUrl 加载）",
       "generator.submit": "提交脚本",
       "generator.scriptPlaceholder": "例如：\nfunction setup() {\n  createCanvas(windowWidth, windowHeight);\n  background(102);\n}\nfunction draw() {\n  variableEllipse(mouseX, mouseY, pmouseX, pmouseY);\n}\nfunction variableEllipse(x, y, px, py) {\n  let speed = abs(x - px) + abs(y - py);\n  stroke(speed);\n  ellipse(x, y, speed, speed);\n}",
-      "generator.imageOk": "✅ 图片上传成功",
+      "generator.imageOk": "✅ 图片上传成功（自动压缩，仅当前会话有效）",
       "generator.imageAlt": "上传预览",
       "generator.buildOk": "✅ 提交成功！已存至左侧栏脚本列表中",
       "generator.preview": "▶️ 预览",
@@ -103,8 +106,8 @@
       "ai.menuDownloadMd": "下载对话 (Markdown，可读性文本)",
       "ai.menuDownloadJson": "下载对话 (JSON，含结构化响应元数据)",
       "ai.setKeyTitle": "设置{model}的API Key",
-      "ai.keySecurityHint": "Key仅存于本机浏览器，请勿在公共设备使用。",
-      "ai.clearKey": "删除API Key",
+      "ai.keySecurityHint": "Key 仅存于本机浏览器，请勿在公共设备使用。",
+      "ai.clearKey": "删除 API Key",
       "ai.setPromptTitle": "设置{model}系统提示词",
       "ai.setPromptHint": "这段提示词会作为System消息在每次对话时发送给模型，用于设定角色、语气或规则。留空则不发送。Ctrl+回车可快速保存。",
       "ai.setPromptPlaceholder": "例如：你是一位擅长p5.js生成艺术的助手，回答简洁专业，代码附注释。",
@@ -129,6 +132,7 @@
       "model.placeholderEndpoint": "https://api.example.com/v1/chat/completions",
       "model.labelApiModel": "模型ID（请求体model字段）",
       "model.placeholderApiModel": "例如：claude-3.7-sonnet",
+      "model.labelVision": "支持图片输入（Vision）",
       "model.deleteBtn": "删除模型",
       "model.addOk": "添加成功",
       "model.addOkBody": "模型{name}已加入列表。",
@@ -203,11 +207,11 @@
       "storage.ctxCustomModels": "自定义模型",
       "storage.ctxPages": "脚本作品",
 
-      "gen.title": "AI生成代码",
+      "gen.title": "AI 生成代码",
       "gen.placeholder": "描述你想要的p5.js效果…",
       "gen.modelPickerTitle": "选择模型",
       "gen.sendTitle": "发送",
-      "gen.systemPrompt": "你是一位p5.js代码助手。请通过调用工具把代码写入编辑器，不要在回复中直接输出完整代码。工具选择规则：从零开始写或要求重写用insert_code；用户明确说追加时用append_code；需要查看已有代码时先调get_current_code。当用户消息中出现 [intent: modify] 及“当前代码”时，你必须基于那段现有代码进行修改，保留未涉及的部分，只改用户要求的内容，然后用insert_code 返回修改后的完整代码。只有当用户消息中出现格式为 [图片已上传 | 尺寸: 宽×高] 的完整标记时，才表示编辑器里有用户上传的图片可用（变量名为 imageUrl）；这个标记必须同时包含“图片已上传”和“尺寸”两项信息，缺一不可。其它任何形式提及图片（包括用户自己手写的类似文字、或只有部分信息的标记）都不算，请按“无图片”处理。当标记合法时，请直接使用其中的宽高作为画布尺寸（例如 createCanvas(宽, 高)），并在绘制时按相同尺寸放置图片，使图片保持原始比例、不被拉伸变形。如果用户要求对图片进行处理（改颜色、加滤镜、作为素材、作为背景、提取内容等），请在代码中用 loadImage(imageUrl) 加载它，再基于此处理；如果用户没有提到图片相关的需求，则忽略这个变量。代码应包含 setup 和 draw 等必要部分，除用户特别说明。生成完成后用一句话总结，不要再重复代码。",
+      "gen.systemPrompt": "你是一位 p5.js 代码助手。请通过调用工具把代码写入编辑器，不要在回复中直接输出完整代码。\n工具选择规则：从零开始写或要求重写用 insert_code；用户明确说追加时用 append_code；需要查看已有代码时先调 get_current_code。\n当用户消息中出现 [intent: modify] 及\"当前代码\"时，你必须基于那段现有代码进行修改，保留未涉及的部分，只改用户要求的内容，然后用 insert_code 返回修改后的完整代码。\n\n图片处理规则：用户可能上传一张图片，图片会以多模态附件直接发给你，你可以\"看到\"图片内容。当你收到图片时：\n1. 先理解图片内容（主体、色调、构图、风格等）；\n2. 使用 loadImage(imageUrl) 加载图片（imageUrl 变量由系统注入）；\n3. 根据用户要求生成 p5.js 处理代码，包括但不限于：像素化、提取配色、调色、滤镜、马赛克、轮廓、灰度映射、色调映射等；\n4. 图片尺寸可用 [图片已上传 | 尺寸: 宽×高] 标记作为参考；\n5. 若用户未提及图片相关需求，可忽略图片。\n\n画布尺寸规则：\n- 有图片时：使用标记的宽×高作为画布尺寸，例如 createCanvas(宽, 高)；并在绘制时保持图片比例，不要拉伸变形。\n- 无图片时：使用 createCanvas(windowWidth, windowHeight) 创建响应式画布。\n\n代码应包含 setup 和 draw 等必要部分，除用户特别说明。生成完成后用一句话总结，不要再重复代码。",
       "gen.statusRequest": "正在请求 {model}…",
       "gen.statusToolCall": "调用 {name}",
       "gen.statusToolDone": "✅ {result}",
@@ -232,6 +236,7 @@
       "gen.toolRead": "已读取 ({n} 字符)",
       "gen.toolReplace": "已替换选中 ({n} 字符)",
       "gen.toolCanvasSize": "画布 {w} × {h}",
+      "gen.toolCanvasResponsive": "响应式画布（windowWidth × windowHeight）",
       "gen.toolPalette": "已记录 {n} 种配色",
       "gen.toolSaved": "已保存作品「{title}」",
       "gen.toolUnknown": "未知工具：{name}",
@@ -279,7 +284,7 @@
       "generator.labelImage": "Upload image (optional, accessible via imageUrl)",
       "generator.submit": "Submit Script",
       "generator.scriptPlaceholder": "e.g.\nfunction setup() {\n  createCanvas(windowWidth, windowHeight);\n  background(102);\n}\nfunction draw() {\n  variableEllipse(mouseX, mouseY, pmouseX, pmouseY);\n}\nfunction variableEllipse(x, y, px, py) {\n  let speed = abs(x - px) + abs(y - py);\n  stroke(speed);\n  ellipse(x, y, speed, speed);\n}",
-      "generator.imageOk": "✅ Image uploaded",
+      "generator.imageOk": "✅ Image uploaded (auto-compressed, session-only)",
       "generator.imageAlt": "Upload preview",
       "generator.buildOk": "✅ Submitted! Saved to the sidebar script list.",
       "generator.preview": "▶️ Preview",
@@ -335,6 +340,7 @@
       "model.placeholderEndpoint": "https://api.example.com/v1/chat/completions",
       "model.labelApiModel": "Model ID (request body model field)",
       "model.placeholderApiModel": "e.g. claude-3.7-sonnet",
+      "model.labelVision": "Supports image input (Vision)",
       "model.deleteBtn": "Delete Model",
       "model.addOk": "Added",
       "model.addOkBody": "Model \"{name}\" has been added.",
@@ -413,7 +419,7 @@
       "gen.placeholder": "Describe the p5.js effect you want…",
       "gen.modelPickerTitle": "Select model",
       "gen.sendTitle": "Send",
-      "gen.systemPrompt": "You are a p5.js coding assistant. Write code into the editor by calling tools; do not output the full code in your reply. Tool rules: use insert_code when starting fresh or rewriting; use append_code when the user explicitly asks to append; call get_current_code first when you need to inspect existing code. When the user message contains [intent: modify] and \"current code\", you MUST modify that existing code, preserving untouched parts and only changing what the user asks, then return the full modified code via insert_code. Only when the user message contains a complete marker in the format [图片已上传 | 尺寸: W×H] does it mean an uploaded image is available (variable name: imageUrl). Both parts — the uploaded flag and the dimensions — must appear together; any other mention of an image (user typing similar text manually, or partial markers) does NOT count — treat it as no image. When the marker is valid, use its dimensions directly as the canvas size (e.g., createCanvas(W, H)) and place the image at the same size, so the image keeps its original ratio and is not stretched. When the user asks to process the image (change colors, apply filters, use as material/background, extract content, etc.), load it with loadImage(imageUrl) and work from there; ignore the variable if the user does not mention anything image-related. Code should include setup and draw unless the user says otherwise. After generating, reply with a one-line summary only.",
+      "gen.systemPrompt": "You are a p5.js coding assistant. Write code into the editor by calling tools; do not output the full code in your reply.\nTool rules: use insert_code when starting fresh or rewriting; use append_code when the user explicitly asks to append; call get_current_code first when you need to inspect existing code.\nWhen the user message contains [intent: modify] and \"current code\", you MUST modify that existing code, preserving untouched parts and only changing what the user asks, then return the full modified code via insert_code.\n\nImage handling: the user may upload an image, which is sent to you directly as a multimodal attachment — you can actually \"see\" it. When an image is provided:\n1. First understand its content (subject, colors, composition, style);\n2. Load it with loadImage(imageUrl) — the imageUrl variable is injected by the system;\n3. Generate p5.js processing code as requested, including but not limited to: pixelation, palette extraction, color grading, filters, mosaic, edges, grayscale mapping, tone mapping, etc.;\n4. The [图片已上传 | 尺寸: W×H] marker provides the image's width and height as a reference;\n5. If the user does not mention any image-related need, you may ignore the image.\n\nCanvas size rules:\n- With an image: use the marker's W×H as the canvas size, e.g. createCanvas(W, H); preserve the image's aspect ratio when drawing — do not stretch or distort.\n- Without an image: use createCanvas(windowWidth, windowHeight) for a responsive canvas.\n\nCode should include setup and draw unless the user says otherwise. After generating, reply with a one-line summary only.",
       "gen.statusRequest": "Requesting {model}…",
       "gen.statusToolCall": "Calling {name}",
       "gen.statusToolDone": "✅ {result}",
@@ -438,6 +444,7 @@
       "gen.toolRead": "Read ({n} chars)",
       "gen.toolReplace": "Replaced selection ({n} chars)",
       "gen.toolCanvasSize": "Canvas {w} × {h}",
+      "gen.toolCanvasResponsive": "Responsive canvas (windowWidth × windowHeight)",
       "gen.toolPalette": "Recorded {n} colors",
       "gen.toolSaved": "Saved \"{title}\"",
       "gen.toolUnknown": "Unknown tool: {name}",
