@@ -3814,7 +3814,6 @@
     setActiveNav(path);
     if (path === "/ai") {
       appEl.classList.add("ai-mode");
-      ...
     }
     if (path === "/about") {
       appEl.appendChild(renderAbout());
