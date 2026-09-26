@@ -3691,6 +3691,7 @@
         var keyBtn = e.target.closest("[data-key]");
         if (keyBtn) {
           e.stopPropagation();
+          closeAIModelMenu();
           promptAPIKey(keyBtn.dataset.key);
           return;
         }
@@ -3704,12 +3705,14 @@
         var mdBtn = e.target.closest("[data-md]");
         if (mdBtn) {
           e.stopPropagation();
+          closeAIModelMenu();
           downloadAIChatMd(mdBtn.dataset.md);
           return;
         }
         var jsonBtn = e.target.closest("[data-json]");
         if (jsonBtn) {
           e.stopPropagation();
+          closeAIModelMenu();
           downloadAIChatJson(jsonBtn.dataset.json);
           return;
         }
