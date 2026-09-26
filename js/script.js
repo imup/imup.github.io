@@ -1312,22 +1312,8 @@
     });
     return wrap;
   }
-  /*
   function renderGenerator() {
     var wrap = el("div", "generator-page");
-    wrap.appendChild(el("h1", null, T("generator.title")));
-    wrap.appendChild(el("p", null, T("generator.subtitle")));
-    var g2 = el("div", "form-group");
-    var ta = document.createElement("textarea");
-    ta.id = "script";
-    g2.appendChild(ta);
-    wrap.appendChild(g2);
-    wrap.appendChild(buildGeneratorAIPanel());
-    */
-  function renderGenerator() {
-    var wrap = el("div", "generator-page");
-
-    /* ① 顶部菜单栏：标题 */
     var menubar = el("div", "generator-menubar");
     var menubarTitle = el(
       "div",
@@ -1344,8 +1330,6 @@
     });
     menubar.appendChild(helpBtn);
     wrap.appendChild(menubar);
-
-    /* ② 编辑器：紧贴菜单栏，全宽，50vh */
     var editorWrap = el("div", "generator-editor-wrap");
     var g2 = el("div", "form-group generator-form-group");
     var ta = document.createElement("textarea");
@@ -1354,7 +1338,6 @@
     editorWrap.appendChild(g2);
     wrap.appendChild(editorWrap);
     wrap.appendChild(buildGeneratorAIPanel());
-      /*  */
     var g3 = el("div", "form-group");
     var fileInput = document.createElement("input");
     fileInput.type = "file";
