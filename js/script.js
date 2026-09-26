@@ -1,4 +1,5 @@
- (function () {
+/* J1 常量声明 */
+  (function () {
     "use strict";
     var STORAGE_KEY = "p5_pages";
     var THEME_KEY = "p5_theme";
@@ -9,11 +10,12 @@
     var AI_PROMPT_STORAGE = "p5_ai_prompts";
     var AI_CUSTOM_MODELS_STORAGE = "p5_ai_custom_models";
     var AI_CURRENT_MODEL_STORAGE = "p5_ai_current_model";
-    var MAX_IMAGE_BYTES = 1.5 * 1024 * 1024;  
+    var MAX_IMAGE_BYTES = 1.5 * 1024 * 1024;
     var MAX_SESSION_IMAGES = 10;
     var MAX_TITLE_LEN = 60;
     var P5_DIR = "p5/";
-    var P5_CDN = "https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js";
+    var P5_CDN =
+      "https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js";
     var P5_FILES = ["sketch1.js", "sketch2.js", "sketch3.js"];
     var MAX_CONTEXT_MESSAGES = 30;
     var MAX_TOOL_LOOP = 5;
@@ -25,6 +27,10 @@
     var SEARCH_DEBOUNCE_MS = 150;
     var STORAGE_KB_MULTIPLIER = 2;
     var CONTENT_URL = "data/content.json";
+    var IDB_NAME = "p5_store";
+    var IDB_STORE = "kv";
+    var IDB_VERSION = 1;
+    var IDB_INIT_TIMEOUT_MS = 1500;
     var TOOL_SPECS = [
       {
         name: "insert_code",
@@ -169,6 +175,7 @@
     var LANG = "zh";
     var CONTENT = null;
 
+/* J2 全局状态 */
   var aiState = {
     currentModel: null,
     keys: {},
@@ -203,6 +210,7 @@
   var renderedMsgCount = 0;
   var renderedModelId = null;
 
+/* J3 i18n */
   function T(key, params) {
     var pack = I18N[LANG] || I18N.zh || {};
     var text = pack[key];
@@ -264,6 +272,7 @@
     } catch (e) {}
   }
 
+/* J4 模型查询 */
   function getAllModels() {
     return AI_MODELS.concat(aiState.customModels || []);
   }
@@ -284,104 +293,201 @@
     return c ? c.name : id;
   }
 
-  function loadAIKeys() {
+/* J5 存储核心 + AI 存储 */
+  var _storage = {
+    mode: "memory",
+    db: null,
+    cache: {},
+  };
+  function _idbGetAll() {
+    return new Promise(function (resolve, reject) {
+      try {
+        var tx = _storage.db.transaction(IDB_STORE, "readonly");
+        var req = tx.objectStore(IDB_STORE).getAll();
+        req.onsuccess = function () {
+          resolve(req.result || []);
+        };
+        req.onerror = function () {
+          reject(req.error);
+        };
+      } catch (e) {
+        reject(e);
+      }
+    });
+  }
+  function _idbInit() {
+    return new Promise(function (resolve) {
+      var done = false;
+      function finish(mode) {
+        if (done) return;
+        done = true;
+        resolve(mode);
+      }
+      var timer = setTimeout(function () {
+        finish("ls");
+      }, IDB_INIT_TIMEOUT_MS);
+      try {
+        var req = indexedDB.open(IDB_NAME, IDB_VERSION);
+        req.onupgradeneeded = function (e) {
+          var db = e.target.result;
+          if (!db.objectStoreNames.contains(IDB_STORE)) {
+            db.createObjectStore(IDB_STORE, { keyPath: "key" });
+          }
+        };
+        req.onsuccess = function (e) {
+          clearTimeout(timer);
+          _storage.db = e.target.result;
+          _idbGetAll()
+            .then(function (rows) {
+              rows.forEach(function (r) {
+                if (r && r.key) _storage.cache[r.key] = r.value;
+              });
+              finish("idb");
+            })
+            .catch(function () {
+              finish("ls");
+            });
+        };
+        req.onerror = function () {
+          clearTimeout(timer);
+          finish("ls");
+        };
+        req.onblocked = function () {
+          clearTimeout(timer);
+          finish("ls");
+        };
+      } catch (e) {
+        clearTimeout(timer);
+        finish("ls");
+      }
+    });
+  }
+  function _lsWarmup() {
     try {
-      var raw = localStorage.getItem(AI_KEY_STORAGE);
-      var o = raw ? JSON.parse(raw) : {};
-      return o && typeof o === "object" ? o : {};
-    } catch (e) {
-      return {};
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (!k || k.indexOf("p5_") !== 0) continue;
+        try {
+          _storage.cache[k] = JSON.parse(localStorage.getItem(k));
+        } catch (e) {
+          _storage.cache[k] = localStorage.getItem(k);
+        }
+      }
+    } catch (e) {}
+  }
+  function initStorage() {
+    return _idbInit().then(function (mode) {
+      _storage.mode = mode;
+      if (mode === "ls") {
+        _lsWarmup();
+        try {
+          localStorage.setItem("__p5_probe__", "1");
+          localStorage.removeItem("__p5_probe__");
+        } catch (e) {
+          _storage.mode = "memory";
+        }
+      }
+    });
+  }
+  function storageGet(key, fallback) {
+    if (Object.prototype.hasOwnProperty.call(_storage.cache, key)) {
+      return _storage.cache[key];
     }
+    return fallback;
+  }
+  function _ctxForKey(key) {
+    if (key === AI_KEY_STORAGE) return "storage.ctxKeys";
+    if (key === AI_PROMPT_STORAGE) return "storage.ctxPrompts";
+    if (key === AI_CUSTOM_MODELS_STORAGE) return "storage.ctxCustomModels";
+    if (key === STORAGE_KEY) return "storage.ctxPages";
+    if (key.indexOf(AI_CHAT_STORAGE) === 0) return "storage.ctxChats";
+    return null;
+  }
+  function storageSet(key, value) {
+    _storage.cache[key] = value;
+    if (_storage.mode === "idb" && _storage.db) {
+      try {
+        var tx = _storage.db.transaction(IDB_STORE, "readwrite");
+        tx.objectStore(IDB_STORE).put({ key: key, value: value });
+        tx.onerror = function () {
+          handleStorageQuotaError(tx.error, _ctxForKey(key));
+        };
+      } catch (e) {
+        handleStorageQuotaError(e, _ctxForKey(key));
+      }
+      return true;
+    }
+    if (_storage.mode === "ls") {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+        return true;
+      } catch (e) {
+        handleStorageQuotaError(e, _ctxForKey(key));
+        return false;
+      }
+    }
+    return true;
+  }
+
+  function storageRemove(key) {
+    delete _storage.cache[key];
+    if (_storage.mode === "idb" && _storage.db) {
+      try {
+        var tx = _storage.db.transaction(IDB_STORE, "readwrite");
+        tx.objectStore(IDB_STORE).delete(key);
+      } catch (e) {}
+    } else if (_storage.mode === "ls") {
+      try {
+        localStorage.removeItem(key);
+      } catch (e) {}
+    }
+  }
+  function loadAIKeys() {
+    var v = storageGet(AI_KEY_STORAGE, {});
+    return v && typeof v === "object" ? v : {};
   }
   function saveAIKeys() {
-    try {
-      localStorage.setItem(AI_KEY_STORAGE, JSON.stringify(aiState.keys));
-      return true;
-    } catch (e) {
-      handleStorageQuotaError(e, "storage.ctxKeys");
-      return false;
-    }
+    return storageSet(AI_KEY_STORAGE, aiState.keys);
   }
   function loadCurrentModel() {
-    try {
-      return localStorage.getItem(AI_CURRENT_MODEL_STORAGE) || null;
-    } catch (e) {
-      return null;
-    }
+    var v = storageGet(AI_CURRENT_MODEL_STORAGE, null);
+    return typeof v === "string" ? v : null;
   }
   function saveCurrentModel(id) {
-    try {
-      if (id) localStorage.setItem(AI_CURRENT_MODEL_STORAGE, id);
-      else localStorage.removeItem(AI_CURRENT_MODEL_STORAGE);
-    } catch (e) {}
+    if (id) storageSet(AI_CURRENT_MODEL_STORAGE, id);
+    else storageRemove(AI_CURRENT_MODEL_STORAGE);
   }
   function loadAIChats() {
     var result = {};
     getAllModels().forEach(function (m) {
-      try {
-        var raw = localStorage.getItem(AI_CHAT_STORAGE + "_" + m.id);
-        var v = raw ? JSON.parse(raw) : [];
-        result[m.id] = Array.isArray(v) ? v : [];
-      } catch (e) {
-        result[m.id] = [];
-      }
+      var v = storageGet(AI_CHAT_STORAGE + "_" + m.id, []);
+      result[m.id] = Array.isArray(v) ? v : [];
     });
     return result;
   }
   function saveAIChats(modelId) {
     if (!modelId) return true;
-    try {
-      localStorage.setItem(
-        AI_CHAT_STORAGE + "_" + modelId,
-        JSON.stringify(aiState.chats[modelId] || []),
-      );
-      return true;
-    } catch (e) {
-      handleStorageQuotaError(e, "storage.ctxChats");
-      return false;
-    }
+    return storageSet(
+      AI_CHAT_STORAGE + "_" + modelId,
+      aiState.chats[modelId] || [],
+    );
   }
   function loadAIPrompts() {
-    try {
-      var raw = localStorage.getItem(AI_PROMPT_STORAGE);
-      var o = raw ? JSON.parse(raw) : {};
-      return o && typeof o === "object" ? o : {};
-    } catch (e) {
-      return {};
-    }
+    var v = storageGet(AI_PROMPT_STORAGE, {});
+    return v && typeof v === "object" ? v : {};
   }
   function saveAIPrompts() {
-    try {
-      localStorage.setItem(
-        AI_PROMPT_STORAGE,
-        JSON.stringify(aiState.prompts),
-      );
-      return true;
-    } catch (e) {
-      handleStorageQuotaError(e, "storage.ctxPrompts");
-      return false;
-    }
+    return storageSet(AI_PROMPT_STORAGE, aiState.prompts);
   }
   function loadCustomModels() {
-    try {
-      var raw = localStorage.getItem(AI_CUSTOM_MODELS_STORAGE);
-      var list = raw ? JSON.parse(raw) : [];
-      return Array.isArray(list) ? list : [];
-    } catch (e) {
-      return [];
-    }
+    var v = storageGet(AI_CUSTOM_MODELS_STORAGE, []);
+    return Array.isArray(v) ? v : [];
   }
   function saveCustomModels() {
-    try {
-      localStorage.setItem(
-        AI_CUSTOM_MODELS_STORAGE,
-        JSON.stringify(aiState.customModels || []),
-      );
-      return true;
-    } catch (e) {
-      handleStorageQuotaError(e, "storage.ctxCustomModels");
-      return false;
-    }
+    return storageSet(
+      AI_CUSTOM_MODELS_STORAGE,
+      aiState.customModels || [],
+    );
   }
   function initAIState() {
     aiState.keys = loadAIKeys();
@@ -396,64 +502,48 @@
     aiState.currentModel = saved && aiModelConf(saved) ? saved : null;
   }
 
+/* J6 页面与草稿存储 */
   function getPages() {
-    try {
-      var raw = localStorage.getItem(STORAGE_KEY);
-      var list = raw ? JSON.parse(raw) : [];
-      return Array.isArray(list) ? list : [];
-    } catch (e) {
-      return [];
-    }
+    var v = storageGet(STORAGE_KEY, []);
+    return Array.isArray(v) ? v : [];
   }
   function savePages(pages) {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(pages));
-      return true;
-    } catch (e) {
-      handleStorageQuotaError(e, "storage.ctxPages");
-      return false;
-    }
+    return storageSet(STORAGE_KEY, pages);
   }
   function loadDraft() {
-    try {
-      var raw = localStorage.getItem(DRAFT_KEY);
-      var o = raw ? JSON.parse(raw) : null;
-      if (o && typeof o === "object") {
-        return {
-          title: typeof o.title === "string" ? o.title : "",
-          script: typeof o.script === "string" ? o.script : "",
-        };
-      }
-    } catch (e) {}
+    var o = storageGet(DRAFT_KEY, null);
+    if (o && typeof o === "object") {
+      return {
+        title: typeof o.title === "string" ? o.title : "",
+        script: typeof o.script === "string" ? o.script : "",
+      };
+    }
     return { title: "", script: "" };
   }
   function saveDraft() {
-    try {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(generatorDraft));
-    } catch (e) {}
+    storageSet(DRAFT_KEY, generatorDraft);
   }
   function clearDraft() {
     generatorDraft = { title: "", script: "" };
-    try {
-      localStorage.removeItem(DRAFT_KEY);
-    } catch (e) {}
+    storageRemove(DRAFT_KEY);
   }
 
-  function isQuotaError(e) {
+/* J7 存储配额 */
+function isQuotaError(e) {
     if (!e) return false;
     if (e.name === "QuotaExceededError") return true;
     if (e.name === "NS_ERROR_DOM_QUOTA_REACHED") return true;
     if (e.code === 22 || e.code === 1014) return true;
     return false;
   }
-  function estimateLocalStorageKB() {
+  function estimateStorageKB() {
     var total = 0;
     try {
-      for (var i = 0; i < localStorage.length; i++) {
-        var k = localStorage.key(i);
-        var v = localStorage.getItem(k) || "";
-        total += k.length + v.length;
-      }
+      Object.keys(_storage.cache).forEach(function (k) {
+        var v = _storage.cache[k];
+        var s = typeof v === "string" ? v : JSON.stringify(v);
+        total += k.length + (s ? s.length : 0);
+      });
     } catch (e) {
       return -1;
     }
@@ -468,7 +558,7 @@
       );
       return;
     }
-    var usedKB = estimateLocalStorageKB();
+    var usedKB = estimateStorageKB();
     var usedText = usedKB >= 0 ? T("storage.used", { kb: usedKB }) : "";
     showAlert(
       T("storage.fullTitle"),
@@ -480,6 +570,7 @@
     );
   }
 
+/* J8 DOM 工具 */
   function $(sel, root) {
     return (root || document).querySelector(sel);
   }
@@ -521,6 +612,7 @@
     return el("div", "right-group");
   }
 
+/* J9 模态框系统 */
   var _modalFocusHandler = null;
   function _installFocusTrap(box) {
     _removeFocusTrap();
@@ -721,6 +813,7 @@
     });
   }
 
+/* J10 页面生成与导出 */
   function generatePageHtml(title, script, imageDataUrl, hasImage) {
     var safeTitle = escapeHtml(
       (title || T("generator.untitledPage")).slice(0, MAX_TITLE_LEN),
@@ -871,6 +964,7 @@
       });
   }
 
+/* J11 随机 p5 与 srcdoc */
   function pickRandomP5File() {
     if (!P5_FILES || !P5_FILES.length) return null;
     if (P5_FILES.length === 1) return P5_FILES[0];
@@ -912,6 +1006,7 @@
     );
   }
 
+/* J12 侧边栏页面列表 */
   function updateSidebarPages() {
     var pages = getPages();
     var kw = sidebarSearchKeyword.trim().toLowerCase();
@@ -955,6 +1050,8 @@
     sidebarPagesEl.replaceChildren(frag);
   }
 
+
+/* J13 iframe 代理 */
   function bindIframeProxy(iframe) {
     var iwin, idoc;
     try {
@@ -1075,6 +1172,8 @@
     });
   }
 
+
+/* J14 预览锁定与截图 */
   function lockAppSize() {
     document.body.classList.add("preview-lock");
     var w = window.innerWidth;
@@ -1127,6 +1226,8 @@
     return btn;
   }
 
+
+/* J15 首页运行器 */
   function renderRunner() {
     destroyEditor();
     appEl.replaceChildren();
@@ -1238,6 +1339,8 @@
     });
   }
 
+
+/* J16 侧边栏与主题 */
   function openSidebar() {
     sidebarEl.classList.add("open");
     overlayEl.classList.add("show");
@@ -1271,14 +1374,15 @@
   function currentTheme() {
     return document.body.classList.contains("dark-mode") ? "dark" : "light";
   }
+
   function toggleTheme() {
     var next = currentTheme() === "dark" ? "light" : "dark";
     applyTheme(next);
-    try {
-      localStorage.setItem(THEME_KEY, next);
-    } catch (e) {}
+    storageSet(THEME_KEY, next);
   }
 
+
+/* J17 路由与静态页 */
   function getRoute() {
     var hash = location.hash;
     if (!hash || hash === "#" || hash === "#/") return "/";
@@ -1312,7 +1416,7 @@
     });
     return wrap;
   }
-  function renderGenerator() {
+function renderGenerator() {
     var wrap = el("div", "generator-page");
     var menubar = el("div", "generator-menubar");
     var menubarTitle = el(
@@ -1337,6 +1441,7 @@
     g2.appendChild(ta);
     editorWrap.appendChild(g2);
     wrap.appendChild(editorWrap);
+
     wrap.appendChild(buildGeneratorAIPanel());
     var g3 = el("div", "form-group");
     var fileInput = document.createElement("input");
@@ -1399,6 +1504,8 @@
     return frag;
   }
 
+
+/* J18 生成器模型菜单 */
   function refreshGenModelBtn() {
     var btn = $("#genModelBtn");
     if (!btn) return;
@@ -1450,6 +1557,8 @@
     if (willShow) buildGenModelMenu();
   }
 
+
+/* J19 生成器 AI 状态与工具 */
   function genStatusClear() {
     var box = $("#genStatus");
     if (box) box.replaceChildren();
@@ -1640,6 +1749,8 @@
     return null;
   }
 
+
+/* J20 AI 流式请求核心 */
   function findToolCallName(msgs, toolCallId) {
     for (var i = 0; i < msgs.length; i++) {
       var m = msgs[i];
@@ -1776,7 +1887,9 @@
       };
     }
     var timeoutCtl = new AbortController();
+    var timedOut = false;
     var timeoutId = setTimeout(function () {
+      timedOut = true;
       try {
         timeoutCtl.abort();
       } catch (e) {}
@@ -1868,6 +1981,14 @@
           });
         }
         return pump();
+      })
+      .catch(function (err) {
+        if (timedOut) {
+          var e = new Error("REQUEST_TIMEOUT");
+          e.name = "TimeoutError";
+          throw e;
+        }
+        throw err;
       })
       .finally(function () {
         clearTimeout(timeoutId);
@@ -1965,6 +2086,8 @@
     return { consume: consume, finalize: finalize };
   }
 
+
+/* J21 生成器 AI 循环 */
   function genApplyCode(code, intent) {
     if (!editor || !code) return;
     if (intent === "append") {
@@ -2011,6 +2134,7 @@
       }
     }
     userContent += "\n用户要求：" + userText;
+
     var useVision = !!uploadedImageDataUrl && conf.vision === true;
     if (useVision) {
       genState.messages.push({
@@ -2131,8 +2255,14 @@
         .catch(function (err) {
           if (genState.streamToken !== myToken) return;
           var msg = String((err && err.message) || err);
-          if (err && err.name === "AbortError") {
+          var isTimeout = err && err.name === "TimeoutError";
+          var isAbort = err && (err.name === "AbortError" || err.code === 20);
+          if (isTimeout) {
             genStatusLine(T("gen.statusTimeout"), "error");
+            genSetBusy(false);
+            return;
+          }
+          if (isAbort) {
             genSetBusy(false);
             return;
           }
@@ -2244,6 +2374,7 @@
     refreshGenModelBtn();
   }
 
+/* J22 生成器主体 */
   function compressImage(dataUrl, maxDim, quality, callback) {
     var img = new Image();
     img.onload = function () {
@@ -2259,6 +2390,7 @@
         var ctx = canvas.getContext("2d");
         ctx.drawImage(img, 0, 0, w, h);
         var out = canvas.toDataURL("image/jpeg", quality);
+
         callback(out && out.length < dataUrl.length ? out : dataUrl);
       } catch (e) {
         callback(dataUrl);
@@ -2293,6 +2425,7 @@
       });
       editor.setSize(null, "100%");
       if (generatorDraft.script) editor.setValue(generatorDraft.script);
+
       var cmWrapper = editor.getWrapperElement();
       if (getComputedStyle(cmWrapper).position === "static") {
         cmWrapper.style.position = "relative";
@@ -2399,6 +2532,7 @@
         timestamp: new Date().toISOString(),
       });
       if (!savePages(pages)) return;
+
       if (imageDataUrl) {
         sessionImages[newId] = imageDataUrl;
         var ids = Object.keys(sessionImages);
@@ -2444,6 +2578,8 @@
     bindGeneratorAIPanel();
   }
 
+
+/* J23 AI 页面骨架 */
   function renderAIAssistant() {
     var page = el("div", "ai-page");
     var clearBtn = el("button", "ai-clear-btn", "−");
@@ -2494,6 +2630,8 @@
     return page;
   }
 
+
+/* J24 AI 模型菜单 */
   function buildAIModelMenu() {
     var menu = $("#aiModelMenu");
     if (!menu) return;
@@ -2584,6 +2722,8 @@
     menu.classList.toggle("show");
   }
 
+
+/* J25 剪贴板与提示 */
   function copyToClipboard(text) {
     if (!text) return;
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -2615,6 +2755,8 @@
     }, FLASH_TIP_MS);
   }
 
+
+/* J26 消息工具栏与节点 */
   function buildAssistantToolbar(m, index) {
     var toolbar = el("div", "assistant-toolbar");
     var left = el("div", "toolbar-left");
@@ -2738,6 +2880,8 @@
     return el("div", "ai-empty", text);
   }
 
+
+/* J27 AI 消息渲染 */
   function renderAIMessages() {
     var box = $("#aiMessages");
     if (!box) return;
@@ -2853,6 +2997,7 @@
     return box.scrollHeight - box.scrollTop - box.clientHeight < NEAR_BOTTOM_PX;
   }
 
+/* J28 消息操作 */
   function deleteMessageFrom(index) {
     var model = aiState.currentModel;
     if (!model) return;
@@ -2920,7 +3065,7 @@
     renderAIMessages();
     var bubble = getLastAssistantBubble();
     var accumulated = "";
-    var firstDelta = true;   
+    var firstDelta = true;
     var conf = aiModelConf(model);
     var isGemini = conf && conf.protocol === "gemini";
     var box = $("#aiMessages");
@@ -2998,6 +3143,7 @@
         aiState.busy = false;
         updateAISendBtn();
         var meta = acc.finalize();
+        var isTimeout = err && err.name === "TimeoutError";
         var isAbort = err && (err.name === "AbortError" || err.code === 20);
         if (accumulated) {
           var msg = chat[chat.length - 1];
@@ -3013,7 +3159,13 @@
         }
         saveAIChats(model);
         renderAIMessages();
-        if (!isAbort) {
+        if (isTimeout) {
+          showAlert(
+            T("chat.errTimeoutTitle"),
+            T("chat.errTimeoutBody"),
+            true,
+          );
+        } else if (!isAbort) {
           showAlert(
             T("chat.errRequestTitle"),
             String((err && err.message) || err) || T("chat.errRequestBody"),
@@ -3023,6 +3175,8 @@
       });
   }
 
+
+/* J29 模型编辑与选择 */
   function showModelEditor(modelId) {
     var isEdit = !!modelId;
     var existing = isEdit ? aiModelConf(modelId) : null;
@@ -3171,11 +3325,10 @@
         delete aiState.keys[modelId];
         delete aiState.chats[modelId];
         delete aiState.prompts[modelId];
+
         saveAIKeys();
         saveAIPrompts();
-        try {
-          localStorage.removeItem(AI_CHAT_STORAGE + "_" + modelId);
-        } catch (e) {}
+        storageRemove(AI_CHAT_STORAGE + "_" + modelId);
         aiState.customModels = aiState.customModels.filter(function (m) {
           return m.id !== modelId;
         });
@@ -3342,6 +3495,8 @@
     updateAISendBtn();
   }
 
+
+/* J30 对话导入导出 */
   function triggerDownload(content, mime, filename) {
     try {
       var encoded = btoa(unescape(encodeURIComponent(content)));
@@ -3568,6 +3723,8 @@
     reader.readAsText(file);
   }
 
+
+/* J31 AI 发送与清空 */
   function aiSend() {
     if (aiState.busy) return;
     var model = aiState.currentModel;
@@ -3620,6 +3777,8 @@
     );
   }
 
+
+/* J32 AI 助手绑定 */
   function bindAIAssistant() {
     renderedModelId = null;
     renderedMsgCount = 0;
@@ -3747,6 +3906,8 @@
     }
   }
 
+
+/* J33 主路由渲染 */
   function render() {
     var path = getRoute();
     appEl.classList.remove("preview-mode");
@@ -3798,6 +3959,8 @@
     }
   }
 
+
+/* J34 初始化 */
   function initStatic() {
     modalBackdrop = $("#modalBackdrop");
     modalBox = $("#modalBox");
@@ -3807,11 +3970,6 @@
     hamburgerBtn = $("#hamburgerBtn");
     appEl = $("#app");
     sidebarSearchEl = $("#sidebarSearch");
-    var savedTheme = "light";
-    try {
-      savedTheme = localStorage.getItem(THEME_KEY) || "light";
-    } catch (e) {}
-    applyTheme(savedTheme);
     ["gesturestart", "gesturechange", "gestureend"].forEach(function (type) {
       document.addEventListener(
         type,
@@ -3989,6 +4147,8 @@
     });
   }
 
+
+/* J35 启动 */
   function loadContent() {
     return fetch(CONTENT_URL, { cache: "no-cache" })
       .then(function (r) {
@@ -4004,18 +4164,21 @@
   }
   function boot() {
     initStatic();
-    initAIState();
-    applyI18nToStatic();
-    updateSidebarPages();
-    render();
+    return initStorage().then(function () {
+      LANG = detectLang();
+      applyTheme(storageGet(THEME_KEY, "light"));
+      initAIState();
+      applyI18nToStatic();
+      updateSidebarPages();
+      render();
+    });
   }
   loadContent()
     .then(function () {
-      boot();
+      return boot();
     })
     .catch(function (e) {
       console.warn("[content.json] 加载失败，使用默认文案：", e);
-      boot();
+      return boot();
     });
-
-  })();
+})();
