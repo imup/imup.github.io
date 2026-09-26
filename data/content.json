@@ -69,6 +69,7 @@
       "about.p7": "界面提供亮色/暗色主题切换，会根据系统语言适配中文或英文。通过PWA实现跨平台运行，打开浏览器输入https://imup.github.io在分享按钮下点击“添加到主屏幕”即可。 ",
 
       "generator.title": "AI智能脚本编辑器",
+      "generator.helpTitle": "查看说明",
       "generator.subtitle": "输入p5.js代码和标题，上传图片(可选)点击提交脚本；也可在下方选择AI函数调用执行代码生成，用自然语言描述效果，AI会自动把生成的代码写入编辑器",
       "generator.labelTitle": "标题",
       "generator.titlePlaceholder": "标题例如：我的创意绘图",
@@ -107,7 +108,7 @@
       "ai.menuDownloadJson": "下载对话 (JSON，含结构化响应元数据)",
       "ai.setKeyTitle": "设置{model}的API Key",
       "ai.keySecurityHint": "Key 仅存于本机浏览器，请勿在公共设备使用。",
-      "ai.clearKey": "删除 API Key",
+      "ai.clearKey": "删除API Key",
       "ai.setPromptTitle": "设置{model}系统提示词",
       "ai.setPromptHint": "这段提示词会作为System消息在每次对话时发送给模型，用于设定角色、语气或规则。留空则不发送。Ctrl+回车可快速保存。",
       "ai.setPromptPlaceholder": "例如：你是一位擅长p5.js生成艺术的助手，回答简洁专业，代码附注释。",
@@ -277,6 +278,7 @@
       "about.p7": "The UI offers light/dark theme switching and automatically adapts to Chinese or English based on your system language. It runs cross-platform as a PWA — open https://imup.github.io in your browser, tap the share button, and select \"Add to Home Screen\".",
 
       "generator.title": "AI Smart Script Editor",
+      "generator.helpTitle": "View help",
       "generator.subtitle": "Enter p5.js code and title, optionally upload an image, then submit. You can also use AI function calling below to generate code from a natural language description — the AI writes the result into the editor automatically.",
       "generator.labelTitle": "Title",
       "generator.titlePlaceholder": "e.g. My Creative Drawing",
