@@ -1327,7 +1327,7 @@
   function renderGenerator() {
     var wrap = el("div", "generator-page");
 
-    /* ① 顶部菜单栏：标题 + ❓ */
+    /* ① 顶部菜单栏：标题 */
     var menubar = el("div", "generator-menubar");
     var menubarTitle = el(
       "div",
@@ -1335,7 +1335,7 @@
       T("generator.title"),
     );
     menubar.appendChild(menubarTitle);
-    var helpBtn = el("button", "generator-menubar-help", "❓");
+    var helpBtn = el("button", "generator-menubar-help", "ⓘ");
     helpBtn.id = "generatorHelpBtn";
     helpBtn.type = "button";
     helpBtn.title = T("generator.helpTitle");
