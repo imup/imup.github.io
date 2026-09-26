@@ -1,8 +1,7 @@
 <!doctype html>
 <html lang="zh-CN">
   <head>
-    <!--  H1头部资源  -->
-
+    <!--  头部资源  -->
     <meta charset="UTF-8" />
     <meta
       name="viewport"
@@ -12,29 +11,28 @@
 
     <link
       rel="stylesheet"
-      href="js/lib/codemirror.min.css"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"
     />
     <link
       rel="stylesheet"
-      href="js/lib/duotone-light.min.css"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/duotone-light.min.css"
       id="cm-theme-light"
     />
     <link
       rel="stylesheet"
-      href="js/lib/dracula.min.css"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css"
       id="cm-theme-dark"
       disabled
     />
     <link rel="stylesheet" href="css/style.css" />
-
+    <!--  
     <link rel="manifest" href="manifest.json" />
-
-    <script src="js/lib/jszip.min.js"></script>
+    -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
   </head>
   <body>
-    <!--  H2 汉堡按钮  -->
-    <!-- 修改：aria-label 硬编码 → data-i18n-aria="nav.openMenu" -->
+    <!--  汉堡按钮  -->
     <button
       class="hamburger-btn"
       id="hamburgerBtn"
@@ -45,8 +43,7 @@
       ☰
     </button>
 
-    <!--  H3 侧边栏导航  -->
-    <!-- 搜索框 / 导航项 / 我的脚本 / 页脚（导出 ZIP / 切换主题） -->
+    <!--  侧边栏导航  -->
     <nav class="sidebar" id="sidebar" aria-label="主导航">
       <div class="sidebar-search">
         <input
@@ -132,7 +129,7 @@
       </div>
     </nav>
 
-    <!--  H4 主容器与模态框  -->
+    <!--  主容器与模态框  -->
     <div class="overlay" id="overlay"></div>
 
     <main id="app" data-i18n="site.loading">加载中…</main>
@@ -146,14 +143,14 @@
       <div class="modal" id="modalBox"></div>
     </div>
 
-    <!--  H5 脚本引入  -->
-    <script src="js/lib/codemirror.min.js"></script>
-    <script src="js/lib/javascript.min.js"></script>
+    <!--  脚本引入  -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
 
     <script src="js/script.js"></script>
 
 
-    <!--  H6 SW 注册 -->
+    <!--  SW注册 
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", function () {
@@ -165,6 +162,6 @@
         });
       }
     </script>
-
+    -->
   </body>
 </html>
