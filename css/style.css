@@ -1219,18 +1219,14 @@ button:disabled {
     padding-top: 54px;
   }
 }
-/* ============================================================
-   C16 生成器菜单栏与编辑器
-   作用：顶部菜单栏 + 编辑器紧贴全宽 + 编辑器外内容带边距
-   机制：菜单栏 56px 标题居中；编辑器 50vh 全宽；其余子元素加 padding
-   ============================================================ */
-/* --- 顶部菜单栏：56px 高，标题居中，全宽 --- */
+/* C16 生成器菜单栏与编辑器 */
+/*  顶部菜单栏：56px 高，标题居中，全宽  */
 .generator-menubar {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 56px;
+  height: 50px;
   padding: 0 12px;
   background: var(--surface);
   border-bottom: 1px solid var(--line);
@@ -1244,7 +1240,7 @@ button:disabled {
   text-overflow: ellipsis;
   max-width: calc(100% - 48px);
 }
-/* --- ❓按钮：绝对定位右侧，不影响标题居中 --- */
+/*  ❓按钮：绝对定位右侧，不影响标题居中  */
 .generator-menubar-help {
   position: absolute;
   right: 10px;
@@ -1276,7 +1272,7 @@ button:disabled {
   transform: translateY(-50%) scale(0.92);
 }
 
-/* --- 编辑器容器：全宽，紧贴菜单栏 --- */
+/*  编辑器容器：全宽，紧贴菜单栏  */
 .generator-editor-wrap {
   width: 100%;
   background: var(--surface);
@@ -1292,7 +1288,7 @@ button:disabled {
   font-size: 14px;
 }
 
-/* --- 编辑器之后的其它内容：恢复左右边距 --- */
+/*  编辑器之后的其它内容：恢复左右边距  */
 .generator-page > *:not(.generator-menubar):not(.generator-editor-wrap) {
   padding-left: clamp(14px, 4vw, 28px);
   padding-right: clamp(14px, 4vw, 28px);
@@ -1305,6 +1301,3 @@ button:disabled {
 .generator-page > .gen-ai-bar-bare {
   margin: 12px 0;
 }
-/* ============================================================
-   /C16 生成器菜单栏与编辑器
-   ============================================================ */
