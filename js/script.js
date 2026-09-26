@@ -3759,21 +3759,11 @@
     }
   }
 
-/* ============================================================
-     J33 主路由渲染
-     作用：hash 路由分发到各页面
-     机制：开头统一清除所有模式类；切换前清理（中断 AI / 取消预览 /
-           销毁编辑器）；按 path 分支渲染
-     ============================================================ */
   function render() {
     var path = getRoute();
-
-    /* --- 统一清除所有页面模式类（所有路径都会执行） --- */
     appEl.classList.remove("preview-mode");
     appEl.classList.remove("ai-mode");
     appEl.classList.remove("generator-mode");
-
-    /* --- 切换页面前：中断生成器请求 --- */
     if (genState.busy) {
       if (genState.abortController) {
         try {
@@ -3783,42 +3773,35 @@
       genState.streamToken += 1;
       genSetBusy(false);
     }
-    /* --- 非首页：重置 runner --- */
     if (path !== "/" && path !== "" && path !== "/index.html") {
       if (runner.mode === "page") {
         runner.mode = "random";
         runner.pageId = null;
       }
     }
-    /* --- 首页 --- */
     if (path === "/" || path === "" || path === "/index.html") {
       renderRunner();
       return;
     }
-    /* --- 其他页面：清理上一个页面的状态 --- */
     delete appEl.dataset.currentPageId;
     unlockAppSize();
     destroyEditor();
     appEl.replaceChildren();
     setActiveNav(path);
-    /* --- AI 助手页 --- */
     if (path === "/ai") {
       appEl.classList.add("ai-mode");
       appEl.appendChild(renderAIAssistant());
       bindAIAssistant();
       return;
     }
-    /* --- 关于页 --- */
     if (path === "/about") {
       appEl.appendChild(renderAbout());
     }
-    /* --- 生成器页 --- */
     else if (path === "/generator") {
       appEl.classList.add("generator-mode");
       appEl.appendChild(renderGenerator());
       bindGenerator();
     }
-    /* --- 404 --- */
     else {
       var wrap = document.createElement("div");
       wrap.appendChild(el("h1", null, T("page.notFoundTitle", { path: path })));
@@ -3826,9 +3809,6 @@
       appEl.appendChild(wrap);
     }
   }
-  /* ============================================================
-     /J33 主路由渲染
-     ============================================================ */
 
   function initStatic() {
     modalBackdrop = $("#modalBackdrop");
