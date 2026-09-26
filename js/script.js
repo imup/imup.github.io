@@ -3784,8 +3784,10 @@
     if (appEl.classList.contains("preview-mode")) {
       appEl.classList.remove("preview-mode");
     }
-    /*
     appEl.classList.remove("ai-mode");
+
+    appEl.classList.remove("generator-mode");
+
     delete appEl.dataset.currentPageId;
     unlockAppSize();
     destroyEditor();
@@ -3804,25 +3806,6 @@
       appEl.appendChild(renderGenerator());
       bindGenerator();
     }
-    */
-    appEl.classList.remove("ai-mode");
-    appEl.classList.remove("generator-mode");
-    delete appEl.dataset.currentPageId;
-    unlockAppSize();
-    destroyEditor();
-    appEl.replaceChildren();
-    setActiveNav(path);
-    if (path === "/ai") {
-      appEl.classList.add("ai-mode");
-    }
-    if (path === "/about") {
-      appEl.appendChild(renderAbout());
-    } else if (path === "/generator") {
-      appEl.classList.add("generator-mode");
-      appEl.appendChild(renderGenerator());
-      bindGenerator();
-    }
-    /*  */
     else {
       var wrap = document.createElement("div");
       wrap.appendChild(el("h1", null, T("page.notFoundTitle", { path: path })));
