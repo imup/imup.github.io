@@ -1388,6 +1388,7 @@
     return wrap;
   }
   /*  */
+   /*
     var g3 = el("div", "form-group");
     var fileInput = document.createElement("input");
     fileInput.type = "file";
@@ -1419,6 +1420,7 @@
     wrap.appendChild(result);
     return wrap;
   }
+  */
   function buildGeneratorAIPanel() {
     var frag = document.createDocumentFragment();
     var bar = el("div", "gen-ai-bar gen-ai-bar-bare");
