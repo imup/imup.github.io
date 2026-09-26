@@ -384,6 +384,19 @@ body.sidebar-open .hamburger-btn {
   max-width: none;
   margin: 0;
 }
+
+/* --- 生成器模式：全宽，去左右/顶部 padding，允许纵向滚动 --- */
+#app.generator-mode {
+  padding: 0;
+  max-width: none;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+#app.generator-mode > div {
+  max-width: none;
+  margin: 0;
+}
+/*  */
 #app h1 {
   font-size: clamp(1.35rem, 4.5vw, 1.9rem);
   margin: 0 0 0.4em;
@@ -1206,3 +1219,75 @@ button:disabled {
     padding-top: 54px;
   }
 }
+/* ============================================================
+   C16 生成器菜单栏与编辑器
+   作用：顶部菜单栏 + 编辑器紧贴全宽
+   机制：普通文档流；菜单栏标题居中；编辑器高 50vh
+   ============================================================ */
+/* --- 顶部菜单栏：56px 高，标题居中 --- */
+.generator-menubar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 56px;
+  padding: 0 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+.generator-menubar-title {
+  font-size: 1rem;
+  font-weight: bold;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: calc(100% - 48px);
+}
+.generator-menubar-help {
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  margin-left: 8px;
+  padding: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  font-size: 16px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    transform 0.15s;
+}
+.generator-menubar-help:hover {
+  background: var(--hover);
+  color: var(--primary);
+}
+.generator-menubar-help:active {
+  transform: scale(0.92);
+}
+
+/* --- 编辑器容器：紧贴菜单栏 --- */
+.generator-editor-wrap {
+  width: 100%;
+  background: var(--surface);
+}
+.generator-form-group {
+  margin: 0;
+}
+.generator-form-group .CodeMirror {
+  height: 50vh !important;
+  border: none;
+  border-radius: 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+}
+/* ============================================================
+
+   ============================================================ */
