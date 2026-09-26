@@ -3869,7 +3869,7 @@
       },
       { passive: false },
     );
-    document.addEventListener("click", function (e) {
+    document.addEventListener("pointerdown", function (e) {
       var aiMenu = $("#aiModelMenu");
       if (aiMenu && aiMenu.classList.contains("show")) {
         var picker = aiMenu.parentNode;
