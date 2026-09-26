@@ -3803,7 +3803,9 @@
       appEl.appendChild(renderAbout());
     }
     else if (path === "/generator") {
+        appEl.classList.add("generator-mode");
       appEl.appendChild(renderGenerator());
+    
       bindGenerator();
     }
     else {
