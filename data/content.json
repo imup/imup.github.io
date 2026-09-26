@@ -76,7 +76,7 @@
       "generator.labelScript": "p5.js 脚本代码",
       "generator.labelImage": "上传图片（可选，脚本可通过 imageUrl 加载）",
       "generator.submit": "提交脚本",
-      "generator.scriptPlaceholder": "例如：\nfunction setup() {\n  createCanvas(windowWidth, windowHeight);\n  background(102);\n}\nfunction draw() {\n  variableEllipse(mouseX, mouseY, pmouseX, pmouseY);\n}\nfunction variableEllipse(x, y, px, py) {\n  let speed = abs(x - px) + abs(y - py);\n  stroke(speed);\n  ellipse(x, y, speed, speed);\n}",
+      "generator.scriptPlaceholder": "例如：\nfunction setup() {\n  createCanvas(windowWidth, windowHeight);\n  background(102);\n}\nfunction draw() {\n  myEllipse(mouseX, mouseY, pmouseX, pmouseY);\n}\nfunction myEllipse(x, y, px, py) {\n  let speed = abs(x - px) + abs(y - py);\n  stroke(speed);\n  ellipse(x, y, speed, speed);\n}",
       "generator.imageOk": "✅ 图片上传成功（自动压缩，仅当前会话有效）",
       "generator.imageAlt": "上传预览",
       "generator.buildOk": "✅ 提交成功！已存至左侧栏脚本列表中",
