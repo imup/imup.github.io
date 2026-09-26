@@ -1240,7 +1240,7 @@ button:disabled {
   text-overflow: ellipsis;
   max-width: calc(100% - 48px);
 }
-/*  ❓按钮：绝对定位右侧，不影响标题居中  */
+/*  ⓘ按钮：绝对定位右侧，不影响标题居中  */
 .generator-menubar-help {
   position: absolute;
   right: 10px;
