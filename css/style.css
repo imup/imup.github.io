@@ -1293,6 +1293,11 @@ button:disabled {
   padding-left: clamp(14px, 4vw, 28px);
   padding-right: clamp(14px, 4vw, 28px);
 }
+/* --- 页面底部间距：滚动到底部时留白 --- */
+.generator-page {
+  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+}
+
 /* 状态区顶部间距（有内容时） */
 .generator-page > .gen-status:not(:empty) {
   padding-top: 10px;
