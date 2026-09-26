@@ -167,6 +167,8 @@
       "chat.clearConfirmBody": "确定要清除与{model}的全部对话内容吗？",
       "chat.errNoDownloadTitle": "无法下载",
       "chat.errNoDownloadBody": "{model}还没有对话内容。",
+      "chat.errTimeoutTitle": "请求超时",
+      "chat.errTimeoutBody": "模型超过 60 秒未响应，请重试或更换模型。",
 
       "import.failTitle": "导入失败",
       "import.badJson": "文件不是合法的JSON。",
@@ -376,6 +378,8 @@
       "chat.clearConfirmBody": "Clear all messages with {model}?",
       "chat.errNoDownloadTitle": "Cannot download",
       "chat.errNoDownloadBody": "\"{model}\" has no conversation yet.",
+      "chat.errTimeoutTitle": "Request Timed Out",
+      "chat.errTimeoutBody": "The model did not respond within 60 seconds. Try again or switch model.",
 
       "import.failTitle": "Import Failed",
       "import.badJson": "File is not valid JSON.",
