@@ -2917,21 +2917,17 @@
     aiState.abortController = new AbortController();
     aiState.busy = true;
     updateAISendBtn();
-    
     renderAIMessages();
     var bubble = getLastAssistantBubble();
     var accumulated = "";
     var firstDelta = true;   
-    /* 首次 delta 标志 */
     var conf = aiModelConf(model);
     var isGemini = conf && conf.protocol === "gemini";
     var box = $("#aiMessages");
     var acc = createStructuredAccumulator();
-    /* --- 逐字追加 --- */
     function pushDelta(t2) {
       if (aiState.streamToken !== myToken) return;
       if (!t2) return;
-      /* 首次收到内容时，清空"正在思考…"占位 */
       if (firstDelta && bubble) {
         bubble.textContent = "";
         bubble.classList.remove("pending");
@@ -2941,26 +2937,6 @@
       if (bubble) bubble.appendChild(document.createTextNode(t2));
       if (box && isNearBottom(box)) box.scrollTop = box.scrollHeight;
     }
-    /*
-    renderAIMessages();
-    var bubble = getLastAssistantBubble();
-    if (bubble) {
-      bubble.textContent = "";
-      bubble.classList.remove("pending");
-    }
-    var accumulated = "";
-    var conf = aiModelConf(model);
-    var isGemini = conf && conf.protocol === "gemini";
-    var box = $("#aiMessages");
-    var acc = createStructuredAccumulator();
-    function pushDelta(t2) {
-      if (aiState.streamToken !== myToken) return;
-      if (!t2) return;
-      accumulated += t2;
-      if (bubble) bubble.appendChild(document.createTextNode(t2));
-      if (box && isNearBottom(box)) box.scrollTop = box.scrollHeight;
-    }
-    */
     var onDelta = function (obj) {
       if (isGemini) {
         var cand = obj.candidates && obj.candidates[0];
