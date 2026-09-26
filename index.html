@@ -1,7 +1,6 @@
 <!doctype html>
 <html lang="zh-CN">
   <head>
-    <!--  头部资源  -->
     <meta charset="UTF-8" />
     <meta
       name="viewport"
@@ -32,7 +31,6 @@
 
   </head>
   <body>
-    <!--  汉堡按钮  -->
     <button
       class="hamburger-btn"
       id="hamburgerBtn"
@@ -43,7 +41,6 @@
       ☰
     </button>
 
-    <!--  侧边栏导航  -->
     <nav class="sidebar" id="sidebar" aria-label="主导航">
       <div class="sidebar-search">
         <input
@@ -129,7 +126,6 @@
       </div>
     </nav>
 
-    <!--  主容器与模态框  -->
     <div class="overlay" id="overlay"></div>
 
     <main id="app" data-i18n="site.loading">加载中…</main>
@@ -143,13 +139,12 @@
       <div class="modal" id="modalBox"></div>
     </div>
 
-    <!--  脚本引入  -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
 
     <script src="js/script.js"></script>
 
-    <!--  SW注册 
+    <!--  SW
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", function () {
