@@ -13,7 +13,7 @@
     var MAX_SESSION_IMAGES = 10;
     var MAX_TITLE_LEN = 60;
     var P5_DIR = "p5/";
-    var P5_CDN = "https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js";
+    var P5_CDN = "js/lib/p5.min.js";
     var P5_FILES = ["sketch1.js", "sketch2.js", "sketch3.js"];
     var MAX_CONTEXT_MESSAGES = 30;
     var MAX_TOOL_LOOP = 5;
