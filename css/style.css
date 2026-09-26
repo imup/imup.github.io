@@ -1221,10 +1221,10 @@ button:disabled {
 }
 /* ============================================================
    C16 生成器菜单栏与编辑器
-   作用：顶部菜单栏 + 编辑器紧贴全宽
-   机制：普通文档流；菜单栏标题居中；编辑器高 50vh
+   作用：顶部菜单栏 + 编辑器紧贴全宽 + 编辑器外内容带边距
+   机制：菜单栏 56px 标题居中；编辑器 50vh 全宽；其余子元素加 padding
    ============================================================ */
-/* --- 顶部菜单栏：56px 高，标题居中 --- */
+/* --- 顶部菜单栏：56px 高，标题居中，全宽 --- */
 .generator-menubar {
   position: relative;
   display: flex;
@@ -1244,17 +1244,21 @@ button:disabled {
   text-overflow: ellipsis;
   max-width: calc(100% - 48px);
 }
+/* --- ❓按钮：绝对定位右侧，不影响标题居中 --- */
 .generator-menubar-help {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
   width: 26px;
   height: 26px;
   min-width: 26px;
-  margin-left: 8px;
   padding: 0;
   border-radius: 50%;
   background: transparent;
   color: var(--text-muted);
   border: none;
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1;
   display: flex;
   align-items: center;
@@ -1262,18 +1266,17 @@ button:disabled {
   cursor: pointer;
   transition:
     background 0.15s,
-    color 0.15s,
-    transform 0.15s;
+    color 0.15s;
 }
 .generator-menubar-help:hover {
   background: var(--hover);
   color: var(--primary);
 }
 .generator-menubar-help:active {
-  transform: scale(0.92);
+  transform: translateY(-50%) scale(0.92);
 }
 
-/* --- 编辑器容器：紧贴菜单栏 --- */
+/* --- 编辑器容器：全宽，紧贴菜单栏 --- */
 .generator-editor-wrap {
   width: 100%;
   background: var(--surface);
@@ -1288,6 +1291,20 @@ button:disabled {
   border-bottom: 1px solid var(--line);
   font-size: 14px;
 }
-/* ============================================================
 
+/* --- 编辑器之后的其它内容：恢复左右边距 --- */
+.generator-page > *:not(.generator-menubar):not(.generator-editor-wrap) {
+  padding-left: clamp(14px, 4vw, 28px);
+  padding-right: clamp(14px, 4vw, 28px);
+}
+/* 状态区顶部间距（有内容时） */
+.generator-page > .gen-status:not(:empty) {
+  padding-top: 10px;
+}
+/* AI 输入条上下间距 */
+.generator-page > .gen-ai-bar-bare {
+  margin: 12px 0;
+}
+/* ============================================================
+   /C16 生成器菜单栏与编辑器
    ============================================================ */
