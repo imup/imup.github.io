@@ -1312,6 +1312,7 @@
     });
     return wrap;
   }
+  /*
   function renderGenerator() {
     var wrap = el("div", "generator-page");
     wrap.appendChild(el("h1", null, T("generator.title")));
@@ -1322,6 +1323,71 @@
     g2.appendChild(ta);
     wrap.appendChild(g2);
     wrap.appendChild(buildGeneratorAIPanel());
+    */
+  function renderGenerator() {
+    var wrap = el("div", "generator-page");
+
+    /* ① 顶部菜单栏：标题 + ❓ */
+    var menubar = el("div", "generator-menubar");
+    var menubarTitle = el(
+      "div",
+      "generator-menubar-title",
+      T("generator.title"),
+    );
+    menubar.appendChild(menubarTitle);
+    var helpBtn = el("button", "generator-menubar-help", "❓");
+    helpBtn.id = "generatorHelpBtn";
+    helpBtn.type = "button";
+    helpBtn.title = T("generator.helpTitle");
+    helpBtn.addEventListener("click", function () {
+      showAlert(T("generator.title"), T("generator.subtitle"));
+    });
+    menubar.appendChild(helpBtn);
+    wrap.appendChild(menubar);
+
+    /* ② 编辑器：紧贴菜单栏，全宽，50vh */
+    var editorWrap = el("div", "generator-editor-wrap");
+    var g2 = el("div", "form-group generator-form-group");
+    var ta = document.createElement("textarea");
+    ta.id = "script";
+    g2.appendChild(ta);
+    editorWrap.appendChild(g2);
+    wrap.appendChild(editorWrap);
+
+    /* ③ 以下保持原布局 */
+    wrap.appendChild(buildGeneratorAIPanel());
+    var g3 = el("div", "form-group");
+    var fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.id = "image";
+    fileInput.accept = "image/*";
+    var l3 = el("label", "image-label-below");
+    l3.textContent = T("generator.labelImage");
+    var previewBox = el("div");
+    previewBox.id = "image-preview";
+    g3.appendChild(fileInput);
+    g3.appendChild(l3);
+    g3.appendChild(previewBox);
+    wrap.appendChild(g3);
+    var row = el("div", "gen-inline-row");
+    var titleInput = document.createElement("input");
+    titleInput.type = "text";
+    titleInput.id = "title";
+    titleInput.placeholder = T("generator.titlePlaceholder");
+    titleInput.maxLength = MAX_TITLE_LEN;
+    var submit = el("button", null, T("generator.submit"));
+    submit.id = "buildBtn";
+    submit.type = "button";
+    row.appendChild(titleInput);
+    row.appendChild(submit);
+    wrap.appendChild(row);
+    var result = el("div", "result");
+    result.id = "result";
+    result.style.display = "none";
+    wrap.appendChild(result);
+    return wrap;
+  }
+  /*  */
     var g3 = el("div", "form-group");
     var fileInput = document.createElement("input");
     fileInput.type = "file";
@@ -3751,6 +3817,7 @@
     if (appEl.classList.contains("preview-mode")) {
       appEl.classList.remove("preview-mode");
     }
+    /*
     appEl.classList.remove("ai-mode");
     delete appEl.dataset.currentPageId;
     unlockAppSize();
@@ -3770,6 +3837,26 @@
       appEl.appendChild(renderGenerator());
       bindGenerator();
     }
+    */
+    appEl.classList.remove("ai-mode");
+    appEl.classList.remove("generator-mode");
+    delete appEl.dataset.currentPageId;
+    unlockAppSize();
+    destroyEditor();
+    appEl.replaceChildren();
+    setActiveNav(path);
+    if (path === "/ai") {
+      appEl.classList.add("ai-mode");
+      ...
+    }
+    if (path === "/about") {
+      appEl.appendChild(renderAbout());
+    } else if (path === "/generator") {
+      appEl.classList.add("generator-mode");
+      appEl.appendChild(renderGenerator());
+      bindGenerator();
+    }
+    /*  */
     else {
       var wrap = document.createElement("div");
       wrap.appendChild(el("h1", null, T("page.notFoundTitle", { path: path })));
