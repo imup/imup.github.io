@@ -6,7 +6,7 @@
   "scope": "./",
   "display": "fullscreen",
   "orientation": "any",
-  "background_color": "#F5F5F5",
+  "background_color": "#FFFFFF",
   "theme_color": "#FFFFFF",
   "lang": "zh-CN",
   "dir": "ltr",
