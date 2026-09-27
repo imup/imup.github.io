@@ -87,9 +87,6 @@ body {
     background 0.3s,
     color 0.3s;
 }
-body {
-  padding-top: env(safe-area-inset-top, 0px);
-}
 body.preview-lock {
   position: fixed;
   top: 0;
@@ -101,12 +98,6 @@ body.preview-lock {
   overflow: hidden;
   overscroll-behavior: none;
   touch-action: none;
-}
-/* --- PWA / 全面屏：预览与首页 iframe 铺满，含底部安全区 --- */
-body.preview-lock #app {
-  top: 0;
-  bottom: 0;
-  height: auto !important;
 }
 
 .hamburger-btn {
@@ -139,22 +130,6 @@ body.sidebar-open .hamburger-btn {
   opacity: 0;
   transform: scale(0.6);
   pointer-events: none;
-}
-/*  PWA全屏模式：安全区补偿（避免被iOS状态栏遮挡） */
-@media (display-mode: standalone), (display-mode: fullscreen) {
-  .hamburger-btn {
-    top: calc(clamp(8px, 2vw, 14px) + env(safe-area-inset-top, 0px));
-  }
-  .generator-menubar {
-    padding-top: env(safe-area-inset-top, 0px);
-    height: calc(56px + env(safe-area-inset-top, 0px));
-  }
-  .ai-clear-btn {
-    top: calc(clamp(16px, 2vw, 14px) + env(safe-area-inset-top, 0px));
-  }
-  .sidebar {
-    padding-top: calc(env(safe-area-inset-top, 0px) + 8px);
-  }
 }
 
 .sidebar {
