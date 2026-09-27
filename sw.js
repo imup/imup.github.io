@@ -1,4 +1,4 @@
-var CACHE_NAME = "randomArt-v1.00";
+var CACHE_NAME = "randomArt-v1.02";
 var URLS_TO_CACHE = [
   "./",
   "./index.html",
