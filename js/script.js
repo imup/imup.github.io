@@ -1,31 +1,31 @@
-  (function () {
-    "use strict";
-    var STORAGE_KEY = "p5_pages";
-    var THEME_KEY = "p5_theme";
-    var LANG_KEY = "p5_lang";
-    var DRAFT_KEY = "p5_gen_draft";
-    var AI_KEY_STORAGE = "p5_ai_keys";
-    var AI_CHAT_STORAGE = "p5_ai_chats";
-    var AI_PROMPT_STORAGE = "p5_ai_prompts";
-    var AI_CUSTOM_MODELS_STORAGE = "p5_ai_custom_models";
-    var AI_CURRENT_MODEL_STORAGE = "p5_ai_current_model";
-    var MAX_IMAGE_BYTES = 1.5 * 1024 * 1024;
-    var MAX_SESSION_IMAGES = 10;
-    var MAX_TITLE_LEN = 60;
-    var P5_DIR = "p5/";
-    var P5_CDN = "https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js";
-    var P5_FILES = ["sketch1.js", "sketch2.js", "sketch3.js"];
-    var MAX_CONTEXT_MESSAGES = 30;
-    var MAX_TOOL_LOOP = 5;
-    var REQUEST_TIMEOUT_MS = 60000;
-    var TEST_TIMEOUT_MS = 15000;
-    var LONG_PRESS_MS = 500;
-    var FLASH_TIP_MS = 1200;
-    var NEAR_BOTTOM_PX = 80;
-    var SEARCH_DEBOUNCE_MS = 150;
-    var STORAGE_KB_MULTIPLIER = 2;
-    var CONTENT_URL = "data/content.json";
-    var TOOL_SPECS = [
+(function () {
+  "use strict";
+  var STORAGE_KEY = "p5_pages";
+  var THEME_KEY = "p5_theme";
+  var LANG_KEY = "p5_lang";
+  var DRAFT_KEY = "p5_gen_draft";
+  var AI_KEY_STORAGE = "p5_ai_keys";
+  var AI_CHAT_STORAGE = "p5_ai_chats";
+  var AI_PROMPT_STORAGE = "p5_ai_prompts";
+  var AI_CUSTOM_MODELS_STORAGE = "p5_ai_custom_models";
+  var AI_CURRENT_MODEL_STORAGE = "p5_ai_current_model";
+  var MAX_IMAGE_BYTES = 1.5 * 1024 * 1024;
+  var MAX_SESSION_IMAGES = 10;
+  var MAX_TITLE_LEN = 60;
+  var P5_DIR = "p5/";
+  var P5_CDN = "https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js";
+  var P5_FILES = ["sketch1.js", "sketch2.js", "sketch3.js"];
+  var MAX_CONTEXT_MESSAGES = 30;
+  var MAX_TOOL_LOOP = 5;
+  var REQUEST_TIMEOUT_MS = 60000;
+  var TEST_TIMEOUT_MS = 15000;
+  var LONG_PRESS_MS = 500;
+  var FLASH_TIP_MS = 1200;
+  var NEAR_BOTTOM_PX = 80;
+  var SEARCH_DEBOUNCE_MS = 150;
+  var STORAGE_KB_MULTIPLIER = 2;
+  var CONTENT_URL = "data/content.json";
+  var TOOL_SPECS = [
       {
         name: "insert_code",
         description:
@@ -164,10 +164,10 @@
         },
       ];
     }
-    var AI_MODELS = [];
-    var I18N = {};
-    var LANG = "zh";
-    var CONTENT = null;
+  var AI_MODELS = [];
+  var I18N = {};
+  var LANG = "zh";
+  var CONTENT = null;
 
   var aiState = {
     currentModel: null,
