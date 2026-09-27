@@ -3911,6 +3911,7 @@ function renderGenerator() {
       if (!t || !t.closest) return;
       if (t.closest("input, textarea, select, [contenteditable]")) return;
       if (t.closest(".CodeMirror")) return;
+      if (t.closest(".ai-model-picker")) return;
       var active = document.activeElement;
       if (!active) return;
       var tag = active.tagName;
