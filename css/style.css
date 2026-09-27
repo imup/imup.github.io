@@ -134,6 +134,21 @@ body.sidebar-open .hamburger-btn {
   transform: scale(0.6);
   pointer-events: none;
 }
+@media (display-mode: standalone), (display-mode: fullscreen) {
+  .hamburger-btn {
+    top: calc(clamp(8px, 2vw, 14px) + env(safe-area-inset-top, 0px));
+  }
+  .generator-menubar {
+    padding-top: env(safe-area-inset-top, 0px);
+    height: calc(56px + env(safe-area-inset-top, 0px));
+  }
+  .ai-clear-btn {
+    top: calc(clamp(16px, 2vw, 14px) + env(safe-area-inset-top, 0px));
+  }
+  .sidebar {
+    padding-top: calc(clamp(14px, 3vw, 20px) + env(safe-area-inset-top, 0px));
+  }
+}
 
 .sidebar {
   position: fixed;
