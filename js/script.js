@@ -3906,6 +3906,7 @@ function renderGenerator() {
         });
       }
     });
+    /*
     document.addEventListener("pointerdown", function (e) {
       var t = e.target;
       if (!t || !t.closest) return;
@@ -3920,6 +3921,7 @@ function renderGenerator() {
         active.blur();
       }
     });
+    */
     if (sidebarSearchEl) {
       sidebarSearchEl.addEventListener("input", function () {
         var v = this.value || "";
