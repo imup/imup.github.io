@@ -102,6 +102,12 @@ body.preview-lock {
   overscroll-behavior: none;
   touch-action: none;
 }
+/* --- PWA / 全面屏：预览与首页 iframe 铺满，含底部安全区 --- */
+body.preview-lock #app {
+  top: 0;
+  bottom: 0;
+  height: auto !important;
+}
 
 .hamburger-btn {
   position: fixed;
