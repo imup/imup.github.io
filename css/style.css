@@ -87,6 +87,9 @@ body {
     background 0.3s,
     color 0.3s;
 }
+body {
+  padding-top: env(safe-area-inset-top, 0px);
+}
 body.preview-lock {
   position: fixed;
   top: 0;
