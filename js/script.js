@@ -3906,6 +3906,18 @@ function renderGenerator() {
         });
       }
     });
+    document.addEventListener("pointerdown", function (e) {
+      var t = e.target;
+      if (!t || !t.closest) return;
+      if (t.closest("input, textarea, select, [contenteditable]")) return;
+      if (t.closest(".CodeMirror")) return;
+      var active = document.activeElement;
+      if (!active) return;
+      var tag = active.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || active.isContentEditable) {
+        active.blur();
+      }
+    });
     if (sidebarSearchEl) {
       sidebarSearchEl.addEventListener("input", function () {
         var v = this.value || "";
