@@ -9,8 +9,7 @@
   var AI_PROMPT_STORAGE = "p5_ai_prompts";
   var AI_CUSTOM_MODELS_STORAGE = "p5_ai_custom_models";
   var AI_CURRENT_MODEL_STORAGE = "p5_ai_current_model";
-  var MAX_IMAGE_BYTES = 1.5 * 1024 * 1024;
-  var MAX_SESSION_IMAGES = 10;
+  var MAX_IMAGE_BYTES = 15 * 1024 * 1024;
   var MAX_TITLE_LEN = 60;
   var P5_DIR = "p5/";
   var P5_CDN = "https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js";
@@ -25,8 +24,12 @@
   var SEARCH_DEBOUNCE_MS = 150;
   var STORAGE_KB_MULTIPLIER = 2;
   var CONTENT_URL = "data/content.json";
+  var IDB_NAME = "p5_store";
+  var IDB_STORE = "kv";
+  var IDB_VERSION = 1;
+  var IDB_INIT_TIMEOUT_MS = 1500;
   var TOOL_SPECS = [
-      {
+     {
         name: "insert_code",
         description:
           "用新代码完全替换编辑器中的内容。适用于：从零开始写、要求重写、修改较大时。",
@@ -198,7 +201,6 @@
   var editor = null;
   var uploadedImageDataUrl = null;
   var uploadedImageInfo = null;
-  var sessionImages = {};
   var generatorDraft = { title: "", script: "" };
   var renderedMsgCount = 0;
   var renderedModelId = null;
@@ -284,104 +286,199 @@
     return c ? c.name : id;
   }
 
-  function loadAIKeys() {
+  var _storage = {
+    mode: "memory",
+    db: null,
+    cache: {},
+  };
+  function _idbGetAll() {
+    return new Promise(function (resolve, reject) {
+      try {
+        var tx = _storage.db.transaction(IDB_STORE, "readonly");
+        var req = tx.objectStore(IDB_STORE).getAll();
+        req.onsuccess = function () {
+          resolve(req.result || []);
+        };
+        req.onerror = function () {
+          reject(req.error);
+        };
+      } catch (e) {
+        reject(e);
+      }
+    });
+  }
+  function _idbInit() {
+    return new Promise(function (resolve) {
+      var done = false;
+      function finish(mode) {
+        if (done) return;
+        done = true;
+        resolve(mode);
+      }
+      var timer = setTimeout(function () {
+        finish("ls");
+      }, IDB_INIT_TIMEOUT_MS);
+      try {
+        var req = indexedDB.open(IDB_NAME, IDB_VERSION);
+        req.onupgradeneeded = function (e) {
+          var db = e.target.result;
+          if (!db.objectStoreNames.contains(IDB_STORE)) {
+            db.createObjectStore(IDB_STORE, { keyPath: "key" });
+          }
+        };
+        req.onsuccess = function (e) {
+          clearTimeout(timer);
+          _storage.db = e.target.result;
+          _idbGetAll()
+            .then(function (rows) {
+              rows.forEach(function (r) {
+                if (r && r.key) _storage.cache[r.key] = r.value;
+              });
+              finish("idb");
+            })
+            .catch(function () {
+              finish("ls");
+            });
+        };
+        req.onerror = function () {
+          clearTimeout(timer);
+          finish("ls");
+        };
+        req.onblocked = function () {
+          clearTimeout(timer);
+          finish("ls");
+        };
+      } catch (e) {
+        clearTimeout(timer);
+        finish("ls");
+      }
+    });
+  }
+  function _lsWarmup() {
     try {
-      var raw = localStorage.getItem(AI_KEY_STORAGE);
-      var o = raw ? JSON.parse(raw) : {};
-      return o && typeof o === "object" ? o : {};
-    } catch (e) {
-      return {};
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (!k || k.indexOf("p5_") !== 0) continue;
+        try {
+          _storage.cache[k] = JSON.parse(localStorage.getItem(k));
+        } catch (e) {
+          _storage.cache[k] = localStorage.getItem(k);
+        }
+      }
+    } catch (e) {}
+  }
+  function initStorage() {
+    return _idbInit().then(function (mode) {
+      _storage.mode = mode;
+      if (mode === "ls") {
+        _lsWarmup();
+        try {
+          localStorage.setItem("__p5_probe__", "1");
+          localStorage.removeItem("__p5_probe__");
+        } catch (e) {
+          _storage.mode = "memory";
+        }
+      }
+    });
+  }
+  function storageGet(key, fallback) {
+    if (Object.prototype.hasOwnProperty.call(_storage.cache, key)) {
+      return _storage.cache[key];
     }
+    return fallback;
+  }
+  function _ctxForKey(key) {
+    if (key === AI_KEY_STORAGE) return "storage.ctxKeys";
+    if (key === AI_PROMPT_STORAGE) return "storage.ctxPrompts";
+    if (key === AI_CUSTOM_MODELS_STORAGE) return "storage.ctxCustomModels";
+    if (key === STORAGE_KEY) return "storage.ctxPages";
+    if (key.indexOf(AI_CHAT_STORAGE) === 0) return "storage.ctxChats";
+    return null;
+  }
+  function storageSet(key, value) {
+    _storage.cache[key] = value;
+    if (_storage.mode === "idb" && _storage.db) {
+      try {
+        var tx = _storage.db.transaction(IDB_STORE, "readwrite");
+        tx.objectStore(IDB_STORE).put({ key: key, value: value });
+        tx.onerror = function () {
+          handleStorageQuotaError(tx.error, _ctxForKey(key));
+        };
+      } catch (e) {
+        handleStorageQuotaError(e, _ctxForKey(key));
+      }
+      return true;
+    }
+    if (_storage.mode === "ls") {
+      try {
+        localStorage.setItem(key, JSON.stringify(value));
+        return true;
+      } catch (e) {
+        handleStorageQuotaError(e, _ctxForKey(key));
+        return false;
+      }
+    }
+    return true;
+  }
+  function storageRemove(key) {
+    delete _storage.cache[key];
+    if (_storage.mode === "idb" && _storage.db) {
+      try {
+        var tx = _storage.db.transaction(IDB_STORE, "readwrite");
+        tx.objectStore(IDB_STORE).delete(key);
+      } catch (e) {}
+    } else if (_storage.mode === "ls") {
+      try {
+        localStorage.removeItem(key);
+      } catch (e) {}
+    }
+  }
+  function loadAIKeys() {
+    var v = storageGet(AI_KEY_STORAGE, {});
+    return v && typeof v === "object" ? v : {};
   }
   function saveAIKeys() {
-    try {
-      localStorage.setItem(AI_KEY_STORAGE, JSON.stringify(aiState.keys));
-      return true;
-    } catch (e) {
-      handleStorageQuotaError(e, "storage.ctxKeys");
-      return false;
-    }
+    return storageSet(AI_KEY_STORAGE, aiState.keys);
   }
   function loadCurrentModel() {
-    try {
-      return localStorage.getItem(AI_CURRENT_MODEL_STORAGE) || null;
-    } catch (e) {
-      return null;
-    }
+    var v = storageGet(AI_CURRENT_MODEL_STORAGE, null);
+    return typeof v === "string" ? v : null;
   }
   function saveCurrentModel(id) {
-    try {
-      if (id) localStorage.setItem(AI_CURRENT_MODEL_STORAGE, id);
-      else localStorage.removeItem(AI_CURRENT_MODEL_STORAGE);
-    } catch (e) {}
+    if (id) storageSet(AI_CURRENT_MODEL_STORAGE, id);
+    else storageRemove(AI_CURRENT_MODEL_STORAGE);
   }
   function loadAIChats() {
     var result = {};
     getAllModels().forEach(function (m) {
-      try {
-        var raw = localStorage.getItem(AI_CHAT_STORAGE + "_" + m.id);
-        var v = raw ? JSON.parse(raw) : [];
-        result[m.id] = Array.isArray(v) ? v : [];
-      } catch (e) {
-        result[m.id] = [];
-      }
+      var v = storageGet(AI_CHAT_STORAGE + "_" + m.id, []);
+      result[m.id] = Array.isArray(v) ? v : [];
     });
     return result;
   }
   function saveAIChats(modelId) {
     if (!modelId) return true;
-    try {
-      localStorage.setItem(
-        AI_CHAT_STORAGE + "_" + modelId,
-        JSON.stringify(aiState.chats[modelId] || []),
-      );
-      return true;
-    } catch (e) {
-      handleStorageQuotaError(e, "storage.ctxChats");
-      return false;
-    }
+    return storageSet(
+      AI_CHAT_STORAGE + "_" + modelId,
+      aiState.chats[modelId] || [],
+    );
   }
   function loadAIPrompts() {
-    try {
-      var raw = localStorage.getItem(AI_PROMPT_STORAGE);
-      var o = raw ? JSON.parse(raw) : {};
-      return o && typeof o === "object" ? o : {};
-    } catch (e) {
-      return {};
-    }
+    var v = storageGet(AI_PROMPT_STORAGE, {});
+    return v && typeof v === "object" ? v : {};
   }
   function saveAIPrompts() {
-    try {
-      localStorage.setItem(
-        AI_PROMPT_STORAGE,
-        JSON.stringify(aiState.prompts),
-      );
-      return true;
-    } catch (e) {
-      handleStorageQuotaError(e, "storage.ctxPrompts");
-      return false;
-    }
+    return storageSet(AI_PROMPT_STORAGE, aiState.prompts);
   }
   function loadCustomModels() {
-    try {
-      var raw = localStorage.getItem(AI_CUSTOM_MODELS_STORAGE);
-      var list = raw ? JSON.parse(raw) : [];
-      return Array.isArray(list) ? list : [];
-    } catch (e) {
-      return [];
-    }
+    var v = storageGet(AI_CUSTOM_MODELS_STORAGE, []);
+    return Array.isArray(v) ? v : [];
   }
   function saveCustomModels() {
-    try {
-      localStorage.setItem(
-        AI_CUSTOM_MODELS_STORAGE,
-        JSON.stringify(aiState.customModels || []),
-      );
-      return true;
-    } catch (e) {
-      handleStorageQuotaError(e, "storage.ctxCustomModels");
-      return false;
-    }
+    return storageSet(
+      AI_CUSTOM_MODELS_STORAGE,
+      aiState.customModels || [],
+    );
   }
   function initAIState() {
     aiState.keys = loadAIKeys();
@@ -397,63 +494,45 @@
   }
 
   function getPages() {
-    try {
-      var raw = localStorage.getItem(STORAGE_KEY);
-      var list = raw ? JSON.parse(raw) : [];
-      return Array.isArray(list) ? list : [];
-    } catch (e) {
-      return [];
-    }
+    var v = storageGet(STORAGE_KEY, []);
+    return Array.isArray(v) ? v : [];
   }
   function savePages(pages) {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(pages));
-      return true;
-    } catch (e) {
-      handleStorageQuotaError(e, "storage.ctxPages");
-      return false;
-    }
+    return storageSet(STORAGE_KEY, pages);
   }
   function loadDraft() {
-    try {
-      var raw = localStorage.getItem(DRAFT_KEY);
-      var o = raw ? JSON.parse(raw) : null;
-      if (o && typeof o === "object") {
-        return {
-          title: typeof o.title === "string" ? o.title : "",
-          script: typeof o.script === "string" ? o.script : "",
-        };
-      }
-    } catch (e) {}
+    var o = storageGet(DRAFT_KEY, null);
+    if (o && typeof o === "object") {
+      return {
+        title: typeof o.title === "string" ? o.title : "",
+        script: typeof o.script === "string" ? o.script : "",
+      };
+    }
     return { title: "", script: "" };
   }
   function saveDraft() {
-    try {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(generatorDraft));
-    } catch (e) {}
+    storageSet(DRAFT_KEY, generatorDraft);
   }
   function clearDraft() {
     generatorDraft = { title: "", script: "" };
-    try {
-      localStorage.removeItem(DRAFT_KEY);
-    } catch (e) {}
+    storageRemove(DRAFT_KEY);
   }
 
-  function isQuotaError(e) {
+function isQuotaError(e) {
     if (!e) return false;
     if (e.name === "QuotaExceededError") return true;
     if (e.name === "NS_ERROR_DOM_QUOTA_REACHED") return true;
     if (e.code === 22 || e.code === 1014) return true;
     return false;
   }
-  function estimateLocalStorageKB() {
+  function estimateStorageKB() {
     var total = 0;
     try {
-      for (var i = 0; i < localStorage.length; i++) {
-        var k = localStorage.key(i);
-        var v = localStorage.getItem(k) || "";
-        total += k.length + v.length;
-      }
+      Object.keys(_storage.cache).forEach(function (k) {
+        var v = _storage.cache[k];
+        var s = typeof v === "string" ? v : JSON.stringify(v);
+        total += k.length + (s ? s.length : 0);
+      });
     } catch (e) {
       return -1;
     }
@@ -468,7 +547,7 @@
       );
       return;
     }
-    var usedKB = estimateLocalStorageKB();
+    var usedKB = estimateStorageKB();
     var usedText = usedKB >= 0 ? T("storage.used", { kb: usedKB }) : "";
     showAlert(
       T("storage.fullTitle"),
@@ -739,7 +818,6 @@
     }
     var safeImgVar = escapeScriptClose(imgVar);
     var safeScript = escapeScriptClose(script);
-
     return (
       "<!DOCTYPE html>\n" +
       '<html lang="zh-CN">\n' +
@@ -768,16 +846,6 @@
       "  \x3C/script>\n" +
       "</body>\n" +
       "</html>"
-    );
-  }
-  function injectSessionImage(html, dataUrl) {
-    if (!html || !dataUrl) return html;
-    var escaped = String(dataUrl)
-      .replace(/\\/g, "\\\\")
-      .replace(/"/g, '\\"');
-    return html.replace(
-      /var imageUrl = (?:null|"[^"]*");/,
-      'var imageUrl = "' + escaped + '";',
     );
   }
   function downloadSingleHtml(filename, html) {
@@ -965,7 +1033,6 @@
       return;
     }
     if (!iwin || !idoc) return;
-
     function tryAttach() {
       var canvas = idoc.querySelector("canvas");
       if (canvas) {
@@ -1140,9 +1207,6 @@
       });
       if (page) {
         html = page.html;
-        if (sessionImages[page.id]) {
-          html = injectSessionImage(html, sessionImages[page.id]);
-        }
         appEl.dataset.currentPageId = String(page.id);
       } else {
         runner.mode = "random";
@@ -1172,7 +1236,6 @@
     }
     lockAppSize();
     appEl.classList.add("preview-mode");
-
     var iframe = document.createElement("iframe");
     iframe.setAttribute("title", "p5");
     iframe.setAttribute("scrolling", "no");
@@ -1214,7 +1277,6 @@
         });
         savePages(list);
         updateSidebarPages();
-        if (sessionImages[id]) delete sessionImages[id];
         if (runner.mode === "page" && runner.pageId === id) {
           runner.mode = "random";
           runner.pageId = null;
@@ -1274,9 +1336,7 @@
   function toggleTheme() {
     var next = currentTheme() === "dark" ? "light" : "dark";
     applyTheme(next);
-    try {
-      localStorage.setItem(THEME_KEY, next);
-    } catch (e) {}
+    storageSet(THEME_KEY, next);
   }
 
   function getRoute() {
@@ -1337,7 +1397,6 @@ function renderGenerator() {
     g2.appendChild(ta);
     editorWrap.appendChild(g2);
     wrap.appendChild(editorWrap);
-
     wrap.appendChild(buildGeneratorAIPanel());
     var g3 = el("div", "form-group");
     var fileInput = document.createElement("input");
@@ -1469,7 +1528,6 @@ function renderGenerator() {
     var btn = $("#genSendBtn");
     if (btn) btn.disabled = !!busy;
   }
-
   var TOOL_HANDLERS = {
     insert_code: function (args) {
       var code = args && typeof args.code === "string" ? args.code : "";
@@ -1577,13 +1635,6 @@ function renderGenerator() {
         timestamp: new Date().toISOString(),
       });
       if (savePages(pages)) {
-        if (uploadedImageDataUrl) {
-          sessionImages[newId] = uploadedImageDataUrl;
-          var ids = Object.keys(sessionImages);
-          if (ids.length > MAX_SESSION_IMAGES) {
-            delete sessionImages[ids[0]];
-          }
-        }
         updateSidebarPages();
         return { ok: true, text: T("gen.toolSaved", { title: title }) };
       }
@@ -1733,7 +1784,6 @@ function renderGenerator() {
     var onRaw = opts.onRaw;
     var enableTools = !!opts.tools;
     var extSignal = opts.signal || null;
-
     var conf = aiModelConf(model);
     var url, options;
     if (conf.protocol === "gemini") {
@@ -2023,7 +2073,6 @@ function renderGenerator() {
       }
     }
     userContent += "\n用户要求：" + userText;
-
     var useVision = !!uploadedImageDataUrl && conf.vision === true;
     if (useVision) {
       genState.messages.push({
@@ -2039,7 +2088,6 @@ function renderGenerator() {
     } else {
       genState.messages.push({ role: "user", content: userContent });
     }
-
     genStatusClear();
     genStatusLine(T("gen.statusRequest", { model: aiModelName(model) }));
     genState.streamToken += 1;
@@ -2418,14 +2466,6 @@ function renderGenerator() {
         timestamp: new Date().toISOString(),
       });
       if (!savePages(pages)) return;
-
-      if (imageDataUrl) {
-        sessionImages[newId] = imageDataUrl;
-        var ids = Object.keys(sessionImages);
-        if (ids.length > MAX_SESSION_IMAGES) {
-          delete sessionImages[ids[0]];
-        }
-      }
       updateSidebarPages();
       openModal(function (box) {
         box.appendChild(el("h3", null, T("generator.buildOk")));
@@ -3020,7 +3060,6 @@ function renderGenerator() {
         var meta = acc.finalize();
         var isTimeout = err && err.name === "TimeoutError";
         var isAbort = err && (err.name === "AbortError" || err.code === 20);
-        /* 有部分内容：保留；否则丢弃 */
         if (accumulated) {
           var msg = chat[chat.length - 1];
           msg.content = accumulated;
@@ -3201,9 +3240,7 @@ function renderGenerator() {
         delete aiState.prompts[modelId];
         saveAIKeys();
         saveAIPrompts();
-        try {
-          localStorage.removeItem(AI_CHAT_STORAGE + "_" + modelId);
-        } catch (e) {}
+        storageRemove(AI_CHAT_STORAGE + "_" + modelId);
         aiState.customModels = aiState.customModels.filter(function (m) {
           return m.id !== modelId;
         });
@@ -3835,11 +3872,6 @@ function renderGenerator() {
     hamburgerBtn = $("#hamburgerBtn");
     appEl = $("#app");
     sidebarSearchEl = $("#sidebarSearch");
-    var savedTheme = "light";
-    try {
-      savedTheme = localStorage.getItem(THEME_KEY) || "light";
-    } catch (e) {}
-    applyTheme(savedTheme);
     ["gesturestart", "gesturechange", "gestureend"].forEach(function (type) {
       document.addEventListener(
         type,
@@ -3912,7 +3944,7 @@ function renderGenerator() {
       if (t.closest("input, textarea, select, [contenteditable]")) return;
       if (t.closest(".CodeMirror")) return;
       if (t.closest(".ai-model-picker")) return;
-      if (t.closest(".ai-send-btn")) return;
+      if (t.closest(".ai-send-btn")) return;   /* ← 新增 */
       var active = document.activeElement;
       if (!active) return;
       var tag = active.tagName;
@@ -4046,17 +4078,21 @@ function renderGenerator() {
   }
   function boot() {
     initStatic();
-    initAIState();
-    applyI18nToStatic();
-    updateSidebarPages();
-    render();
+    return initStorage().then(function () {
+      LANG = detectLang();
+      applyTheme(storageGet(THEME_KEY, "light"));
+      initAIState();
+      applyI18nToStatic();
+      updateSidebarPages();
+      render();
+    });
   }
   loadContent()
     .then(function () {
-      boot();
+      return boot();
     })
     .catch(function (e) {
       console.warn("[content.json] 加载失败，使用默认文案：", e);
-      boot();
+      return boot();
     });
-  })();
+})();
