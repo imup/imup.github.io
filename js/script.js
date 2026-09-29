@@ -3482,7 +3482,8 @@
       toolsCb.style.cssText = "width:auto;margin:0;";
       toolsCb.checked = isEdit ? !!existing.supportsTools : false;
       toolsRow.appendChild(toolsCb);
-      toolsRow.appendChild(document.createTextNode("支持函数调用（Tools）"));
+      toolsRow.appendChild(document.createTextNode(T("model.labelTools")));
+      
       var visionRow = document.createElement("label");
       visionRow.style.cssText = toolsRow.style.cssText;
       var visionCb = document.createElement("input");
