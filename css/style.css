@@ -606,6 +606,13 @@ button:disabled {
   background: var(--hover-strong);
   color: var(--danger);
 }
+/*  弹窗内：提示显示在按钮下方，避免被裁  */
+.modal .msg-flash-tip {
+  top: 100%;
+  bottom: auto;
+  right: 0;
+  margin-top: 6px;
+}
 
 .ai-page {
   position: relative;
