@@ -4520,7 +4520,7 @@ function showSettingsDialog() {
           return;
         }
         saveSettings(draft);
-        showAlert(T("settings.saved"), "");
+        flashTip(saveBtn, T("settings.saved"));
       });
       paramActions.appendChild(restoreBtn);
       paramActions.appendChild(saveBtn);
@@ -4541,7 +4541,6 @@ function showSettingsDialog() {
       var exportBtn = el("button", "settings-export-btn", T("settings.exportZipBtn"));
       exportBtn.type = "button";
       exportBtn.addEventListener("click", function () {
-        closeModal();
         exportZip();
       });
       storageActions.appendChild(packBtn);
