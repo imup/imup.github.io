@@ -606,7 +606,6 @@ button:disabled {
   background: var(--hover-strong);
   color: var(--danger);
 }
-/*  弹窗内：提示显示在按钮下方，避免被裁  */
 .modal .msg-flash-tip {
   top: 100%;
   bottom: auto;
@@ -1301,7 +1300,6 @@ button:disabled {
   margin: 12px 0;
 }
 
-/* C17 设置弹窗 */
 .settings-section {
   margin-bottom: 20px;
   padding-bottom: 16px;
@@ -1317,8 +1315,6 @@ button:disabled {
   color: var(--text-secondary);
   font-weight: bold;
 }
-
-/* --- 语言 --- */
 .lang-group { display: flex; gap: 8px; }
 .lang-btn {
   padding: 6px 16px;
@@ -1336,8 +1332,6 @@ button:disabled {
   color: #fff;
   border-color: var(--primary);
 }
-
-/* --- 参数 --- */
 .settings-param-row {
   display: flex;
   align-items: center;
@@ -1374,8 +1368,6 @@ button:disabled {
   font-size: 0.82rem;
   padding: 6px 12px;
 }
-
-/* --- 存储管理 --- */
 .storage-list {
   max-height: 200px;
   overflow-y: auto;
@@ -1444,19 +1436,9 @@ button:disabled {
   font-size: 0.82rem;
   padding: 6px 12px;
 }
-
 .settings-export-btn {
   background: var(--neutral-btn);
 }
-/* --- 导出作品 --- 
-.settings-section:last-of-type button {
-  background: var(--neutral-btn);
-  font-size: 0.85rem;
-  padding: 8px 16px;
-} 
-*/
-
-/* --- 导入弹窗 --- */
 .import-list {
   max-height: 40vh;
   overflow-y: auto;
@@ -1491,7 +1473,6 @@ button:disabled {
   color: var(--text-muted);
   font-family: ui-monospace, Menlo, Consolas, monospace;
 }
-/* --- 标题行：标题 + 右上角关闭 --- */
 .settings-header {
   display: flex;
   align-items: center;
