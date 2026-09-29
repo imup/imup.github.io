@@ -4534,6 +4534,7 @@
           storageSet(LANG_KEY, code);
           _i18nCache = null;
           applyI18nToStatic();
+          updateSidebarPages();
           closeModal();
           render();
           showSettingsDialog();
