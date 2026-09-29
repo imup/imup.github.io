@@ -4670,9 +4670,9 @@ function showSettingsDialog() {
       rg.appendChild(closeBtn);
       actions.appendChild(rg);
       box.appendChild(actions);
+      */
     });
   }
-  */
   function _showImportDialog(parsed, preview) {
     openModal(function (box) {
       box.appendChild(el("h3", null, T("settings.importTitle")));
