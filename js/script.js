@@ -1,7 +1,5 @@
 (function () {
   "use strict";
-  
-  /* J1 常量声明 */
   var STORAGE_KEY = "p5_pages";
   var THEME_KEY = "p5_theme";
   var LANG_KEY = "p5_lang";
@@ -24,7 +22,6 @@
   var MAX_CONTEXT_MESSAGES = DEFAULT_SETTINGS.maxContext;
   var REQUEST_TIMEOUT_MS = DEFAULT_SETTINGS.requestTimeoutSec * 1000;
   var MAX_TITLE_LEN = DEFAULT_SETTINGS.maxTitleLen;
-
   var MAX_SESSION_IMAGES = 10;
   var TEST_TIMEOUT_MS = 15000;
   var CONTENT_URL = "data/content.json";
@@ -175,13 +172,11 @@
       },
     ];
   }
-
   var AI_MODELS = [];
   var I18N = {};
   var LANG = "zh";
   var CONTENT = null;
 
-  /* J2 全局状态 */
   var aiState = {
     currentModel: null,
     keys: {},
@@ -216,7 +211,6 @@
   var renderedMsgCount = 0;
   var renderedModelId = null;
 
-  /* J3 i18n */
   function T(key, params) {
     var pack = I18N[LANG] || I18N.zh || {};
     var text = pack[key];
@@ -276,7 +270,6 @@
     } catch (e) {}
   }
 
-  /* J4 模型查询 */
   function getAllModels() {
     return AI_MODELS.concat(aiState.customModels || []);
   }
@@ -297,7 +290,6 @@
     return c ? c.name : id;
   }
 
-  /* J5 存储封装 + AI 存储 */
   function storageGet(key, fallback) {
     try {
       var raw = localStorage.getItem(key);
@@ -414,7 +406,6 @@
     aiState.currentModel = saved && aiModelConf(saved) ? saved : null;
   }
 
-  /* J6 页面与草稿存储 */
   function getPages() {
     var v = storageGet(STORAGE_KEY, []);
     return Array.isArray(v) ? v : [];
@@ -440,7 +431,6 @@
     storageRemove(DRAFT_KEY);
   }
 
-  /* J7 存储配额 */
   function isQuotaError(e) {
     if (!e) return false;
     if (e.name === "QuotaExceededError") return true;
@@ -482,7 +472,6 @@
     );
   }
 
-  /* J8 DOM 工具 */
   function $(sel, root) {
     return (root || document).querySelector(sel);
   }
@@ -524,7 +513,6 @@
     return el("div", "right-group");
   }
 
-  /* J9 模态框系统 */
   var _modalFocusHandler = null;
   function _installFocusTrap(box) {
     _removeFocusTrap();
@@ -725,7 +713,6 @@
     });
   }
 
-  /* J10 页面生成与导出 */
   function generatePageHtml(title, script, imageDataUrl, hasImage) {
     var safeTitle = escapeHtml(
       (title || T("generator.untitledPage")).slice(0, MAX_TITLE_LEN),
@@ -744,7 +731,6 @@
     }
     var safeImgVar = escapeScriptClose(imgVar);
     var safeScript = escapeScriptClose(script);
-
     return (
       "<!DOCTYPE html>\n" +
       '<html lang="zh-CN">\n' +
@@ -875,7 +861,6 @@
         );
       });
   }
-
   function _storageItems() {
     return [
       { id: "pages", nameKey: "storage.itemWorks", keys: [STORAGE_KEY], defaultOn: true },
@@ -888,7 +873,6 @@
       { id: "chats", nameKey: "storage.itemChats", dynamic: "chats", defaultOn: true },
     ];
   }
-
   function _itemSizeKB(item) {
     var total = 0;
     if (item.dynamic === "chats") {
@@ -904,7 +888,6 @@
     }
     return Math.round((total * STORAGE_KB_MULTIPLIER) / 1024 * 10) / 10;
   }
-
   function _deleteItem(item) {
     if (item.dynamic === "chats") {
       getAllModels().forEach(function (m) {
@@ -949,7 +932,6 @@
       MAX_TITLE_LEN = DEFAULT_SETTINGS.maxTitleLen;
     }
   }
-
   function _writeItemsToZip(zip, selected) {
     var itemKeys = selected.map(function (it) {
       return it.dynamic === "chats" ? "p5_ai_chats" : it.keys[0];
@@ -967,7 +949,6 @@
         2,
       ),
     );
-
     selected.forEach(function (item) {
       if (item.dynamic === "chats") {
         var chatsMap = {};
@@ -992,7 +973,6 @@
       zip.file(item.keys[0] + ".json", JSON.stringify(v, null, 2));
     });
   }
-  
   function _packSelected(selected, anchorEl) {
     if (!selected.length) {
       if (anchorEl) flashTip(anchorEl, T("settings.packNoSelection"));
@@ -1029,19 +1009,16 @@
         );
       });
   }
-
   function _parseBackupFile(file) {
     return new Promise(function (resolve, reject) {
       var reader = new FileReader();
       reader.onload = function (e) {
         var buf = e.target.result;
-
         var isZip = false;
         try {
           var arr = new Uint8Array(buf, 0, 4);
           isZip = arr[0] === 0x50 && arr[1] === 0x4b;
         } catch (err) {}
-
         if (isZip) {
           JSZip.loadAsync(buf)
             .then(function (zip) {
@@ -1087,7 +1064,6 @@
             .catch(reject);
           return;
         }
-
         try {
           var txt = new TextDecoder("utf-8").decode(new Uint8Array(buf));
           var obj = JSON.parse(txt);
@@ -1104,7 +1080,6 @@
       reader.readAsArrayBuffer(file);
     });
   }
-
   function _previewImport(parsed) {
     var f = parsed.files;
     var items = [];
@@ -1155,10 +1130,8 @@
     }
     return items;
   }
-
   function _applyImport(parsed, selectedIds) {
     var f = parsed.files;
-
     if (selectedIds.indexOf("pages") !== -1 && f["p5_pages.json"]) {
       var existing = storageGet(STORAGE_KEY, []);
       var idSet = {};
@@ -1174,26 +1147,21 @@
       });
       storageSet(STORAGE_KEY, existing);
     }
-
     if (selectedIds.indexOf("draft") !== -1 && f["p5_gen_draft.json"]) {
       storageSet(DRAFT_KEY, f["p5_gen_draft.json"]);
     }
-
     if (selectedIds.indexOf("settings") !== -1 && f["p5_settings.json"]) {
       var s = f["p5_settings.json"];
       if (s.theme) storageSet(THEME_KEY, s.theme);
       if (s.lang) storageSet(LANG_KEY, s.lang);
       if (s.settings) storageSet(SETTINGS_KEY, s.settings);
     }
-
     if (selectedIds.indexOf("keys") !== -1 && f["p5_ai_keys.json"]) {
       storageSet(AI_KEY_STORAGE, f["p5_ai_keys.json"]);
     }
-
     if (selectedIds.indexOf("prompts") !== -1 && f["p5_ai_prompts.json"]) {
       storageSet(AI_PROMPT_STORAGE, f["p5_ai_prompts.json"]);
     }
-
     if (
       selectedIds.indexOf("customModels") !== -1 &&
       f["p5_ai_custom_models.json"]
@@ -1214,7 +1182,6 @@
       });
       storageSet(AI_CUSTOM_MODELS_STORAGE, existingM);
     }
-
     if (
       selectedIds.indexOf("currentModel") !== -1 &&
       f["p5_ai_current_model.json"]
@@ -1222,7 +1189,6 @@
       var cm = f["p5_ai_current_model.json"];
       if (typeof cm === "string") storageSet(AI_CURRENT_MODEL_STORAGE, cm);
     }
-
     if (selectedIds.indexOf("chats") !== -1 && f["p5_ai_chats.json"]) {
       var chatsMap = f["p5_ai_chats.json"];
       if (chatsMap && typeof chatsMap === "object") {
@@ -1233,7 +1199,6 @@
     }
   }
 
-  /* J11 随机 p5 与 srcdoc */
   function pickRandomP5File() {
     if (!P5_FILES || !P5_FILES.length) return null;
     if (P5_FILES.length === 1) return P5_FILES[0];
@@ -1275,7 +1240,6 @@
     );
   }
 
-  /* J12 侧边栏页面列表 */
   function updateSidebarPages() {
     var pages = getPages();
     var kw = sidebarSearchKeyword.trim().toLowerCase();
@@ -1319,7 +1283,6 @@
     sidebarPagesEl.replaceChildren(frag);
   }
 
-  /* J13 iframe 代理 */
   function bindIframeProxy(iframe) {
     var iwin, idoc;
     try {
@@ -1330,7 +1293,6 @@
       return;
     }
     if (!iwin || !idoc) return;
-
     function tryAttach() {
       var canvas = idoc.querySelector("canvas");
       if (canvas) {
@@ -1440,7 +1402,6 @@
     });
   }
 
-  /* J14 预览锁定与截图 */
   function lockAppSize() {
     document.body.classList.add("preview-lock");
     var w = window.innerWidth;
@@ -1493,7 +1454,6 @@
     return btn;
   }
 
-  /* J15 首页运行器 */
   function renderRunner() {
     destroyEditor();
     appEl.replaceChildren();
@@ -1605,7 +1565,6 @@
     });
   }
 
-  /* J16 侧边栏与主题 */
   function openSidebar() {
     sidebarEl.classList.add("open");
     overlayEl.classList.add("show");
@@ -1645,7 +1604,6 @@
     storageSet(THEME_KEY, next);
   }
 
-  /* J17 路由与静态页 */
   function getRoute() {
     var hash = location.hash;
     if (!hash || hash === "#" || hash === "#/") return "/";
@@ -1698,7 +1656,6 @@
     });
     menubar.appendChild(helpBtn);
     wrap.appendChild(menubar);
-
     var editorWrap = el("div", "generator-editor-wrap");
     var g2 = el("div", "form-group generator-form-group");
     var ta = document.createElement("textarea");
@@ -1706,9 +1663,7 @@
     g2.appendChild(ta);
     editorWrap.appendChild(g2);
     wrap.appendChild(editorWrap);
-
     wrap.appendChild(buildGeneratorAIPanel());
-
     var g3 = el("div", "form-group");
     var fileInput = document.createElement("input");
     fileInput.type = "file";
@@ -1722,7 +1677,6 @@
     g3.appendChild(l3);
     g3.appendChild(previewBox);
     wrap.appendChild(g3);
-
     var row = el("div", "gen-inline-row");
     var titleInput = document.createElement("input");
     titleInput.type = "text";
@@ -1735,7 +1689,6 @@
     row.appendChild(titleInput);
     row.appendChild(submit);
     wrap.appendChild(row);
-
     var result = el("div", "result");
     result.id = "result";
     result.style.display = "none";
@@ -1772,7 +1725,6 @@
     return frag;
   }
 
-  /* J18 生成器模型菜单 */
   function refreshGenModelBtn() {
     var btn = $("#genModelBtn");
     if (!btn) return;
@@ -1824,7 +1776,6 @@
     if (willShow) buildGenModelMenu();
   }
 
-  /* J19 生成器 AI 状态与工具 */
   function genStatusClear() {
     var box = $("#genStatus");
     if (box) box.replaceChildren();
@@ -1843,7 +1794,6 @@
     var btn = $("#genSendBtn");
     if (btn) btn.disabled = !!busy;
   }
-
   var TOOL_HANDLERS = {
     insert_code: function (args) {
       var code = args && typeof args.code === "string" ? args.code : "";
@@ -1981,7 +1931,6 @@
       return { ok: true, text: "已打开预览" };
     },
   };
-
   function executeToolCall(toolName, args) {
     var handler = TOOL_HANDLERS[toolName];
     if (!handler) {
@@ -1996,7 +1945,6 @@
       };
     }
   }
-
   function extractCodeFromText(text) {
     if (!text) return null;
     var t = String(text);
@@ -2019,7 +1967,6 @@
     return null;
   }
 
-  /* J20 AI 流式请求核心 */
   function findToolCallName(msgs, toolCallId) {
     for (var i = 0; i < msgs.length; i++) {
       var m = msgs[i];
@@ -2111,7 +2058,6 @@
     var onRaw = opts.onRaw;
     var enableTools = !!opts.tools;
     var extSignal = opts.signal || null;
-
     var conf = aiModelConf(model);
     var url, options;
     if (conf.protocol === "gemini") {
@@ -2163,7 +2109,6 @@
         timeoutCtl.abort();
       } catch (e) {}
     }, REQUEST_TIMEOUT_MS);
-
     var baseSignal = extSignal;
     if (!baseSignal && aiState.abortController) {
       baseSignal = aiState.abortController.signal;
@@ -2356,7 +2301,6 @@
     return { consume: consume, finalize: finalize };
   }
 
-  /* J21 生成器 AI 循环 */
   function genApplyCode(code, intent) {
     if (!editor || !code) return;
     if (intent === "append") {
@@ -2403,7 +2347,6 @@
       }
     }
     userContent += "\n用户要求：" + userText;
-
     var useVision = !!uploadedImageDataUrl && conf.vision === true;
     if (useVision) {
       genState.messages.push({
@@ -2419,7 +2362,6 @@
     } else {
       genState.messages.push({ role: "user", content: userContent });
     }
-
     genStatusClear();
     genStatusLine(T("gen.statusRequest", { model: aiModelName(model) }));
     genState.streamToken += 1;
@@ -2643,7 +2585,6 @@
     refreshGenModelBtn();
   }
 
-  /* J22 生成器主体 */
   function compressImage(dataUrl, maxDim, quality, callback) {
     var img = new Image();
     img.onload = function () {
@@ -2845,7 +2786,6 @@
     bindGeneratorAIPanel();
   }
 
-  /* J23 AI 页面骨架 */
   function renderAIAssistant() {
     var page = el("div", "ai-page");
     var clearBtn = el("button", "ai-clear-btn", "−");
@@ -2896,8 +2836,6 @@
     return page;
   }
 
-
-  /* J24 AI 模型菜单 */
   function buildAIModelMenu() {
     var menu = $("#aiModelMenu");
     if (!menu) return;
@@ -2988,7 +2926,6 @@
     menu.classList.toggle("show");
   }
 
-  /* J25 剪贴板与提示 */
   function copyToClipboard(text) {
     if (!text) return;
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -3013,7 +2950,6 @@
   }
   function flashTip(anchorEl, text) {
     if (!anchorEl) return;
-    /* 保证 anchor 是 positioned，否则 absolute 会相对错误祖先 */
     try {
       if (window.getComputedStyle(anchorEl).position === "static") {
         anchorEl.style.position = "relative";
@@ -3026,7 +2962,6 @@
     }, FLASH_TIP_MS);
   }
   
-  /* J26 消息工具栏与节点 */
   function buildAssistantToolbar(m, index) {
     var toolbar = el("div", "assistant-toolbar");
     var left = el("div", "toolbar-left");
@@ -3150,7 +3085,6 @@
     return el("div", "ai-empty", text);
   }
 
-  /* J27 AI 消息渲染 */
   function renderAIMessages() {
     var box = $("#aiMessages");
     if (!box) return;
@@ -3266,7 +3200,6 @@
     return box.scrollHeight - box.scrollTop - box.clientHeight < NEAR_BOTTOM_PX;
   }
 
-  /* J28 消息操作 */
   function deleteMessageFrom(index) {
     var model = aiState.currentModel;
     if (!model) return;
@@ -3444,7 +3377,6 @@
       });
   }
 
-  /* J29 模型编辑与选择 */
   function showModelEditor(modelId) {
     var isEdit = !!modelId;
     var existing = isEdit ? aiModelConf(modelId) : null;
@@ -3490,7 +3422,6 @@
       toolsCb.checked = isEdit ? !!existing.supportsTools : false;
       toolsRow.appendChild(toolsCb);
       toolsRow.appendChild(document.createTextNode(T("model.labelTools")));
-      
       var visionRow = document.createElement("label");
       visionRow.style.cssText = toolsRow.style.cssText;
       var visionCb = document.createElement("input");
@@ -3763,7 +3694,6 @@
     updateAISendBtn();
   }
 
-  /* J30 对话导入导出 */
   function triggerDownload(content, mime, filename) {
     try {
       var encoded = btoa(unescape(encodeURIComponent(content)));
@@ -3990,7 +3920,6 @@
     reader.readAsText(file);
   }
 
-  /* J31 AI 发送与清空 */
   function aiSend() {
     if (aiState.busy) return;
     var model = aiState.currentModel;
@@ -4043,7 +3972,6 @@
     );
   }
 
-  /* J32 AI 助手绑定 */
   function bindAIAssistant() {
     renderedModelId = null;
     renderedMsgCount = 0;
@@ -4171,14 +4099,11 @@
     }
   }
 
-  /* J33 主路由渲染 */
   function render() {
     var path = getRoute();
-
     appEl.classList.remove("preview-mode");
     appEl.classList.remove("ai-mode");
     appEl.classList.remove("generator-mode");
-
     if (genState.busy) {
       if (genState.abortController) {
         try {
@@ -4223,7 +4148,6 @@
     }
   }
 
-  /* J34 初始化 */
   function initStatic() {
     modalBackdrop = $("#modalBackdrop");
     modalBox = $("#modalBox");
@@ -4238,7 +4162,6 @@
       savedTheme = localStorage.getItem(THEME_KEY) || "light";
     } catch (e) {}
     applyTheme(savedTheme);
-
     ["gesturestart", "gesturechange", "gestureend"].forEach(function (type) {
       document.addEventListener(
         type,
@@ -4305,7 +4228,6 @@
         });
       }
     });
-    /* --- 点击空白处：收起软键盘 --- */
     document.addEventListener("pointerdown", function (e) {
       var t = e.target;
       if (!t || !t.closest) return;
@@ -4321,7 +4243,6 @@
         active.blur();
       }
     });
-    
     if (sidebarSearchEl) {
       sidebarSearchEl.addEventListener("input", function () {
         var v = this.value || "";
@@ -4432,10 +4353,8 @@
       }, 100);
     });
   }
-
-function showSettingsDialog() {
+  function showSettingsDialog() {
     openModal(function (box) {
-      /* 标题行：标题 + 关闭按钮 */
       var header = el("div", "settings-header");
       header.appendChild(el("h3", null, T("settings.title")));
       var closeTopBtn = el(
@@ -4447,8 +4366,6 @@ function showSettingsDialog() {
       closeTopBtn.addEventListener("click", closeModal);
       header.appendChild(closeTopBtn);
       box.appendChild(header);
-
-      /* ① 语言 */
       var langSec = el("section", "settings-section");
       langSec.appendChild(el("h4", null, T("settings.langSection")));
       var langGroup = el("div", "lang-group");
@@ -4461,7 +4378,6 @@ function showSettingsDialog() {
       });
       langSec.appendChild(langGroup);
       box.appendChild(langSec);
-
       var paramSec = el("section", "settings-section");
       paramSec.appendChild(el("h4", null, T("settings.paramsSection")));
       var params = [
@@ -4533,7 +4449,6 @@ function showSettingsDialog() {
       paramActions.appendChild(saveBtn);
       paramSec.appendChild(paramActions);
       box.appendChild(paramSec);
-
       var storageSec = el("section", "settings-section");
       storageSec.appendChild(el("h4", null, T("settings.storageSection")));
       var list = el("div", "storage-list");
@@ -4565,7 +4480,6 @@ function showSettingsDialog() {
       importFile.style.display = "none";
       storageSec.appendChild(importFile);
       box.appendChild(storageSec);
-
       var items = _storageItems();
       var cbs = [];
       function refreshTotal() {
@@ -4612,18 +4526,6 @@ function showSettingsDialog() {
         refreshTotal();
       }
       renderList();
-      /*
-      var exportSec = el("section", "settings-section");
-      exportSec.appendChild(el("h4", null, T("settings.exportSection")));
-      var exportBtn = el("button", null, T("nav.exportZip"));
-      exportBtn.type = "button";
-      exportBtn.addEventListener("click", function () {
-        closeModal();
-        exportZip();
-      });
-      exportSec.appendChild(exportBtn);
-      box.appendChild(exportSec);
-      */
       $$(".lang-btn", langGroup).forEach(function (btn) {
         btn.addEventListener("click", function () {
           var code = btn.dataset.lang;
@@ -4637,7 +4539,6 @@ function showSettingsDialog() {
           showSettingsDialog();
         });
       });
-      
       packBtn.addEventListener("click", function () {
         var selected = items.filter(function (_, i) {
           return cbs[i] && cbs[i].checked;
@@ -4673,15 +4574,6 @@ function showSettingsDialog() {
             );
           });
       });
-      /*
-      var actions = el("div", "modal-actions");
-      var rg = rightGroup();
-      var closeBtn = el("button", null, T("common.know"));
-      closeBtn.addEventListener("click", closeModal);
-      rg.appendChild(closeBtn);
-      actions.appendChild(rg);
-      box.appendChild(actions);
-      */
     });
   }
   function _showImportDialog(parsed, preview) {
@@ -4694,7 +4586,6 @@ function showSettingsDialog() {
           T("settings.importSource", { name: parsed.source }),
         ),
       );
-
       var list = el("div", "import-list");
       var cbs = [];
       preview.forEach(function (item) {
@@ -4719,7 +4610,6 @@ function showSettingsDialog() {
       box.appendChild(
         el("div", "modal-hint", T("settings.importConflictHint")),
       );
-
       var actions = el("div", "modal-actions");
       var leftWrap = document.createElement("div");
       var cancel = el("button", "link-btn", T("common.cancel"));
@@ -4757,7 +4647,6 @@ function showSettingsDialog() {
     });
   }
 
-  /* J35 启动 */
   function loadContent() {
     return fetch(CONTENT_URL, { cache: "no-cache" })
       .then(function (r) {
