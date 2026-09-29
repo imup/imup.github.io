@@ -992,10 +992,11 @@
       zip.file(item.keys[0] + ".json", JSON.stringify(v, null, 2));
     });
   }
-
-  function _packSelected(selected) {
+  
+  function _packSelected(selected, anchorEl) {
     if (!selected.length) {
-      showAlert(T("settings.packNoSelection"), "", true);
+      if (anchorEl) flashTip(anchorEl, T("settings.packNoSelection"));
+      else showAlert(T("settings.packNoSelection"), "", true);
       return;
     }
     var zip = new JSZip();
@@ -4516,7 +4517,7 @@ function showSettingsDialog() {
           draft[k] = v;
         });
         if (!ok) {
-          showAlert(T("settings.invalidRange"), "", true);
+          flashTip(saveBtn, T("settings.invalidRange"));
           return;
         }
         saveSettings(draft);
@@ -4541,6 +4542,11 @@ function showSettingsDialog() {
       var exportBtn = el("button", "settings-export-btn", T("settings.exportZipBtn"));
       exportBtn.type = "button";
       exportBtn.addEventListener("click", function () {
+        var pages = getPages();
+        if (!pages.length) {
+          flashTip(exportBtn, T("page.exportEmptyTitle"));
+          return;
+        }
         exportZip();
       });
       storageActions.appendChild(packBtn);
@@ -4630,7 +4636,7 @@ function showSettingsDialog() {
         var selected = items.filter(function (_, i) {
           return cbs[i] && cbs[i].checked;
         });
-        _packSelected(selected);
+        _packSelected(selected, packBtn);
       });
       importBtn.addEventListener("click", function () {
         importFile.value = "";
