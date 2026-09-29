@@ -249,6 +249,7 @@
       "settings.importOk": "已导入",
       "settings.importFail": "导入失败",
       "settings.importBadFormat": "文件格式不正确或无可导入内容",
+      "common.close": "关闭",
 
       "gen.title": "AI 生成代码",
       "gen.placeholder": "描述你想要的p5.js效果…",
@@ -500,6 +501,7 @@
       "settings.importOk": "Imported",
       "settings.importFail": "Import Failed",
       "settings.importBadFormat": "Invalid file format or nothing to import",
+      "common.close": "Close",
 
       "gen.title": "AI Code Generation",
       "gen.placeholder": "Describe the p5.js effect you want…",
