@@ -20,16 +20,13 @@ var PRECACHE_URLS = [
   "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js",
   "https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js",
 ];
-
 var NETWORK_FIRST_PATHS = ["./data/content.json"];
-
 function isNetworkFirst(url) {
   var path = url.pathname;
   return NETWORK_FIRST_PATHS.some(function (p) {
     return path.indexOf(p.replace("./", "")) !== -1;
   });
 }
-
 self.addEventListener("install", function (event) {
   event.waitUntil(
     caches
@@ -45,7 +42,6 @@ self.addEventListener("install", function (event) {
       }),
   );
 });
-
 self.addEventListener("activate", function (event) {
   event.waitUntil(
     caches
@@ -62,21 +58,16 @@ self.addEventListener("activate", function (event) {
       }),
   );
 });
-
 self.addEventListener("fetch", function (event) {
   var req = event.request;
-
   if (req.method !== "GET") return;
-
   var url;
   try {
     url = new URL(req.url);
   } catch (e) {
     return;
   }
-
   if (url.protocol !== "http:" && url.protocol !== "https:") return;
-
   if (isNetworkFirst(url)) {
     event.respondWith(
       fetch(req)
@@ -95,7 +86,6 @@ self.addEventListener("fetch", function (event) {
     );
     return;
   }
-
   event.respondWith(
     caches.match(req).then(function (cached) {
       if (cached) return cached;
