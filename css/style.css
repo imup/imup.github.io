@@ -1484,3 +1484,36 @@ button:disabled {
   color: var(--text-muted);
   font-family: ui-monospace, Menlo, Consolas, monospace;
 }
+/* --- 标题行：标题 + 右上角关闭 --- */
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.settings-header h3 {
+  margin: 0;
+}
+.settings-close-btn {
+  flex: 0 0 auto;
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s;
+}
+.settings-close-btn:hover {
+  background: var(--hover);
+  color: var(--primary);
+  border-color: var(--primary-focus);
+}
+.settings-close-btn:active {
+  transform: scale(0.96);
+}
