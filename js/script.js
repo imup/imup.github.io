@@ -1,5 +1,7 @@
 (function () {
   "use strict";
+  
+  /* J1 常量声明 */
   var STORAGE_KEY = "p5_pages";
   var THEME_KEY = "p5_theme";
   var LANG_KEY = "p5_lang";
@@ -9,166 +11,177 @@
   var AI_PROMPT_STORAGE = "p5_ai_prompts";
   var AI_CUSTOM_MODELS_STORAGE = "p5_ai_custom_models";
   var AI_CURRENT_MODEL_STORAGE = "p5_ai_current_model";
-  var MAX_IMAGE_BYTES = 1.5 * 1024 * 1024;
+  var SETTINGS_KEY = "p5_settings";
+  var DEFAULT_SETTINGS = {
+    maxImageMB: 1.5,
+    maxToolLoop: 5,
+    maxContext: 30,
+    requestTimeoutSec: 60,
+    maxTitleLen: 60,
+  };
+  var MAX_IMAGE_BYTES = DEFAULT_SETTINGS.maxImageMB * 1024 * 1024;
+  var MAX_TOOL_LOOP = DEFAULT_SETTINGS.maxToolLoop;
+  var MAX_CONTEXT_MESSAGES = DEFAULT_SETTINGS.maxContext;
+  var REQUEST_TIMEOUT_MS = DEFAULT_SETTINGS.requestTimeoutSec * 1000;
+  var MAX_TITLE_LEN = DEFAULT_SETTINGS.maxTitleLen;
+
   var MAX_SESSION_IMAGES = 10;
-  var MAX_TITLE_LEN = 60;
-  var P5_DIR = "p5/";
-  var P5_CDN = "https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js";
-  var P5_FILES = ["sketch1.js", "sketch2.js", "sketch3.js"];
-  var MAX_CONTEXT_MESSAGES = 30;
-  var MAX_TOOL_LOOP = 5;
-  var REQUEST_TIMEOUT_MS = 60000;
   var TEST_TIMEOUT_MS = 15000;
+  var CONTENT_URL = "data/content.json";
   var LONG_PRESS_MS = 500;
   var FLASH_TIP_MS = 1200;
   var NEAR_BOTTOM_PX = 80;
   var SEARCH_DEBOUNCE_MS = 150;
   var STORAGE_KB_MULTIPLIER = 2;
-  var CONTENT_URL = "data/content.json";
+  var P5_DIR = "p5/";
+  var P5_CDN = "js/lib/p5.min.js";
+  var P5_FILES = ["sketch1.js", "sketch2.js", "sketch3.js"];
   var TOOL_SPECS = [
-      {
-        name: "insert_code",
-        description:
-          "用新代码完全替换编辑器中的内容。适用于：从零开始写、要求重写、修改较大时。",
-        params: {
-          type: "object",
-          properties: {
-            code: {
-              type: "string",
-              description:
-                "完整的 p5.js 代码（含 setup / draw 等），不要加 markdown 代码块标记",
-            },
-          },
-          required: ["code"],
-        },
-      },
-      {
-        name: "append_code",
-        description:
-          "在编辑器现有内容末尾追加代码。适用于：用户明确说“追加”“再加一段”“在末尾添加”时。",
-        params: {
-          type: "object",
-          properties: {
-            code: {
-              type: "string",
-              description:
-                "要追加的 p5.js 代码片段，不要加 markdown 代码块标记",
-            },
-          },
-          required: ["code"],
-        },
-      },
-      {
-        name: "get_current_code",
-        description:
-          "读取编辑器当前内容。适用于：需要在已有代码基础上修改时，先读取再决定怎么改。",
-        params: { type: "object", properties: {} },
-      },
-      {
-        name: "replace_selection",
-        description:
-          "替换编辑器当前选中的文本。适用于：用户要求只改某段代码，且已选中时。",
-        params: {
-          type: "object",
-          properties: {
-            code: {
-              type: "string",
-              description: "替换选中内容的 p5.js 代码片段",
-            },
-          },
-          required: ["code"],
-        },
-      },
-      {
-        name: "get_canvas_size",
-        description:
-          "获取当前编辑器代码中的画布尺寸（如 createCanvas 参数）。适用于：编辑器已有代码、需要在其基础上修改画布尺寸时。若编辑器无数字画布，返回响应式语义值（windowWidth / windowHeight）。",
-        params: { type: "object", properties: {} },
-      },
-      {
-        name: "set_color_palette",
-        description:
-          "设置配色方案。适用于：用户要求换一组配色，或需要统一色彩风格时。",
-        params: {
-          type: "object",
-          properties: {
-            colors: {
-              type: "array",
-              description: "颜色数组，RGB 十六进制字符串，如 #FF0000",
-              items: { type: "string" },
-            },
-          },
-          required: ["colors"],
-        },
-      },
-      {
-        name: "save_page",
-        description:
-          "保存当前编辑器内容为作品。适用于：用户明确说“保存”且希望直接保存时。",
-        params: {
-          type: "object",
-          properties: {
-            title: {
-              type: "string",
-              description: "作品标题，可选，默认使用编辑器标题栏的内容",
-            },
+    {
+      name: "insert_code",
+      description:
+        "用新代码完全替换编辑器中的内容。适用于：从零开始写、要求重写、修改较大时。",
+      params: {
+        type: "object",
+        properties: {
+          code: {
+            type: "string",
+            description:
+              "完整的 p5.js 代码（含 setup / draw 等），不要加 markdown 代码块标记",
           },
         },
+        required: ["code"],
       },
-      {
-        name: "open_preview",
-        description:
-          "打开当前编辑器内容的预览。适用于：用户说“看一下效果”“预览”时。",
-        params: { type: "object", properties: {} },
-      },
-    ];
-    function _toGeminiType(t) {
-      return String(t || "").toUpperCase();
-    }
-    function _toGeminiSchema(schema) {
-      if (!schema || typeof schema !== "object") return schema;
-      var out = { type: _toGeminiType(schema.type) };
-      if (schema.description) out.description = schema.description;
-      if (schema.properties) {
-        out.properties = {};
-        Object.keys(schema.properties).forEach(function (k) {
-          out.properties[k] = _toGeminiSchema(schema.properties[k]);
-        });
-      }
-      if (schema.items) out.items = _toGeminiSchema(schema.items);
-      if (schema.required) out.required = schema.required.slice();
-      return out;
-    }
-    function buildOpenAITools() {
-      return TOOL_SPECS.map(function (t) {
-        return {
-          type: "function",
-          function: {
-            name: t.name,
-            description: t.description,
-            parameters: t.params,
+    },
+    {
+      name: "append_code",
+      description:
+        "在编辑器现有内容末尾追加代码。适用于：用户明确说“追加”“再加一段”“在末尾添加”时。",
+      params: {
+        type: "object",
+        properties: {
+          code: {
+            type: "string",
+            description:
+              "要追加的 p5.js 代码片段，不要加 markdown 代码块标记",
           },
-        };
+        },
+        required: ["code"],
+      },
+    },
+    {
+      name: "get_current_code",
+      description:
+        "读取编辑器当前内容。适用于：需要在已有代码基础上修改时，先读取再决定怎么改。",
+      params: { type: "object", properties: {} },
+    },
+    {
+      name: "replace_selection",
+      description:
+        "替换编辑器当前选中的文本。适用于：用户要求只改某段代码，且已选中时。",
+      params: {
+        type: "object",
+        properties: {
+          code: {
+            type: "string",
+            description: "替换选中内容的 p5.js 代码片段",
+          },
+        },
+        required: ["code"],
+      },
+    },
+    {
+      name: "get_canvas_size",
+      description:
+        "获取当前编辑器代码中的画布尺寸（如 createCanvas 参数）。适用于：编辑器已有代码、需要在其基础上修改画布尺寸时。若编辑器无数字画布，返回响应式语义值（windowWidth / windowHeight）。",
+      params: { type: "object", properties: {} },
+    },
+    {
+      name: "set_color_palette",
+      description:
+        "设置配色方案。适用于：用户要求换一组配色，或需要统一色彩风格时。",
+      params: {
+        type: "object",
+        properties: {
+          colors: {
+            type: "array",
+            description: "颜色数组，RGB 十六进制字符串，如 #FF0000",
+            items: { type: "string" },
+          },
+        },
+        required: ["colors"],
+      },
+    },
+    {
+      name: "save_page",
+      description:
+        "保存当前编辑器内容为作品。适用于：用户明确说“保存”且希望直接保存时。",
+      params: {
+        type: "object",
+        properties: {
+          title: {
+            type: "string",
+            description: "作品标题，可选，默认使用编辑器标题栏的内容",
+          },
+        },
+      },
+    },
+    {
+      name: "open_preview",
+      description:
+        "打开当前编辑器内容的预览。适用于：用户说“看一下效果”“预览”时。",
+      params: { type: "object", properties: {} },
+    },
+  ];
+  function _toGeminiType(t) {
+    return String(t || "").toUpperCase();
+  }
+  function _toGeminiSchema(schema) {
+    if (!schema || typeof schema !== "object") return schema;
+    var out = { type: _toGeminiType(schema.type) };
+    if (schema.description) out.description = schema.description;
+    if (schema.properties) {
+      out.properties = {};
+      Object.keys(schema.properties).forEach(function (k) {
+        out.properties[k] = _toGeminiSchema(schema.properties[k]);
       });
     }
-    function buildGeminiTools() {
-      return [
-        {
-          functionDeclarations: TOOL_SPECS.map(function (t) {
-            return {
-              name: t.name,
-              description: t.description,
-              parameters: _toGeminiSchema(t.params),
-            };
-          }),
+    if (schema.items) out.items = _toGeminiSchema(schema.items);
+    if (schema.required) out.required = schema.required.slice();
+    return out;
+  }
+  function buildOpenAITools() {
+    return TOOL_SPECS.map(function (t) {
+      return {
+        type: "function",
+        function: {
+          name: t.name,
+          description: t.description,
+          parameters: t.params,
         },
-      ];
-    }
+      };
+    });
+  }
+  function buildGeminiTools() {
+    return [
+      {
+        functionDeclarations: TOOL_SPECS.map(function (t) {
+          return {
+            name: t.name,
+            description: t.description,
+            parameters: _toGeminiSchema(t.params),
+          };
+        }),
+      },
+    ];
+  }
+
   var AI_MODELS = [];
   var I18N = {};
   var LANG = "zh";
   var CONTENT = null;
 
+  /* J2 全局状态 */
   var aiState = {
     currentModel: null,
     keys: {},
@@ -203,6 +216,7 @@
   var renderedMsgCount = 0;
   var renderedModelId = null;
 
+  /* J3 i18n */
   function T(key, params) {
     var pack = I18N[LANG] || I18N.zh || {};
     var text = pack[key];
@@ -215,10 +229,8 @@
     return text;
   }
   function detectLang() {
-    try {
-      var saved = localStorage.getItem(LANG_KEY);
-      if (saved && I18N[saved]) return saved;
-    } catch (e) {}
+    var saved = storageGet(LANG_KEY, null);
+    if (saved && I18N[saved]) return saved;
     var nav = (navigator.language || "zh").toLowerCase();
     if (nav.indexOf("zh") === 0) return "zh";
     if (nav.indexOf("en") === 0) return "en";
@@ -264,6 +276,7 @@
     } catch (e) {}
   }
 
+  /* J4 模型查询 */
   function getAllModels() {
     return AI_MODELS.concat(aiState.customModels || []);
   }
@@ -284,104 +297,109 @@
     return c ? c.name : id;
   }
 
-  function loadAIKeys() {
+  /* J5 存储封装 + AI 存储 */
+  function storageGet(key, fallback) {
     try {
-      var raw = localStorage.getItem(AI_KEY_STORAGE);
-      var o = raw ? JSON.parse(raw) : {};
-      return o && typeof o === "object" ? o : {};
+      var raw = localStorage.getItem(key);
+      if (raw == null) return fallback;
+      try {
+        return JSON.parse(raw);
+      } catch (e) {
+        return raw;
+      }
     } catch (e) {
-      return {};
+      return fallback;
     }
   }
-  function saveAIKeys() {
+  function storageSet(key, value) {
     try {
-      localStorage.setItem(AI_KEY_STORAGE, JSON.stringify(aiState.keys));
+      localStorage.setItem(key, JSON.stringify(value));
       return true;
     } catch (e) {
-      handleStorageQuotaError(e, "storage.ctxKeys");
+      handleStorageQuotaError(e, _ctxForKey(key));
       return false;
     }
   }
-  function loadCurrentModel() {
+  function storageRemove(key) {
     try {
-      return localStorage.getItem(AI_CURRENT_MODEL_STORAGE) || null;
-    } catch (e) {
-      return null;
-    }
+      localStorage.removeItem(key);
+    } catch (e) {}
+  }
+  function _ctxForKey(key) {
+    if (key === AI_KEY_STORAGE) return "storage.ctxKeys";
+    if (key === AI_PROMPT_STORAGE) return "storage.ctxPrompts";
+    if (key === AI_CUSTOM_MODELS_STORAGE) return "storage.ctxCustomModels";
+    if (key === STORAGE_KEY) return "storage.ctxPages";
+    if (key.indexOf(AI_CHAT_STORAGE) === 0) return "storage.ctxChats";
+    return null;
+  }
+  function _applySettings(s) {
+    if (!s || typeof s !== "object") return;
+    if (typeof s.maxImageMB === "number")
+      MAX_IMAGE_BYTES = s.maxImageMB * 1024 * 1024;
+    if (typeof s.maxToolLoop === "number")
+      MAX_TOOL_LOOP = s.maxToolLoop;
+    if (typeof s.maxContext === "number")
+      MAX_CONTEXT_MESSAGES = s.maxContext;
+    if (typeof s.requestTimeoutSec === "number")
+      REQUEST_TIMEOUT_MS = s.requestTimeoutSec * 1000;
+    if (typeof s.maxTitleLen === "number")
+      MAX_TITLE_LEN = s.maxTitleLen;
+  }
+  function loadSettings() {
+    var v = storageGet(SETTINGS_KEY, null);
+    if (v && typeof v === "object") _applySettings(v);
+  }
+  function saveSettings(obj) {
+    storageSet(SETTINGS_KEY, obj);
+    _applySettings(obj);
+  }
+  function loadAIKeys() {
+    var v = storageGet(AI_KEY_STORAGE, {});
+    return v && typeof v === "object" ? v : {};
+  }
+  function saveAIKeys() {
+    return storageSet(AI_KEY_STORAGE, aiState.keys);
+  }
+  function loadCurrentModel() {
+    var v = storageGet(AI_CURRENT_MODEL_STORAGE, null);
+    return typeof v === "string" ? v : null;
   }
   function saveCurrentModel(id) {
-    try {
-      if (id) localStorage.setItem(AI_CURRENT_MODEL_STORAGE, id);
-      else localStorage.removeItem(AI_CURRENT_MODEL_STORAGE);
-    } catch (e) {}
+    if (id) storageSet(AI_CURRENT_MODEL_STORAGE, id);
+    else storageRemove(AI_CURRENT_MODEL_STORAGE);
   }
   function loadAIChats() {
     var result = {};
     getAllModels().forEach(function (m) {
-      try {
-        var raw = localStorage.getItem(AI_CHAT_STORAGE + "_" + m.id);
-        var v = raw ? JSON.parse(raw) : [];
-        result[m.id] = Array.isArray(v) ? v : [];
-      } catch (e) {
-        result[m.id] = [];
-      }
+      var v = storageGet(AI_CHAT_STORAGE + "_" + m.id, []);
+      result[m.id] = Array.isArray(v) ? v : [];
     });
     return result;
   }
   function saveAIChats(modelId) {
     if (!modelId) return true;
-    try {
-      localStorage.setItem(
-        AI_CHAT_STORAGE + "_" + modelId,
-        JSON.stringify(aiState.chats[modelId] || []),
-      );
-      return true;
-    } catch (e) {
-      handleStorageQuotaError(e, "storage.ctxChats");
-      return false;
-    }
+    return storageSet(
+      AI_CHAT_STORAGE + "_" + modelId,
+      aiState.chats[modelId] || [],
+    );
   }
   function loadAIPrompts() {
-    try {
-      var raw = localStorage.getItem(AI_PROMPT_STORAGE);
-      var o = raw ? JSON.parse(raw) : {};
-      return o && typeof o === "object" ? o : {};
-    } catch (e) {
-      return {};
-    }
+    var v = storageGet(AI_PROMPT_STORAGE, {});
+    return v && typeof v === "object" ? v : {};
   }
   function saveAIPrompts() {
-    try {
-      localStorage.setItem(
-        AI_PROMPT_STORAGE,
-        JSON.stringify(aiState.prompts),
-      );
-      return true;
-    } catch (e) {
-      handleStorageQuotaError(e, "storage.ctxPrompts");
-      return false;
-    }
+    return storageSet(AI_PROMPT_STORAGE, aiState.prompts);
   }
   function loadCustomModels() {
-    try {
-      var raw = localStorage.getItem(AI_CUSTOM_MODELS_STORAGE);
-      var list = raw ? JSON.parse(raw) : [];
-      return Array.isArray(list) ? list : [];
-    } catch (e) {
-      return [];
-    }
+    var v = storageGet(AI_CUSTOM_MODELS_STORAGE, []);
+    return Array.isArray(v) ? v : [];
   }
   function saveCustomModels() {
-    try {
-      localStorage.setItem(
-        AI_CUSTOM_MODELS_STORAGE,
-        JSON.stringify(aiState.customModels || []),
-      );
-      return true;
-    } catch (e) {
-      handleStorageQuotaError(e, "storage.ctxCustomModels");
-      return false;
-    }
+    return storageSet(
+      AI_CUSTOM_MODELS_STORAGE,
+      aiState.customModels || [],
+    );
   }
   function initAIState() {
     aiState.keys = loadAIKeys();
@@ -396,49 +414,33 @@
     aiState.currentModel = saved && aiModelConf(saved) ? saved : null;
   }
 
+  /* J6 页面与草稿存储 */
   function getPages() {
-    try {
-      var raw = localStorage.getItem(STORAGE_KEY);
-      var list = raw ? JSON.parse(raw) : [];
-      return Array.isArray(list) ? list : [];
-    } catch (e) {
-      return [];
-    }
+    var v = storageGet(STORAGE_KEY, []);
+    return Array.isArray(v) ? v : [];
   }
   function savePages(pages) {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(pages));
-      return true;
-    } catch (e) {
-      handleStorageQuotaError(e, "storage.ctxPages");
-      return false;
-    }
+    return storageSet(STORAGE_KEY, pages);
   }
   function loadDraft() {
-    try {
-      var raw = localStorage.getItem(DRAFT_KEY);
-      var o = raw ? JSON.parse(raw) : null;
-      if (o && typeof o === "object") {
-        return {
-          title: typeof o.title === "string" ? o.title : "",
-          script: typeof o.script === "string" ? o.script : "",
-        };
-      }
-    } catch (e) {}
+    var o = storageGet(DRAFT_KEY, null);
+    if (o && typeof o === "object") {
+      return {
+        title: typeof o.title === "string" ? o.title : "",
+        script: typeof o.script === "string" ? o.script : "",
+      };
+    }
     return { title: "", script: "" };
   }
   function saveDraft() {
-    try {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify(generatorDraft));
-    } catch (e) {}
+    storageSet(DRAFT_KEY, generatorDraft);
   }
   function clearDraft() {
     generatorDraft = { title: "", script: "" };
-    try {
-      localStorage.removeItem(DRAFT_KEY);
-    } catch (e) {}
+    storageRemove(DRAFT_KEY);
   }
 
+  /* J7 存储配额 */
   function isQuotaError(e) {
     if (!e) return false;
     if (e.name === "QuotaExceededError") return true;
@@ -446,7 +448,7 @@
     if (e.code === 22 || e.code === 1014) return true;
     return false;
   }
-  function estimateLocalStorageKB() {
+  function estimateStorageKB() {
     var total = 0;
     try {
       for (var i = 0; i < localStorage.length; i++) {
@@ -468,7 +470,7 @@
       );
       return;
     }
-    var usedKB = estimateLocalStorageKB();
+    var usedKB = estimateStorageKB();
     var usedText = usedKB >= 0 ? T("storage.used", { kb: usedKB }) : "";
     showAlert(
       T("storage.fullTitle"),
@@ -480,6 +482,7 @@
     );
   }
 
+  /* J8 DOM 工具 */
   function $(sel, root) {
     return (root || document).querySelector(sel);
   }
@@ -521,6 +524,7 @@
     return el("div", "right-group");
   }
 
+  /* J9 模态框系统 */
   var _modalFocusHandler = null;
   function _installFocusTrap(box) {
     _removeFocusTrap();
@@ -721,6 +725,7 @@
     });
   }
 
+  /* J10 页面生成与导出 */
   function generatePageHtml(title, script, imageDataUrl, hasImage) {
     var safeTitle = escapeHtml(
       (title || T("generator.untitledPage")).slice(0, MAX_TITLE_LEN),
@@ -871,6 +876,363 @@
       });
   }
 
+  function _storageItems() {
+    return [
+      { id: "pages", nameKey: "storage.itemWorks", keys: [STORAGE_KEY], defaultOn: true },
+      { id: "draft", nameKey: "storage.itemDraft", keys: [DRAFT_KEY], defaultOn: true },
+      { id: "settings", nameKey: "storage.itemSettings", keys: [THEME_KEY, LANG_KEY, SETTINGS_KEY], defaultOn: true },
+      { id: "keys", nameKey: "storage.itemKeys", keys: [AI_KEY_STORAGE], defaultOn: false },
+      { id: "prompts", nameKey: "storage.itemPrompts", keys: [AI_PROMPT_STORAGE], defaultOn: true },
+      { id: "customModels", nameKey: "storage.itemCustomModels", keys: [AI_CUSTOM_MODELS_STORAGE], defaultOn: true },
+      { id: "currentModel", nameKey: "storage.itemCurrentModel", keys: [AI_CURRENT_MODEL_STORAGE], defaultOn: true },
+      { id: "chats", nameKey: "storage.itemChats", dynamic: "chats", defaultOn: true },
+    ];
+  }
+
+  function _itemSizeKB(item) {
+    var total = 0;
+    if (item.dynamic === "chats") {
+      getAllModels().forEach(function (m) {
+        var v = storageGet(AI_CHAT_STORAGE + "_" + m.id, null);
+        if (v != null) total += JSON.stringify(v).length;
+      });
+    } else {
+      item.keys.forEach(function (k) {
+        var v = storageGet(k, null);
+        if (v != null) total += JSON.stringify(v).length;
+      });
+    }
+    return Math.round((total * STORAGE_KB_MULTIPLIER) / 1024 * 10) / 10;
+  }
+
+  function _deleteItem(item) {
+    if (item.dynamic === "chats") {
+      getAllModels().forEach(function (m) {
+        storageRemove(AI_CHAT_STORAGE + "_" + m.id);
+      });
+      aiState.chats = {};
+      renderedMsgCount = 0;
+      return;
+    }
+    item.keys.forEach(function (k) {
+      storageRemove(k);
+    });
+    if (item.id === "pages") {
+      updateSidebarPages();
+      if (runner.mode === "page" && runner.pageId !== null) {
+        var still = getPages().some(function (p) {
+          return p.id === runner.pageId;
+        });
+        if (!still) {
+          runner.mode = "random";
+          runner.pageId = null;
+        }
+      }
+    }
+    if (item.id === "draft") generatorDraft = { title: "", script: "" };
+    if (item.id === "keys") aiState.keys = {};
+    if (item.id === "prompts") aiState.prompts = {};
+    if (item.id === "customModels") {
+      aiState.customModels = [];
+      buildAIModelMenu();
+      refreshAIModelUI();
+    }
+    if (item.id === "currentModel") {
+      aiState.currentModel = null;
+      refreshAIModelUI();
+    }
+    if (item.id === "settings") {
+      MAX_IMAGE_BYTES = DEFAULT_SETTINGS.maxImageMB * 1024 * 1024;
+      MAX_TOOL_LOOP = DEFAULT_SETTINGS.maxToolLoop;
+      MAX_CONTEXT_MESSAGES = DEFAULT_SETTINGS.maxContext;
+      REQUEST_TIMEOUT_MS = DEFAULT_SETTINGS.requestTimeoutSec * 1000;
+      MAX_TITLE_LEN = DEFAULT_SETTINGS.maxTitleLen;
+    }
+  }
+
+  function _writeItemsToZip(zip, selected) {
+    var itemKeys = selected.map(function (it) {
+      return it.dynamic === "chats" ? "p5_ai_chats" : it.keys[0];
+    });
+    zip.file(
+      "manifest.json",
+      JSON.stringify(
+        {
+          app: "randomArt",
+          schemaVersion: 1,
+          exportedAt: new Date().toISOString(),
+          items: itemKeys,
+        },
+        null,
+        2,
+      ),
+    );
+
+    selected.forEach(function (item) {
+      if (item.dynamic === "chats") {
+        var chatsMap = {};
+        getAllModels().forEach(function (m) {
+          var v = storageGet(AI_CHAT_STORAGE + "_" + m.id, null);
+          if (v && v.length) chatsMap[m.id] = v;
+        });
+        zip.file("p5_ai_chats.json", JSON.stringify(chatsMap, null, 2));
+        return;
+      }
+      if (item.id === "settings") {
+        var s = {
+          theme: storageGet(THEME_KEY, "light"),
+          lang: storageGet(LANG_KEY, ""),
+          settings: storageGet(SETTINGS_KEY, null),
+        };
+        zip.file("p5_settings.json", JSON.stringify(s, null, 2));
+        return;
+      }
+      var v = storageGet(item.keys[0], null);
+      if (v == null) return;
+      zip.file(item.keys[0] + ".json", JSON.stringify(v, null, 2));
+    });
+  }
+
+  function _packSelected(selected) {
+    if (!selected.length) {
+      showAlert(T("settings.packNoSelection"), "", true);
+      return;
+    }
+    var zip = new JSZip();
+    _writeItemsToZip(zip, selected);
+    zip
+      .generateAsync({ type: "base64" })
+      .then(function (base64) {
+        try {
+          var url = "data:application/zip;base64," + base64;
+          var link = document.createElement("a");
+          link.href = url;
+          link.download = "randomArt_backup.zip";
+          link.style.display = "none";
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        } catch (e) {
+          showAlert(
+            T("page.exportFailTitle"),
+            String((e && e.message) || e),
+            true,
+          );
+        }
+      })
+      .catch(function (err) {
+        showAlert(
+          T("page.exportFailTitle"),
+          String((err && err.message) || err),
+          true,
+        );
+      });
+  }
+
+  function _parseBackupFile(file) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function (e) {
+        var buf = e.target.result;
+
+        var isZip = false;
+        try {
+          var arr = new Uint8Array(buf, 0, 4);
+          isZip = arr[0] === 0x50 && arr[1] === 0x4b;
+        } catch (err) {}
+
+        if (isZip) {
+          JSZip.loadAsync(buf)
+            .then(function (zip) {
+              var tasks = [];
+              var knownFiles = [
+                "p5_pages.json",
+                "p5_gen_draft.json",
+                "p5_settings.json",
+                "p5_ai_keys.json",
+                "p5_ai_prompts.json",
+                "p5_ai_custom_models.json",
+                "p5_ai_current_model.json",
+                "p5_ai_chats.json",
+              ];
+              var result = { source: file.name, files: {}, manifest: null };
+              if (zip.file("manifest.json")) {
+                tasks.push(
+                  zip
+                    .file("manifest.json")
+                    .async("string")
+                    .then(function (txt) {
+                      try {
+                        result.manifest = JSON.parse(txt);
+                      } catch (e) {}
+                    }),
+                );
+              }
+              knownFiles.forEach(function (fn) {
+                var f = zip.file(fn);
+                if (!f) return;
+                tasks.push(
+                  f.async("string").then(function (txt) {
+                    try {
+                      result.files[fn] = JSON.parse(txt);
+                    } catch (e) {}
+                  }),
+                );
+              });
+              return Promise.all(tasks).then(function () {
+                resolve(result);
+              });
+            })
+            .catch(reject);
+          return;
+        }
+
+        try {
+          var txt = new TextDecoder("utf-8").decode(new Uint8Array(buf));
+          var obj = JSON.parse(txt);
+          resolve({
+            source: file.name,
+            files: { __single__: obj },
+            manifest: null,
+          });
+        } catch (err) {
+          reject(new Error("bad json"));
+        }
+      };
+      reader.onerror = reject;
+      reader.readAsArrayBuffer(file);
+    });
+  }
+
+  function _previewImport(parsed) {
+    var f = parsed.files;
+    var items = [];
+    function add(id, nameKey, available, count, extra) {
+      if (available) {
+        items.push({
+          id: id,
+          nameKey: nameKey,
+          count: count,
+          extra: extra || "",
+        });
+      }
+    }
+    if (f["p5_pages.json"]) {
+      var arr = Array.isArray(f["p5_pages.json"]) ? f["p5_pages.json"] : [];
+      var cur = storageGet(STORAGE_KEY, []).length;
+      add("pages", "storage.itemWorks", true, arr.length, "当前 " + cur + " 条");
+    }
+    if (f["p5_gen_draft.json"]) {
+      add("draft", "storage.itemDraft", true, 1, "");
+    }
+    if (f["p5_settings.json"]) {
+      add("settings", "storage.itemSettings", true, 1, "");
+    }
+    if (f["p5_ai_keys.json"]) {
+      var k = f["p5_ai_keys.json"];
+      var kc = k && typeof k === "object" ? Object.keys(k).length : 0;
+      add("keys", "storage.itemKeys", true, kc, "");
+    }
+    if (f["p5_ai_prompts.json"]) {
+      var pr = f["p5_ai_prompts.json"];
+      var pc = pr && typeof pr === "object" ? Object.keys(pr).length : 0;
+      add("prompts", "storage.itemPrompts", true, pc, "");
+    }
+    if (f["p5_ai_custom_models.json"]) {
+      var cm = Array.isArray(f["p5_ai_custom_models.json"])
+        ? f["p5_ai_custom_models.json"]
+        : [];
+      add("customModels", "storage.itemCustomModels", true, cm.length, "");
+    }
+    if (f["p5_ai_current_model.json"]) {
+      add("currentModel", "storage.itemCurrentModel", true, 1, "");
+    }
+    if (f["p5_ai_chats.json"]) {
+      var ch = f["p5_ai_chats.json"];
+      var chc = ch && typeof ch === "object" ? Object.keys(ch).length : 0;
+      add("chats", "storage.itemChats", true, chc, "");
+    }
+    return items;
+  }
+
+  function _applyImport(parsed, selectedIds) {
+    var f = parsed.files;
+
+    if (selectedIds.indexOf("pages") !== -1 && f["p5_pages.json"]) {
+      var existing = storageGet(STORAGE_KEY, []);
+      var idSet = {};
+      existing.forEach(function (p) {
+        idSet[p.id] = true;
+      });
+      var incoming = Array.isArray(f["p5_pages.json"]) ? f["p5_pages.json"] : [];
+      incoming.forEach(function (p) {
+        if (p && p.id && !idSet[p.id]) {
+          existing.push(p);
+          idSet[p.id] = true;
+        }
+      });
+      storageSet(STORAGE_KEY, existing);
+    }
+
+    if (selectedIds.indexOf("draft") !== -1 && f["p5_gen_draft.json"]) {
+      storageSet(DRAFT_KEY, f["p5_gen_draft.json"]);
+    }
+
+    if (selectedIds.indexOf("settings") !== -1 && f["p5_settings.json"]) {
+      var s = f["p5_settings.json"];
+      if (s.theme) storageSet(THEME_KEY, s.theme);
+      if (s.lang) storageSet(LANG_KEY, s.lang);
+      if (s.settings) storageSet(SETTINGS_KEY, s.settings);
+    }
+
+    if (selectedIds.indexOf("keys") !== -1 && f["p5_ai_keys.json"]) {
+      storageSet(AI_KEY_STORAGE, f["p5_ai_keys.json"]);
+    }
+
+    if (selectedIds.indexOf("prompts") !== -1 && f["p5_ai_prompts.json"]) {
+      storageSet(AI_PROMPT_STORAGE, f["p5_ai_prompts.json"]);
+    }
+
+    if (
+      selectedIds.indexOf("customModels") !== -1 &&
+      f["p5_ai_custom_models.json"]
+    ) {
+      var existingM = storageGet(AI_CUSTOM_MODELS_STORAGE, []);
+      var midSet = {};
+      existingM.forEach(function (m) {
+        midSet[m.id] = true;
+      });
+      var incM = Array.isArray(f["p5_ai_custom_models.json"])
+        ? f["p5_ai_custom_models.json"]
+        : [];
+      incM.forEach(function (m) {
+        if (m && m.id && !midSet[m.id]) {
+          existingM.push(m);
+          midSet[m.id] = true;
+        }
+      });
+      storageSet(AI_CUSTOM_MODELS_STORAGE, existingM);
+    }
+
+    if (
+      selectedIds.indexOf("currentModel") !== -1 &&
+      f["p5_ai_current_model.json"]
+    ) {
+      var cm = f["p5_ai_current_model.json"];
+      if (typeof cm === "string") storageSet(AI_CURRENT_MODEL_STORAGE, cm);
+    }
+
+    if (selectedIds.indexOf("chats") !== -1 && f["p5_ai_chats.json"]) {
+      var chatsMap = f["p5_ai_chats.json"];
+      if (chatsMap && typeof chatsMap === "object") {
+        Object.keys(chatsMap).forEach(function (modelId) {
+          storageSet(AI_CHAT_STORAGE + "_" + modelId, chatsMap[modelId]);
+        });
+      }
+    }
+  }
+
+  /* J11 随机 p5 与 srcdoc */
   function pickRandomP5File() {
     if (!P5_FILES || !P5_FILES.length) return null;
     if (P5_FILES.length === 1) return P5_FILES[0];
@@ -912,6 +1274,7 @@
     );
   }
 
+  /* J12 侧边栏页面列表 */
   function updateSidebarPages() {
     var pages = getPages();
     var kw = sidebarSearchKeyword.trim().toLowerCase();
@@ -955,6 +1318,7 @@
     sidebarPagesEl.replaceChildren(frag);
   }
 
+  /* J13 iframe 代理 */
   function bindIframeProxy(iframe) {
     var iwin, idoc;
     try {
@@ -1075,6 +1439,7 @@
     });
   }
 
+  /* J14 预览锁定与截图 */
   function lockAppSize() {
     document.body.classList.add("preview-lock");
     var w = window.innerWidth;
@@ -1127,6 +1492,7 @@
     return btn;
   }
 
+  /* J15 首页运行器 */
   function renderRunner() {
     destroyEditor();
     appEl.replaceChildren();
@@ -1238,6 +1604,7 @@
     });
   }
 
+  /* J16 侧边栏与主题 */
   function openSidebar() {
     sidebarEl.classList.add("open");
     overlayEl.classList.add("show");
@@ -1274,11 +1641,10 @@
   function toggleTheme() {
     var next = currentTheme() === "dark" ? "light" : "dark";
     applyTheme(next);
-    try {
-      localStorage.setItem(THEME_KEY, next);
-    } catch (e) {}
+    storageSet(THEME_KEY, next);
   }
 
+  /* J17 路由与静态页 */
   function getRoute() {
     var hash = location.hash;
     if (!hash || hash === "#" || hash === "#/") return "/";
@@ -1312,8 +1678,9 @@
     });
     return wrap;
   }
-function renderGenerator() {
+  function renderGenerator() {
     var wrap = el("div", "generator-page");
+
     var menubar = el("div", "generator-menubar");
     var menubarTitle = el(
       "div",
@@ -1330,6 +1697,7 @@ function renderGenerator() {
     });
     menubar.appendChild(helpBtn);
     wrap.appendChild(menubar);
+
     var editorWrap = el("div", "generator-editor-wrap");
     var g2 = el("div", "form-group generator-form-group");
     var ta = document.createElement("textarea");
@@ -1339,6 +1707,7 @@ function renderGenerator() {
     wrap.appendChild(editorWrap);
 
     wrap.appendChild(buildGeneratorAIPanel());
+
     var g3 = el("div", "form-group");
     var fileInput = document.createElement("input");
     fileInput.type = "file";
@@ -1352,6 +1721,7 @@ function renderGenerator() {
     g3.appendChild(l3);
     g3.appendChild(previewBox);
     wrap.appendChild(g3);
+
     var row = el("div", "gen-inline-row");
     var titleInput = document.createElement("input");
     titleInput.type = "text";
@@ -1364,6 +1734,7 @@ function renderGenerator() {
     row.appendChild(titleInput);
     row.appendChild(submit);
     wrap.appendChild(row);
+
     var result = el("div", "result");
     result.id = "result";
     result.style.display = "none";
@@ -1400,6 +1771,7 @@ function renderGenerator() {
     return frag;
   }
 
+  /* J18 生成器模型菜单 */
   function refreshGenModelBtn() {
     var btn = $("#genModelBtn");
     if (!btn) return;
@@ -1451,6 +1823,7 @@ function renderGenerator() {
     if (willShow) buildGenModelMenu();
   }
 
+  /* J19 生成器 AI 状态与工具 */
   function genStatusClear() {
     var box = $("#genStatus");
     if (box) box.replaceChildren();
@@ -1562,11 +1935,12 @@ function renderGenerator() {
       if (!script) {
         return { ok: false, text: "编辑器为空，无法保存" };
       }
+      var imageDataUrl = uploadedImageDataUrl || "";
       var html = generatePageHtml(
         title,
         script,
         "",
-        !!uploadedImageDataUrl,
+        !!imageDataUrl,
       );
       var newId = Date.now() + Math.floor(Math.random() * 1000);
       var pages = getPages();
@@ -1577,8 +1951,8 @@ function renderGenerator() {
         timestamp: new Date().toISOString(),
       });
       if (savePages(pages)) {
-        if (uploadedImageDataUrl) {
-          sessionImages[newId] = uploadedImageDataUrl;
+        if (imageDataUrl) {
+          sessionImages[newId] = imageDataUrl;
           var ids = Object.keys(sessionImages);
           if (ids.length > MAX_SESSION_IMAGES) {
             delete sessionImages[ids[0]];
@@ -1606,6 +1980,7 @@ function renderGenerator() {
       return { ok: true, text: "已打开预览" };
     },
   };
+
   function executeToolCall(toolName, args) {
     var handler = TOOL_HANDLERS[toolName];
     if (!handler) {
@@ -1620,6 +1995,7 @@ function renderGenerator() {
       };
     }
   }
+
   function extractCodeFromText(text) {
     if (!text) return null;
     var t = String(text);
@@ -1642,6 +2018,7 @@ function renderGenerator() {
     return null;
   }
 
+  /* J20 AI 流式请求核心 */
   function findToolCallName(msgs, toolCallId) {
     for (var i = 0; i < msgs.length; i++) {
       var m = msgs[i];
@@ -1785,6 +2162,7 @@ function renderGenerator() {
         timeoutCtl.abort();
       } catch (e) {}
     }, REQUEST_TIMEOUT_MS);
+
     var baseSignal = extSignal;
     if (!baseSignal && aiState.abortController) {
       baseSignal = aiState.abortController.signal;
@@ -1977,6 +2355,7 @@ function renderGenerator() {
     return { consume: consume, finalize: finalize };
   }
 
+  /* J21 生成器 AI 循环 */
   function genApplyCode(code, intent) {
     if (!editor || !code) return;
     if (intent === "append") {
@@ -2263,6 +2642,7 @@ function renderGenerator() {
     refreshGenModelBtn();
   }
 
+  /* J22 生成器主体 */
   function compressImage(dataUrl, maxDim, quality, callback) {
     var img = new Image();
     img.onload = function () {
@@ -2464,6 +2844,7 @@ function renderGenerator() {
     bindGeneratorAIPanel();
   }
 
+  /* J23 AI 页面骨架 */
   function renderAIAssistant() {
     var page = el("div", "ai-page");
     var clearBtn = el("button", "ai-clear-btn", "−");
@@ -2514,6 +2895,8 @@ function renderGenerator() {
     return page;
   }
 
+
+  /* J24 AI 模型菜单 */
   function buildAIModelMenu() {
     var menu = $("#aiModelMenu");
     if (!menu) return;
@@ -2604,6 +2987,7 @@ function renderGenerator() {
     menu.classList.toggle("show");
   }
 
+  /* J25 剪贴板与提示 */
   function copyToClipboard(text) {
     if (!text) return;
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -2635,6 +3019,7 @@ function renderGenerator() {
     }, FLASH_TIP_MS);
   }
 
+  /* J26 消息工具栏与节点 */
   function buildAssistantToolbar(m, index) {
     var toolbar = el("div", "assistant-toolbar");
     var left = el("div", "toolbar-left");
@@ -2758,6 +3143,7 @@ function renderGenerator() {
     return el("div", "ai-empty", text);
   }
 
+  /* J27 AI 消息渲染 */
   function renderAIMessages() {
     var box = $("#aiMessages");
     if (!box) return;
@@ -2873,6 +3259,7 @@ function renderGenerator() {
     return box.scrollHeight - box.scrollTop - box.clientHeight < NEAR_BOTTOM_PX;
   }
 
+  /* J28 消息操作 */
   function deleteMessageFrom(index) {
     var model = aiState.currentModel;
     if (!model) return;
@@ -3020,7 +3407,6 @@ function renderGenerator() {
         var meta = acc.finalize();
         var isTimeout = err && err.name === "TimeoutError";
         var isAbort = err && (err.name === "AbortError" || err.code === 20);
-        /* 有部分内容：保留；否则丢弃 */
         if (accumulated) {
           var msg = chat[chat.length - 1];
           msg.content = accumulated;
@@ -3051,6 +3437,7 @@ function renderGenerator() {
       });
   }
 
+  /* J29 模型编辑与选择 */
   function showModelEditor(modelId) {
     var isEdit = !!modelId;
     var existing = isEdit ? aiModelConf(modelId) : null;
@@ -3201,9 +3588,7 @@ function renderGenerator() {
         delete aiState.prompts[modelId];
         saveAIKeys();
         saveAIPrompts();
-        try {
-          localStorage.removeItem(AI_CHAT_STORAGE + "_" + modelId);
-        } catch (e) {}
+        storageRemove(AI_CHAT_STORAGE + "_" + modelId);
         aiState.customModels = aiState.customModels.filter(function (m) {
           return m.id !== modelId;
         });
@@ -3370,6 +3755,7 @@ function renderGenerator() {
     updateAISendBtn();
   }
 
+  /* J30 对话导入导出 */
   function triggerDownload(content, mime, filename) {
     try {
       var encoded = btoa(unescape(encodeURIComponent(content)));
@@ -3596,6 +3982,7 @@ function renderGenerator() {
     reader.readAsText(file);
   }
 
+  /* J31 AI 发送与清空 */
   function aiSend() {
     if (aiState.busy) return;
     var model = aiState.currentModel;
@@ -3648,6 +4035,7 @@ function renderGenerator() {
     );
   }
 
+  /* J32 AI 助手绑定 */
   function bindAIAssistant() {
     renderedModelId = null;
     renderedMsgCount = 0;
@@ -3775,11 +4163,14 @@ function renderGenerator() {
     }
   }
 
+  /* J33 主路由渲染 */
   function render() {
     var path = getRoute();
+
     appEl.classList.remove("preview-mode");
     appEl.classList.remove("ai-mode");
     appEl.classList.remove("generator-mode");
+
     if (genState.busy) {
       if (genState.abortController) {
         try {
@@ -3812,13 +4203,11 @@ function renderGenerator() {
     }
     if (path === "/about") {
       appEl.appendChild(renderAbout());
-    }
-    else if (path === "/generator") {
+    } else if (path === "/generator") {
       appEl.classList.add("generator-mode");
       appEl.appendChild(renderGenerator());
       bindGenerator();
-    }
-    else {
+    } else {
       var wrap = document.createElement("div");
       wrap.appendChild(el("h1", null, T("page.notFoundTitle", { path: path })));
       wrap.appendChild(el("p", null, T("page.notFoundBody")));
@@ -3826,6 +4215,7 @@ function renderGenerator() {
     }
   }
 
+  /* J34 初始化 */
   function initStatic() {
     modalBackdrop = $("#modalBackdrop");
     modalBox = $("#modalBox");
@@ -3840,6 +4230,7 @@ function renderGenerator() {
       savedTheme = localStorage.getItem(THEME_KEY) || "light";
     } catch (e) {}
     applyTheme(savedTheme);
+
     ["gesturestart", "gesturechange", "gestureend"].forEach(function (type) {
       document.addEventListener(
         type,
@@ -3906,20 +4297,6 @@ function renderGenerator() {
         });
       }
     });
-    document.addEventListener("pointerdown", function (e) {
-      var t = e.target;
-      if (!t || !t.closest) return;
-      if (t.closest("input, textarea, select, [contenteditable]")) return;
-      if (t.closest(".CodeMirror")) return;
-      if (t.closest(".ai-model-picker")) return;
-      if (t.closest(".ai-send-btn")) return;
-      var active = document.activeElement;
-      if (!active) return;
-      var tag = active.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || active.isContentEditable) {
-        active.blur();
-      }
-    });
     if (sidebarSearchEl) {
       sidebarSearchEl.addEventListener("input", function () {
         var v = this.value || "";
@@ -3964,15 +4341,15 @@ function renderGenerator() {
     });
     var exportZipBtn = $("#exportZipSidebar");
     if (exportZipBtn) {
-      var runExport = function () {
+      var openSettings = function () {
         closeSidebar();
-        exportZip();
+        showSettingsDialog();
       };
-      exportZipBtn.addEventListener("click", runExport);
+      exportZipBtn.addEventListener("click", openSettings);
       exportZipBtn.addEventListener("keydown", function (e) {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          runExport();
+          openSettings();
         }
       });
     }
@@ -4031,6 +4408,308 @@ function renderGenerator() {
     });
   }
 
+  function showSettingsDialog() {
+    openModal(function (box) {
+      box.appendChild(el("h3", null, T("settings.title")));
+
+      var langSec = el("section", "settings-section");
+      langSec.appendChild(el("h4", null, T("settings.langSection")));
+      var langGroup = el("div", "lang-group");
+      ["zh", "en"].forEach(function (code) {
+        var btn = el("button", "lang-btn" + (LANG === code ? " active" : ""));
+        btn.type = "button";
+        btn.textContent = code === "zh" ? "中文" : "English";
+        btn.dataset.lang = code;
+        langGroup.appendChild(btn);
+      });
+      langSec.appendChild(langGroup);
+      box.appendChild(langSec);
+
+      var paramSec = el("section", "settings-section");
+      paramSec.appendChild(el("h4", null, T("settings.paramsSection")));
+      var params = [
+        { key: "maxImageMB", labelKey: "settings.paramImageMB" },
+        { key: "maxToolLoop", labelKey: "settings.paramToolLoop" },
+        { key: "maxContext", labelKey: "settings.paramContext" },
+        { key: "requestTimeoutSec", labelKey: "settings.paramTimeout" },
+        { key: "maxTitleLen", labelKey: "settings.paramTitleLen" },
+      ];
+      var savedSettings = storageGet(SETTINGS_KEY, null);
+      params.forEach(function (p) {
+        var row = el("div", "settings-param-row");
+        row.appendChild(el("label", null, T(p.labelKey)));
+        var input = document.createElement("input");
+        input.type = "number";
+        input.dataset.key = p.key;
+        input.value =
+          savedSettings && typeof savedSettings[p.key] === "number"
+            ? savedSettings[p.key]
+            : DEFAULT_SETTINGS[p.key];
+        row.appendChild(input);
+        paramSec.appendChild(row);
+      });
+      var paramActions = el("div", "settings-param-actions");
+      var restoreBtn = el(
+        "button",
+        "settings-restore-btn",
+        T("settings.restoreDefault"),
+      );
+      restoreBtn.type = "button";
+      restoreBtn.addEventListener("click", function () {
+        $$(".settings-param-row input", box).forEach(function (inp) {
+          var k = inp.dataset.key;
+          if (k && typeof DEFAULT_SETTINGS[k] === "number") {
+            inp.value = DEFAULT_SETTINGS[k];
+          }
+        });
+      });
+      var saveBtn = el("button", "settings-save-btn", T("settings.saveBtn"));
+      saveBtn.type = "button";
+      saveBtn.addEventListener("click", function () {
+        var ranges = {
+          maxImageMB: [0.1, 100],
+          maxToolLoop: [1, 20],
+          maxContext: [5, 200],
+          requestTimeoutSec: [10, 300],
+          maxTitleLen: [10, 200],
+        };
+        var draft = {};
+        var ok = true;
+        $$(".settings-param-row input", box).forEach(function (inp) {
+          var k = inp.dataset.key;
+          if (!k || !ranges[k]) return;
+          var v = Number(inp.value);
+          if (isNaN(v) || v < ranges[k][0] || v > ranges[k][1]) {
+            ok = false;
+            return;
+          }
+          draft[k] = v;
+        });
+        if (!ok) {
+          showAlert(T("settings.invalidRange"), "", true);
+          return;
+        }
+        saveSettings(draft);
+        showAlert(T("settings.saved"), "");
+      });
+      paramActions.appendChild(restoreBtn);
+      paramActions.appendChild(saveBtn);
+      paramSec.appendChild(paramActions);
+      box.appendChild(paramSec);
+
+      var storageSec = el("section", "settings-section");
+      storageSec.appendChild(el("h4", null, T("settings.storageSection")));
+      var list = el("div", "storage-list");
+      storageSec.appendChild(list);
+      var totalEl = el("div", "storage-total");
+      storageSec.appendChild(totalEl);
+      var storageActions = el("div", "settings-storage-actions");
+      var packBtn = el("button", "settings-pack-btn", T("settings.packBtn"));
+      packBtn.type = "button";
+      var importBtn = el(
+        "button",
+        "settings-import-btn",
+        T("settings.importBtn"),
+      );
+      importBtn.type = "button";
+      storageActions.appendChild(packBtn);
+      storageActions.appendChild(importBtn);
+      storageSec.appendChild(storageActions);
+      var importFile = document.createElement("input");
+      importFile.type = "file";
+      importFile.accept = ".zip,.json,application/zip,application/json";
+      importFile.style.display = "none";
+      storageSec.appendChild(importFile);
+      box.appendChild(storageSec);
+
+      var items = _storageItems();
+      var cbs = [];
+      function refreshTotal() {
+        var total = 0;
+        items.forEach(function (it, i) {
+          if (cbs[i] && cbs[i].checked) total += _itemSizeKB(it);
+        });
+        totalEl.textContent = T("settings.totalLabel", {
+          kb: Math.round(total * 10) / 10,
+        });
+      }
+      function renderList() {
+        list.replaceChildren();
+        cbs = [];
+        items.forEach(function (item) {
+          var row = el("div", "storage-row");
+          var cb = document.createElement("input");
+          cb.type = "checkbox";
+          cb.checked = item.defaultOn !== false;
+          cb.addEventListener("change", refreshTotal);
+          cbs.push(cb);
+          row.appendChild(cb);
+          row.appendChild(el("span", "storage-name", T(item.nameKey)));
+          row.appendChild(
+            el("span", "storage-size", _itemSizeKB(item) + " KB"),
+          );
+          var delBtn = el("button", "storage-del-btn", "🗑");
+          delBtn.type = "button";
+          delBtn.title = T("common.delete");
+          delBtn.addEventListener("click", function () {
+            showConfirm(
+              T("settings.deleteConfirmTitle"),
+              T("settings.deleteConfirmBody", { name: T(item.nameKey) }),
+              function () {
+                _deleteItem(item);
+                renderList();
+              },
+              true,
+            );
+          });
+          row.appendChild(delBtn);
+          list.appendChild(row);
+        });
+        refreshTotal();
+      }
+      renderList();
+
+      var exportSec = el("section", "settings-section");
+      exportSec.appendChild(el("h4", null, T("settings.exportSection")));
+      var exportBtn = el("button", null, T("nav.exportZip"));
+      exportBtn.type = "button";
+      exportBtn.addEventListener("click", function () {
+        closeModal();
+        exportZip();
+      });
+      exportSec.appendChild(exportBtn);
+      box.appendChild(exportSec);
+
+      $$(".lang-btn", langGroup).forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var code = btn.dataset.lang;
+          if (!code || code === LANG) return;
+          LANG = code;
+          storageSet(LANG_KEY, code);
+          closeModal();
+          render();
+        });
+      });
+      packBtn.addEventListener("click", function () {
+        var selected = items.filter(function (_, i) {
+          return cbs[i] && cbs[i].checked;
+        });
+        _packSelected(selected);
+      });
+      importBtn.addEventListener("click", function () {
+        importFile.value = "";
+        importFile.click();
+      });
+      importFile.addEventListener("change", function () {
+        var file = this.files && this.files[0];
+        if (!file) return;
+        _parseBackupFile(file)
+          .then(function (parsed) {
+            var preview = _previewImport(parsed);
+            if (!preview.length) {
+              showAlert(
+                T("settings.importFail"),
+                T("settings.importBadFormat"),
+                true,
+              );
+              return;
+            }
+            closeModal();
+            _showImportDialog(parsed, preview);
+          })
+          .catch(function (err) {
+            showAlert(
+              T("settings.importFail"),
+              String((err && err.message) || err),
+              true,
+            );
+          });
+      });
+
+      var actions = el("div", "modal-actions");
+      var rg = rightGroup();
+      var closeBtn = el("button", null, T("common.know"));
+      closeBtn.addEventListener("click", closeModal);
+      rg.appendChild(closeBtn);
+      actions.appendChild(rg);
+      box.appendChild(actions);
+    });
+  }
+
+  function _showImportDialog(parsed, preview) {
+    openModal(function (box) {
+      box.appendChild(el("h3", null, T("settings.importTitle")));
+      box.appendChild(
+        el(
+          "div",
+          "modal-hint",
+          T("settings.importSource", { name: parsed.source }),
+        ),
+      );
+
+      var list = el("div", "import-list");
+      var cbs = [];
+      preview.forEach(function (item) {
+        var row = el("div", "import-row");
+        var cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.checked = true;
+        cb.dataset.id = item.id;
+        cbs.push(cb);
+        row.appendChild(cb);
+        row.appendChild(el("span", "import-name", T(item.nameKey)));
+        var countText =
+          item.count > 0
+            ? T("settings.importCount", { n: item.count })
+            : "";
+        if (item.extra) countText += "（" + item.extra + "）";
+        row.appendChild(el("span", "import-count", countText));
+        list.appendChild(row);
+      });
+      box.appendChild(list);
+
+      box.appendChild(
+        el("div", "modal-hint", T("settings.importConflictHint")),
+      );
+
+      var actions = el("div", "modal-actions");
+      var leftWrap = document.createElement("div");
+      var cancel = el("button", "link-btn", T("common.cancel"));
+      cancel.addEventListener("click", closeModal);
+      leftWrap.appendChild(cancel);
+      var rg = rightGroup();
+      var ok = el("button", null, T("settings.importConfirm"));
+      ok.addEventListener("click", function () {
+        var selectedIds = cbs
+          .filter(function (cb) {
+            return cb.checked;
+          })
+          .map(function (cb) {
+            return cb.dataset.id;
+          });
+        if (!selectedIds.length) {
+          showAlert(T("settings.packNoSelection"), "", true);
+          return;
+        }
+        _applyImport(parsed, selectedIds);
+        closeModal();
+        LANG = detectLang();
+        applyTheme(storageGet(THEME_KEY, "light"));
+        loadSettings();
+        initAIState();
+        applyI18nToStatic();
+        updateSidebarPages();
+        render();
+        showAlert(T("settings.importOk"), "");
+      });
+      rg.appendChild(ok);
+      actions.appendChild(leftWrap);
+      actions.appendChild(rg);
+      box.appendChild(actions);
+    });
+  }
+
+  /* J35 启动 */
   function loadContent() {
     return fetch(CONTENT_URL, { cache: "no-cache" })
       .then(function (r) {
@@ -4039,13 +4718,16 @@ function renderGenerator() {
       })
       .then(function (json) {
         CONTENT = json || {};
-        I18N = CONTENT.i18n || {};
+        I18N = json.i18n || {};
         AI_MODELS = (CONTENT.models || []).slice();
         LANG = detectLang();
       });
   }
   function boot() {
     initStatic();
+    LANG = detectLang();
+    applyTheme(storageGet(THEME_KEY, "light"));
+    loadSettings();
     initAIState();
     applyI18nToStatic();
     updateSidebarPages();
