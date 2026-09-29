@@ -4426,10 +4426,22 @@
     });
   }
 
-  function showSettingsDialog() {
+function showSettingsDialog() {
     openModal(function (box) {
-      box.appendChild(el("h3", null, T("settings.title")));
+      /* 标题行：标题 + 关闭按钮 */
+      var header = el("div", "settings-header");
+      header.appendChild(el("h3", null, T("settings.title")));
+      var closeTopBtn = el(
+        "button",
+        "settings-close-btn",
+        T("common.close"),
+      );
+      closeTopBtn.type = "button";
+      closeTopBtn.addEventListener("click", closeModal);
+      header.appendChild(closeTopBtn);
+      box.appendChild(header);
 
+      /* ① 语言 */
       var langSec = el("section", "settings-section");
       langSec.appendChild(el("h4", null, T("settings.langSection")));
       var langGroup = el("div", "lang-group");
