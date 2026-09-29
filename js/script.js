@@ -4662,7 +4662,7 @@ function showSettingsDialog() {
             );
           });
       });
-
+      /*
       var actions = el("div", "modal-actions");
       var rg = rightGroup();
       var closeBtn = el("button", null, T("common.know"));
@@ -4672,7 +4672,7 @@ function showSettingsDialog() {
       box.appendChild(actions);
     });
   }
-
+  */
   function _showImportDialog(parsed, preview) {
     openModal(function (box) {
       box.appendChild(el("h3", null, T("settings.importTitle")));
