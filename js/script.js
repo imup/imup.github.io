@@ -4589,7 +4589,7 @@
         refreshTotal();
       }
       renderList();
-
+      /*
       var exportSec = el("section", "settings-section");
       exportSec.appendChild(el("h4", null, T("settings.exportSection")));
       var exportBtn = el("button", null, T("nav.exportZip"));
@@ -4600,7 +4600,7 @@
       });
       exportSec.appendChild(exportBtn);
       box.appendChild(exportSec);
-
+      */
       $$(".lang-btn", langGroup).forEach(function (btn) {
         btn.addEventListener("click", function () {
           var code = btn.dataset.lang;
