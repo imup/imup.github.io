@@ -3013,13 +3013,19 @@
   }
   function flashTip(anchorEl, text) {
     if (!anchorEl) return;
+    /* 保证 anchor 是 positioned，否则 absolute 会相对错误祖先 */
+    try {
+      if (window.getComputedStyle(anchorEl).position === "static") {
+        anchorEl.style.position = "relative";
+      }
+    } catch (e) {}
     var tip = el("div", "msg-flash-tip", text);
     anchorEl.appendChild(tip);
     setTimeout(function () {
       if (tip.parentNode) tip.parentNode.removeChild(tip);
     }, FLASH_TIP_MS);
   }
-
+  
   /* J26 消息工具栏与节点 */
   function buildAssistantToolbar(m, index) {
     var toolbar = el("div", "assistant-toolbar");
