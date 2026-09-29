@@ -1429,6 +1429,7 @@ button:disabled {
 }
 .settings-storage-actions {
   display: flex;
+  justify-content: flex-end;
   gap: 8px;
   margin-top: 8px;
 }
@@ -1437,12 +1438,16 @@ button:disabled {
   padding: 6px 12px;
 }
 
-/* --- 导出作品 --- */
+.settings-export-btn {
+  background: var(--neutral-btn);
+}
+/* --- 导出作品 --- 
 .settings-section:last-of-type button {
   background: var(--neutral-btn);
   font-size: 0.85rem;
   padding: 8px 16px;
-}
+} 
+*/
 
 /* --- 导入弹窗 --- */
 .import-list {
