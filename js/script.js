@@ -4523,14 +4523,17 @@
       var storageActions = el("div", "settings-storage-actions");
       var packBtn = el("button", "settings-pack-btn", T("settings.packBtn"));
       packBtn.type = "button";
-      var importBtn = el(
-        "button",
-        "settings-import-btn",
-        T("settings.importBtn"),
-      );
+      var importBtn = el("button", "settings-import-btn", T("settings.importBtn"));
       importBtn.type = "button";
+      var exportBtn = el("button", "settings-export-btn", T("settings.exportZipBtn"));
+      exportBtn.type = "button";
+      exportBtn.addEventListener("click", function () {
+        closeModal();
+        exportZip();
+      });
       storageActions.appendChild(packBtn);
       storageActions.appendChild(importBtn);
+      storageActions.appendChild(exportBtn);
       storageSec.appendChild(storageActions);
       var importFile = document.createElement("input");
       importFile.type = "file";
@@ -4603,10 +4606,14 @@
           if (!code || code === LANG) return;
           LANG = code;
           storageSet(LANG_KEY, code);
+          _i18nCache = null;
+          applyI18nToStatic();
           closeModal();
           render();
+          showSettingsDialog();
         });
       });
+      
       packBtn.addEventListener("click", function () {
         var selected = items.filter(function (_, i) {
           return cbs[i] && cbs[i].checked;
