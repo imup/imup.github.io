@@ -46,7 +46,6 @@
     { name: "save_page", description: "保存当前编辑器内容为作品。适用于：用户明确说“保存”且希望直接保存时。", params: { type: "object", properties: { title: { type: "string", description: "作品标题，可选，默认使用编辑器标题栏的内容" } } } },
     { name: "open_preview", description: "打开当前编辑器内容的预览。适用于：用户说“看一下效果”“预览”时。", params: { type: "object", properties: {} } }
   ];
-
   function _toGeminiType(t) { return String(t || "").toUpperCase(); }
   function _toGeminiSchema(schema) {
     if (!schema || typeof schema !== "object") return schema;
@@ -168,7 +167,6 @@ var _storage = { mode: "memory", db: null, cache: {} };
       } catch (e) { reject(e); }
     });
   }
-
   function _idbInit() {
     return new Promise(function (resolve) {
       var done = false;
@@ -195,7 +193,6 @@ var _storage = { mode: "memory", db: null, cache: {} };
       } catch (e) { clearTimeout(timer); finish("ls"); }
     });
   }
-
   function _lsWarmup() {
     try {
       for (var i = 0; i < localStorage.length; i++) {
@@ -206,7 +203,6 @@ var _storage = { mode: "memory", db: null, cache: {} };
       }
     } catch (e) {}
   }
-
   function initStorage() {
     return _idbInit().then(function (mode) {
       _storage.mode = mode;
@@ -219,12 +215,10 @@ var _storage = { mode: "memory", db: null, cache: {} };
       }
     });
   }
-
   function storageGet(key, fallback) {
     if (Object.prototype.hasOwnProperty.call(_storage.cache, key)) return _storage.cache[key];
     return fallback;
   }
-
   function _ctxForKey(key) {
     if (key === AI_KEY_STORAGE) return "storage.ctxKeys";
     if (key === AI_PROMPT_STORAGE) return "storage.ctxPrompts";
@@ -233,7 +227,6 @@ var _storage = { mode: "memory", db: null, cache: {} };
     if (key.indexOf(AI_CHAT_STORAGE) === 0) return "storage.ctxChats";
     return null;
   }
-
   function storageSet(key, value) {
     var hadKey = Object.prototype.hasOwnProperty.call(_storage.cache, key);
     var oldValue = _storage.cache[key];
@@ -254,7 +247,6 @@ var _storage = { mode: "memory", db: null, cache: {} };
     }
     return true;
   }
-
   function storageRemove(key) {
     delete _storage.cache[key];
     if (_storage.mode === "idb" && _storage.db) {
@@ -266,7 +258,6 @@ var _storage = { mode: "memory", db: null, cache: {} };
       try { localStorage.removeItem(key); } catch (e) {}
     }
   }
-
   function _applySettings(s) {
     if (!s || typeof s !== "object") return;
     if (typeof s.maxImageMB === "number") MAX_IMAGE_BYTES = s.maxImageMB * 1024 * 1024;
@@ -623,7 +614,6 @@ function generatePageHtml(title, script, imageDataUrl, hasImage) {
       showAlert(T("page.exportFailTitle"), String((err && err.message) || err), true);
     });
   }
-
   function _storageItems() {
     return [
       { id: "pages", nameKey: "storage.itemWorks", keys: [STORAGE_KEY], defaultOn: true },
@@ -636,7 +626,6 @@ function generatePageHtml(title, script, imageDataUrl, hasImage) {
       { id: "chats", nameKey: "storage.itemChats", dynamic: "chats", defaultOn: true },
     ];
   }
-
   function _itemSizeKB(item) {
     var total = 0;
     if (item.dynamic === "chats") {
@@ -652,7 +641,6 @@ function generatePageHtml(title, script, imageDataUrl, hasImage) {
     }
     return Math.round((total * STORAGE_KB_MULTIPLIER) / 1024 * 10) / 10;
   }
-
   function _deleteItem(item) {
     if (item.dynamic === "chats") {
       getAllModels().forEach(function (m) { storageRemove(AI_CHAT_STORAGE + "_" + m.id); });
@@ -688,7 +676,6 @@ function generatePageHtml(title, script, imageDataUrl, hasImage) {
       MAX_TITLE_LEN = DEFAULT_SETTINGS.maxTitleLen;
     }
   }
-
   function _writeItemsToZip(zip, selected) {
     var itemKeys = selected.map(function (it) {
       return it.dynamic === "chats" ? "p5_ai_chats" : it.keys[0];
@@ -699,7 +686,6 @@ function generatePageHtml(title, script, imageDataUrl, hasImage) {
       exportedAt: new Date().toISOString(),
       items: itemKeys,
     }, null, 2));
-
     selected.forEach(function (item) {
       if (item.dynamic === "chats") {
         var chatsMap = {};
@@ -724,7 +710,6 @@ function generatePageHtml(title, script, imageDataUrl, hasImage) {
       zip.file(item.keys[0] + ".json", JSON.stringify(v, null, 2));
     });
   }
-
   function _packSelected(selected, anchorEl) {
     if (!selected.length) {
       if (anchorEl) flashTip(anchorEl, T("settings.packNoSelection"));
@@ -750,7 +735,6 @@ function generatePageHtml(title, script, imageDataUrl, hasImage) {
       showAlert(T("page.exportFailTitle"), String((err && err.message) || err), true);
     });
   }
-
   function _parseBackupFile(file) {
     return new Promise(function (resolve, reject) {
       var reader = new FileReader();
@@ -792,7 +776,6 @@ function generatePageHtml(title, script, imageDataUrl, hasImage) {
       reader.readAsArrayBuffer(file);
     });
   }
-
   function _previewImport(parsed) {
     var f = parsed.files;
     var items = [];
@@ -828,7 +811,6 @@ function generatePageHtml(title, script, imageDataUrl, hasImage) {
     }
     return items;
   }
-
   function _applyImport(parsed, selectedIds) {
     var f = parsed.files;
     if (selectedIds.indexOf("pages") !== -1 && f["p5_pages.json"]) {
@@ -1318,7 +1300,6 @@ function genStatusClear() {
     var btn = $("#genSendBtn");
     if (btn) btn.disabled = !!busy;
   }
-
   var TOOL_HANDLERS = {
     insert_code: function (args) {
       var code = args && typeof args.code === "string" ? args.code : "";
@@ -1399,14 +1380,12 @@ function genStatusClear() {
       return { ok: true, text: "已打开预览" };
     },
   };
-
   function executeToolCall(toolName, args) {
     var handler = TOOL_HANDLERS[toolName];
     if (!handler) return { ok: false, text: T("gen.toolUnknown", { name: toolName }) };
     try { return handler(args); }
     catch (e) { return { ok: false, text: T("gen.toolError", { msg: String((e && e.message) || e) }) }; }
   }
-
   function extractCodeFromText(text) {
     if (!text) return null;
     var t = String(text);
@@ -1480,7 +1459,6 @@ function findToolCallName(msgs, toolCallId) {
     var onRaw = opts.onRaw;
     var enableTools = !!opts.tools;
     var extSignal = opts.signal || null;
-
     var conf = aiModelConf(model);
     var url, options;
     if (conf.protocol === "gemini") {
@@ -1503,7 +1481,6 @@ function findToolCallName(msgs, toolCallId) {
     var timeoutCtl = new AbortController();
     var timedOut = false;
     var timeoutId = setTimeout(function () { timedOut = true; try { timeoutCtl.abort(); } catch (e) {} }, REQUEST_TIMEOUT_MS);
-
     var baseSignal = extSignal;
     if (!baseSignal && aiState.abortController) baseSignal = aiState.abortController.signal;
     if (baseSignal) {
@@ -1513,7 +1490,6 @@ function findToolCallName(msgs, toolCallId) {
       timeoutCtl.signal.addEventListener("abort", onAbort);
       options.signal = combined.signal;
     } else options.signal = timeoutCtl.signal;
-
     return fetch(url, options)
       .then(function (res) {
         if (!res.ok) {
@@ -1666,7 +1642,6 @@ function genApplyCode(code, intent) {
     if (useVision) {
       genState.messages.push({ role: "user", content: [{ type: "text", text: userContent }, { type: "image_url", image_url: { url: uploadedImageDataUrl } }] });
     } else genState.messages.push({ role: "user", content: userContent });
-
     genStatusClear();
     genStatusLine(T("gen.statusRequest", { model: aiModelName(model) }));
     genState.streamToken += 1;
@@ -2802,8 +2777,6 @@ function initStatic() {
     hamburgerBtn = $("#hamburgerBtn");
     appEl = $("#app");
     sidebarSearchEl = $("#sidebarSearch");
-    /* 主题在 boot() 存储就绪后统一应用 */
-
     ["gesturestart", "gesturechange", "gestureend"].forEach(function (type) {
       document.addEventListener(type, function (e) { e.preventDefault(); }, { passive: false });
     });
@@ -2832,7 +2805,6 @@ function initStatic() {
       }
       if (!e.target.closest(".ai-msg")) $$(".ai-msg.actions-visible").forEach(function (el) { el.classList.remove("actions-visible"); });
     });
-    /* --- 点击空白处：收起软键盘 --- */
     document.addEventListener("pointerdown", function (e) {
       var t = e.target;
       if (!t || !t.closest) return;
@@ -2908,7 +2880,6 @@ function initStatic() {
       resizeTimer = setTimeout(function () { if (editor) editor.refresh(); }, 100);
     });
   }
-
   function showSettingsDialog() {
     openModal(function (box) {
       var header = el("div", "settings-header");
@@ -2918,7 +2889,6 @@ function initStatic() {
       closeTopBtn.addEventListener("click", closeModal);
       header.appendChild(closeTopBtn);
       box.appendChild(header);
-
       var langSec = el("section", "settings-section");
       langSec.appendChild(el("h4", null, T("settings.langSection")));
       var langGroup = el("div", "lang-group");
@@ -2931,7 +2901,6 @@ function initStatic() {
       });
       langSec.appendChild(langGroup);
       box.appendChild(langSec);
-
       var paramSec = el("section", "settings-section");
       paramSec.appendChild(el("h4", null, T("settings.paramsSection")));
       var params = [
@@ -2988,7 +2957,6 @@ function initStatic() {
       paramActions.appendChild(saveBtn);
       paramSec.appendChild(paramActions);
       box.appendChild(paramSec);
-
       var storageSec = el("section", "settings-section");
       storageSec.appendChild(el("h4", null, T("settings.storageSection")));
       var list = el("div", "storage-list");
@@ -3017,7 +2985,6 @@ function initStatic() {
       importFile.style.display = "none";
       storageSec.appendChild(importFile);
       box.appendChild(storageSec);
-
       var items = _storageItems();
       var cbs = [];
       function refreshTotal() {
@@ -3053,7 +3020,6 @@ function initStatic() {
         refreshTotal();
       }
       renderList();
-
       $$(".lang-btn", langGroup).forEach(function (btn) {
         btn.addEventListener("click", function () {
           var code = btn.dataset.lang;
@@ -3087,7 +3053,6 @@ function initStatic() {
       });
     });
   }
-
   function _showImportDialog(parsed, preview) {
     openModal(function (box) {
       box.appendChild(el("h3", null, T("settings.importTitle")));
