@@ -76,7 +76,7 @@
   var LANG = "zh";
   var CONTENT = null;
   
-var aiState = { currentModel: null, keys: {}, chats: {}, prompts: {}, customModels: [], busy: false, abortController: null, streamToken: 0 };
+  var aiState = { currentModel: null, keys: {}, chats: {}, prompts: {}, customModels: [], busy: false, abortController: null, streamToken: 0 };
   var genState = { messages: [], busy: false, abortController: null, streamToken: 0, menuOpen: false, palette: null };
   var modalBackdrop, modalBox, lastFocused;
   var sidebarPagesEl, sidebarEl, overlayEl, hamburgerBtn;
@@ -92,8 +92,8 @@ var aiState = { currentModel: null, keys: {}, chats: {}, prompts: {}, customMode
   var generatorDraft = { title: "", script: "" };
   var renderedMsgCount = 0;
   var renderedModelId = null;
-
-function T(key, params) {
+  
+  function T(key, params) {
     var pack = I18N[LANG] || I18N.zh || {};
     var text = pack[key];
     if (text == null) text = (I18N.zh && I18N.zh[key]) || key;
@@ -145,8 +145,8 @@ function T(key, params) {
       document.documentElement.lang = LANG === "zh" ? "zh-CN" : "en";
     } catch (e) {}
   }
-
-function getAllModels() { return AI_MODELS.concat(aiState.customModels || []); }
+  
+  function getAllModels() { return AI_MODELS.concat(aiState.customModels || []); }
   function getToolModels() { return getAllModels().filter(function (m) { return m.supportsTools === true; }); }
   function aiModelConf(id) {
     var all = getAllModels();
@@ -154,9 +154,8 @@ function getAllModels() { return AI_MODELS.concat(aiState.customModels || []); }
     return null;
   }
   function aiModelName(id) { var c = aiModelConf(id); return c ? c.name : id; }
-
-var _storage = { mode: "memory", db: null, cache: {} };
-
+  
+  var _storage = { mode: "memory", db: null, cache: {} };
   function _idbGetAll() {
     return new Promise(function (resolve, reject) {
       try {
@@ -268,7 +267,6 @@ var _storage = { mode: "memory", db: null, cache: {} };
   }
   function loadSettings() { var v = storageGet(SETTINGS_KEY, null); if (v && typeof v === "object") _applySettings(v); }
   function saveSettings(obj) { storageSet(SETTINGS_KEY, obj); _applySettings(obj); }
-
   function loadAIKeys() { var v = storageGet(AI_KEY_STORAGE, {}); return v && typeof v === "object" ? v : {}; }
   function saveAIKeys() { return storageSet(AI_KEY_STORAGE, aiState.keys); }
   function loadCurrentModel() { var v = storageGet(AI_CURRENT_MODEL_STORAGE, null); return typeof v === "string" ? v : null; }
@@ -298,8 +296,8 @@ var _storage = { mode: "memory", db: null, cache: {} };
     var saved = loadCurrentModel();
     aiState.currentModel = saved && aiModelConf(saved) ? saved : null;
   }
-
-function getPages() { var v = storageGet(STORAGE_KEY, []); return Array.isArray(v) ? v : []; }
+  
+  function getPages() { var v = storageGet(STORAGE_KEY, []); return Array.isArray(v) ? v : []; }
   function savePages(pages) { return storageSet(STORAGE_KEY, pages); }
   function loadDraft() {
     var o = storageGet(DRAFT_KEY, null);
@@ -310,8 +308,8 @@ function getPages() { var v = storageGet(STORAGE_KEY, []); return Array.isArray(
   }
   function saveDraft() { storageSet(DRAFT_KEY, generatorDraft); }
   function clearDraft() { generatorDraft = { title: "", script: "" }; storageRemove(DRAFT_KEY); }
-
-function isQuotaError(e) {
+  
+  function isQuotaError(e) {
     if (!e) return false;
     if (e.name === "QuotaExceededError") return true;
     if (e.name === "NS_ERROR_DOM_QUOTA_REACHED") return true;
@@ -338,8 +336,8 @@ function isQuotaError(e) {
     var usedText = usedKB >= 0 ? T("storage.used", { kb: usedKB }) : "";
     showAlert(T("storage.fullTitle"), T("storage.fullBody", { context: contextKey ? T(contextKey) : "?", used: usedText }), true);
   }
-
-function $(sel, root) { return (root || document).querySelector(sel); }
+  
+  function $(sel, root) { return (root || document).querySelector(sel); }
   function $$(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
   function escapeHtml(text) {
     return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
@@ -363,8 +361,8 @@ function $(sel, root) { return (root || document).querySelector(sel); }
     return e;
   }
   function rightGroup() { return el("div", "right-group"); }
-
-var _modalFocusHandler = null;
+  
+  var _modalFocusHandler = null;
   function _installFocusTrap(box) {
     _removeFocusTrap();
     _modalFocusHandler = function (e) {
@@ -521,8 +519,8 @@ var _modalFocusHandler = null;
       box.appendChild(a);
     });
   }
-
-function generatePageHtml(title, script, imageDataUrl, hasImage) {
+  
+  function generatePageHtml(title, script, imageDataUrl, hasImage) {
     var safeTitle = escapeHtml((title || T("generator.untitledPage")).slice(0, MAX_TITLE_LEN));
     var imgVar;
     if (imageDataUrl) {
@@ -855,8 +853,8 @@ function generatePageHtml(title, script, imageDataUrl, hasImage) {
       }
     }
   }
-
-function pickRandomP5File() {
+  
+  function pickRandomP5File() {
     if (!P5_FILES || !P5_FILES.length) return null;
     if (P5_FILES.length === 1) return P5_FILES[0];
     var pool = P5_FILES.filter(function (f) { return f !== currentRandomFile; });
@@ -880,8 +878,8 @@ function pickRandomP5File() {
       "</head>\n<body></body>\n</html>"
     );
   }
-
-function updateSidebarPages() {
+  
+  function updateSidebarPages() {
     var pages = getPages();
     var kw = sidebarSearchKeyword.trim().toLowerCase();
     var filtered = pages;
@@ -919,8 +917,8 @@ function updateSidebarPages() {
     });
     sidebarPagesEl.replaceChildren(frag);
   }
-
-function bindIframeProxy(iframe) {
+  
+  function bindIframeProxy(iframe) {
     var iwin, idoc;
     try { iwin = iframe.contentWindow; idoc = iframe.contentDocument; }
     catch (e) { console.warn("Cannot access iframe document:", e); return; }
@@ -964,8 +962,8 @@ function bindIframeProxy(iframe) {
     MOUSE_TYPES.forEach(function (type) { idoc.addEventListener(type, relayMouse, true); });
     TOUCH_TYPES.forEach(function (type) { idoc.addEventListener(type, relayTouch, { capture: true, passive: true }); });
   }
-
-function lockAppSize() {
+  
+  function lockAppSize() {
     document.body.classList.add("preview-lock");
     var w = window.innerWidth;
     var h = window.innerHeight;
@@ -1009,8 +1007,8 @@ function lockAppSize() {
     });
     return btn;
   }
-
-function renderRunner() {
+  
+  function renderRunner() {
     destroyEditor();
     appEl.replaceChildren();
     appEl.classList.remove("preview-mode");
@@ -1093,8 +1091,8 @@ function renderRunner() {
       render();
     });
   }
-
-function openSidebar() {
+  
+  function openSidebar() {
     sidebarEl.classList.add("open");
     overlayEl.classList.add("show");
     document.body.classList.add("sidebar-open");
@@ -1128,8 +1126,8 @@ function openSidebar() {
     applyTheme(next);
     storageSet(THEME_KEY, next);
   }
-
-function getRoute() {
+  
+  function getRoute() {
     var hash = location.hash;
     if (!hash || hash === "#" || hash === "#/") return "/";
     return hash.replace(/^#/, "") || "/";
@@ -1232,8 +1230,8 @@ function getRoute() {
     frag.appendChild(bar);
     return frag;
   }
-
-function refreshGenModelBtn() {
+  
+  function refreshGenModelBtn() {
     var btn = $("#genModelBtn");
     if (!btn) return;
     var cur = aiState.currentModel;
@@ -1283,8 +1281,8 @@ function refreshGenModelBtn() {
     genState.menuOpen = willShow;
     if (willShow) buildGenModelMenu();
   }
-
-function genStatusClear() {
+  
+  function genStatusClear() {
     var box = $("#genStatus");
     if (box) box.replaceChildren();
   }
@@ -1401,8 +1399,8 @@ function genStatusClear() {
     if (/function\s+setup\s*\(/.test(t) || /function\s+draw\s*\(/.test(t)) return t.trim();
     return null;
   }
-
-function findToolCallName(msgs, toolCallId) {
+  
+  function findToolCallName(msgs, toolCallId) {
     for (var i = 0; i < msgs.length; i++) {
       var m = msgs[i];
       if (m.role === "assistant" && m.tool_calls) {
@@ -1602,8 +1600,8 @@ function findToolCallName(msgs, toolCallId) {
     }
     return { consume: consume, finalize: finalize };
   }
-
-function genApplyCode(code, intent) {
+  
+  function genApplyCode(code, intent) {
     if (!editor || !code) return;
     if (intent === "append") {
       var cur = editor.getValue() || "";
@@ -1756,8 +1754,8 @@ function genApplyCode(code, intent) {
     if (sendBtn) sendBtn.addEventListener("click", function () { genSend(); });
     refreshGenModelBtn();
   }
-
-function compressImage(dataUrl, maxDim, quality, callback) {
+  
+  function compressImage(dataUrl, maxDim, quality, callback) {
     var img = new Image();
     img.onload = function () {
       try {
@@ -1879,8 +1877,8 @@ function compressImage(dataUrl, maxDim, quality, callback) {
     });
     bindGeneratorAIPanel();
   }
-
-function renderAIAssistant() {
+  
+  function renderAIAssistant() {
     var page = el("div", "ai-page");
     var clearBtn = el("button", "ai-clear-btn", "−");
     clearBtn.id = "aiClearBtn";
@@ -1929,8 +1927,8 @@ function renderAIAssistant() {
     page.appendChild(inputWrap);
     return page;
   }
-
-function buildAIModelMenu() {
+  
+  function buildAIModelMenu() {
     var menu = $("#aiModelMenu");
     if (!menu) return;
     var frag = document.createDocumentFragment();
@@ -2113,8 +2111,8 @@ function buildAssistantToolbar(m, index) {
     return row;
   }
   function buildEmptyNode(text) { return el("div", "ai-empty", text); }
-
-function renderAIMessages() {
+  
+  function renderAIMessages() {
     var box = $("#aiMessages");
     if (!box) return;
     var model = aiState.currentModel;
@@ -2195,8 +2193,8 @@ function renderAIMessages() {
     if (!box) return true;
     return box.scrollHeight - box.scrollTop - box.clientHeight < NEAR_BOTTOM_PX;
   }
-
-function deleteMessageFrom(index) {
+  
+  function deleteMessageFrom(index) {
     var model = aiState.currentModel;
     if (!model) return;
     var chat = aiState.chats[model] || [];
@@ -2317,8 +2315,8 @@ function deleteMessageFrom(index) {
         else if (!isAbort) showAlert(T("chat.errRequestTitle"), String((err && err.message) || err) || T("chat.errRequestBody"), true);
       });
   }
-
-function showModelEditor(modelId) {
+  
+  function showModelEditor(modelId) {
     var isEdit = !!modelId;
     var existing = isEdit ? aiModelConf(modelId) : null;
     if (isEdit && (!existing || existing.builtin)) return;
@@ -2532,8 +2530,8 @@ function showModelEditor(modelId) {
     renderAIMessages();
     updateAISendBtn();
   }
-
-function triggerDownload(content, mime, filename) {
+  
+  function triggerDownload(content, mime, filename) {
     try {
       var encoded = btoa(unescape(encodeURIComponent(content)));
       var url = "data:" + mime + ";base64," + encoded;
@@ -2659,8 +2657,8 @@ function triggerDownload(content, mime, filename) {
     reader.onerror = function () { showAlert(T("import.failTitle"), T("import.readFail"), true); };
     reader.readAsText(file);
   }
-
-function aiSend() {
+  
+  function aiSend() {
     if (aiState.busy) return;
     var model = aiState.currentModel;
     if (!model) { showAlert(T("chat.errNoModelTitle"), T("chat.errNoModelBody"), true); return; }
@@ -2690,8 +2688,8 @@ function aiSend() {
       renderAIMessages();
     }, true);
   }
-
-function bindAIAssistant() {
+  
+  function bindAIAssistant() {
     renderedModelId = null;
     renderedMsgCount = 0;
     buildAIModelMenu();
@@ -2737,8 +2735,8 @@ function bindAIAssistant() {
     if (importFile) importFile.addEventListener("change", function () { var f = this.files && this.files[0]; if (!f) return; importAIChatFromFile(f); this.value = ""; });
     if (clearBtn) clearBtn.addEventListener("click", function () { clearAIChat(); });
   }
-
-function render() {
+  
+  function render() {
     var path = getRoute();
     appEl.classList.remove("preview-mode");
     appEl.classList.remove("ai-mode");
@@ -2767,8 +2765,8 @@ function render() {
       appEl.appendChild(wrap);
     }
   }
-
-function initStatic() {
+  
+  function initStatic() {
     modalBackdrop = $("#modalBackdrop");
     modalBox = $("#modalBox");
     sidebarPagesEl = $("#sidebar-pages");
@@ -3103,8 +3101,8 @@ function initStatic() {
       box.appendChild(actions);
     });
   }
-
-function loadContent() {
+  
+  function loadContent() {
     return fetch(CONTENT_URL, { cache: "no-cache" })
       .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
       .then(function (json) {
