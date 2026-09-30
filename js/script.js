@@ -10,8 +10,12 @@
   var AI_CUSTOM_MODELS_STORAGE = "p5_ai_custom_models";
   var AI_CURRENT_MODEL_STORAGE = "p5_ai_current_model";
   var SETTINGS_KEY = "p5_settings";
+  var IDB_NAME = "p5_store";
+  var IDB_STORE = "kv";
+  var IDB_VERSION = 1;
+  var IDB_INIT_TIMEOUT_MS = 1500;
   var DEFAULT_SETTINGS = {
-    maxImageMB: 1.5,
+    maxImageMB: 15,
     maxToolLoop: 5,
     maxContext: 30,
     requestTimeoutSec: 60,
@@ -22,7 +26,6 @@
   var MAX_CONTEXT_MESSAGES = DEFAULT_SETTINGS.maxContext;
   var REQUEST_TIMEOUT_MS = DEFAULT_SETTINGS.requestTimeoutSec * 1000;
   var MAX_TITLE_LEN = DEFAULT_SETTINGS.maxTitleLen;
-  var MAX_SESSION_IMAGES = 10;
   var TEST_TIMEOUT_MS = 15000;
   var CONTENT_URL = "data/content.json";
   var LONG_PRESS_MS = 500;
@@ -34,105 +37,17 @@
   var P5_CDN = "js/lib/p5.min.js";
   var P5_FILES = ["sketch1.js", "sketch2.js", "sketch3.js"];
   var TOOL_SPECS = [
-    {
-      name: "insert_code",
-      description:
-        "用新代码完全替换编辑器中的内容。适用于：从零开始写、要求重写、修改较大时。",
-      params: {
-        type: "object",
-        properties: {
-          code: {
-            type: "string",
-            description:
-              "完整的 p5.js 代码（含 setup / draw 等），不要加 markdown 代码块标记",
-          },
-        },
-        required: ["code"],
-      },
-    },
-    {
-      name: "append_code",
-      description:
-        "在编辑器现有内容末尾追加代码。适用于：用户明确说“追加”“再加一段”“在末尾添加”时。",
-      params: {
-        type: "object",
-        properties: {
-          code: {
-            type: "string",
-            description:
-              "要追加的 p5.js 代码片段，不要加 markdown 代码块标记",
-          },
-        },
-        required: ["code"],
-      },
-    },
-    {
-      name: "get_current_code",
-      description:
-        "读取编辑器当前内容。适用于：需要在已有代码基础上修改时，先读取再决定怎么改。",
-      params: { type: "object", properties: {} },
-    },
-    {
-      name: "replace_selection",
-      description:
-        "替换编辑器当前选中的文本。适用于：用户要求只改某段代码，且已选中时。",
-      params: {
-        type: "object",
-        properties: {
-          code: {
-            type: "string",
-            description: "替换选中内容的 p5.js 代码片段",
-          },
-        },
-        required: ["code"],
-      },
-    },
-    {
-      name: "get_canvas_size",
-      description:
-        "获取当前编辑器代码中的画布尺寸（如 createCanvas 参数）。适用于：编辑器已有代码、需要在其基础上修改画布尺寸时。若编辑器无数字画布，返回响应式语义值（windowWidth / windowHeight）。",
-      params: { type: "object", properties: {} },
-    },
-    {
-      name: "set_color_palette",
-      description:
-        "设置配色方案。适用于：用户要求换一组配色，或需要统一色彩风格时。",
-      params: {
-        type: "object",
-        properties: {
-          colors: {
-            type: "array",
-            description: "颜色数组，RGB 十六进制字符串，如 #FF0000",
-            items: { type: "string" },
-          },
-        },
-        required: ["colors"],
-      },
-    },
-    {
-      name: "save_page",
-      description:
-        "保存当前编辑器内容为作品。适用于：用户明确说“保存”且希望直接保存时。",
-      params: {
-        type: "object",
-        properties: {
-          title: {
-            type: "string",
-            description: "作品标题，可选，默认使用编辑器标题栏的内容",
-          },
-        },
-      },
-    },
-    {
-      name: "open_preview",
-      description:
-        "打开当前编辑器内容的预览。适用于：用户说“看一下效果”“预览”时。",
-      params: { type: "object", properties: {} },
-    },
+    { name: "insert_code", description: "用新代码完全替换编辑器中的内容。适用于：从零开始写、要求重写、修改较大时。", params: { type: "object", properties: { code: { type: "string", description: "完整的 p5.js 代码（含 setup / draw 等），不要加 markdown 代码块标记" } }, required: ["code"] } },
+    { name: "append_code", description: "在编辑器现有内容末尾追加代码。适用于：用户明确说“追加”“再加一段”“在末尾添加”时。", params: { type: "object", properties: { code: { type: "string", description: "要追加的 p5.js 代码片段，不要加 markdown 代码块标记" } }, required: ["code"] } },
+    { name: "get_current_code", description: "读取编辑器当前内容。适用于：需要在已有代码基础上修改时，先读取再决定怎么改。", params: { type: "object", properties: {} } },
+    { name: "replace_selection", description: "替换编辑器当前选中的文本。适用于：用户要求只改某段代码，且已选中时。", params: { type: "object", properties: { code: { type: "string", description: "替换选中内容的 p5.js 代码片段" } }, required: ["code"] } },
+    { name: "get_canvas_size", description: "获取当前编辑器代码中的画布尺寸（如 createCanvas 参数）。适用于：编辑器已有代码、需要在其基础上修改画布尺寸时。若编辑器无数字画布，返回响应式语义值（windowWidth / windowHeight）。", params: { type: "object", properties: {} } },
+    { name: "set_color_palette", description: "设置配色方案。适用于：用户要求换一组配色，或需要统一色彩风格时。", params: { type: "object", properties: { colors: { type: "array", description: "颜色数组，RGB 十六进制字符串，如 #FF0000", items: { type: "string" } } }, required: ["colors"] } },
+    { name: "save_page", description: "保存当前编辑器内容为作品。适用于：用户明确说“保存”且希望直接保存时。", params: { type: "object", properties: { title: { type: "string", description: "作品标题，可选，默认使用编辑器标题栏的内容" } } } },
+    { name: "open_preview", description: "打开当前编辑器内容的预览。适用于：用户说“看一下效果”“预览”时。", params: { type: "object", properties: {} } }
   ];
-  function _toGeminiType(t) {
-    return String(t || "").toUpperCase();
-  }
+
+  function _toGeminiType(t) { return String(t || "").toUpperCase(); }
   function _toGeminiSchema(schema) {
     if (!schema || typeof schema !== "object") return schema;
     var out = { type: _toGeminiType(schema.type) };
@@ -149,52 +64,21 @@
   }
   function buildOpenAITools() {
     return TOOL_SPECS.map(function (t) {
-      return {
-        type: "function",
-        function: {
-          name: t.name,
-          description: t.description,
-          parameters: t.params,
-        },
-      };
+      return { type: "function", function: { name: t.name, description: t.description, parameters: t.params } };
     });
   }
   function buildGeminiTools() {
-    return [
-      {
-        functionDeclarations: TOOL_SPECS.map(function (t) {
-          return {
-            name: t.name,
-            description: t.description,
-            parameters: _toGeminiSchema(t.params),
-          };
-        }),
-      },
-    ];
+    return [{ functionDeclarations: TOOL_SPECS.map(function (t) {
+      return { name: t.name, description: t.description, parameters: _toGeminiSchema(t.params) };
+    }) }];
   }
   var AI_MODELS = [];
   var I18N = {};
   var LANG = "zh";
   var CONTENT = null;
-
-  var aiState = {
-    currentModel: null,
-    keys: {},
-    chats: {},
-    prompts: {},
-    customModels: [],
-    busy: false,
-    abortController: null,
-    streamToken: 0,
-  };
-  var genState = {
-    messages: [],
-    busy: false,
-    abortController: null,
-    streamToken: 0,
-    menuOpen: false,
-    palette: null,
-  };
+  
+var aiState = { currentModel: null, keys: {}, chats: {}, prompts: {}, customModels: [], busy: false, abortController: null, streamToken: 0 };
+  var genState = { messages: [], busy: false, abortController: null, streamToken: 0, menuOpen: false, palette: null };
   var modalBackdrop, modalBox, lastFocused;
   var sidebarPagesEl, sidebarEl, overlayEl, hamburgerBtn;
   var sidebarSearchEl;
@@ -206,12 +90,11 @@
   var editor = null;
   var uploadedImageDataUrl = null;
   var uploadedImageInfo = null;
-  var sessionImages = {};
   var generatorDraft = { title: "", script: "" };
   var renderedMsgCount = 0;
   var renderedModelId = null;
 
-  function T(key, params) {
+function T(key, params) {
     var pack = I18N[LANG] || I18N.zh || {};
     var text = pack[key];
     if (text == null) text = (I18N.zh && I18N.zh[key]) || key;
@@ -228,9 +111,7 @@
     var nav = (navigator.language || "zh").toLowerCase();
     if (nav.indexOf("zh") === 0) return "zh";
     if (nav.indexOf("en") === 0) return "en";
-    if (CONTENT && CONTENT.defaultLang && I18N[CONTENT.defaultLang]) {
-      return CONTENT.defaultLang;
-    }
+    if (CONTENT && CONTENT.defaultLang && I18N[CONTENT.defaultLang]) return CONTENT.defaultLang;
     return "en";
   }
   var _i18nCache = null;
@@ -247,11 +128,7 @@
     _i18nCache.text.forEach(function (el) {
       var text = T(el.getAttribute("data-i18n"));
       var span = el.querySelector("span");
-      if (span) {
-        span.textContent = text;
-      } else {
-        el.textContent = text;
-      }
+      if (span) span.textContent = text; else el.textContent = text;
     });
     _i18nCache.placeholder.forEach(function (el) {
       var k = el.getAttribute("data-i18n-placeholder");
@@ -270,53 +147,84 @@
     } catch (e) {}
   }
 
-  function getAllModels() {
-    return AI_MODELS.concat(aiState.customModels || []);
-  }
-  function getToolModels() {
-    return getAllModels().filter(function (m) {
-      return m.supportsTools === true;
-    });
-  }
+function getAllModels() { return AI_MODELS.concat(aiState.customModels || []); }
+  function getToolModels() { return getAllModels().filter(function (m) { return m.supportsTools === true; }); }
   function aiModelConf(id) {
     var all = getAllModels();
-    for (var i = 0; i < all.length; i++) {
-      if (all[i].id === id) return all[i];
-    }
+    for (var i = 0; i < all.length; i++) if (all[i].id === id) return all[i];
     return null;
   }
-  function aiModelName(id) {
-    var c = aiModelConf(id);
-    return c ? c.name : id;
+  function aiModelName(id) { var c = aiModelConf(id); return c ? c.name : id; }
+
+var _storage = { mode: "memory", db: null, cache: {} };
+
+  function _idbGetAll() {
+    return new Promise(function (resolve, reject) {
+      try {
+        var tx = _storage.db.transaction(IDB_STORE, "readonly");
+        var req = tx.objectStore(IDB_STORE).getAll();
+        req.onsuccess = function () { resolve(req.result || []); };
+        req.onerror = function () { reject(req.error); };
+      } catch (e) { reject(e); }
+    });
+  }
+
+  function _idbInit() {
+    return new Promise(function (resolve) {
+      var done = false;
+      function finish(mode) { if (done) return; done = true; resolve(mode); }
+      var timer = setTimeout(function () { finish("ls"); }, IDB_INIT_TIMEOUT_MS);
+      try {
+        var req = indexedDB.open(IDB_NAME, IDB_VERSION);
+        req.onupgradeneeded = function (e) {
+          var db = e.target.result;
+          if (!db.objectStoreNames.contains(IDB_STORE)) db.createObjectStore(IDB_STORE, { keyPath: "key" });
+        };
+        req.onsuccess = function (e) {
+          clearTimeout(timer);
+          if (done) { try { e.target.result.close(); } catch (err) {} return; }
+          _storage.db = e.target.result;
+          _idbGetAll().then(function (rows) {
+            if (done) { try { _storage.db.close(); } catch (err) {} _storage.db = null; return; }
+            rows.forEach(function (r) { if (r && r.key) _storage.cache[r.key] = r.value; });
+            finish("idb");
+          }).catch(function () { if (!done) finish("ls"); });
+        };
+        req.onerror = function () { clearTimeout(timer); finish("ls"); };
+        req.onblocked = function () { clearTimeout(timer); finish("ls"); };
+      } catch (e) { clearTimeout(timer); finish("ls"); }
+    });
+  }
+
+  function _lsWarmup() {
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (!k || k.indexOf("p5_") !== 0) continue;
+        try { _storage.cache[k] = JSON.parse(localStorage.getItem(k)); }
+        catch (e) { _storage.cache[k] = localStorage.getItem(k); }
+      }
+    } catch (e) {}
+  }
+
+  function initStorage() {
+    return _idbInit().then(function (mode) {
+      _storage.mode = mode;
+      if (mode === "ls") {
+        _lsWarmup();
+        try {
+          localStorage.setItem("__p5_probe__", "1");
+          localStorage.removeItem("__p5_probe__");
+        } catch (e) { _storage.mode = "memory"; }
+      }
+    });
   }
 
   function storageGet(key, fallback) {
-    try {
-      var raw = localStorage.getItem(key);
-      if (raw == null) return fallback;
-      try {
-        return JSON.parse(raw);
-      } catch (e) {
-        return raw;
-      }
-    } catch (e) {
-      return fallback;
-    }
+    if (Object.prototype.hasOwnProperty.call(_storage.cache, key)) return _storage.cache[key];
+    return fallback;
   }
-  function storageSet(key, value) {
-    try {
-      localStorage.setItem(key, JSON.stringify(value));
-      return true;
-    } catch (e) {
-      handleStorageQuotaError(e, _ctxForKey(key));
-      return false;
-    }
-  }
-  function storageRemove(key) {
-    try {
-      localStorage.removeItem(key);
-    } catch (e) {}
-  }
+
   function _ctxForKey(key) {
     if (key === AI_KEY_STORAGE) return "storage.ctxKeys";
     if (key === AI_PROMPT_STORAGE) return "storage.ctxPrompts";
@@ -325,42 +233,55 @@
     if (key.indexOf(AI_CHAT_STORAGE) === 0) return "storage.ctxChats";
     return null;
   }
+
+  function storageSet(key, value) {
+    var hadKey = Object.prototype.hasOwnProperty.call(_storage.cache, key);
+    var oldValue = _storage.cache[key];
+    _storage.cache[key] = value;
+    function rollback() { if (hadKey) _storage.cache[key] = oldValue; else delete _storage.cache[key]; }
+    if (_storage.mode === "idb" && _storage.db) {
+      try {
+        var tx = _storage.db.transaction(IDB_STORE, "readwrite");
+        tx.objectStore(IDB_STORE).put({ key: key, value: value });
+        tx.onerror = function () { rollback(); handleStorageQuotaError(tx.error, _ctxForKey(key)); };
+        tx.onabort = tx.onerror;
+      } catch (e) { rollback(); handleStorageQuotaError(e, _ctxForKey(key)); return false; }
+      return true;
+    }
+    if (_storage.mode === "ls") {
+      try { localStorage.setItem(key, JSON.stringify(value)); return true; }
+      catch (e) { rollback(); handleStorageQuotaError(e, _ctxForKey(key)); return false; }
+    }
+    return true;
+  }
+
+  function storageRemove(key) {
+    delete _storage.cache[key];
+    if (_storage.mode === "idb" && _storage.db) {
+      try {
+        var tx = _storage.db.transaction(IDB_STORE, "readwrite");
+        tx.objectStore(IDB_STORE).delete(key);
+      } catch (e) {}
+    } else if (_storage.mode === "ls") {
+      try { localStorage.removeItem(key); } catch (e) {}
+    }
+  }
+
   function _applySettings(s) {
     if (!s || typeof s !== "object") return;
-    if (typeof s.maxImageMB === "number")
-      MAX_IMAGE_BYTES = s.maxImageMB * 1024 * 1024;
-    if (typeof s.maxToolLoop === "number")
-      MAX_TOOL_LOOP = s.maxToolLoop;
-    if (typeof s.maxContext === "number")
-      MAX_CONTEXT_MESSAGES = s.maxContext;
-    if (typeof s.requestTimeoutSec === "number")
-      REQUEST_TIMEOUT_MS = s.requestTimeoutSec * 1000;
-    if (typeof s.maxTitleLen === "number")
-      MAX_TITLE_LEN = s.maxTitleLen;
+    if (typeof s.maxImageMB === "number") MAX_IMAGE_BYTES = s.maxImageMB * 1024 * 1024;
+    if (typeof s.maxToolLoop === "number") MAX_TOOL_LOOP = s.maxToolLoop;
+    if (typeof s.maxContext === "number") MAX_CONTEXT_MESSAGES = s.maxContext;
+    if (typeof s.requestTimeoutSec === "number") REQUEST_TIMEOUT_MS = s.requestTimeoutSec * 1000;
+    if (typeof s.maxTitleLen === "number") MAX_TITLE_LEN = s.maxTitleLen;
   }
-  function loadSettings() {
-    var v = storageGet(SETTINGS_KEY, null);
-    if (v && typeof v === "object") _applySettings(v);
-  }
-  function saveSettings(obj) {
-    storageSet(SETTINGS_KEY, obj);
-    _applySettings(obj);
-  }
-  function loadAIKeys() {
-    var v = storageGet(AI_KEY_STORAGE, {});
-    return v && typeof v === "object" ? v : {};
-  }
-  function saveAIKeys() {
-    return storageSet(AI_KEY_STORAGE, aiState.keys);
-  }
-  function loadCurrentModel() {
-    var v = storageGet(AI_CURRENT_MODEL_STORAGE, null);
-    return typeof v === "string" ? v : null;
-  }
-  function saveCurrentModel(id) {
-    if (id) storageSet(AI_CURRENT_MODEL_STORAGE, id);
-    else storageRemove(AI_CURRENT_MODEL_STORAGE);
-  }
+  function loadSettings() { var v = storageGet(SETTINGS_KEY, null); if (v && typeof v === "object") _applySettings(v); }
+  function saveSettings(obj) { storageSet(SETTINGS_KEY, obj); _applySettings(obj); }
+
+  function loadAIKeys() { var v = storageGet(AI_KEY_STORAGE, {}); return v && typeof v === "object" ? v : {}; }
+  function saveAIKeys() { return storageSet(AI_KEY_STORAGE, aiState.keys); }
+  function loadCurrentModel() { var v = storageGet(AI_CURRENT_MODEL_STORAGE, null); return typeof v === "string" ? v : null; }
+  function saveCurrentModel(id) { if (id) storageSet(AI_CURRENT_MODEL_STORAGE, id); else storageRemove(AI_CURRENT_MODEL_STORAGE); }
   function loadAIChats() {
     var result = {};
     getAllModels().forEach(function (m) {
@@ -369,30 +290,11 @@
     });
     return result;
   }
-  function saveAIChats(modelId) {
-    if (!modelId) return true;
-    return storageSet(
-      AI_CHAT_STORAGE + "_" + modelId,
-      aiState.chats[modelId] || [],
-    );
-  }
-  function loadAIPrompts() {
-    var v = storageGet(AI_PROMPT_STORAGE, {});
-    return v && typeof v === "object" ? v : {};
-  }
-  function saveAIPrompts() {
-    return storageSet(AI_PROMPT_STORAGE, aiState.prompts);
-  }
-  function loadCustomModels() {
-    var v = storageGet(AI_CUSTOM_MODELS_STORAGE, []);
-    return Array.isArray(v) ? v : [];
-  }
-  function saveCustomModels() {
-    return storageSet(
-      AI_CUSTOM_MODELS_STORAGE,
-      aiState.customModels || [],
-    );
-  }
+  function saveAIChats(modelId) { if (!modelId) return true; return storageSet(AI_CHAT_STORAGE + "_" + modelId, aiState.chats[modelId] || []); }
+  function loadAIPrompts() { var v = storageGet(AI_PROMPT_STORAGE, {}); return v && typeof v === "object" ? v : {}; }
+  function saveAIPrompts() { return storageSet(AI_PROMPT_STORAGE, aiState.prompts); }
+  function loadCustomModels() { var v = storageGet(AI_CUSTOM_MODELS_STORAGE, []); return Array.isArray(v) ? v : []; }
+  function saveCustomModels() { return storageSet(AI_CUSTOM_MODELS_STORAGE, aiState.customModels || []); }
   function initAIState() {
     aiState.keys = loadAIKeys();
     aiState.customModels = loadCustomModels();
@@ -406,32 +308,19 @@
     aiState.currentModel = saved && aiModelConf(saved) ? saved : null;
   }
 
-  function getPages() {
-    var v = storageGet(STORAGE_KEY, []);
-    return Array.isArray(v) ? v : [];
-  }
-  function savePages(pages) {
-    return storageSet(STORAGE_KEY, pages);
-  }
+function getPages() { var v = storageGet(STORAGE_KEY, []); return Array.isArray(v) ? v : []; }
+  function savePages(pages) { return storageSet(STORAGE_KEY, pages); }
   function loadDraft() {
     var o = storageGet(DRAFT_KEY, null);
     if (o && typeof o === "object") {
-      return {
-        title: typeof o.title === "string" ? o.title : "",
-        script: typeof o.script === "string" ? o.script : "",
-      };
+      return { title: typeof o.title === "string" ? o.title : "", script: typeof o.script === "string" ? o.script : "" };
     }
     return { title: "", script: "" };
   }
-  function saveDraft() {
-    storageSet(DRAFT_KEY, generatorDraft);
-  }
-  function clearDraft() {
-    generatorDraft = { title: "", script: "" };
-    storageRemove(DRAFT_KEY);
-  }
+  function saveDraft() { storageSet(DRAFT_KEY, generatorDraft); }
+  function clearDraft() { generatorDraft = { title: "", script: "" }; storageRemove(DRAFT_KEY); }
 
-  function isQuotaError(e) {
+function isQuotaError(e) {
     if (!e) return false;
     if (e.name === "QuotaExceededError") return true;
     if (e.name === "NS_ERROR_DOM_QUOTA_REACHED") return true;
@@ -441,52 +330,28 @@
   function estimateStorageKB() {
     var total = 0;
     try {
-      for (var i = 0; i < localStorage.length; i++) {
-        var k = localStorage.key(i);
-        var v = localStorage.getItem(k) || "";
-        total += k.length + v.length;
-      }
-    } catch (e) {
-      return -1;
-    }
+      Object.keys(_storage.cache).forEach(function (k) {
+        var v = _storage.cache[k];
+        var s = typeof v === "string" ? v : JSON.stringify(v);
+        total += k.length + (s ? s.length : 0);
+      });
+    } catch (e) { return -1; }
     return Math.round((total * STORAGE_KB_MULTIPLIER) / 1024);
   }
   function handleStorageQuotaError(e, contextKey) {
     if (!isQuotaError(e)) {
-      showAlert(
-        T("storage.saveFailTitle"),
-        String((e && e.message) || e || "?"),
-        true,
-      );
+      showAlert(T("storage.saveFailTitle"), String((e && e.message) || e || "?"), true);
       return;
     }
     var usedKB = estimateStorageKB();
     var usedText = usedKB >= 0 ? T("storage.used", { kb: usedKB }) : "";
-    showAlert(
-      T("storage.fullTitle"),
-      T("storage.fullBody", {
-        context: contextKey ? T(contextKey) : "?",
-        used: usedText,
-      }),
-      true,
-    );
+    showAlert(T("storage.fullTitle"), T("storage.fullBody", { context: contextKey ? T(contextKey) : "?", used: usedText }), true);
   }
 
-  function $(sel, root) {
-    return (root || document).querySelector(sel);
-  }
-  function $$(sel, root) {
-    return Array.prototype.slice.call(
-      (root || document).querySelectorAll(sel),
-    );
-  }
+function $(sel, root) { return (root || document).querySelector(sel); }
+  function $$(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
   function escapeHtml(text) {
-    return String(text)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#39;");
+    return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
   }
   function escapeScriptClose(str) {
     var LT = "\x3C";
@@ -496,10 +361,7 @@
       .replace(new RegExp(LT + "script", "gi"), LT + "\\script");
   }
   function safeFileName(name) {
-    var n = String(name || "")
-      .replace(/[\\/:*?"<>|~#%&{}]/g, "_")
-      .replace(/\s+/g, "_")
-      .trim();
+    var n = String(name || "").replace(/[\\/:*?"<>|~#%&{}]/g, "_").replace(/\s+/g, "_").trim();
     if (n.length > MAX_TITLE_LEN) n = n.slice(0, MAX_TITLE_LEN);
     return n || "untitled";
   }
@@ -509,35 +371,24 @@
     if (text != null) e.textContent = text;
     return e;
   }
-  function rightGroup() {
-    return el("div", "right-group");
-  }
+  function rightGroup() { return el("div", "right-group"); }
 
-  var _modalFocusHandler = null;
+var _modalFocusHandler = null;
   function _installFocusTrap(box) {
     _removeFocusTrap();
     _modalFocusHandler = function (e) {
       if (e.key !== "Tab") return;
-      var focusables = box.querySelectorAll(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
-      );
+      var focusables = box.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
       if (!focusables.length) return;
       var first = focusables[0];
       var last = focusables[focusables.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
     };
     box.addEventListener("keydown", _modalFocusHandler);
   }
   function _removeFocusTrap() {
-    if (_modalFocusHandler && modalBox) {
-      modalBox.removeEventListener("keydown", _modalFocusHandler);
-    }
+    if (_modalFocusHandler && modalBox) modalBox.removeEventListener("keydown", _modalFocusHandler);
     _modalFocusHandler = null;
   }
   function openModal(builder) {
@@ -583,10 +434,7 @@
       var cancel = el("button", "cancel", T("common.cancel"));
       cancel.addEventListener("click", closeModal);
       var ok = el("button", danger ? "danger" : null, T("common.ok"));
-      ok.addEventListener("click", function () {
-        closeModal();
-        onConfirm();
-      });
+      ok.addEventListener("click", function () { closeModal(); onConfirm(); });
       rg.appendChild(cancel);
       rg.appendChild(ok);
       a.appendChild(rg);
@@ -605,16 +453,9 @@
       var a = el("div", "modal-actions");
       var leftWrap = document.createElement("div");
       if (opts && opts.onClear) {
-        var clearBtn = el(
-          "button",
-          "link-btn",
-          opts.clearText || T("common.delete"),
-        );
+        var clearBtn = el("button", "link-btn", opts.clearText || T("common.delete"));
         clearBtn.type = "button";
-        clearBtn.addEventListener("click", function () {
-          closeModal();
-          opts.onClear();
-        });
+        clearBtn.addEventListener("click", function () { closeModal(); opts.onClear(); });
         leftWrap.appendChild(clearBtn);
       }
       var rg = rightGroup();
@@ -623,16 +464,11 @@
       var ok = el("button", null, T("common.save"));
       ok.addEventListener("click", function () {
         var v = input.value.trim();
-        if (!v) {
-          input.focus();
-          return;
-        }
+        if (!v) { input.focus(); return; }
         closeModal();
         onOk(v);
       });
-      input.addEventListener("keydown", function (e) {
-        if (e.key === "Enter") ok.click();
-      });
+      input.addEventListener("keydown", function (e) { if (e.key === "Enter") ok.click(); });
       rg.appendChild(cancel);
       rg.appendChild(ok);
       a.appendChild(leftWrap);
@@ -644,9 +480,7 @@
   function showPromptArea(opts) {
     openModal(function (box) {
       box.appendChild(el("h3", null, opts.title));
-      box.appendChild(
-        el("div", "modal-hint", opts.hint || T("ai.setPromptHint")),
-      );
+      box.appendChild(el("div", "modal-hint", opts.hint || T("ai.setPromptHint")));
       var ta = document.createElement("textarea");
       ta.value = opts.value || "";
       ta.placeholder = opts.placeholder || "";
@@ -656,26 +490,16 @@
       var leftWrap = document.createElement("div");
       if (opts.value && opts.value.trim()) {
         var clearBtn = el("button", "link-btn", T("ai.clearPrompt"));
-        clearBtn.addEventListener("click", function () {
-          closeModal();
-          if (opts.onClear) opts.onClear();
-        });
+        clearBtn.addEventListener("click", function () { closeModal(); if (opts.onClear) opts.onClear(); });
         leftWrap.appendChild(clearBtn);
       }
       var rg = rightGroup();
       var cancel = el("button", "cancel", T("common.cancel"));
       cancel.addEventListener("click", closeModal);
       var ok = el("button", null, T("common.save"));
-      ok.addEventListener("click", function () {
-        var v = ta.value;
-        closeModal();
-        opts.onOk(v);
-      });
+      ok.addEventListener("click", function () { var v = ta.value; closeModal(); opts.onOk(v); });
       ta.addEventListener("keydown", function (e) {
-        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-          e.preventDefault();
-          ok.click();
-        }
+        if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); ok.click(); }
       });
       rg.appendChild(cancel);
       rg.appendChild(ok);
@@ -696,15 +520,9 @@
       leftWrap.appendChild(cancel);
       var rg = rightGroup();
       var modifyBtn = el("button", "cancel", T("gen.intentModify"));
-      modifyBtn.addEventListener("click", function () {
-        closeModal();
-        onModify();
-      });
+      modifyBtn.addEventListener("click", function () { closeModal(); onModify(); });
       var overwriteBtn = el("button", "danger", T("gen.intentOverwrite"));
-      overwriteBtn.addEventListener("click", function () {
-        closeModal();
-        onOverwrite();
-      });
+      overwriteBtn.addEventListener("click", function () { closeModal(); onOverwrite(); });
       rg.appendChild(modifyBtn);
       rg.appendChild(overwriteBtn);
       a.appendChild(leftWrap);
@@ -713,19 +531,13 @@
     });
   }
 
-  function generatePageHtml(title, script, imageDataUrl, hasImage) {
-    var safeTitle = escapeHtml(
-      (title || T("generator.untitledPage")).slice(0, MAX_TITLE_LEN),
-    );
+function generatePageHtml(title, script, imageDataUrl, hasImage) {
+    var safeTitle = escapeHtml((title || T("generator.untitledPage")).slice(0, MAX_TITLE_LEN));
     var imgVar;
     if (imageDataUrl) {
       imgVar = 'var imageUrl = "' + imageDataUrl + '";';
     } else if (hasImage) {
-      imgVar =
-        "/* 原作品含用户上传的图片，因存储优化未嵌入此文件。\n" +
-        "   预览时可在本工具中查看图片效果；\n" +
-        "   若要在下载的文件里使用图片，请在工具中重新上传后再导出。 */\n" +
-        "    var imageUrl = null;";
+      imgVar = "/* 原作品含用户上传的图片，因存储优化未嵌入此文件。\n   预览时可在本工具中查看图片效果；\n   若要在下载的文件里使用图片，请在工具中重新上传后再导出。 */\n    var imageUrl = null;";
     } else {
       imgVar = "var imageUrl = null;";
     }
@@ -737,38 +549,10 @@
       "<head>\n" +
       '  <meta charset="UTF-8">\n' +
       '  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">\n' +
-      "  <title>" +
-      safeTitle +
-      "</title>\n" +
-      "  <style>\n" +
-      "    html, body { margin: 0; padding: 0; touch-action: none; }\n" +
-      "    canvas { display: block; touch-action: none; }\n" +
-      "  </style>\n" +
-      '  \x3Cscript src="' +
-      P5_CDN +
-      '">\x3C/script>\n' +
-      "</head>\n" +
-      "<body>\n" +
-      "  \x3Cscript>\n" +
-      "    " +
-      safeImgVar +
-      "\n" +
-      "    " +
-      safeScript +
-      "\n" +
-      "  \x3C/script>\n" +
-      "</body>\n" +
-      "</html>"
-    );
-  }
-  function injectSessionImage(html, dataUrl) {
-    if (!html || !dataUrl) return html;
-    var escaped = String(dataUrl)
-      .replace(/\\/g, "\\\\")
-      .replace(/"/g, '\\"');
-    return html.replace(
-      /var imageUrl = (?:null|"[^"]*");/,
-      'var imageUrl = "' + escaped + '";',
+      "  <title>" + safeTitle + "</title>\n" +
+      "  <style>\n    html, body { margin: 0; padding: 0; touch-action: none; }\n    canvas { display: block; touch-action: none; }\n  </style>\n" +
+      '  \x3Cscript src="' + P5_CDN + '">\x3C/script>\n' +
+      "</head>\n<body>\n  \x3Cscript>\n    " + safeImgVar + "\n    " + safeScript + "\n  \x3C/script>\n</body>\n</html>"
     );
   }
   function downloadSingleHtml(filename, html) {
@@ -793,15 +577,9 @@
         document.body.appendChild(b);
         b.click();
         document.body.removeChild(b);
-        setTimeout(function () {
-          URL.revokeObjectURL(burl);
-        }, 1000);
+        setTimeout(function () { URL.revokeObjectURL(burl); }, 1000);
       } catch (err2) {
-        showAlert(
-          T("page.downloadFailTitle"),
-          String((err2 && err2.message) || err2),
-          true,
-        );
+        showAlert(T("page.downloadFailTitle"), String((err2 && err2.message) || err2), true);
       }
     }
   }
@@ -816,51 +594,36 @@
       var base = safeFileName(page.title);
       zip.file("p5_" + base + "_" + (idx + 1) + ".html", page.html);
     });
-    zip
-      .generateAsync({ type: "base64" })
-      .then(function (base64) {
-        try {
-          var url = "data:application/zip;base64," + base64;
-          var link = document.createElement("a");
-          link.href = url;
-          link.download = "p5_works.zip";
-          link.style.display = "none";
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-        } catch (e) {
-          zip
-            .generateAsync({ type: "blob" })
-            .then(function (blob) {
-              var burl = URL.createObjectURL(blob);
-              var b = document.createElement("a");
-              b.href = burl;
-              b.download = "p5_works.zip";
-              b.style.display = "none";
-              document.body.appendChild(b);
-              b.click();
-              document.body.removeChild(b);
-              setTimeout(function () {
-                URL.revokeObjectURL(burl);
-              }, 1000);
-            })
-            .catch(function (err2) {
-              showAlert(
-                T("page.exportFailTitle"),
-                String((err2 && err2.message) || err2),
-                true,
-              );
-            });
-        }
-      })
-      .catch(function (err) {
-        showAlert(
-          T("page.exportFailTitle"),
-          String((err && err.message) || err),
-          true,
-        );
-      });
+    zip.generateAsync({ type: "base64" }).then(function (base64) {
+      try {
+        var url = "data:application/zip;base64," + base64;
+        var link = document.createElement("a");
+        link.href = url;
+        link.download = "p5_works.zip";
+        link.style.display = "none";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } catch (e) {
+        zip.generateAsync({ type: "blob" }).then(function (blob) {
+          var burl = URL.createObjectURL(blob);
+          var b = document.createElement("a");
+          b.href = burl;
+          b.download = "p5_works.zip";
+          b.style.display = "none";
+          document.body.appendChild(b);
+          b.click();
+          document.body.removeChild(b);
+          setTimeout(function () { URL.revokeObjectURL(burl); }, 1000);
+        }).catch(function (err2) {
+          showAlert(T("page.exportFailTitle"), String((err2 && err2.message) || err2), true);
+        });
+      }
+    }).catch(function (err) {
+      showAlert(T("page.exportFailTitle"), String((err && err.message) || err), true);
+    });
   }
+
   function _storageItems() {
     return [
       { id: "pages", nameKey: "storage.itemWorks", keys: [STORAGE_KEY], defaultOn: true },
@@ -873,6 +636,7 @@
       { id: "chats", nameKey: "storage.itemChats", dynamic: "chats", defaultOn: true },
     ];
   }
+
   function _itemSizeKB(item) {
     var total = 0;
     if (item.dynamic === "chats") {
@@ -888,28 +652,20 @@
     }
     return Math.round((total * STORAGE_KB_MULTIPLIER) / 1024 * 10) / 10;
   }
+
   function _deleteItem(item) {
     if (item.dynamic === "chats") {
-      getAllModels().forEach(function (m) {
-        storageRemove(AI_CHAT_STORAGE + "_" + m.id);
-      });
+      getAllModels().forEach(function (m) { storageRemove(AI_CHAT_STORAGE + "_" + m.id); });
       aiState.chats = {};
       renderedMsgCount = 0;
       return;
     }
-    item.keys.forEach(function (k) {
-      storageRemove(k);
-    });
+    item.keys.forEach(function (k) { storageRemove(k); });
     if (item.id === "pages") {
       updateSidebarPages();
       if (runner.mode === "page" && runner.pageId !== null) {
-        var still = getPages().some(function (p) {
-          return p.id === runner.pageId;
-        });
-        if (!still) {
-          runner.mode = "random";
-          runner.pageId = null;
-        }
+        var still = getPages().some(function (p) { return p.id === runner.pageId; });
+        if (!still) { runner.mode = "random"; runner.pageId = null; }
       }
     }
     if (item.id === "draft") generatorDraft = { title: "", script: "" };
@@ -932,23 +688,18 @@
       MAX_TITLE_LEN = DEFAULT_SETTINGS.maxTitleLen;
     }
   }
+
   function _writeItemsToZip(zip, selected) {
     var itemKeys = selected.map(function (it) {
       return it.dynamic === "chats" ? "p5_ai_chats" : it.keys[0];
     });
-    zip.file(
-      "manifest.json",
-      JSON.stringify(
-        {
-          app: "randomArt",
-          schemaVersion: 1,
-          exportedAt: new Date().toISOString(),
-          items: itemKeys,
-        },
-        null,
-        2,
-      ),
-    );
+    zip.file("manifest.json", JSON.stringify({
+      app: "randomArt",
+      schemaVersion: 1,
+      exportedAt: new Date().toISOString(),
+      items: itemKeys,
+    }, null, 2));
+
     selected.forEach(function (item) {
       if (item.dynamic === "chats") {
         var chatsMap = {};
@@ -973,6 +724,7 @@
       zip.file(item.keys[0] + ".json", JSON.stringify(v, null, 2));
     });
   }
+
   function _packSelected(selected, anchorEl) {
     if (!selected.length) {
       if (anchorEl) flashTip(anchorEl, T("settings.packNoSelection"));
@@ -981,34 +733,24 @@
     }
     var zip = new JSZip();
     _writeItemsToZip(zip, selected);
-    zip
-      .generateAsync({ type: "base64" })
-      .then(function (base64) {
-        try {
-          var url = "data:application/zip;base64," + base64;
-          var link = document.createElement("a");
-          link.href = url;
-          link.download = "randomArt_backup.zip";
-          link.style.display = "none";
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-        } catch (e) {
-          showAlert(
-            T("page.exportFailTitle"),
-            String((e && e.message) || e),
-            true,
-          );
-        }
-      })
-      .catch(function (err) {
-        showAlert(
-          T("page.exportFailTitle"),
-          String((err && err.message) || err),
-          true,
-        );
-      });
+    zip.generateAsync({ type: "base64" }).then(function (base64) {
+      try {
+        var url = "data:application/zip;base64," + base64;
+        var link = document.createElement("a");
+        link.href = url;
+        link.download = "randomArt_backup.zip";
+        link.style.display = "none";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      } catch (e) {
+        showAlert(T("page.exportFailTitle"), String((e && e.message) || e), true);
+      }
+    }).catch(function (err) {
+      showAlert(T("page.exportFailTitle"), String((err && err.message) || err), true);
+    });
   }
+
   function _parseBackupFile(file) {
     return new Promise(function (resolve, reject) {
       var reader = new FileReader();
@@ -1020,90 +762,50 @@
           isZip = arr[0] === 0x50 && arr[1] === 0x4b;
         } catch (err) {}
         if (isZip) {
-          JSZip.loadAsync(buf)
-            .then(function (zip) {
-              var tasks = [];
-              var knownFiles = [
-                "p5_pages.json",
-                "p5_gen_draft.json",
-                "p5_settings.json",
-                "p5_ai_keys.json",
-                "p5_ai_prompts.json",
-                "p5_ai_custom_models.json",
-                "p5_ai_current_model.json",
-                "p5_ai_chats.json",
-              ];
-              var result = { source: file.name, files: {}, manifest: null };
-              if (zip.file("manifest.json")) {
-                tasks.push(
-                  zip
-                    .file("manifest.json")
-                    .async("string")
-                    .then(function (txt) {
-                      try {
-                        result.manifest = JSON.parse(txt);
-                      } catch (e) {}
-                    }),
-                );
-              }
-              knownFiles.forEach(function (fn) {
-                var f = zip.file(fn);
-                if (!f) return;
-                tasks.push(
-                  f.async("string").then(function (txt) {
-                    try {
-                      result.files[fn] = JSON.parse(txt);
-                    } catch (e) {}
-                  }),
-                );
-              });
-              return Promise.all(tasks).then(function () {
-                resolve(result);
-              });
-            })
-            .catch(reject);
+          JSZip.loadAsync(buf).then(function (zip) {
+            var tasks = [];
+            var knownFiles = ["p5_pages.json","p5_gen_draft.json","p5_settings.json","p5_ai_keys.json","p5_ai_prompts.json","p5_ai_custom_models.json","p5_ai_current_model.json","p5_ai_chats.json"];
+            var result = { source: file.name, files: {}, manifest: null };
+            if (zip.file("manifest.json")) {
+              tasks.push(zip.file("manifest.json").async("string").then(function (txt) {
+                try { result.manifest = JSON.parse(txt); } catch (e) {}
+              }));
+            }
+            knownFiles.forEach(function (fn) {
+              var f = zip.file(fn);
+              if (!f) return;
+              tasks.push(f.async("string").then(function (txt) {
+                try { result.files[fn] = JSON.parse(txt); } catch (e) {}
+              }));
+            });
+            return Promise.all(tasks).then(function () { resolve(result); });
+          }).catch(reject);
           return;
         }
         try {
           var txt = new TextDecoder("utf-8").decode(new Uint8Array(buf));
           var obj = JSON.parse(txt);
-          resolve({
-            source: file.name,
-            files: { __single__: obj },
-            manifest: null,
-          });
-        } catch (err) {
-          reject(new Error("bad json"));
-        }
+          resolve({ source: file.name, files: { __single__: obj }, manifest: null });
+        } catch (err) { reject(new Error("bad json")); }
       };
       reader.onerror = reject;
       reader.readAsArrayBuffer(file);
     });
   }
+
   function _previewImport(parsed) {
     var f = parsed.files;
     var items = [];
     function add(id, nameKey, available, count, extra) {
-      if (available) {
-        items.push({
-          id: id,
-          nameKey: nameKey,
-          count: count,
-          extra: extra || "",
-        });
-      }
+      if (available) items.push({ id: id, nameKey: nameKey, count: count, extra: extra || "" });
     }
     if (f["p5_pages.json"]) {
       var arr = Array.isArray(f["p5_pages.json"]) ? f["p5_pages.json"] : [];
       var cur = storageGet(STORAGE_KEY, []).length;
       add("pages", "storage.itemWorks", true, arr.length, "当前 " + cur + " 条");
     }
-    if (f["p5_gen_draft.json"]) {
-      add("draft", "storage.itemDraft", true, 1, "");
-    }
-    if (f["p5_settings.json"]) {
-      add("settings", "storage.itemSettings", true, 1, "");
-    }
+    if (f["p5_gen_draft.json"]) add("draft", "storage.itemDraft", true, 1, "");
+    if (f["p5_settings.json"]) add("settings", "storage.itemSettings", true, 1, "");
     if (f["p5_ai_keys.json"]) {
       var k = f["p5_ai_keys.json"];
       var kc = k && typeof k === "object" ? Object.keys(k).length : 0;
@@ -1115,14 +817,10 @@
       add("prompts", "storage.itemPrompts", true, pc, "");
     }
     if (f["p5_ai_custom_models.json"]) {
-      var cm = Array.isArray(f["p5_ai_custom_models.json"])
-        ? f["p5_ai_custom_models.json"]
-        : [];
+      var cm = Array.isArray(f["p5_ai_custom_models.json"]) ? f["p5_ai_custom_models.json"] : [];
       add("customModels", "storage.itemCustomModels", true, cm.length, "");
     }
-    if (f["p5_ai_current_model.json"]) {
-      add("currentModel", "storage.itemCurrentModel", true, 1, "");
-    }
+    if (f["p5_ai_current_model.json"]) add("currentModel", "storage.itemCurrentModel", true, 1, "");
     if (f["p5_ai_chats.json"]) {
       var ch = f["p5_ai_chats.json"];
       var chc = ch && typeof ch === "object" ? Object.keys(ch).length : 0;
@@ -1130,62 +828,39 @@
     }
     return items;
   }
+
   function _applyImport(parsed, selectedIds) {
     var f = parsed.files;
     if (selectedIds.indexOf("pages") !== -1 && f["p5_pages.json"]) {
       var existing = storageGet(STORAGE_KEY, []);
       var idSet = {};
-      existing.forEach(function (p) {
-        idSet[p.id] = true;
-      });
+      existing.forEach(function (p) { idSet[p.id] = true; });
       var incoming = Array.isArray(f["p5_pages.json"]) ? f["p5_pages.json"] : [];
       incoming.forEach(function (p) {
-        if (p && p.id && !idSet[p.id]) {
-          existing.push(p);
-          idSet[p.id] = true;
-        }
+        if (p && p.id && !idSet[p.id]) { existing.push(p); idSet[p.id] = true; }
       });
       storageSet(STORAGE_KEY, existing);
     }
-    if (selectedIds.indexOf("draft") !== -1 && f["p5_gen_draft.json"]) {
-      storageSet(DRAFT_KEY, f["p5_gen_draft.json"]);
-    }
+    if (selectedIds.indexOf("draft") !== -1 && f["p5_gen_draft.json"]) storageSet(DRAFT_KEY, f["p5_gen_draft.json"]);
     if (selectedIds.indexOf("settings") !== -1 && f["p5_settings.json"]) {
       var s = f["p5_settings.json"];
       if (s.theme) storageSet(THEME_KEY, s.theme);
       if (s.lang) storageSet(LANG_KEY, s.lang);
       if (s.settings) storageSet(SETTINGS_KEY, s.settings);
     }
-    if (selectedIds.indexOf("keys") !== -1 && f["p5_ai_keys.json"]) {
-      storageSet(AI_KEY_STORAGE, f["p5_ai_keys.json"]);
-    }
-    if (selectedIds.indexOf("prompts") !== -1 && f["p5_ai_prompts.json"]) {
-      storageSet(AI_PROMPT_STORAGE, f["p5_ai_prompts.json"]);
-    }
-    if (
-      selectedIds.indexOf("customModels") !== -1 &&
-      f["p5_ai_custom_models.json"]
-    ) {
+    if (selectedIds.indexOf("keys") !== -1 && f["p5_ai_keys.json"]) storageSet(AI_KEY_STORAGE, f["p5_ai_keys.json"]);
+    if (selectedIds.indexOf("prompts") !== -1 && f["p5_ai_prompts.json"]) storageSet(AI_PROMPT_STORAGE, f["p5_ai_prompts.json"]);
+    if (selectedIds.indexOf("customModels") !== -1 && f["p5_ai_custom_models.json"]) {
       var existingM = storageGet(AI_CUSTOM_MODELS_STORAGE, []);
       var midSet = {};
-      existingM.forEach(function (m) {
-        midSet[m.id] = true;
-      });
-      var incM = Array.isArray(f["p5_ai_custom_models.json"])
-        ? f["p5_ai_custom_models.json"]
-        : [];
+      existingM.forEach(function (m) { midSet[m.id] = true; });
+      var incM = Array.isArray(f["p5_ai_custom_models.json"]) ? f["p5_ai_custom_models.json"] : [];
       incM.forEach(function (m) {
-        if (m && m.id && !midSet[m.id]) {
-          existingM.push(m);
-          midSet[m.id] = true;
-        }
+        if (m && m.id && !midSet[m.id]) { existingM.push(m); midSet[m.id] = true; }
       });
       storageSet(AI_CUSTOM_MODELS_STORAGE, existingM);
     }
-    if (
-      selectedIds.indexOf("currentModel") !== -1 &&
-      f["p5_ai_current_model.json"]
-    ) {
+    if (selectedIds.indexOf("currentModel") !== -1 && f["p5_ai_current_model.json"]) {
       var cm = f["p5_ai_current_model.json"];
       if (typeof cm === "string") storageSet(AI_CURRENT_MODEL_STORAGE, cm);
     }
@@ -1199,22 +874,15 @@
     }
   }
 
-  function pickRandomP5File() {
+function pickRandomP5File() {
     if (!P5_FILES || !P5_FILES.length) return null;
     if (P5_FILES.length === 1) return P5_FILES[0];
-    var pool = P5_FILES.filter(function (f) {
-      return f !== currentRandomFile;
-    });
+    var pool = P5_FILES.filter(function (f) { return f !== currentRandomFile; });
     if (!pool.length) pool = P5_FILES.slice();
     return pool[Math.floor(Math.random() * pool.length)];
   }
   function encodePath(fileName) {
-    return String(fileName)
-      .split("/")
-      .map(function (seg) {
-        return encodeURIComponent(seg);
-      })
-      .join("/");
+    return String(fileName).split("/").map(function (seg) { return encodeURIComponent(seg); }).join("/");
   }
   function buildP5SrcDoc(fileName) {
     var src = P5_DIR + encodePath(fileName);
@@ -1224,33 +892,20 @@
       "<head>\n" +
       '  <meta charset="UTF-8">\n' +
       '  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">\n' +
-      "  <style>\n" +
-      "    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; touch-action: none; }\n" +
-      "    canvas { display: block; touch-action: none; }\n" +
-      "  </style>\n" +
-      '  \x3Cscript src="' +
-      P5_CDN +
-      '">\x3C/script>\n' +
-      '  \x3Cscript src="' +
-      src +
-      '">\x3C/script>\n' +
-      "</head>\n" +
-      "<body></body>\n" +
-      "</html>"
+      "  <style>\n    html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; touch-action: none; }\n    canvas { display: block; touch-action: none; }\n  </style>\n" +
+      '  \x3Cscript src="' + P5_CDN + '">\x3C/script>\n' +
+      '  \x3Cscript src="' + src + '">\x3C/script>\n' +
+      "</head>\n<body></body>\n</html>"
     );
   }
 
-  function updateSidebarPages() {
+function updateSidebarPages() {
     var pages = getPages();
     var kw = sidebarSearchKeyword.trim().toLowerCase();
     var filtered = pages;
     if (kw) {
       filtered = pages.filter(function (p) {
-        return (
-          String(p.title || "")
-            .toLowerCase()
-            .indexOf(kw) !== -1
-        );
+        return String(p.title || "").toLowerCase().indexOf(kw) !== -1;
       });
     }
     if (!filtered.length) {
@@ -1283,126 +938,52 @@
     sidebarPagesEl.replaceChildren(frag);
   }
 
-  function bindIframeProxy(iframe) {
+function bindIframeProxy(iframe) {
     var iwin, idoc;
-    try {
-      iwin = iframe.contentWindow;
-      idoc = iframe.contentDocument;
-    } catch (e) {
-      console.warn("Cannot access iframe document:", e);
-      return;
-    }
+    try { iwin = iframe.contentWindow; idoc = iframe.contentDocument; }
+    catch (e) { console.warn("Cannot access iframe document:", e); return; }
     if (!iwin || !idoc) return;
     function tryAttach() {
       var canvas = idoc.querySelector("canvas");
-      if (canvas) {
-        attachProxy(canvas, iwin, idoc);
-        return true;
-      }
+      if (canvas) { attachProxy(canvas, iwin, idoc); return true; }
       return false;
     }
     if (tryAttach()) return;
-    var observer = new MutationObserver(function () {
-      if (tryAttach()) observer.disconnect();
-    });
-    observer.observe(idoc.documentElement || idoc, {
-      childList: true,
-      subtree: true,
-    });
-    setTimeout(function () {
-      try {
-        observer.disconnect();
-      } catch (e) {}
-    }, 15000);
+    var observer = new MutationObserver(function () { if (tryAttach()) observer.disconnect(); });
+    observer.observe(idoc.documentElement || idoc, { childList: true, subtree: true });
+    setTimeout(function () { try { observer.disconnect(); } catch (e) {} }, 15000);
   }
   function attachProxy(canvas, iwin, idoc) {
     if (canvas.__proxyAttached) return;
     canvas.__proxyAttached = true;
-    var MOUSE_TYPES = [
-      "mousemove",
-      "mousedown",
-      "mouseup",
-      "click",
-      "dblclick",
-    ];
+    var MOUSE_TYPES = ["mousemove", "mousedown", "mouseup", "click", "dblclick"];
     var TOUCH_TYPES = ["touchstart", "touchmove", "touchend", "touchcancel"];
     function relayMouse(e) {
       if (e.target === canvas) return;
-      if (
-        (e.type === "mousedown" ||
-          e.type === "mouseup" ||
-          e.type === "click" ||
-          e.type === "dblclick") &&
-        e.button !== 0
-      )
-        return;
+      if ((e.type === "mousedown" || e.type === "mouseup" || e.type === "click" || e.type === "dblclick") && e.button !== 0) return;
       var ev;
       try {
-        ev = new iwin.MouseEvent(e.type, {
-          bubbles: true,
-          cancelable: true,
-          view: iwin,
-          detail: e.detail || 1,
-          screenX: e.screenX,
-          screenY: e.screenY,
-          clientX: e.clientX,
-          clientY: e.clientY,
-          ctrlKey: e.ctrlKey,
-          shiftKey: e.shiftKey,
-          altKey: e.altKey,
-          metaKey: e.metaKey,
-          button: e.button,
-          buttons: e.buttons,
-          relatedTarget: null,
-        });
-      } catch (err) {
-        return;
-      }
+        ev = new iwin.MouseEvent(e.type, { bubbles: true, cancelable: true, view: iwin, detail: e.detail || 1, screenX: e.screenX, screenY: e.screenY, clientX: e.clientX, clientY: e.clientY, ctrlKey: e.ctrlKey, shiftKey: e.shiftKey, altKey: e.altKey, metaKey: e.metaKey, button: e.button, buttons: e.buttons, relatedTarget: null });
+      } catch (err) { return; }
       canvas.dispatchEvent(ev);
     }
     function relayTouch(e) {
       if (e.target === canvas) return;
       if (!e.touches || !e.touches.length) return;
       var t = e.touches[0];
-      var type =
-        e.type === "touchstart"
-          ? "mousedown"
-          : e.type === "touchmove"
-            ? "mousemove"
-            : e.type === "touchend"
-              ? "mouseup"
-              : null;
+      var type = e.type === "touchstart" ? "mousedown" : e.type === "touchmove" ? "mousemove" : e.type === "touchend" ? "mouseup" : null;
       if (!type) return;
       var ev;
       try {
-        ev = new iwin.MouseEvent(type, {
-          bubbles: true,
-          cancelable: true,
-          view: iwin,
-          clientX: t.clientX,
-          clientY: t.clientY,
-          screenX: t.screenX,
-          screenY: t.screenY,
-          button: 0,
-          buttons: type === "mouseup" ? 0 : 1,
-        });
-      } catch (err) {
-        return;
-      }
+        ev = new iwin.MouseEvent(type, { bubbles: true, cancelable: true, view: iwin, clientX: t.clientX, clientY: t.clientY, screenX: t.screenX, screenY: t.screenY, button: 0, buttons: type === "mouseup" ? 0 : 1 });
+      } catch (err) { return; }
       canvas.dispatchEvent(ev);
     }
-    MOUSE_TYPES.forEach(function (type) {
-      idoc.addEventListener(type, relayMouse, true);
-    });
-    TOUCH_TYPES.forEach(function (type) {
-      idoc.addEventListener(type, relayTouch, {
-        capture: true,
-        passive: true,
-      });
-    });
+    MOUSE_TYPES.forEach(function (type) { idoc.addEventListener(type, relayMouse, true); });
+    TOUCH_TYPES.forEach(function (type) { idoc.addEventListener(type, relayTouch, { capture: true, passive: true }); });
   }
 
-  function lockAppSize() {
+function lockAppSize() {
     document.body.classList.add("preview-lock");
     var w = window.innerWidth;
     var h = window.innerHeight;
@@ -1432,10 +1013,7 @@
         var doc = iframe.contentDocument;
         if (!doc) throw new Error("no doc");
         var canvas = doc.querySelector("canvas");
-        if (!canvas) {
-          showAlert(T("preview.screenshot"), T("preview.noCanvas"), true);
-          return;
-        }
+        if (!canvas) { showAlert(T("preview.screenshot"), T("preview.noCanvas"), true); return; }
         var dataUrl = canvas.toDataURL("image/png");
         var a = document.createElement("a");
         a.href = dataUrl;
@@ -1444,17 +1022,13 @@
         a.click();
         document.body.removeChild(a);
       } catch (e) {
-        showAlert(
-          T("preview.screenshot"),
-          T("preview.screenshotFail"),
-          true,
-        );
+        showAlert(T("preview.screenshot"), T("preview.screenshotFail"), true);
       }
     });
     return btn;
   }
 
-  function renderRunner() {
+function renderRunner() {
     destroyEditor();
     appEl.replaceChildren();
     appEl.classList.remove("preview-mode");
@@ -1462,14 +1036,9 @@
     setActiveNav("/");
     var html = null;
     if (runner.mode === "page") {
-      var page = getPages().find(function (p) {
-        return p.id === runner.pageId;
-      });
+      var page = getPages().find(function (p) { return p.id === runner.pageId; });
       if (page) {
         html = page.html;
-        if (sessionImages[page.id]) {
-          html = injectSessionImage(html, sessionImages[page.id]);
-        }
         appEl.dataset.currentPageId = String(page.id);
       } else {
         runner.mode = "random";
@@ -1499,63 +1068,41 @@
     }
     lockAppSize();
     appEl.classList.add("preview-mode");
-
     var iframe = document.createElement("iframe");
     iframe.setAttribute("title", "p5");
     iframe.setAttribute("scrolling", "no");
     iframe.srcdoc = html;
-    iframe.addEventListener("load", function () {
-      bindIframeProxy(iframe);
-    });
+    iframe.addEventListener("load", function () { bindIframeProxy(iframe); });
     appEl.appendChild(iframe);
-    if (runner.mode === "page") {
-      appEl.appendChild(buildScreenshotButton(iframe));
-    }
+    if (runner.mode === "page") appEl.appendChild(buildScreenshotButton(iframe));
   }
   function setRandom() {
     runner.mode = "random";
     runner.pageId = null;
     runner.tempHtml = null;
-    if (getRoute() === "/") render();
-    else location.hash = "#/";
+    if (getRoute() === "/") render(); else location.hash = "#/";
   }
   function runPage(id) {
     runner.mode = "page";
     runner.pageId = id;
     runner.tempHtml = null;
-    if (getRoute() === "/") render();
-    else location.hash = "#/";
+    if (getRoute() === "/") render(); else location.hash = "#/";
   }
   function deletePage(id) {
     var pages = getPages();
-    var page = pages.find(function (p) {
-      return p.id === id;
-    });
+    var page = pages.find(function (p) { return p.id === id; });
     if (!page) return;
-    showConfirm(
-      T("page.deleteTitle"),
-      T("page.deleteBody", { title: page.title }),
-      function () {
-        var list = getPages().filter(function (p) {
-          return p.id !== id;
-        });
-        savePages(list);
-        updateSidebarPages();
-        if (sessionImages[id]) delete sessionImages[id];
-        if (runner.mode === "page" && runner.pageId === id) {
-          runner.mode = "random";
-          runner.pageId = null;
-        }
-        render();
-      },
-      true,
-    );
+    showConfirm(T("page.deleteTitle"), T("page.deleteBody", { title: page.title }), function () {
+      var list = getPages().filter(function (p) { return p.id !== id; });
+      savePages(list);
+      updateSidebarPages();
+      if (runner.mode === "page" && runner.pageId === id) { runner.mode = "random"; runner.pageId = null; }
+      render();
+    }, true);
   }
   function renamePage(id) {
     var pages = getPages();
-    var page = pages.find(function (p) {
-      return p.id === id;
-    });
+    var page = pages.find(function (p) { return p.id === id; });
     if (!page) return;
     showPrompt(T("page.renameTitle"), page.title, function (newTitle) {
       page.title = newTitle;
@@ -1565,7 +1112,7 @@
     });
   }
 
-  function openSidebar() {
+function openSidebar() {
     sidebarEl.classList.add("open");
     overlayEl.classList.add("show");
     document.body.classList.add("sidebar-open");
@@ -1590,70 +1137,49 @@
       if (darkTheme) darkTheme.disabled = true;
     }
     if (editor) {
-      try {
-        editor.setOption("theme", theme === "dark" ? "dracula" : "default");
-      } catch (e) {}
+      try { editor.setOption("theme", theme === "dark" ? "dracula" : "default"); } catch (e) {}
     }
   }
-  function currentTheme() {
-    return document.body.classList.contains("dark-mode") ? "dark" : "light";
-  }
+  function currentTheme() { return document.body.classList.contains("dark-mode") ? "dark" : "light"; }
   function toggleTheme() {
     var next = currentTheme() === "dark" ? "light" : "dark";
     applyTheme(next);
     storageSet(THEME_KEY, next);
   }
 
-  function getRoute() {
+function getRoute() {
     var hash = location.hash;
     if (!hash || hash === "#" || hash === "#/") return "/";
     return hash.replace(/^#/, "") || "/";
   }
   function setActiveNav(path) {
     $$(".sidebar .nav-item[data-path]").forEach(function (el) {
-      if (el.getAttribute("data-path") === "#" + path) {
-        el.setAttribute("aria-current", "page");
-      } else {
-        el.removeAttribute("aria-current");
-      }
+      if (el.getAttribute("data-path") === "#" + path) el.setAttribute("aria-current", "page");
+      else el.removeAttribute("aria-current");
     });
   }
   function destroyEditor() {
-    if (editor) {
-      try {
-        editor.toTextArea();
-      } catch (e) {}
-      editor = null;
-    }
+    if (editor) { try { editor.toTextArea(); } catch (e) {} editor = null; }
   }
   function renderAbout() {
     var wrap = document.createElement("div");
     wrap.appendChild(el("h1", null, T("about.title")));
     ["p1", "p2", "p3", "p4", "p5", "p6", "p7"].forEach(function (k) {
       var text = T("about." + k);
-      if (text && text !== "about." + k) {
-        wrap.appendChild(el("p", null, text));
-      }
+      if (text && text !== "about." + k) wrap.appendChild(el("p", null, text));
     });
     return wrap;
   }
   function renderGenerator() {
     var wrap = el("div", "generator-page");
-
     var menubar = el("div", "generator-menubar");
-    var menubarTitle = el(
-      "div",
-      "generator-menubar-title",
-      T("generator.title"),
-    );
+    var menubarTitle = el("div", "generator-menubar-title", T("generator.title"));
     menubar.appendChild(menubarTitle);
     var helpBtn = el("button", "generator-menubar-help", "ⓘ");
     helpBtn.id = "generatorHelpBtn";
     helpBtn.type = "button";
     helpBtn.title = T("generator.helpTitle");
-    helpBtn.addEventListener("click", function () {
-      showAlert(T("generator.title"), T("generator.subtitle"));
-    });
+    helpBtn.addEventListener("click", function () { showAlert(T("generator.title"), T("generator.subtitle")); });
     menubar.appendChild(helpBtn);
     wrap.appendChild(menubar);
     var editorWrap = el("div", "generator-editor-wrap");
@@ -1725,7 +1251,7 @@
     return frag;
   }
 
-  function refreshGenModelBtn() {
+function refreshGenModelBtn() {
     var btn = $("#genModelBtn");
     if (!btn) return;
     var cur = aiState.currentModel;
@@ -1776,16 +1302,14 @@
     if (willShow) buildGenModelMenu();
   }
 
-  function genStatusClear() {
+function genStatusClear() {
     var box = $("#genStatus");
     if (box) box.replaceChildren();
   }
   function genStatusLine(text, kind) {
     var box = $("#genStatus");
     if (!box) return;
-    box.appendChild(
-      el("div", "gen-status-line" + (kind ? " " + kind : ""), text),
-    );
+    box.appendChild(el("div", "gen-status-line" + (kind ? " " + kind : ""), text));
     while (box.children.length > 12) box.removeChild(box.firstChild);
     box.scrollTop = box.scrollHeight;
   }
@@ -1794,6 +1318,7 @@
     var btn = $("#genSendBtn");
     if (btn) btn.disabled = !!busy;
   }
+
   var TOOL_HANDLERS = {
     insert_code: function (args) {
       var code = args && typeof args.code === "string" ? args.code : "";
@@ -1816,27 +1341,17 @@
     get_current_code: function (args) {
       if (!editor) throw new Error("editor not found");
       var v = editor.getValue() || "";
-      return {
-        ok: true,
-        text: v.length ? v : "(empty)",
-        displayText: T("gen.toolRead", { n: v.length }),
-      };
+      return { ok: true, text: v.length ? v : "(empty)", displayText: T("gen.toolRead", { n: v.length }) };
     },
     replace_selection: function (args) {
       if (!editor) throw new Error("editor not found");
       var code = args && typeof args.code === "string" ? args.code : "";
       var sel = editor.getSelection();
-      if (!sel) {
-        editor.setValue(code);
-      } else {
-        editor.replaceSelection(code);
-      }
+      if (!sel) editor.setValue(code);
+      else editor.replaceSelection(code);
       generatorDraft.script = editor.getValue();
       saveDraft();
-      return {
-        ok: true,
-        text: T("gen.toolReplace", { n: code.length }),
-      };
+      return { ok: true, text: T("gen.toolReplace", { n: code.length }) };
     },
     get_canvas_size: function (args) {
       var src = editor ? editor.getValue() || "" : "";
@@ -1844,71 +1359,27 @@
       if (cmNum) {
         var w = parseInt(cmNum[1], 10);
         var h = parseInt(cmNum[2], 10);
-        return {
-          ok: true,
-          text: JSON.stringify({ width: w, height: h }),
-          displayText: T("gen.toolCanvasSize", { w: w, h: h }),
-        };
+        return { ok: true, text: JSON.stringify({ width: w, height: h }), displayText: T("gen.toolCanvasSize", { w: w, h: h }) };
       }
-      return {
-        ok: true,
-        text: JSON.stringify({
-          width: "windowWidth",
-          height: "windowHeight",
-          note: "响应式画布：使用 createCanvas(windowWidth, windowHeight)",
-        }),
-        displayText: T("gen.toolCanvasResponsive"),
-      };
+      return { ok: true, text: JSON.stringify({ width: "windowWidth", height: "windowHeight", note: "响应式画布：使用 createCanvas(windowWidth, windowHeight)" }), displayText: T("gen.toolCanvasResponsive") };
     },
     set_color_palette: function (args) {
       var colors = args && Array.isArray(args.colors) ? args.colors : [];
-      if (!colors.length) {
-        return {
-          ok: false,
-          text: T("gen.toolUnknown", { name: "set_color_palette" }),
-        };
-      }
+      if (!colors.length) return { ok: false, text: T("gen.toolUnknown", { name: "set_color_palette" }) };
       genState.palette = colors;
-      return {
-        ok: true,
-        text: "已记录配色：" + colors.join(", "),
-        displayText: T("gen.toolPalette", { n: colors.length }),
-      };
+      return { ok: true, text: "已记录配色：" + colors.join(", "), displayText: T("gen.toolPalette", { n: colors.length }) };
     },
     save_page: function (args) {
-      var title =
-        args && typeof args.title === "string" && args.title.trim()
-          ? args.title.trim()
-          : ($("#title") ? $("#title").value.trim() : "") ||
-            T("generator.untitled");
+      var title = args && typeof args.title === "string" && args.title.trim() ? args.title.trim() : ($("#title") ? $("#title").value.trim() : "") || T("generator.untitled");
       if (!editor) throw new Error("editor not found");
       var script = editor.getValue().trim();
-      if (!script) {
-        return { ok: false, text: "编辑器为空，无法保存" };
-      }
+      if (!script) return { ok: false, text: "编辑器为空，无法保存" };
       var imageDataUrl = uploadedImageDataUrl || "";
-      var html = generatePageHtml(
-        title,
-        script,
-        "",
-        !!imageDataUrl,
-      );
+      var html = generatePageHtml(title, script, imageDataUrl, !!imageDataUrl);
       var newId = Date.now() + Math.floor(Math.random() * 1000);
       var pages = getPages();
-      pages.push({
-        id: newId,
-        title: title,
-        html: html,
-        timestamp: new Date().toISOString(),
-      });
+      pages.push({ id: newId, title: title, html: html, timestamp: new Date().toISOString() });
       if (savePages(pages)) {
-        if (imageDataUrl) {
-          sessionImages[newId] = imageDataUrl;
-          var ids = Object.keys(sessionImages);
-          if (ids.length > MAX_SESSION_IMAGES) {
-            delete sessionImages[ids[0]];
-          }
-        }
         updateSidebarPages();
         return { ok: true, text: T("gen.toolSaved", { title: title }) };
       }
@@ -1918,63 +1389,46 @@
       if (!editor) throw new Error("editor not found");
       var script = editor.getValue().trim();
       if (!script) return { ok: false, text: "编辑器为空，无法预览" };
-      var title =
-        ($("#title") ? $("#title").value.trim() : "") ||
-        T("generator.untitled");
+      var title = ($("#title") ? $("#title").value.trim() : "") || T("generator.untitled");
       var html = generatePageHtml(title, script, uploadedImageDataUrl || "");
       runner.mode = "temp";
       runner.tempHtml = html;
       runner.pageId = null;
       destroyEditor();
-      if (getRoute() === "/") render();
-      else location.hash = "#/";
+      if (getRoute() === "/") render(); else location.hash = "#/";
       return { ok: true, text: "已打开预览" };
     },
   };
+
   function executeToolCall(toolName, args) {
     var handler = TOOL_HANDLERS[toolName];
-    if (!handler) {
-      return { ok: false, text: T("gen.toolUnknown", { name: toolName }) };
-    }
-    try {
-      return handler(args);
-    } catch (e) {
-      return {
-        ok: false,
-        text: T("gen.toolError", { msg: String((e && e.message) || e) }),
-      };
-    }
+    if (!handler) return { ok: false, text: T("gen.toolUnknown", { name: toolName }) };
+    try { return handler(args); }
+    catch (e) { return { ok: false, text: T("gen.toolError", { msg: String((e && e.message) || e) }) }; }
   }
+
   function extractCodeFromText(text) {
     if (!text) return null;
     var t = String(text);
     var jsBlocks = [];
     var reJs = /```(?:js|javascript)\s*\n([\s\S]*?)```/gi;
     var m;
-    while ((m = reJs.exec(t))) {
-      if (m[1]) jsBlocks.push(m[1].replace(/\s+$/, ""));
-    }
+    while ((m = reJs.exec(t))) { if (m[1]) jsBlocks.push(m[1].replace(/\s+$/, "")); }
     if (jsBlocks.length) return jsBlocks.join("\n\n");
     var blocks = [];
     var re = /```\s*\n([\s\S]*?)```/g;
-    while ((m = re.exec(t))) {
-      if (m[1]) blocks.push(m[1].replace(/\s+$/, ""));
-    }
+    while ((m = re.exec(t))) { if (m[1]) blocks.push(m[1].replace(/\s+$/, "")); }
     if (blocks.length) return blocks.join("\n\n");
-    if (/function\s+setup\s*\(/.test(t) || /function\s+draw\s*\(/.test(t)) {
-      return t.trim();
-    }
+    if (/function\s+setup\s*\(/.test(t) || /function\s+draw\s*\(/.test(t)) return t.trim();
     return null;
   }
 
-  function findToolCallName(msgs, toolCallId) {
+function findToolCallName(msgs, toolCallId) {
     for (var i = 0; i < msgs.length; i++) {
       var m = msgs[i];
       if (m.role === "assistant" && m.tool_calls) {
         for (var j = 0; j < m.tool_calls.length; j++) {
-          if (m.tool_calls[j].id === toolCallId) {
-            return m.tool_calls[j].function.name;
-          }
+          if (m.tool_calls[j].id === toolCallId) return m.tool_calls[j].function.name;
         }
       }
     }
@@ -1985,66 +1439,34 @@
     var contents = [];
     for (var i = 0; i < internalMsgs.length; i++) {
       var m = internalMsgs[i];
-      if (m.role === "system") {
-        systemInstruction = { parts: [{ text: m.content || "" }] };
-      } else if (m.role === "user") {
+      if (m.role === "system") systemInstruction = { parts: [{ text: m.content || "" }] };
+      else if (m.role === "user") {
         if (Array.isArray(m.content)) {
           var uParts = [];
           m.content.forEach(function (c) {
             if (!c) return;
-            if (c.type === "text") {
-              uParts.push({ text: c.text || "" });
-            } else if (
-              c.type === "image_url" &&
-              c.image_url &&
-              c.image_url.url
-            ) {
+            if (c.type === "text") uParts.push({ text: c.text || "" });
+            else if (c.type === "image_url" && c.image_url && c.image_url.url) {
               var match = /^data:([^;]+);base64,(.+)$/.exec(c.image_url.url);
-              if (match) {
-                uParts.push({
-                  inlineData: { mimeType: match[1], data: match[2] },
-                });
-              }
+              if (match) uParts.push({ inlineData: { mimeType: match[1], data: match[2] } });
             }
           });
           contents.push({ role: "user", parts: uParts });
-        } else {
-          contents.push({ role: "user", parts: [{ text: m.content || "" }] });
-        }
+        } else contents.push({ role: "user", parts: [{ text: m.content || "" }] });
       } else if (m.role === "assistant") {
         if (m.tool_calls && m.tool_calls.length) {
           var parts = [];
           m.tool_calls.forEach(function (tc) {
             var argsObj = {};
-            try {
-              argsObj =
-                typeof tc.function.arguments === "string"
-                  ? JSON.parse(tc.function.arguments)
-                  : tc.function.arguments || {};
-            } catch (e) {
-              argsObj = {};
-            }
-            parts.push({
-              functionCall: { name: tc.function.name, args: argsObj },
-            });
+            try { argsObj = typeof tc.function.arguments === "string" ? JSON.parse(tc.function.arguments) : tc.function.arguments || {}; }
+            catch (e) { argsObj = {}; }
+            parts.push({ functionCall: { name: tc.function.name, args: argsObj } });
           });
           contents.push({ role: "model", parts: parts });
-        } else {
-          contents.push({ role: "model", parts: [{ text: m.content || "" }] });
-        }
+        } else contents.push({ role: "model", parts: [{ text: m.content || "" }] });
       } else if (m.role === "tool") {
         var tcName = findToolCallName(internalMsgs, m.tool_call_id);
-        contents.push({
-          role: "function",
-          parts: [
-            {
-              functionResponse: {
-                name: tcName,
-                response: { result: m.content || "" },
-              },
-            },
-          ],
-        });
+        contents.push({ role: "function", parts: [{ functionResponse: { name: tcName, response: { result: m.content || "" } } }] });
       }
     }
     return { systemInstruction: systemInstruction, contents: contents };
@@ -2058,112 +1480,60 @@
     var onRaw = opts.onRaw;
     var enableTools = !!opts.tools;
     var extSignal = opts.signal || null;
+
     var conf = aiModelConf(model);
     var url, options;
     if (conf.protocol === "gemini") {
       var conv = convertToGeminiMessages(messages);
       var body = { contents: conv.contents };
-      if (systemPrompt) {
-        body.systemInstruction = { parts: [{ text: systemPrompt }] };
-      } else if (conv.systemInstruction) {
-        body.systemInstruction = conv.systemInstruction;
-      }
+      if (systemPrompt) body.systemInstruction = { parts: [{ text: systemPrompt }] };
+      else if (conv.systemInstruction) body.systemInstruction = conv.systemInstruction;
       if (enableTools) body.tools = buildGeminiTools();
-      url =
-        conf.endpoint.replace(":generateContent", ":streamGenerateContent") +
-        "?alt=sse&key=" +
-        encodeURIComponent(key);
-      options = {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      };
+      url = conf.endpoint.replace(":generateContent", ":streamGenerateContent") + "?alt=sse&key=" + encodeURIComponent(key);
+      options = { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) };
     } else {
       var msgs = [];
       if (systemPrompt) msgs.push({ role: "system", content: systemPrompt });
-      messages.forEach(function (m) {
-        msgs.push(m);
-      });
+      messages.forEach(function (m) { msgs.push(m); });
       url = conf.endpoint;
-      var reqBody = {
-        model: conf.apiModel,
-        messages: msgs,
-        stream: true,
-        stream_options: { include_usage: true },
-      };
+      var reqBody = { model: conf.apiModel, messages: msgs, stream: true, stream_options: { include_usage: true } };
       if (enableTools) reqBody.tools = buildOpenAITools();
-      options = {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + key,
-        },
-        body: JSON.stringify(reqBody),
-      };
+      options = { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + key }, body: JSON.stringify(reqBody) };
     }
     var timeoutCtl = new AbortController();
     var timedOut = false;
-    var timeoutId = setTimeout(function () {
-      timedOut = true;
-      try {
-        timeoutCtl.abort();
-      } catch (e) {}
-    }, REQUEST_TIMEOUT_MS);
+    var timeoutId = setTimeout(function () { timedOut = true; try { timeoutCtl.abort(); } catch (e) {} }, REQUEST_TIMEOUT_MS);
+
     var baseSignal = extSignal;
-    if (!baseSignal && aiState.abortController) {
-      baseSignal = aiState.abortController.signal;
-    }
+    if (!baseSignal && aiState.abortController) baseSignal = aiState.abortController.signal;
     if (baseSignal) {
       var combined = new AbortController();
-      var onAbort = function () {
-        try {
-          combined.abort();
-        } catch (e) {}
-      };
+      var onAbort = function () { try { combined.abort(); } catch (e) {} };
       baseSignal.addEventListener("abort", onAbort);
       timeoutCtl.signal.addEventListener("abort", onAbort);
       options.signal = combined.signal;
-    } else {
-      options.signal = timeoutCtl.signal;
-    }
+    } else options.signal = timeoutCtl.signal;
+
     return fetch(url, options)
       .then(function (res) {
         if (!res.ok) {
           return res.text().then(function (t) {
             var msg = "HTTP " + res.status;
-            try {
-              var d = JSON.parse(t);
-              msg =
-                (d.error && d.error.message) ||
-                d.message ||
-                (d.error && d.error.status) ||
-                msg;
-            } catch (e) {}
+            try { var d = JSON.parse(t); msg = (d.error && d.error.message) || d.message || (d.error && d.error.status) || msg; } catch (e) {}
             throw new Error(msg);
           });
         }
-        if (!res.body || !res.body.getReader) {
-          throw new Error(T("chat.errStreamUnsupported"));
-        }
+        if (!res.body || !res.body.getReader) throw new Error(T("chat.errStreamUnsupported"));
         var reader = res.body.getReader();
         var decoder = new TextDecoder();
         var buffer = "";
         function dispatchData(data) {
           if (!data) return;
-          if (data === "[DONE]") {
-            if (onRaw) onRaw("[DONE]");
-            return;
-          }
-          try {
-            var obj = JSON.parse(data);
-            if (onRaw) onRaw(obj);
-            onDelta(obj);
-          } catch (e) {}
+          if (data === "[DONE]") { if (onRaw) onRaw("[DONE]"); return; }
+          try { var obj = JSON.parse(data); if (onRaw) onRaw(obj); onDelta(obj); } catch (e) {}
         }
         function processBuffer(flush) {
-          if (buffer.indexOf("\r") !== -1) {
-            buffer = buffer.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-          }
+          if (buffer.indexOf("\r") !== -1) buffer = buffer.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
           var sepIndex;
           while ((sepIndex = buffer.indexOf("\n\n")) !== -1) {
             var evt = buffer.slice(0, sepIndex);
@@ -2171,25 +1541,18 @@
             var lines = evt.split("\n");
             for (var i = 0; i < lines.length; i++) {
               var line = lines[i].trim();
-              if (line.indexOf("data:") === 0) {
-                dispatchData(line.slice(5).trim());
-              }
+              if (line.indexOf("data:") === 0) dispatchData(line.slice(5).trim());
             }
           }
           if (flush && buffer.trim()) {
             var tail = buffer.trim();
-            if (tail.indexOf("data:") === 0) {
-              dispatchData(tail.slice(5).trim());
-            }
+            if (tail.indexOf("data:") === 0) dispatchData(tail.slice(5).trim());
             buffer = "";
           }
         }
         function pump() {
           return reader.read().then(function (result) {
-            if (result.done) {
-              processBuffer(true);
-              return;
-            }
+            if (result.done) { processBuffer(true); return; }
             buffer += decoder.decode(result.value, { stream: true });
             processBuffer(false);
             return pump();
@@ -2198,26 +1561,13 @@
         return pump();
       })
       .catch(function (err) {
-        if (timedOut) {
-          var e = new Error("REQUEST_TIMEOUT");
-          e.name = "TimeoutError";
-          throw e;
-        }
+        if (timedOut) { var e = new Error("REQUEST_TIMEOUT"); e.name = "TimeoutError"; throw e; }
         throw err;
       })
-      .finally(function () {
-        clearTimeout(timeoutId);
-      });
+      .finally(function () { clearTimeout(timeoutId); });
   }
   function createStructuredAccumulator() {
-    var meta = {
-      id: null,
-      model: null,
-      created: null,
-      finish_reason: null,
-      usage: null,
-      tool_calls: null,
-    };
+    var meta = { id: null, model: null, created: null, finish_reason: null, usage: null, tool_calls: null };
     var tcBuf = {};
     var hasToolCall = false;
     function consume(obj) {
@@ -2235,65 +1585,41 @@
           hasToolCall = true;
           tcs.forEach(function (t) {
             var idx = t.index != null ? t.index : 0;
-            if (!tcBuf[idx]) {
-              tcBuf[idx] = {
-                id: "",
-                type: "function",
-                function: { name: "", arguments: "" },
-              };
-            }
+            if (!tcBuf[idx]) tcBuf[idx] = { id: "", type: "function", function: { name: "", arguments: "" } };
             var buf = tcBuf[idx];
             if (t.id) buf.id = t.id;
             if (t.type) buf.type = t.type;
             if (t.function) {
               if (t.function.name) buf.function.name += t.function.name;
-              if (t.function.arguments)
-                buf.function.arguments += t.function.arguments;
+              if (t.function.arguments) buf.function.arguments += t.function.arguments;
             }
           });
         }
       }
       var cand = obj.candidates && obj.candidates[0];
       if (cand) {
-        if (cand.finishReason && !meta.finish_reason) {
-          meta.finish_reason = cand.finishReason;
-        }
+        if (cand.finishReason && !meta.finish_reason) meta.finish_reason = cand.finishReason;
         if (cand.content && cand.content.parts) {
           cand.content.parts.forEach(function (p) {
             if (p.functionCall) {
               hasToolCall = true;
               var idx = Object.keys(tcBuf).length;
-              tcBuf[idx] = {
-                id: "call_" + Date.now() + "_" + idx,
-                type: "function",
-                function: {
-                  name: p.functionCall.name || "",
-                  arguments: JSON.stringify(p.functionCall.args || {}),
-                },
-              };
+              tcBuf[idx] = { id: "call_" + Date.now() + "_" + idx, type: "function", function: { name: p.functionCall.name || "", arguments: JSON.stringify(p.functionCall.args || {}) } };
             }
           });
         }
       }
       if (obj.usageMetadata) {
-        meta.usage = {
-          prompt_tokens: obj.usageMetadata.promptTokenCount,
-          completion_tokens: obj.usageMetadata.candidatesTokenCount,
-          total_tokens: obj.usageMetadata.totalTokenCount,
-        };
+        meta.usage = { prompt_tokens: obj.usageMetadata.promptTokenCount, completion_tokens: obj.usageMetadata.candidatesTokenCount, total_tokens: obj.usageMetadata.totalTokenCount };
       }
     }
     function finalize() {
       if (hasToolCall) {
         var arr = [];
-        Object.keys(tcBuf)
-          .sort(function (a, b) {
-            return a - b;
-          })
-          .forEach(function (k) {
-            var t = tcBuf[k];
-            if (t.function && t.function.name) arr.push(t);
-          });
+        Object.keys(tcBuf).sort(function (a, b) { return a - b; }).forEach(function (k) {
+          var t = tcBuf[k];
+          if (t.function && t.function.name) arr.push(t);
+        });
         if (arr.length) meta.tool_calls = arr;
       }
       return meta;
@@ -2301,14 +1627,12 @@
     return { consume: consume, finalize: finalize };
   }
 
-  function genApplyCode(code, intent) {
+function genApplyCode(code, intent) {
     if (!editor || !code) return;
     if (intent === "append") {
       var cur = editor.getValue() || "";
       editor.setValue(cur.trim() ? cur + "\n\n" + code : code);
-    } else {
-      editor.setValue(code);
-    }
+    } else editor.setValue(code);
     generatorDraft.script = editor.getValue();
     saveDraft();
   }
@@ -2323,16 +1647,9 @@
     var model = aiState.currentModel;
     var key = aiState.keys[model];
     var conf = aiModelConf(model);
-    if (!conf || !conf.supportsTools) {
-      genStatusLine(T("gen.statusModelNoTools"), "error");
-      genSetBusy(false);
-      return;
-    }
+    if (!conf || !conf.supportsTools) { genStatusLine(T("gen.statusModelNoTools"), "error"); genSetBusy(false); return; }
     genState.messages = [];
-    genState.messages.push({
-      role: "system",
-      content: T("gen.systemPrompt"),
-    });
+    genState.messages.push({ role: "system", content: T("gen.systemPrompt") });
     var userContent = "[intent: " + userIntent + "]\n";
     if (uploadedImageDataUrl) {
       var info = uploadedImageInfo;
@@ -2342,45 +1659,25 @@
     }
     if (userIntent === "modify" && editor && !userTextHasCode(userText)) {
       var currentCode = editor.getValue() || "";
-      if (currentCode.trim()) {
-        userContent += "\n当前代码：\n```js\n" + currentCode + "\n```\n";
-      }
+      if (currentCode.trim()) userContent += "\n当前代码：\n```js\n" + currentCode + "\n```\n";
     }
     userContent += "\n用户要求：" + userText;
     var useVision = !!uploadedImageDataUrl && conf.vision === true;
     if (useVision) {
-      genState.messages.push({
-        role: "user",
-        content: [
-          { type: "text", text: userContent },
-          {
-            type: "image_url",
-            image_url: { url: uploadedImageDataUrl },
-          },
-        ],
-      });
-    } else {
-      genState.messages.push({ role: "user", content: userContent });
-    }
+      genState.messages.push({ role: "user", content: [{ type: "text", text: userContent }, { type: "image_url", image_url: { url: uploadedImageDataUrl } }] });
+    } else genState.messages.push({ role: "user", content: userContent });
+
     genStatusClear();
     genStatusLine(T("gen.statusRequest", { model: aiModelName(model) }));
     genState.streamToken += 1;
     var myToken = genState.streamToken;
-    if (genState.abortController) {
-      try {
-        genState.abortController.abort();
-      } catch (e) {}
-    }
+    if (genState.abortController) { try { genState.abortController.abort(); } catch (e) {} }
     genState.abortController = new AbortController();
     var mySignal = genState.abortController.signal;
     var loopCount = 0;
     function runOne() {
       loopCount += 1;
-      if (loopCount > MAX_TOOL_LOOP) {
-        genStatusLine(T("gen.statusMaxLoop"), "warn");
-        genSetBusy(false);
-        return;
-      }
+      if (loopCount > MAX_TOOL_LOOP) { genStatusLine(T("gen.statusMaxLoop"), "warn"); genSetBusy(false); return; }
       var accumulated = "";
       var acc = createStructuredAccumulator();
       var onDelta = function (obj) {
@@ -2394,55 +1691,25 @@
           }
         } else {
           var ch = obj.choices && obj.choices[0];
-          if (ch && ch.delta && typeof ch.delta.content === "string") {
-            accumulated += ch.delta.content;
-          }
+          if (ch && ch.delta && typeof ch.delta.content === "string") accumulated += ch.delta.content;
         }
       };
-      streamAI({
-        model: model,
-        key: key,
-        messages: genState.messages.slice(),
-        systemPrompt: null,
-        onDelta: onDelta,
-        onRaw: function (obj) {
-          acc.consume(obj);
-        },
-        tools: true,
-        signal: mySignal,
-      })
+      streamAI({ model: model, key: key, messages: genState.messages.slice(), systemPrompt: null, onDelta: onDelta, onRaw: function (obj) { acc.consume(obj); }, tools: true, signal: mySignal })
         .then(function () {
           if (genState.streamToken !== myToken) return;
           var meta = acc.finalize();
           if (meta.tool_calls && meta.tool_calls.length) {
-            genState.messages.push({
-              role: "assistant",
-              content: accumulated || null,
-              tool_calls: meta.tool_calls,
-            });
+            genState.messages.push({ role: "assistant", content: accumulated || null, tool_calls: meta.tool_calls });
             meta.tool_calls.forEach(function (tc) {
               var name = tc.function.name;
               var args = {};
-              try {
-                args =
-                  typeof tc.function.arguments === "string"
-                    ? JSON.parse(tc.function.arguments)
-                    : tc.function.arguments || {};
-              } catch (e) {
-                args = {};
-              }
+              try { args = typeof tc.function.arguments === "string" ? JSON.parse(tc.function.arguments) : tc.function.arguments || {}; }
+              catch (e) { args = {}; }
               genStatusLine(T("gen.statusToolCall", { name: name }));
               var res = executeToolCall(name, args);
               var display = res.displayText ? res.displayText : res.text;
-              genStatusLine(
-                T("gen.statusToolDone", { result: display }),
-                res.ok ? "ok" : "error",
-              );
-              genState.messages.push({
-                role: "tool",
-                tool_call_id: tc.id,
-                content: res.text,
-              });
+              genStatusLine(T("gen.statusToolDone", { result: display }), res.ok ? "ok" : "error");
+              genState.messages.push({ role: "tool", tool_call_id: tc.id, content: res.text });
             });
             genStatusLine(T("gen.statusSummary"));
             runOne();
@@ -2450,17 +1717,9 @@
           }
           if (accumulated && accumulated.trim()) {
             var code = extractCodeFromText(accumulated);
-            if (code) {
-              genStatusLine(T("gen.statusDegrade"), "warn");
-              genApplyCode(code, userIntent);
-              genStatusLine(T("gen.statusDone"), "ok");
-            } else {
-              genStatusLine(accumulated.trim(), "ok");
-              genStatusLine(T("gen.statusNoCode"), "warn");
-            }
-          } else {
-            genStatusLine(T("gen.statusNoCode"), "warn");
-          }
+            if (code) { genStatusLine(T("gen.statusDegrade"), "warn"); genApplyCode(code, userIntent); genStatusLine(T("gen.statusDone"), "ok"); }
+            else { genStatusLine(accumulated.trim(), "ok"); genStatusLine(T("gen.statusNoCode"), "warn"); }
+          } else genStatusLine(T("gen.statusNoCode"), "warn");
           genSetBusy(false);
         })
         .catch(function (err) {
@@ -2468,15 +1727,8 @@
           var msg = String((err && err.message) || err);
           var isTimeout = err && err.name === "TimeoutError";
           var isAbort = err && (err.name === "AbortError" || err.code === 20);
-          if (isTimeout) {
-            genStatusLine(T("gen.statusTimeout"), "error");
-            genSetBusy(false);
-            return;
-          }
-          if (isAbort) {
-            genSetBusy(false);
-            return;
-          }
+          if (isTimeout) { genStatusLine(T("gen.statusTimeout"), "error"); genSetBusy(false); return; }
+          if (isAbort) { genSetBusy(false); return; }
           genStatusLine(T("gen.statusError", { msg: msg }), "error");
           genSetBusy(false);
         });
@@ -2486,55 +1738,22 @@
   function genSend() {
     if (genState.busy) return;
     var model = aiState.currentModel;
-    if (!model || !aiModelConf(model)) {
-      showAlert(T("gen.statusNoModel"), "", true);
-      return;
-    }
+    if (!model || !aiModelConf(model)) { showAlert(T("gen.statusNoModel"), "", true); return; }
     var conf = aiModelConf(model);
-    if (!conf.supportsTools) {
-      showAlert(T("gen.statusModelNoTools"), "", true);
-      return;
-    }
+    if (!conf.supportsTools) { showAlert(T("gen.statusModelNoTools"), "", true); return; }
     var key = aiState.keys[model];
-    if (!key) {
-      promptAPIKey(model, function () {
-        if (aiState.keys[model]) genSend();
-      });
-      return;
-    }
+    if (!key) { promptAPIKey(model, function () { if (aiState.keys[model]) genSend(); }); return; }
     var input = $("#genInput");
     if (!input) return;
     var userText = (input.value || "").trim();
-    if (!userText) {
-      genStatusClear();
-      genStatusLine(T("gen.statusEmptyInput"), "warn");
-      return;
-    }
+    if (!userText) { genStatusClear(); genStatusLine(T("gen.statusEmptyInput"), "warn"); return; }
     var currentCode = editor ? editor.getValue() || "" : "";
     var hasContent = currentCode.trim().length > 0;
-    var doSend = function (intent) {
-      input.value = "";
-      input.style.height = "auto";
-      genSetBusy(true);
-      genRunLoop(intent, userText);
-    };
+    var doSend = function (intent) { input.value = ""; input.style.height = "auto"; genSetBusy(true); genRunLoop(intent, userText); };
     if (!hasContent) {
-      if (userTextHasCode(userText)) {
-        doSend("modify");
-      } else {
-        doSend("overwrite");
-      }
+      if (userTextHasCode(userText)) doSend("modify"); else doSend("overwrite");
     } else {
-      showIntentChoice(
-        T("gen.editorNotEmptyTitle"),
-        T("gen.editorNotEmptyBody"),
-        function () {
-          doSend("overwrite");
-        },
-        function () {
-          doSend("modify");
-        },
-      );
+      showIntentChoice(T("gen.editorNotEmptyTitle"), T("gen.editorNotEmptyBody"), function () { doSend("overwrite"); }, function () { doSend("modify"); });
     }
   }
   function bindGeneratorAIPanel() {
@@ -2542,50 +1761,28 @@
     var menu = $("#genModelMenu");
     var input = $("#genInput");
     var sendBtn = $("#genSendBtn");
-    if (modelBtn) {
-      modelBtn.addEventListener("click", function (e) {
-        e.stopPropagation();
-        toggleGenMenu();
-      });
-    }
-    if (menu) {
-      menu.addEventListener("click", function (e) {
-        var item = e.target.closest(".ai-model-item");
-        if (!item || !item.dataset.model) return;
-        e.stopPropagation();
-        closeGenMenu();
-        aiState.currentModel = item.dataset.model;
-        saveCurrentModel(aiState.currentModel);
-        refreshGenModelBtn();
-        refreshAIModelUI();
-      });
-    }
+    if (modelBtn) modelBtn.addEventListener("click", function (e) { e.stopPropagation(); toggleGenMenu(); });
+    if (menu) menu.addEventListener("click", function (e) {
+      var item = e.target.closest(".ai-model-item");
+      if (!item || !item.dataset.model) return;
+      e.stopPropagation();
+      closeGenMenu();
+      aiState.currentModel = item.dataset.model;
+      saveCurrentModel(aiState.currentModel);
+      refreshGenModelBtn();
+      refreshAIModelUI();
+    });
     if (input) {
-      input.addEventListener("input", function () {
-        this.style.height = "auto";
-        this.style.height = Math.min(this.scrollHeight, 120) + "px";
-      });
+      input.addEventListener("input", function () { this.style.height = "auto"; this.style.height = Math.min(this.scrollHeight, 120) + "px"; });
       input.addEventListener("keydown", function (e) {
-        if (
-          e.key === "Enter" &&
-          !e.shiftKey &&
-          !e.isComposing &&
-          e.keyCode !== 229
-        ) {
-          e.preventDefault();
-          genSend();
-        }
+        if (e.key === "Enter" && !e.shiftKey && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); genSend(); }
       });
     }
-    if (sendBtn) {
-      sendBtn.addEventListener("click", function () {
-        genSend();
-      });
-    }
+    if (sendBtn) sendBtn.addEventListener("click", function () { genSend(); });
     refreshGenModelBtn();
   }
 
-  function compressImage(dataUrl, maxDim, quality, callback) {
+function compressImage(dataUrl, maxDim, quality, callback) {
     var img = new Image();
     img.onload = function () {
       try {
@@ -2601,13 +1798,9 @@
         ctx.drawImage(img, 0, 0, w, h);
         var out = canvas.toDataURL("image/jpeg", quality);
         callback(out && out.length < dataUrl.length ? out : dataUrl);
-      } catch (e) {
-        callback(dataUrl);
-      }
+      } catch (e) { callback(dataUrl); }
     };
-    img.onerror = function () {
-      callback(dataUrl);
-    };
+    img.onerror = function () { callback(dataUrl); };
     img.src = dataUrl;
   }
   function bindGenerator() {
@@ -2624,62 +1817,32 @@
     destroyEditor();
     if (window.CodeMirror) {
       var themeName = currentTheme() === "dark" ? "dracula" : "default";
-      editor = window.CodeMirror.fromTextArea(textarea, {
-        mode: "javascript",
-        lineNumbers: true,
-        theme: themeName,
-        tabSize: 2,
-        indentUnit: 2,
-        autofocus: true,
-      });
+      editor = window.CodeMirror.fromTextArea(textarea, { mode: "javascript", lineNumbers: true, theme: themeName, tabSize: 2, indentUnit: 2, autofocus: true });
       editor.setSize(null, "100%");
       if (generatorDraft.script) editor.setValue(generatorDraft.script);
       var cmWrapper = editor.getWrapperElement();
-      if (getComputedStyle(cmWrapper).position === "static") {
-        cmWrapper.style.position = "relative";
-      }
+      if (getComputedStyle(cmWrapper).position === "static") cmWrapper.style.position = "relative";
       var cmPlaceholderEl = el("div", "cm-placeholder-overlay");
       cmPlaceholderEl.textContent = T("generator.scriptPlaceholder");
       cmWrapper.appendChild(cmPlaceholderEl);
       var gutters = cmWrapper.querySelector(".CodeMirror-gutters");
       var leftOffset = gutters ? gutters.offsetWidth + 8 : 44;
       cmPlaceholderEl.style.left = leftOffset + "px";
-      function updateCmPlaceholder() {
-        cmPlaceholderEl.style.display =
-          editor.getValue().length === 0 ? "block" : "none";
-      }
+      function updateCmPlaceholder() { cmPlaceholderEl.style.display = editor.getValue().length === 0 ? "block" : "none"; }
       editor.on("change", updateCmPlaceholder);
       editor.on("optionChange", function () {
         var g = cmWrapper.querySelector(".CodeMirror-gutters");
         if (g) cmPlaceholderEl.style.left = g.offsetWidth + 8 + "px";
       });
       updateCmPlaceholder();
-      editor.on("change", function () {
-        generatorDraft.script = editor.getValue();
-        saveDraft();
-      });
+      editor.on("change", function () { generatorDraft.script = editor.getValue(); saveDraft(); });
     }
-    titleInput.addEventListener("input", function () {
-      generatorDraft.title = this.value;
-      saveDraft();
-    });
+    titleInput.addEventListener("input", function () { generatorDraft.title = this.value; saveDraft(); });
     fileInput.addEventListener("change", function () {
       var file = this.files && this.files[0];
       if (!file) return;
-      if (!/^image\//.test(file.type)) {
-        showAlert(T("page.badImageTitle"), T("page.badImageBody"), true);
-        this.value = "";
-        return;
-      }
-      if (file.size > MAX_IMAGE_BYTES) {
-        showAlert(
-          T("page.imageTooLargeTitle"),
-          T("page.imageTooLargeBody"),
-          true,
-        );
-        this.value = "";
-        return;
-      }
+      if (!/^image\//.test(file.type)) { showAlert(T("page.badImageTitle"), T("page.badImageBody"), true); this.value = ""; return; }
+      if (file.size > MAX_IMAGE_BYTES) { showAlert(T("page.imageTooLargeTitle"), T("page.imageTooLargeBody"), true); this.value = ""; return; }
       var reader = new FileReader();
       reader.onload = function (e) {
         var originalDataUrl = e.target.result;
@@ -2694,60 +1857,24 @@
           img.alt = T("generator.imageAlt");
           previewEl.replaceChildren(tip, img);
           var probe = new Image();
-          probe.onload = function () {
-            uploadedImageInfo = {
-              width: probe.naturalWidth,
-              height: probe.naturalHeight,
-            };
-          };
-          probe.onerror = function () {
-            uploadedImageInfo = null;
-          };
+          probe.onload = function () { uploadedImageInfo = { width: probe.naturalWidth, height: probe.naturalHeight }; };
+          probe.onerror = function () { uploadedImageInfo = null; };
           probe.src = compressed;
         });
       };
-      reader.onerror = function () {
-        showAlert(
-          T("page.imageReadFailTitle"),
-          T("page.imageReadFailBody"),
-          true,
-        );
-      };
+      reader.onerror = function () { showAlert(T("page.imageReadFailTitle"), T("page.imageReadFailBody"), true); };
       reader.readAsDataURL(file);
     });
     buildBtn.addEventListener("click", function () {
-      var title =
-        titleInput.value.trim().slice(0, MAX_TITLE_LEN) ||
-        T("generator.untitled");
+      var title = titleInput.value.trim().slice(0, MAX_TITLE_LEN) || T("generator.untitled");
       var script = (editor ? editor.getValue() : textarea.value).trim();
-      if (!script) {
-        showAlert(T("page.noScriptTitle"), T("page.noScriptBody"), true);
-        return;
-      }
+      if (!script) { showAlert(T("page.noScriptTitle"), T("page.noScriptBody"), true); return; }
       var imageDataUrl = uploadedImageDataUrl || "";
-      var htmlContent = generatePageHtml(
-        title,
-        script,
-        "",
-        !!imageDataUrl,
-      );
+      var htmlContent = generatePageHtml(title, script, imageDataUrl, !!imageDataUrl);
       var newId = Date.now() + Math.floor(Math.random() * 1000);
       var pages = getPages();
-      pages.push({
-        id: newId,
-        title: title,
-        html: htmlContent,
-        timestamp: new Date().toISOString(),
-      });
+      pages.push({ id: newId, title: title, html: htmlContent, timestamp: new Date().toISOString() });
       if (!savePages(pages)) return;
-
-      if (imageDataUrl) {
-        sessionImages[newId] = imageDataUrl;
-        var ids = Object.keys(sessionImages);
-        if (ids.length > MAX_SESSION_IMAGES) {
-          delete sessionImages[ids[0]];
-        }
-      }
       updateSidebarPages();
       openModal(function (box) {
         box.appendChild(el("h3", null, T("generator.buildOk")));
@@ -2758,17 +1885,9 @@
         leftWrap.appendChild(closeBtn);
         var rg = rightGroup();
         var previewBtn = el("button", null, T("generator.preview"));
-        previewBtn.addEventListener("click", function () {
-          closeModal();
-          runPage(newId);
-        });
+        previewBtn.addEventListener("click", function () { closeModal(); runPage(newId); });
         var downloadBtn = el("button", "cancel", T("generator.download"));
-        downloadBtn.addEventListener("click", function () {
-          downloadSingleHtml(
-            "p5_" + safeFileName(title) + "_" + newId + ".html",
-            htmlContent,
-          );
-        });
+        downloadBtn.addEventListener("click", function () { downloadSingleHtml("p5_" + safeFileName(title) + "_" + newId + ".html", htmlContent); });
         rg.appendChild(previewBtn);
         rg.appendChild(downloadBtn);
         actions.appendChild(leftWrap);
@@ -2786,7 +1905,7 @@
     bindGeneratorAIPanel();
   }
 
-  function renderAIAssistant() {
+function renderAIAssistant() {
     var page = el("div", "ai-page");
     var clearBtn = el("button", "ai-clear-btn", "−");
     clearBtn.id = "aiClearBtn";
@@ -2836,7 +1955,7 @@
     return page;
   }
 
-  function buildAIModelMenu() {
+function buildAIModelMenu() {
     var menu = $("#aiModelMenu");
     if (!menu) return;
     var frag = document.createDocumentFragment();
@@ -2876,9 +1995,7 @@
       promptBtn.type = "button";
       promptBtn.title = T("ai.menuPrompt");
       promptBtn.dataset.prompt = m.id;
-      if (aiState.prompts[m.id] && aiState.prompts[m.id].trim()) {
-        promptBtn.classList.add("has-prompt");
-      }
+      if (aiState.prompts[m.id] && aiState.prompts[m.id].trim()) promptBtn.classList.add("has-prompt");
       var jsonBtn = el("button", "ai-dl", "J");
       jsonBtn.type = "button";
       jsonBtn.title = T("ai.menuDownloadJson");
@@ -2898,40 +2015,23 @@
   }
   function refreshAIModelUI() {
     $$(".ai-model-item").forEach(function (el) {
-      if (aiState.currentModel && el.dataset.model === aiState.currentModel) {
-        el.classList.add("active");
-      } else {
-        el.classList.remove("active");
-      }
+      if (aiState.currentModel && el.dataset.model === aiState.currentModel) el.classList.add("active");
+      else el.classList.remove("active");
     });
     var btn = $("#aiModelBtn");
     if (btn) {
-      if (aiState.currentModel) {
-        btn.classList.add("has-model");
-        btn.textContent = aiModelName(aiState.currentModel).charAt(0);
-      } else {
-        btn.classList.remove("has-model");
-        btn.textContent = "+";
-      }
+      if (aiState.currentModel) { btn.classList.add("has-model"); btn.textContent = aiModelName(aiState.currentModel).charAt(0); }
+      else { btn.classList.remove("has-model"); btn.textContent = "+"; }
     }
     refreshGenModelBtn();
   }
-  function closeAIModelMenu() {
-    var menu = $("#aiModelMenu");
-    if (menu) menu.classList.remove("show");
-  }
-  function toggleAIModelMenu() {
-    var menu = $("#aiModelMenu");
-    if (!menu) return;
-    menu.classList.toggle("show");
-  }
+  function closeAIModelMenu() { var menu = $("#aiModelMenu"); if (menu) menu.classList.remove("show"); }
+  function toggleAIModelMenu() { var menu = $("#aiModelMenu"); if (!menu) return; menu.classList.toggle("show"); }
 
-  function copyToClipboard(text) {
+function copyToClipboard(text) {
     if (!text) return;
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).catch(function () {
-        fallbackCopy(text);
-      });
+      navigator.clipboard.writeText(text).catch(function () { fallbackCopy(text); });
       return;
     }
     fallbackCopy(text);
@@ -2940,8 +2040,7 @@
     try {
       var ta = document.createElement("textarea");
       ta.value = text;
-      ta.style.cssText =
-        "position:fixed;left:-9999px;top:-9999px;opacity:0;";
+      ta.style.cssText = "position:fixed;left:-9999px;top:-9999px;opacity:0;";
       document.body.appendChild(ta);
       ta.select();
       document.execCommand("copy");
@@ -2951,44 +2050,29 @@
   function flashTip(anchorEl, text) {
     if (!anchorEl) return;
     try {
-      if (window.getComputedStyle(anchorEl).position === "static") {
-        anchorEl.style.position = "relative";
-      }
+      if (window.getComputedStyle(anchorEl).position === "static") anchorEl.style.position = "relative";
     } catch (e) {}
     var tip = el("div", "msg-flash-tip", text);
     anchorEl.appendChild(tip);
-    setTimeout(function () {
-      if (tip.parentNode) tip.parentNode.removeChild(tip);
-    }, FLASH_TIP_MS);
+    setTimeout(function () { if (tip.parentNode) tip.parentNode.removeChild(tip); }, FLASH_TIP_MS);
   }
-  
-  function buildAssistantToolbar(m, index) {
+
+function buildAssistantToolbar(m, index) {
     var toolbar = el("div", "assistant-toolbar");
     var left = el("div", "toolbar-left");
     var chat = aiState.chats[aiState.currentModel] || [];
-    var isLastAssistant =
-      m.role === "assistant" && index === chat.length - 1 && index > 0;
+    var isLastAssistant = m.role === "assistant" && index === chat.length - 1 && index > 0;
     if (isLastAssistant) {
-      var regenBtn = el(
-        "button",
-        "assistant-tool-btn",
-        "↻ " + T("msg.regen"),
-      );
+      var regenBtn = el("button", "assistant-tool-btn", "↻ " + T("msg.regen"));
       regenBtn.type = "button";
       regenBtn.title = T("msg.regen");
-      regenBtn.addEventListener("click", function (e) {
-        e.stopPropagation();
-        regenerateMessage(index);
-      });
+      regenBtn.addEventListener("click", function (e) { e.stopPropagation(); regenerateMessage(index); });
       left.appendChild(regenBtn);
     }
     var delBtn = el("button", "assistant-tool-btn", "✕ " + T("msg.delete"));
     delBtn.type = "button";
     delBtn.title = T("msg.delete");
-    delBtn.addEventListener("click", function (e) {
-      e.stopPropagation();
-      deleteMessageFrom(index);
-    });
+    delBtn.addEventListener("click", function (e) { e.stopPropagation(); deleteMessageFrom(index); });
     left.appendChild(delBtn);
     if (m.usage) {
       var up = m.usage.prompt_tokens || 0;
@@ -3003,11 +2087,7 @@
     var copyBtn = el("button", "assistant-tool-btn", "⧉ " + T("msg.copy"));
     copyBtn.type = "button";
     copyBtn.title = T("msg.copy");
-    copyBtn.addEventListener("click", function (e) {
-      e.stopPropagation();
-      copyToClipboard(m.content || "");
-      flashTip(toolbar, T("msg.copied"));
-    });
+    copyBtn.addEventListener("click", function (e) { e.stopPropagation(); copyToClipboard(m.content || ""); flashTip(toolbar, T("msg.copied")); });
     right.appendChild(copyBtn);
     toolbar.appendChild(right);
     return toolbar;
@@ -3016,60 +2096,36 @@
     var pressTimer = null;
     var longPressed = false;
     function show() {
-      $$(".ai-msg.actions-visible").forEach(function (el) {
-        if (el !== row) el.classList.remove("actions-visible");
-      });
+      $$(".ai-msg.actions-visible").forEach(function (el) { if (el !== row) el.classList.remove("actions-visible"); });
       row.classList.add("actions-visible");
     }
     function toggle() {
-      if (row.classList.contains("actions-visible")) {
-        row.classList.remove("actions-visible");
-      } else {
-        show();
-      }
+      if (row.classList.contains("actions-visible")) row.classList.remove("actions-visible");
+      else show();
     }
     function startPress() {
       longPressed = false;
       if (pressTimer) clearTimeout(pressTimer);
-      pressTimer = setTimeout(function () {
-        pressTimer = null;
-        longPressed = true;
-        show();
-      }, LONG_PRESS_MS);
+      pressTimer = setTimeout(function () { pressTimer = null; longPressed = true; show(); }, LONG_PRESS_MS);
     }
-    function cancelPress() {
-      if (pressTimer) {
-        clearTimeout(pressTimer);
-        pressTimer = null;
-      }
-    }
+    function cancelPress() { if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; } }
     row.addEventListener("pointerdown", startPress);
     row.addEventListener("pointerup", cancelPress);
     row.addEventListener("pointercancel", cancelPress);
     row.addEventListener("pointerleave", cancelPress);
     row.addEventListener("click", function (e) {
       if (e.target.closest("button")) return;
-      if (longPressed) {
-        longPressed = false;
-        return;
-      }
+      if (longPressed) { longPressed = false; return; }
       toggle();
     });
   }
   function buildMsgNode(m, index) {
-    var row = el(
-      "div",
-      "ai-msg " + (m.role === "assistant" ? "assistant" : "user"),
-    );
+    var row = el("div", "ai-msg " + (m.role === "assistant" ? "assistant" : "user"));
     row.dataset.index = String(index);
     if (m.role === "assistant") {
       var body = el("div", "assistant-body");
-      if (!m.content) {
-        body.textContent = T("ai.thinking");
-        body.classList.add("pending");
-      } else {
-        body.textContent = m.content;
-      }
+      if (!m.content) { body.textContent = T("ai.thinking"); body.classList.add("pending"); }
+      else body.textContent = m.content;
       row.appendChild(body);
       var toolbar = buildAssistantToolbar(m, index);
       row.appendChild(toolbar);
@@ -3081,35 +2137,23 @@
     }
     return row;
   }
-  function buildEmptyNode(text) {
-    return el("div", "ai-empty", text);
-  }
+  function buildEmptyNode(text) { return el("div", "ai-empty", text); }
 
-  function renderAIMessages() {
+function renderAIMessages() {
     var box = $("#aiMessages");
     if (!box) return;
     var model = aiState.currentModel;
     if (!model) {
-      if (!box.firstChild || !box.querySelector(".ai-empty")) {
-        box.replaceChildren(buildEmptyNode(T("ai.emptyNoModel")));
-      }
+      if (!box.firstChild || !box.querySelector(".ai-empty")) box.replaceChildren(buildEmptyNode(T("ai.emptyNoModel")));
       renderedModelId = null;
       renderedMsgCount = 0;
       updateStatsBar();
       return;
     }
-    if (renderedModelId !== model) {
-      renderedModelId = model;
-      renderedMsgCount = 0;
-      box.replaceChildren();
-    }
+    if (renderedModelId !== model) { renderedModelId = model; renderedMsgCount = 0; box.replaceChildren(); }
     var chat = aiState.chats[model] || [];
     if (!chat.length) {
-      if (!box.firstChild || !box.querySelector(".ai-empty")) {
-        box.replaceChildren(
-          buildEmptyNode(T("ai.emptyStart", { model: aiModelName(model) })),
-        );
-      }
+      if (!box.firstChild || !box.querySelector(".ai-empty")) box.replaceChildren(buildEmptyNode(T("ai.emptyStart", { model: aiModelName(model) })));
       renderedMsgCount = 0;
       updateStatsBar();
       return;
@@ -3117,9 +2161,7 @@
     if (renderedMsgCount > chat.length) renderedMsgCount = 0;
     if (renderedMsgCount === 0) {
       var frag = document.createDocumentFragment();
-      for (var i = 0; i < chat.length; i++) {
-        frag.appendChild(buildMsgNode(chat[i], i));
-      }
+      for (var i = 0; i < chat.length; i++) frag.appendChild(buildMsgNode(chat[i], i));
       box.replaceChildren(frag);
       renderedMsgCount = chat.length;
       box.scrollTop = box.scrollHeight;
@@ -3132,18 +2174,14 @@
         box.replaceChildren();
         renderedMsgCount = 0;
         var frag2 = document.createDocumentFragment();
-        for (var k = 0; k < chat.length; k++) {
-          frag2.appendChild(buildMsgNode(chat[k], k));
-        }
+        for (var k = 0; k < chat.length; k++) frag2.appendChild(buildMsgNode(chat[k], k));
         box.replaceChildren(frag2);
         renderedMsgCount = chat.length;
         box.scrollTop = box.scrollHeight;
         updateStatsBar();
         return;
       }
-      for (var j = renderedMsgCount; j < chat.length; j++) {
-        box.appendChild(buildMsgNode(chat[j], j));
-      }
+      for (var j = renderedMsgCount; j < chat.length; j++) box.appendChild(buildMsgNode(chat[j], j));
       renderedMsgCount = chat.length;
       box.scrollTop = box.scrollHeight;
     }
@@ -3153,14 +2191,9 @@
     var bar = $("#aiStats");
     if (!bar) return;
     var model = aiState.currentModel;
-    if (!model) {
-      bar.style.display = "none";
-      return;
-    }
+    if (!model) { bar.style.display = "none"; return; }
     var chat = aiState.chats[model] || [];
-    var totalPrompt = 0;
-    var totalCompletion = 0;
-    var turns = 0;
+    var totalPrompt = 0, totalCompletion = 0, turns = 0;
     chat.forEach(function (m) {
       if (m.role === "assistant" && m.usage) {
         totalPrompt += m.usage.prompt_tokens || 0;
@@ -3168,30 +2201,18 @@
         turns += 1;
       }
     });
-    if (!turns) {
-      bar.style.display = "none";
-      return;
-    }
+    if (!turns) { bar.style.display = "none"; return; }
     var total = totalPrompt + totalCompletion;
     bar.style.display = "block";
-    bar.textContent = T("ai.stats", {
-      turns: turns,
-      total: total.toLocaleString(),
-    });
+    bar.textContent = T("ai.stats", { turns: turns, total: total.toLocaleString() });
   }
-  function updateAISendBtn() {
-    var btn = $("#aiSendBtn");
-    if (!btn) return;
-    btn.disabled = !!aiState.busy;
-  }
+  function updateAISendBtn() { var btn = $("#aiSendBtn"); if (!btn) return; btn.disabled = !!aiState.busy; }
   function getLastAssistantBubble() {
     var box = $("#aiMessages");
     if (!box) return null;
     var kids = box.children;
     for (var i = kids.length - 1; i >= 0; i--) {
-      if (kids[i].classList.contains("assistant")) {
-        return kids[i].querySelector(".assistant-body");
-      }
+      if (kids[i].classList.contains("assistant")) return kids[i].querySelector(".assistant-body");
     }
     return null;
   }
@@ -3200,26 +2221,19 @@
     return box.scrollHeight - box.scrollTop - box.clientHeight < NEAR_BOTTOM_PX;
   }
 
-  function deleteMessageFrom(index) {
+function deleteMessageFrom(index) {
     var model = aiState.currentModel;
     if (!model) return;
     var chat = aiState.chats[model] || [];
     if (index < 0 || index >= chat.length) return;
     var after = chat.length - index - 1;
-    var msgText = after > 0
-      ? T("msg.deleteConfirmBody", { n: after })
-      : T("msg.deleteConfirmBodyShort");
-    showConfirm(
-      T("msg.deleteConfirmTitle"),
-      msgText,
-      function () {
-        chat.splice(index);
-        saveAIChats(model);
-        renderedMsgCount = 0;
-        renderAIMessages();
-      },
-      true,
-    );
+    var msgText = after > 0 ? T("msg.deleteConfirmBody", { n: after }) : T("msg.deleteConfirmBodyShort");
+    showConfirm(T("msg.deleteConfirmTitle"), msgText, function () {
+      chat.splice(index);
+      saveAIChats(model);
+      renderedMsgCount = 0;
+      renderAIMessages();
+    }, true);
   }
   function regenerateMessage(index) {
     var model = aiState.currentModel;
@@ -3240,25 +2254,14 @@
     var model = aiState.currentModel;
     if (!model) return;
     var key = aiState.keys[model];
-    if (!key) {
-      promptAPIKey(model, function () {
-        if (aiState.keys[model]) aiSendWithText(text);
-      });
-      return;
-    }
+    if (!key) { promptAPIKey(model, function () { if (aiState.keys[model]) aiSendWithText(text); }); return; }
     var chat = aiState.chats[model];
     if (!Array.isArray(chat)) chat = aiState.chats[model] = [];
     var lastMsg = chat[chat.length - 1];
-    if (!(lastMsg && lastMsg.role === "user" && lastMsg.content === text)) {
-      chat.push({ role: "user", content: text });
-    }
+    if (!(lastMsg && lastMsg.role === "user" && lastMsg.content === text)) chat.push({ role: "user", content: text });
     chat.push({ role: "assistant", content: "" });
     saveAIChats(model);
-    if (aiState.abortController) {
-      try {
-        aiState.abortController.abort();
-      } catch (e) {}
-    }
+    if (aiState.abortController) { try { aiState.abortController.abort(); } catch (e) {} }
     aiState.streamToken += 1;
     var myToken = aiState.streamToken;
     aiState.abortController = new AbortController();
@@ -3275,11 +2278,7 @@
     function pushDelta(t2) {
       if (aiState.streamToken !== myToken) return;
       if (!t2) return;
-      if (firstDelta && bubble) {
-        bubble.textContent = "";
-        bubble.classList.remove("pending");
-        firstDelta = false;
-      }
+      if (firstDelta && bubble) { bubble.textContent = ""; bubble.classList.remove("pending"); firstDelta = false; }
       accumulated += t2;
       if (bubble) bubble.appendChild(document.createTextNode(t2));
       if (box && isNearBottom(box)) box.scrollTop = box.scrollHeight;
@@ -3289,9 +2288,7 @@
         var cand = obj.candidates && obj.candidates[0];
         if (cand && cand.content && cand.content.parts) {
           var t = "";
-          for (var i = 0; i < cand.content.parts.length; i++) {
-            t += cand.content.parts[i].text || "";
-          }
+          for (var i = 0; i < cand.content.parts.length; i++) t += cand.content.parts[i].text || "";
           pushDelta(t);
         }
       } else {
@@ -3299,31 +2296,13 @@
         if (d && d.content) pushDelta(d.content);
       }
     };
-    var payload = chat
-      .slice(0, -1)
-      .filter(function (m) {
-        return m.role === "user" || m.role === "assistant";
-      })
-      .map(function (m) {
-        return { role: m.role, content: m.content || "" };
-      });
+    var payload = chat.slice(0, -1).filter(function (m) { return m.role === "user" || m.role === "assistant"; }).map(function (m) { return { role: m.role, content: m.content || "" }; });
     if (payload.length > MAX_CONTEXT_MESSAGES) {
       payload = payload.slice(-MAX_CONTEXT_MESSAGES);
-      while (payload.length && payload[0].role !== "user") {
-        payload.shift();
-      }
+      while (payload.length && payload[0].role !== "user") payload.shift();
     }
     var systemPrompt = aiState.prompts[model] || "";
-    streamAI({
-      model: model,
-      key: key,
-      messages: payload,
-      systemPrompt: systemPrompt,
-      onDelta: onDelta,
-      onRaw: function (raw) {
-        acc.consume(raw);
-      },
-    })
+    streamAI({ model: model, key: key, messages: payload, systemPrompt: systemPrompt, onDelta: onDelta, onRaw: function (raw) { acc.consume(raw); } })
       .then(function () {
         if (aiState.streamToken !== myToken) return;
         var meta = acc.finalize();
@@ -3356,41 +2335,23 @@
           if (meta.finish_reason) msg.finish_reason = meta.finish_reason;
           if (meta.usage) msg.usage = meta.usage;
           if (meta.tool_calls) msg.tool_calls = meta.tool_calls;
-        } else {
-          chat.pop();
-        }
+        } else chat.pop();
         saveAIChats(model);
         renderAIMessages();
-        if (isTimeout) {
-          showAlert(
-            T("chat.errTimeoutTitle"),
-            T("chat.errTimeoutBody"),
-            true,
-          );
-        } else if (!isAbort) {
-          showAlert(
-            T("chat.errRequestTitle"),
-            String((err && err.message) || err) || T("chat.errRequestBody"),
-            true,
-          );
-        }
+        if (isTimeout) showAlert(T("chat.errTimeoutTitle"), T("chat.errTimeoutBody"), true);
+        else if (!isAbort) showAlert(T("chat.errRequestTitle"), String((err && err.message) || err) || T("chat.errRequestBody"), true);
       });
   }
 
-  function showModelEditor(modelId) {
+function showModelEditor(modelId) {
     var isEdit = !!modelId;
     var existing = isEdit ? aiModelConf(modelId) : null;
     if (isEdit && (!existing || existing.builtin)) return;
     openModal(function (box) {
-      box.appendChild(
-        el("h3", null, isEdit ? T("ai.editModelTitle") : T("model.addTitle")),
-      );
-      box.appendChild(
-        el("div", "modal-hint", T("model.hint", { endpoint: "{endpoint}" })),
-      );
+      box.appendChild(el("h3", null, isEdit ? T("ai.editModelTitle") : T("model.addTitle")));
+      box.appendChild(el("div", "modal-hint", T("model.hint", { endpoint: "{endpoint}" })));
       var l1 = el("label", null, T("model.labelName"));
-      l1.style.cssText =
-        "display:block;font-weight:bold;font-size:0.9rem;margin:8px 0 4px;";
+      l1.style.cssText = "display:block;font-weight:bold;font-size:0.9rem;margin:8px 0 4px;";
       var nameInput = document.createElement("input");
       nameInput.type = "text";
       nameInput.placeholder = T("model.placeholderName");
@@ -3414,8 +2375,7 @@
       apiInput.autocomplete = "off";
       apiInput.spellcheck = false;
       var toolsRow = document.createElement("label");
-      toolsRow.style.cssText =
-        "display:flex;align-items:center;gap:8px;margin:8px 0 4px;font-weight:bold;font-size:0.9rem;cursor:pointer;";
+      toolsRow.style.cssText = "display:flex;align-items:center;gap:8px;margin:8px 0 4px;font-weight:bold;font-size:0.9rem;cursor:pointer;";
       var toolsCb = document.createElement("input");
       toolsCb.type = "checkbox";
       toolsCb.style.cssText = "width:auto;margin:0;";
@@ -3435,10 +2395,7 @@
       if (isEdit) {
         var delBtn = el("button", "link-btn", T("model.deleteBtn"));
         delBtn.type = "button";
-        delBtn.addEventListener("click", function () {
-          closeModal();
-          deleteCustomModel(modelId);
-        });
+        delBtn.addEventListener("click", function () { closeModal(); deleteCustomModel(modelId); });
         leftWrap.appendChild(delBtn);
       }
       var rg = rightGroup();
@@ -3449,22 +2406,10 @@
         var name = nameInput.value.trim();
         var ep = epInput.value.trim();
         var apiModel = apiInput.value.trim();
-        if (!name) {
-          nameInput.focus();
-          return;
-        }
-        if (!ep) {
-          epInput.focus();
-          return;
-        }
-        if (!/^https?:\/\//i.test(ep)) {
-          showAlert(T("model.errFormat"), T("model.errFormatBody"), true);
-          return;
-        }
-        if (!apiModel) {
-          apiInput.focus();
-          return;
-        }
+        if (!name) { nameInput.focus(); return; }
+        if (!ep) { epInput.focus(); return; }
+        if (!/^https?:\/\//i.test(ep)) { showAlert(T("model.errFormat"), T("model.errFormatBody"), true); return; }
+        if (!apiModel) { apiInput.focus(); return; }
         var supportsTools = !!toolsCb.checked;
         var vision = !!visionCb.checked;
         if (isEdit) {
@@ -3480,16 +2425,7 @@
           showAlert(T("model.editOk"), T("model.editOkBody", { name: name }));
         } else {
           var newId = "custom_" + Date.now();
-          aiState.customModels.push({
-            id: newId,
-            name: name,
-            endpoint: ep,
-            apiModel: apiModel,
-            protocol: "openai",
-            builtin: false,
-            supportsTools: supportsTools,
-            vision: vision,
-          });
+          aiState.customModels.push({ id: newId, name: name, endpoint: ep, apiModel: apiModel, protocol: "openai", builtin: false, supportsTools: supportsTools, vision: vision });
           aiState.chats[newId] = [];
           aiState.prompts[newId] = "";
           saveCustomModels();
@@ -3518,50 +2454,33 @@
   function deleteCustomModel(modelId) {
     var conf = aiModelConf(modelId);
     if (!conf || conf.builtin) return;
-    showConfirm(
-      T("model.deleteConfirmTitle"),
-      T("model.deleteConfirmBody", { name: conf.name }),
-      function () {
-        delete aiState.keys[modelId];
-        delete aiState.chats[modelId];
-        delete aiState.prompts[modelId];
-        saveAIKeys();
-        saveAIPrompts();
-        storageRemove(AI_CHAT_STORAGE + "_" + modelId);
-        aiState.customModels = aiState.customModels.filter(function (m) {
-          return m.id !== modelId;
-        });
-        saveCustomModels();
-        if (aiState.currentModel === modelId) {
-          aiState.currentModel = null;
-          saveCurrentModel(null);
-          renderedModelId = null;
-          renderedMsgCount = 0;
-        }
-        buildAIModelMenu();
-        refreshAIModelUI();
-        renderAIMessages();
-        updateAISendBtn();
-        showAlert(
-          T("model.deleteOk"),
-          T("model.deleteOkBody", { name: conf.name }),
-        );
-      },
-      true,
-    );
+    showConfirm(T("model.deleteConfirmTitle"), T("model.deleteConfirmBody", { name: conf.name }), function () {
+      delete aiState.keys[modelId];
+      delete aiState.chats[modelId];
+      delete aiState.prompts[modelId];
+      saveAIKeys();
+      saveAIPrompts();
+      storageRemove(AI_CHAT_STORAGE + "_" + modelId);
+      aiState.customModels = aiState.customModels.filter(function (m) { return m.id !== modelId; });
+      saveCustomModels();
+      if (aiState.currentModel === modelId) {
+        aiState.currentModel = null;
+        saveCurrentModel(null);
+        renderedModelId = null;
+        renderedMsgCount = 0;
+      }
+      buildAIModelMenu();
+      refreshAIModelUI();
+      renderAIMessages();
+      updateAISendBtn();
+      showAlert(T("model.deleteOk"), T("model.deleteOkBody", { name: conf.name }));
+    }, true);
   }
   function testAIModelConnection(model) {
     var conf = aiModelConf(model);
     if (!conf) return;
     var key = aiState.keys[model];
-    if (!key) {
-      showAlert(
-        T("test.noKeyTitle"),
-        T("test.noKeyBody", { model: aiModelName(model) }),
-        true,
-      );
-      return;
-    }
+    if (!key) { showAlert(T("test.noKeyTitle"), T("test.noKeyBody", { model: aiModelName(model) }), true); return; }
     var url, body, headers;
     if (conf.protocol === "gemini") {
       url = conf.endpoint + "?key=" + encodeURIComponent(key);
@@ -3569,47 +2488,20 @@
       headers = { "Content-Type": "application/json" };
     } else {
       url = conf.endpoint;
-      body = {
-        model: conf.apiModel,
-        messages: [{ role: "user", content: "hi" }],
-        max_tokens: 1,
-      };
-      headers = {
-        "Content-Type": "application/json",
-        Authorization: "Bearer " + key,
-      };
+      body = { model: conf.apiModel, messages: [{ role: "user", content: "hi" }], max_tokens: 1 };
+      headers = { "Content-Type": "application/json", Authorization: "Bearer " + key };
     }
     showAlert(T("test.title"), T("test.body", { model: aiModelName(model) }));
     var testAbort = new AbortController();
-    var timeoutId = setTimeout(function () {
-      try {
-        testAbort.abort();
-      } catch (e) {}
-    }, TEST_TIMEOUT_MS);
-    fetch(url, {
-      method: "POST",
-      headers: headers,
-      body: JSON.stringify(body),
-      signal: testAbort.signal,
-    })
+    var timeoutId = setTimeout(function () { try { testAbort.abort(); } catch (e) {} }, TEST_TIMEOUT_MS);
+    fetch(url, { method: "POST", headers: headers, body: JSON.stringify(body), signal: testAbort.signal })
       .then(function (res) {
         clearTimeout(timeoutId);
         return res.text().then(function (t) {
-          if (res.ok) {
-            showAlert(
-              T("test.okTitle"),
-              T("test.okBody", { model: aiModelName(model) }),
-            );
-          } else {
+          if (res.ok) showAlert(T("test.okTitle"), T("test.okBody", { model: aiModelName(model) }));
+          else {
             var msg = "HTTP " + res.status;
-            try {
-              var d = JSON.parse(t);
-              msg =
-                (d.error && d.error.message) ||
-                d.message ||
-                (d.error && d.error.status) ||
-                msg;
-            } catch (e) {}
+            try { var d = JSON.parse(t); msg = (d.error && d.error.message) || d.message || (d.error && d.error.status) || msg; } catch (e) {}
             showAlert(T("test.failTitle"), msg, true);
           }
         });
@@ -3623,26 +2515,12 @@
   }
   function promptAPIKey(model, onSaved) {
     var hasKey = !!aiState.keys[model];
-    showPrompt(
-      T("ai.setKeyTitle", { model: aiModelName(model) }),
-      aiState.keys[model] || "",
-      function (v) {
-        aiState.keys[model] = v;
-        saveAIKeys();
-        if (onSaved) onSaved();
-      },
-      "password",
-      T("ai.keySecurityHint"),
-      hasKey
-        ? {
-            clearText: T("ai.clearKey"),
-            onClear: function () {
-              delete aiState.keys[model];
-              saveAIKeys();
-            },
-          }
-        : null,
-    );
+    showPrompt(T("ai.setKeyTitle", { model: aiModelName(model) }), aiState.keys[model] || "", function (v) {
+      aiState.keys[model] = v;
+      saveAIKeys();
+      if (onSaved) onSaved();
+    }, "password", T("ai.keySecurityHint"),
+    hasKey ? { clearText: T("ai.clearKey"), onClear: function () { delete aiState.keys[model]; saveAIKeys(); } } : null);
   }
   function promptSystemPrompt(model) {
     var existing = aiState.prompts[model] || "";
@@ -3651,28 +2529,14 @@
       hint: T("ai.setPromptHint"),
       value: existing,
       placeholder: T("ai.setPromptPlaceholder"),
-      onOk: function (v) {
-        aiState.prompts[model] = v.trim();
-        saveAIPrompts();
-        buildAIModelMenu();
-        refreshAIModelUI();
-      },
-      onClear: function () {
-        aiState.prompts[model] = "";
-        saveAIPrompts();
-        buildAIModelMenu();
-        refreshAIModelUI();
-      },
+      onOk: function (v) { aiState.prompts[model] = v.trim(); saveAIPrompts(); buildAIModelMenu(); refreshAIModelUI(); },
+      onClear: function () { aiState.prompts[model] = ""; saveAIPrompts(); buildAIModelMenu(); refreshAIModelUI(); },
     });
   }
   function selectAIModel(model) {
     if (!aiModelConf(model)) return;
     if (aiState.busy) {
-      if (aiState.abortController) {
-        try {
-          aiState.abortController.abort();
-        } catch (e) {}
-      }
+      if (aiState.abortController) { try { aiState.abortController.abort(); } catch (e) {} }
       aiState.streamToken += 1;
       aiState.busy = false;
       updateAISendBtn();
@@ -3694,7 +2558,7 @@
     updateAISendBtn();
   }
 
-  function triggerDownload(content, mime, filename) {
+function triggerDownload(content, mime, filename) {
     try {
       var encoded = btoa(unescape(encodeURIComponent(content)));
       var url = "data:" + mime + ";base64," + encoded;
@@ -3715,49 +2579,21 @@
       document.body.appendChild(b);
       b.click();
       document.body.removeChild(b);
-      setTimeout(function () {
-        URL.revokeObjectURL(burl);
-      }, 1000);
+      setTimeout(function () { URL.revokeObjectURL(burl); }, 1000);
     }
   }
   function downloadAIChatMd(model) {
     var chat = aiState.chats[model] || [];
-    if (!chat.length) {
-      showAlert(
-        T("chat.errNoDownloadTitle"),
-        T("chat.errNoDownloadBody", { model: aiModelName(model) }),
-      );
-      return;
-    }
+    if (!chat.length) { showAlert(T("chat.errNoDownloadTitle"), T("chat.errNoDownloadBody", { model: aiModelName(model) })); return; }
     var lines = ["# " + aiModelName(model), ""];
     var sys = aiState.prompts[model];
-    if (sys && sys.trim()) {
-      lines.push("## system");
-      lines.push("");
-      lines.push(sys);
-      lines.push("");
-    }
-    chat.forEach(function (m) {
-      lines.push("## " + m.role);
-      lines.push("");
-      lines.push(m.content || "");
-      lines.push("");
-    });
-    triggerDownload(
-      lines.join("\n"),
-      "text/markdown;charset=utf-8",
-      "ai_chat_" + model + "_" + Date.now() + ".md",
-    );
+    if (sys && sys.trim()) { lines.push("## system"); lines.push(""); lines.push(sys); lines.push(""); }
+    chat.forEach(function (m) { lines.push("## " + m.role); lines.push(""); lines.push(m.content || ""); lines.push(""); });
+    triggerDownload(lines.join("\n"), "text/markdown;charset=utf-8", "ai_chat_" + model + "_" + Date.now() + ".md");
   }
   function downloadAIChatJson(model) {
     var chat = aiState.chats[model] || [];
-    if (!chat.length) {
-      showAlert(
-        T("chat.errNoDownloadTitle"),
-        T("chat.errNoDownloadBody", { model: aiModelName(model) }),
-      );
-      return;
-    }
+    if (!chat.length) { showAlert(T("chat.errNoDownloadTitle"), T("chat.errNoDownloadBody", { model: aiModelName(model) })); return; }
     var sys = aiState.prompts[model];
     var data = {
       schemaVersion: 1,
@@ -3776,76 +2612,41 @@
         return out;
       }),
     };
-    triggerDownload(
-      JSON.stringify(data, null, 2),
-      "application/json;charset=utf-8",
-      "ai_chat_" + model + "_" + Date.now() + ".json",
-    );
+    triggerDownload(JSON.stringify(data, null, 2), "application/json;charset=utf-8", "ai_chat_" + model + "_" + Date.now() + ".json");
   }
   function importAIChatFromFile(file) {
     if (!file) return;
     var reader = new FileReader();
     reader.onload = function (e) {
       var data;
-      try {
-        data = JSON.parse(e.target.result);
-      } catch (err) {
-        showAlert(T("import.failTitle"), T("import.badJson"), true);
-        return;
-      }
-      if (!data || !Array.isArray(data.messages)) {
-        showAlert(T("import.failTitle"), T("import.badShape"), true);
-        return;
-      }
+      try { data = JSON.parse(e.target.result); }
+      catch (err) { showAlert(T("import.failTitle"), T("import.badJson"), true); return; }
+      if (!data || !Array.isArray(data.messages)) { showAlert(T("import.failTitle"), T("import.badShape"), true); return; }
       var targetModel = data.model;
       if (!targetModel || !aiModelConf(targetModel)) {
         var name = String(data.modelName || "").toLowerCase();
         var allModels = getAllModels();
         for (var i = 0; i < allModels.length; i++) {
-          if (allModels[i].name.toLowerCase() === name) {
-            targetModel = allModels[i].id;
-            break;
-          }
+          if (allModels[i].name.toLowerCase() === name) { targetModel = allModels[i].id; break; }
         }
       }
-      if (!targetModel || !aiModelConf(targetModel)) {
-        showAlert(
-          T("import.failTitle"),
-          T("import.unknownModel", { model: data.model || "?" }),
-          true,
-        );
-        return;
-      }
-      var cleaned = data.messages
-        .filter(function (m) {
-          return m && typeof m.role === "string";
-        })
-        .map(function (m) {
-          var out = {
-            role: m.role,
-            content: typeof m.content === "string" ? m.content : "",
-          };
-          if (m.id) out.id = m.id;
-          if (m.model) out.model = m.model;
-          if (m.created) out.created = m.created;
-          if (m.finish_reason) out.finish_reason = m.finish_reason;
-          if (m.usage) out.usage = m.usage;
-          if (m.tool_calls && m.tool_calls.length) out.tool_calls = m.tool_calls;
-          return out;
-        });
-      if (!cleaned.length) {
-        showAlert(T("import.failTitle"), T("import.noMessages"), true);
-        return;
-      }
+      if (!targetModel || !aiModelConf(targetModel)) { showAlert(T("import.failTitle"), T("import.unknownModel", { model: data.model || "?" }), true); return; }
+      var cleaned = data.messages.filter(function (m) { return m && typeof m.role === "string"; }).map(function (m) {
+        var out = { role: m.role, content: typeof m.content === "string" ? m.content : "" };
+        if (m.id) out.id = m.id;
+        if (m.model) out.model = m.model;
+        if (m.created) out.created = m.created;
+        if (m.finish_reason) out.finish_reason = m.finish_reason;
+        if (m.usage) out.usage = m.usage;
+        if (m.tool_calls && m.tool_calls.length) out.tool_calls = m.tool_calls;
+        return out;
+      });
+      if (!cleaned.length) { showAlert(T("import.failTitle"), T("import.noMessages"), true); return; }
       var applyImport = function (mode) {
         var existing = aiState.chats[targetModel] || [];
         if (mode === "replace") aiState.chats[targetModel] = cleaned;
         else aiState.chats[targetModel] = existing.concat(cleaned);
-        if (
-          data.systemPrompt &&
-          String(data.systemPrompt).trim() &&
-          !(aiState.prompts[targetModel] || "").trim()
-        ) {
+        if (data.systemPrompt && String(data.systemPrompt).trim() && !(aiState.prompts[targetModel] || "").trim()) {
           aiState.prompts[targetModel] = String(data.systemPrompt).trim();
           saveAIPrompts();
         }
@@ -3853,44 +2654,16 @@
         if (aiState.currentModel === targetModel) {
           renderedMsgCount = 0;
           renderAIMessages();
-          showAlert(
-            T("import.okTitle"),
-            T("import.okBody", {
-              n: cleaned.length,
-              model: aiModelName(targetModel),
-            }),
-          );
+          showAlert(T("import.okTitle"), T("import.okBody", { n: cleaned.length, model: aiModelName(targetModel) }));
         } else {
-          showConfirm(
-            T("import.okTitle"),
-            T("import.askSwitch", {
-              n: cleaned.length,
-              model: aiModelName(targetModel),
-            }),
-            function () {
-              selectAIModel(targetModel);
-            },
-          );
+          showConfirm(T("import.okTitle"), T("import.askSwitch", { n: cleaned.length, model: aiModelName(targetModel) }), function () { selectAIModel(targetModel); });
         }
       };
       var existing = aiState.chats[targetModel] || [];
-      if (!existing.length) {
-        applyImport("replace");
-        return;
-      }
+      if (!existing.length) { applyImport("replace"); return; }
       openModal(function (box) {
         box.appendChild(el("h3", null, T("import.conflictTitle")));
-        box.appendChild(
-          el(
-            "p",
-            null,
-            T("import.conflictBody", {
-              model: aiModelName(targetModel),
-              existing: existing.length,
-              incoming: cleaned.length,
-            }),
-          ),
-        );
+        box.appendChild(el("p", null, T("import.conflictBody", { model: aiModelName(targetModel), existing: existing.length, incoming: cleaned.length })));
         var actions = el("div", "modal-actions");
         var leftWrap = document.createElement("div");
         var cancelBtn = el("button", "link-btn", T("common.cancel"));
@@ -3898,15 +2671,9 @@
         leftWrap.appendChild(cancelBtn);
         var rg = rightGroup();
         var appendBtn = el("button", "cancel", T("common.append"));
-        appendBtn.addEventListener("click", function () {
-          closeModal();
-          applyImport("append");
-        });
+        appendBtn.addEventListener("click", function () { closeModal(); applyImport("append"); });
         var replaceBtn = el("button", "danger", T("common.replace"));
-        replaceBtn.addEventListener("click", function () {
-          closeModal();
-          applyImport("replace");
-        });
+        replaceBtn.addEventListener("click", function () { closeModal(); applyImport("replace"); });
         rg.appendChild(appendBtn);
         rg.appendChild(replaceBtn);
         actions.appendChild(leftWrap);
@@ -3914,19 +2681,14 @@
         box.appendChild(actions);
       });
     };
-    reader.onerror = function () {
-      showAlert(T("import.failTitle"), T("import.readFail"), true);
-    };
+    reader.onerror = function () { showAlert(T("import.failTitle"), T("import.readFail"), true); };
     reader.readAsText(file);
   }
 
-  function aiSend() {
+function aiSend() {
     if (aiState.busy) return;
     var model = aiState.currentModel;
-    if (!model) {
-      showAlert(T("chat.errNoModelTitle"), T("chat.errNoModelBody"), true);
-      return;
-    }
+    if (!model) { showAlert(T("chat.errNoModelTitle"), T("chat.errNoModelBody"), true); return; }
     var inputEl = $("#aiInput");
     if (!inputEl) return;
     var text = (inputEl.value || "").trim();
@@ -3937,42 +2699,24 @@
   }
   function clearAIChat() {
     var model = aiState.currentModel;
-    if (!model) {
-      showAlert(T("chat.errNoClearTitle"), T("chat.errNoClearNoModel"));
-      return;
-    }
+    if (!model) { showAlert(T("chat.errNoClearTitle"), T("chat.errNoClearNoModel")); return; }
     var chat = aiState.chats[model] || [];
-    if (!chat.length) {
-      showAlert(
-        T("chat.errNoClearTitle"),
-        T("chat.errNoClearNoChat", { model: aiModelName(model) }),
-      );
-      return;
-    }
-    showConfirm(
-      T("chat.clearConfirmTitle"),
-      T("chat.clearConfirmBody", { model: aiModelName(model) }),
-      function () {
-        if (aiState.busy) {
-          if (aiState.abortController) {
-            try {
-              aiState.abortController.abort();
-            } catch (e) {}
-          }
-          aiState.streamToken += 1;
-          aiState.busy = false;
-          updateAISendBtn();
-        }
-        aiState.chats[model] = [];
-        saveAIChats(model);
-        renderedMsgCount = 0;
-        renderAIMessages();
-      },
-      true,
-    );
+    if (!chat.length) { showAlert(T("chat.errNoClearTitle"), T("chat.errNoClearNoChat", { model: aiModelName(model) })); return; }
+    showConfirm(T("chat.clearConfirmTitle"), T("chat.clearConfirmBody", { model: aiModelName(model) }), function () {
+      if (aiState.busy) {
+        if (aiState.abortController) { try { aiState.abortController.abort(); } catch (e) {} }
+        aiState.streamToken += 1;
+        aiState.busy = false;
+        updateAISendBtn();
+      }
+      aiState.chats[model] = [];
+      saveAIChats(model);
+      renderedMsgCount = 0;
+      renderAIMessages();
+    }, true);
   }
 
-  function bindAIAssistant() {
+function bindAIAssistant() {
     renderedModelId = null;
     renderedMsgCount = 0;
     buildAIModelMenu();
@@ -3984,163 +2728,64 @@
     var inputEl = $("#aiInput");
     var sendBtn = $("#aiSendBtn");
     var clearBtn = $("#aiClearBtn");
-    if (modelBtn) {
-      modelBtn.addEventListener("click", function (e) {
-        e.stopPropagation();
-        toggleAIModelMenu();
-      });
-    }
+    if (modelBtn) modelBtn.addEventListener("click", function (e) { e.stopPropagation(); toggleAIModelMenu(); });
     if (modelMenu) {
       modelMenu.addEventListener("click", function (e) {
         var importItem = e.target.closest("[data-import]");
-        if (importItem) {
-          e.stopPropagation();
-          closeAIModelMenu();
-          var importFile = $("#aiImportFile");
-          if (importFile) {
-            importFile.value = "";
-            importFile.click();
-          }
-          return;
-        }
+        if (importItem) { e.stopPropagation(); closeAIModelMenu(); var importFile = $("#aiImportFile"); if (importFile) { importFile.value = ""; importFile.click(); } return; }
         var addBtn = e.target.closest("[data-add]");
-        if (addBtn) {
-          e.stopPropagation();
-          closeAIModelMenu();
-          showModelEditor();
-          return;
-        }
+        if (addBtn) { e.stopPropagation(); closeAIModelMenu(); showModelEditor(); return; }
         var editBtn = e.target.closest("[data-edit]");
-        if (editBtn) {
-          e.stopPropagation();
-          e.preventDefault();
-          closeAIModelMenu();
-          showModelEditor(editBtn.dataset.edit);
-          return;
-        }
+        if (editBtn) { e.stopPropagation(); e.preventDefault(); closeAIModelMenu(); showModelEditor(editBtn.dataset.edit); return; }
         var promptBtn = e.target.closest("[data-prompt]");
-        if (promptBtn) {
-          e.stopPropagation();
-          closeAIModelMenu();
-          promptSystemPrompt(promptBtn.dataset.prompt);
-          return;
-        }
+        if (promptBtn) { e.stopPropagation(); closeAIModelMenu(); promptSystemPrompt(promptBtn.dataset.prompt); return; }
         var keyBtn = e.target.closest("[data-key]");
-        if (keyBtn) {
-          e.stopPropagation();
-          closeAIModelMenu();
-          promptAPIKey(keyBtn.dataset.key);
-          return;
-        }
+        if (keyBtn) { e.stopPropagation(); closeAIModelMenu(); promptAPIKey(keyBtn.dataset.key); return; }
         var testBtn = e.target.closest("[data-test]");
-        if (testBtn) {
-          e.stopPropagation();
-          closeAIModelMenu();
-          testAIModelConnection(testBtn.dataset.test);
-          return;
-        }
+        if (testBtn) { e.stopPropagation(); closeAIModelMenu(); testAIModelConnection(testBtn.dataset.test); return; }
         var mdBtn = e.target.closest("[data-md]");
-        if (mdBtn) {
-          e.stopPropagation();
-          closeAIModelMenu();
-          downloadAIChatMd(mdBtn.dataset.md);
-          return;
-        }
+        if (mdBtn) { e.stopPropagation(); closeAIModelMenu(); downloadAIChatMd(mdBtn.dataset.md); return; }
         var jsonBtn = e.target.closest("[data-json]");
-        if (jsonBtn) {
-          e.stopPropagation();
-          closeAIModelMenu();
-          downloadAIChatJson(jsonBtn.dataset.json);
-          return;
-        }
+        if (jsonBtn) { e.stopPropagation(); closeAIModelMenu(); downloadAIChatJson(jsonBtn.dataset.json); return; }
         var item = e.target.closest(".ai-model-item");
-        if (item) {
-          e.stopPropagation();
-          closeAIModelMenu();
-          selectAIModel(item.dataset.model);
-        }
+        if (item) { e.stopPropagation(); closeAIModelMenu(); selectAIModel(item.dataset.model); }
       });
     }
     if (inputEl) {
-      inputEl.addEventListener("input", function () {
-        this.style.height = "auto";
-        this.style.height = Math.min(this.scrollHeight, 140) + "px";
-      });
+      inputEl.addEventListener("input", function () { this.style.height = "auto"; this.style.height = Math.min(this.scrollHeight, 140) + "px"; });
       inputEl.addEventListener("keydown", function (e) {
-        if (
-          e.key === "Enter" &&
-          !e.shiftKey &&
-          !e.isComposing &&
-          e.keyCode !== 229
-        ) {
-          e.preventDefault();
-          aiSend();
-        }
+        if (e.key === "Enter" && !e.shiftKey && !e.isComposing && e.keyCode !== 229) { e.preventDefault(); aiSend(); }
       });
     }
-    if (sendBtn) {
-      sendBtn.addEventListener("click", function () {
-        aiSend();
-      });
-    }
+    if (sendBtn) sendBtn.addEventListener("click", function () { aiSend(); });
     var importFile = $("#aiImportFile");
-    if (importFile) {
-      importFile.addEventListener("change", function () {
-        var f = this.files && this.files[0];
-        if (!f) return;
-        importAIChatFromFile(f);
-        this.value = "";
-      });
-    }
-    if (clearBtn) {
-      clearBtn.addEventListener("click", function () {
-        clearAIChat();
-      });
-    }
+    if (importFile) importFile.addEventListener("change", function () { var f = this.files && this.files[0]; if (!f) return; importAIChatFromFile(f); this.value = ""; });
+    if (clearBtn) clearBtn.addEventListener("click", function () { clearAIChat(); });
   }
 
-  function render() {
+function render() {
     var path = getRoute();
     appEl.classList.remove("preview-mode");
     appEl.classList.remove("ai-mode");
     appEl.classList.remove("generator-mode");
     if (genState.busy) {
-      if (genState.abortController) {
-        try {
-          genState.abortController.abort();
-        } catch (e) {}
-      }
+      if (genState.abortController) { try { genState.abortController.abort(); } catch (e) {} }
       genState.streamToken += 1;
       genSetBusy(false);
     }
     if (path !== "/" && path !== "" && path !== "/index.html") {
-      if (runner.mode === "page") {
-        runner.mode = "random";
-        runner.pageId = null;
-      }
+      if (runner.mode === "page") { runner.mode = "random"; runner.pageId = null; }
     }
-    if (path === "/" || path === "" || path === "/index.html") {
-      renderRunner();
-      return;
-    }
+    if (path === "/" || path === "" || path === "/index.html") { renderRunner(); return; }
     delete appEl.dataset.currentPageId;
     unlockAppSize();
     destroyEditor();
     appEl.replaceChildren();
     setActiveNav(path);
-    if (path === "/ai") {
-      appEl.classList.add("ai-mode");
-      appEl.appendChild(renderAIAssistant());
-      bindAIAssistant();
-      return;
-    }
-    if (path === "/about") {
-      appEl.appendChild(renderAbout());
-    } else if (path === "/generator") {
-      appEl.classList.add("generator-mode");
-      appEl.appendChild(renderGenerator());
-      bindGenerator();
-    } else {
+    if (path === "/ai") { appEl.classList.add("ai-mode"); appEl.appendChild(renderAIAssistant()); bindAIAssistant(); return; }
+    if (path === "/about") appEl.appendChild(renderAbout());
+    else if (path === "/generator") { appEl.classList.add("generator-mode"); appEl.appendChild(renderGenerator()); bindGenerator(); }
+    else {
       var wrap = document.createElement("div");
       wrap.appendChild(el("h1", null, T("page.notFoundTitle", { path: path })));
       wrap.appendChild(el("p", null, T("page.notFoundBody")));
@@ -4148,7 +2793,7 @@
     }
   }
 
-  function initStatic() {
+function initStatic() {
     modalBackdrop = $("#modalBackdrop");
     modalBox = $("#modalBox");
     sidebarPagesEl = $("#sidebar-pages");
@@ -4157,77 +2802,37 @@
     hamburgerBtn = $("#hamburgerBtn");
     appEl = $("#app");
     sidebarSearchEl = $("#sidebarSearch");
-    var savedTheme = "light";
-    try {
-      savedTheme = localStorage.getItem(THEME_KEY) || "light";
-    } catch (e) {}
-    applyTheme(savedTheme);
+    /* 主题在 boot() 存储就绪后统一应用 */
+
     ["gesturestart", "gesturechange", "gestureend"].forEach(function (type) {
-      document.addEventListener(
-        type,
-        function (e) {
-          e.preventDefault();
-        },
-        { passive: false },
-      );
+      document.addEventListener(type, function (e) { e.preventDefault(); }, { passive: false });
     });
-    document.addEventListener(
-      "touchstart",
-      function (e) {
-        if (e.touches && e.touches.length > 1) e.preventDefault();
-      },
-      { passive: false },
-    );
-    document.addEventListener(
-      "touchmove",
-      function (e) {
-        if (e.touches && e.touches.length > 1) e.preventDefault();
-      },
-      { passive: false },
-    );
+    document.addEventListener("touchstart", function (e) { if (e.touches && e.touches.length > 1) e.preventDefault(); }, { passive: false });
+    document.addEventListener("touchmove", function (e) { if (e.touches && e.touches.length > 1) e.preventDefault(); }, { passive: false });
     var lastTouchEnd = 0;
-    document.addEventListener(
-      "touchend",
-      function (e) {
-        var now = Date.now();
-        if (now - lastTouchEnd <= 300) {
-          var t = e.target;
-          var tag = t && t.tagName ? t.tagName.toLowerCase() : "";
-          if (
-            tag !== "input" &&
-            tag !== "textarea" &&
-            tag !== "button" &&
-            tag !== "select" &&
-            tag !== "a"
-          ) {
-            e.preventDefault();
-          }
-        }
-        lastTouchEnd = now;
-      },
-      { passive: false },
-    );
+    document.addEventListener("touchend", function (e) {
+      var now = Date.now();
+      if (now - lastTouchEnd <= 300) {
+        var t = e.target;
+        var tag = t && t.tagName ? t.tagName.toLowerCase() : "";
+        if (tag !== "input" && tag !== "textarea" && tag !== "button" && tag !== "select" && tag !== "a") e.preventDefault();
+      }
+      lastTouchEnd = now;
+    }, { passive: false });
     document.addEventListener("pointerdown", function (e) {
       var aiMenu = $("#aiModelMenu");
       if (aiMenu && aiMenu.classList.contains("show")) {
         var picker = aiMenu.parentNode;
-        if (picker && !picker.contains(e.target)) {
-          aiMenu.classList.remove("show");
-        }
+        if (picker && !picker.contains(e.target)) aiMenu.classList.remove("show");
       }
       var genMenu = $("#genModelMenu");
       if (genMenu && genMenu.classList.contains("show")) {
         var gPicker = genMenu.parentNode;
-        if (gPicker && !gPicker.contains(e.target)) {
-          closeGenMenu();
-        }
+        if (gPicker && !gPicker.contains(e.target)) closeGenMenu();
       }
-      if (!e.target.closest(".ai-msg")) {
-        $$(".ai-msg.actions-visible").forEach(function (el) {
-          el.classList.remove("actions-visible");
-        });
-      }
+      if (!e.target.closest(".ai-msg")) $$(".ai-msg.actions-visible").forEach(function (el) { el.classList.remove("actions-visible"); });
     });
+    /* --- 点击空白处：收起软键盘 --- */
     document.addEventListener("pointerdown", function (e) {
       var t = e.target;
       if (!t || !t.closest) return;
@@ -4239,65 +2844,38 @@
       var active = document.activeElement;
       if (!active) return;
       var tag = active.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || active.isContentEditable) {
-        active.blur();
-      }
+      if (tag === "INPUT" || tag === "TEXTAREA" || active.isContentEditable) active.blur();
     });
     if (sidebarSearchEl) {
       sidebarSearchEl.addEventListener("input", function () {
         var v = this.value || "";
         sidebarSearchKeyword = v;
         if (sidebarSearchTimer) clearTimeout(sidebarSearchTimer);
-        sidebarSearchTimer = setTimeout(function () {
-          sidebarSearchTimer = null;
-          updateSidebarPages();
-        }, SEARCH_DEBOUNCE_MS);
+        sidebarSearchTimer = setTimeout(function () { sidebarSearchTimer = null; updateSidebarPages(); }, SEARCH_DEBOUNCE_MS);
       });
       sidebarSearchEl.addEventListener("keydown", function (e) {
         if (e.key === "Escape") {
-          if (this.value) {
-            this.value = "";
-            sidebarSearchKeyword = "";
-            updateSidebarPages();
-          }
+          if (this.value) { this.value = ""; sidebarSearchKeyword = ""; updateSidebarPages(); }
           e.stopPropagation();
-        } else {
-          e.stopPropagation();
-        }
+        } else e.stopPropagation();
       });
-      sidebarSearchEl.addEventListener("click", function (e) {
-        e.stopPropagation();
-      });
+      sidebarSearchEl.addEventListener("click", function (e) { e.stopPropagation(); });
     }
     hamburgerBtn.addEventListener("click", openSidebar);
     overlayEl.addEventListener("click", closeSidebar);
-    modalBackdrop.addEventListener("click", function (e) {
-      if (e.target === modalBackdrop) closeModal();
-    });
+    modalBackdrop.addEventListener("click", function (e) { if (e.target === modalBackdrop) closeModal(); });
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape") {
-        if (modalBackdrop.classList.contains("show")) {
-          closeModal();
-        } else if (sidebarEl.classList.contains("open")) {
-          closeSidebar();
-        } else if (runner.mode === "page" && getRoute() === "/") {
-          setRandom();
-        }
+        if (modalBackdrop.classList.contains("show")) closeModal();
+        else if (sidebarEl.classList.contains("open")) closeSidebar();
+        else if (runner.mode === "page" && getRoute() === "/") setRandom();
       }
     });
     var exportZipBtn = $("#exportZipSidebar");
     if (exportZipBtn) {
-      var openSettings = function () {
-        closeSidebar();
-        showSettingsDialog();
-      };
+      var openSettings = function () { closeSidebar(); showSettingsDialog(); };
       exportZipBtn.addEventListener("click", openSettings);
-      exportZipBtn.addEventListener("keydown", function (e) {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          openSettings();
-        }
-      });
+      exportZipBtn.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openSettings(); } });
     }
     var themeBtn = $("#themeToggleSidebar");
     if (themeBtn) themeBtn.addEventListener("click", toggleTheme);
@@ -4305,67 +2883,45 @@
       var go = function () {
         var path = el.getAttribute("data-path");
         closeSidebar();
-        if (path === "#/") {
-          setRandom();
-          return;
-        }
+        if (path === "#/") { setRandom(); return; }
         if (location.hash === path) render();
         else location.hash = path;
       };
       el.addEventListener("click", go);
-      el.addEventListener("keydown", function (e) {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          go();
-        }
-      });
+      el.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } });
     });
     sidebarPagesEl.addEventListener("click", function (e) {
       var btn = e.target.closest("[data-action]");
       if (!btn) return;
       var id = Number(btn.dataset.id);
       var action = btn.dataset.action;
-      if (action === "open") {
-        closeSidebar();
-        runPage(id);
-      } else if (action === "rename") {
-        renamePage(id);
-      } else if (action === "delete") {
-        deletePage(id);
-      }
+      if (action === "open") { closeSidebar(); runPage(id); }
+      else if (action === "rename") renamePage(id);
+      else if (action === "delete") deletePage(id);
     });
-    window.addEventListener("hashchange", function () {
-      render();
-      closeSidebar();
-    });
-    window.addEventListener("orientationchange", function () {
-      if (editor) editor.refresh();
-    });
+    window.addEventListener("hashchange", function () { render(); closeSidebar(); });
+    window.addEventListener("orientationchange", function () { if (editor) editor.refresh(); });
     var resizeTimer = null;
     window.addEventListener("resize", function () {
-      if (appEl.classList.contains("preview-mode")) {
-        appEl.style.width = window.innerWidth + "px";
-        appEl.style.height = window.innerHeight + "px";
-      }
+      if (appEl.classList.contains("preview-mode")) { appEl.style.width = window.innerWidth + "px"; appEl.style.height = window.innerHeight + "px"; }
       if (resizeTimer) clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(function () {
-        if (editor) editor.refresh();
-      }, 100);
+      resizeTimer = setTimeout(function () { if (editor) editor.refresh(); }, 100);
     });
   }
+
+  /* --- 设置弹窗 --- */
   function showSettingsDialog() {
     openModal(function (box) {
+      /* 标题行：标题 + 右上角关闭 */
       var header = el("div", "settings-header");
       header.appendChild(el("h3", null, T("settings.title")));
-      var closeTopBtn = el(
-        "button",
-        "settings-close-btn",
-        T("common.close"),
-      );
+      var closeTopBtn = el("button", "settings-close-btn", T("common.close"));
       closeTopBtn.type = "button";
       closeTopBtn.addEventListener("click", closeModal);
       header.appendChild(closeTopBtn);
       box.appendChild(header);
+
+      /* ① 语言 */
       var langSec = el("section", "settings-section");
       langSec.appendChild(el("h4", null, T("settings.langSection")));
       var langGroup = el("div", "lang-group");
@@ -4378,6 +2934,8 @@
       });
       langSec.appendChild(langGroup);
       box.appendChild(langSec);
+
+      /* ② 参数 */
       var paramSec = el("section", "settings-section");
       paramSec.appendChild(el("h4", null, T("settings.paramsSection")));
       var params = [
@@ -4394,26 +2952,17 @@
         var input = document.createElement("input");
         input.type = "number";
         input.dataset.key = p.key;
-        input.value =
-          savedSettings && typeof savedSettings[p.key] === "number"
-            ? savedSettings[p.key]
-            : DEFAULT_SETTINGS[p.key];
+        input.value = savedSettings && typeof savedSettings[p.key] === "number" ? savedSettings[p.key] : DEFAULT_SETTINGS[p.key];
         row.appendChild(input);
         paramSec.appendChild(row);
       });
       var paramActions = el("div", "settings-param-actions");
-      var restoreBtn = el(
-        "button",
-        "settings-restore-btn",
-        T("settings.restoreDefault"),
-      );
+      var restoreBtn = el("button", "settings-restore-btn", T("settings.restoreDefault"));
       restoreBtn.type = "button";
       restoreBtn.addEventListener("click", function () {
         $$(".settings-param-row input", box).forEach(function (inp) {
           var k = inp.dataset.key;
-          if (k && typeof DEFAULT_SETTINGS[k] === "number") {
-            inp.value = DEFAULT_SETTINGS[k];
-          }
+          if (k && typeof DEFAULT_SETTINGS[k] === "number") inp.value = DEFAULT_SETTINGS[k];
         });
       });
       var saveBtn = el("button", "settings-save-btn", T("settings.saveBtn"));
@@ -4432,16 +2981,10 @@
           var k = inp.dataset.key;
           if (!k || !ranges[k]) return;
           var v = Number(inp.value);
-          if (isNaN(v) || v < ranges[k][0] || v > ranges[k][1]) {
-            ok = false;
-            return;
-          }
+          if (isNaN(v) || v < ranges[k][0] || v > ranges[k][1]) { ok = false; return; }
           draft[k] = v;
         });
-        if (!ok) {
-          flashTip(saveBtn, T("settings.invalidRange"));
-          return;
-        }
+        if (!ok) { flashTip(saveBtn, T("settings.invalidRange")); return; }
         saveSettings(draft);
         flashTip(saveBtn, T("settings.saved"));
       });
@@ -4449,6 +2992,8 @@
       paramActions.appendChild(saveBtn);
       paramSec.appendChild(paramActions);
       box.appendChild(paramSec);
+
+      /* ③ 存储管理 */
       var storageSec = el("section", "settings-section");
       storageSec.appendChild(el("h4", null, T("settings.storageSection")));
       var list = el("div", "storage-list");
@@ -4464,10 +3009,7 @@
       exportBtn.type = "button";
       exportBtn.addEventListener("click", function () {
         var pages = getPages();
-        if (!pages.length) {
-          flashTip(exportBtn, T("page.exportEmptyTitle"));
-          return;
-        }
+        if (!pages.length) { flashTip(exportBtn, T("page.exportEmptyTitle")); return; }
         exportZip();
       });
       storageActions.appendChild(packBtn);
@@ -4480,16 +3022,13 @@
       importFile.style.display = "none";
       storageSec.appendChild(importFile);
       box.appendChild(storageSec);
+
       var items = _storageItems();
       var cbs = [];
       function refreshTotal() {
         var total = 0;
-        items.forEach(function (it, i) {
-          if (cbs[i] && cbs[i].checked) total += _itemSizeKB(it);
-        });
-        totalEl.textContent = T("settings.totalLabel", {
-          kb: Math.round(total * 10) / 10,
-        });
+        items.forEach(function (it, i) { if (cbs[i] && cbs[i].checked) total += _itemSizeKB(it); });
+        totalEl.textContent = T("settings.totalLabel", { kb: Math.round(total * 10) / 10 });
       }
       function renderList() {
         list.replaceChildren();
@@ -4503,22 +3042,15 @@
           cbs.push(cb);
           row.appendChild(cb);
           row.appendChild(el("span", "storage-name", T(item.nameKey)));
-          row.appendChild(
-            el("span", "storage-size", _itemSizeKB(item) + " KB"),
-          );
+          row.appendChild(el("span", "storage-size", _itemSizeKB(item) + " KB"));
           var delBtn = el("button", "storage-del-btn", "🗑");
           delBtn.type = "button";
           delBtn.title = T("common.delete");
           delBtn.addEventListener("click", function () {
-            showConfirm(
-              T("settings.deleteConfirmTitle"),
-              T("settings.deleteConfirmBody", { name: T(item.nameKey) }),
-              function () {
-                _deleteItem(item);
-                renderList();
-              },
-              true,
-            );
+            showConfirm(T("settings.deleteConfirmTitle"), T("settings.deleteConfirmBody", { name: T(item.nameKey) }), function () {
+              _deleteItem(item);
+              renderList();
+            }, true);
           });
           row.appendChild(delBtn);
           list.appendChild(row);
@@ -4526,6 +3058,8 @@
         refreshTotal();
       }
       renderList();
+
+      /* --- 事件绑定 --- */
       $$(".lang-btn", langGroup).forEach(function (btn) {
         btn.addEventListener("click", function () {
           var code = btn.dataset.lang;
@@ -4534,59 +3068,36 @@
           storageSet(LANG_KEY, code);
           _i18nCache = null;
           applyI18nToStatic();
-          updateSidebarPages();
           closeModal();
           render();
           showSettingsDialog();
         });
       });
       packBtn.addEventListener("click", function () {
-        var selected = items.filter(function (_, i) {
-          return cbs[i] && cbs[i].checked;
-        });
+        var selected = items.filter(function (_, i) { return cbs[i] && cbs[i].checked; });
         _packSelected(selected, packBtn);
       });
-      importBtn.addEventListener("click", function () {
-        importFile.value = "";
-        importFile.click();
-      });
+      importBtn.addEventListener("click", function () { importFile.value = ""; importFile.click(); });
       importFile.addEventListener("change", function () {
         var file = this.files && this.files[0];
         if (!file) return;
-        _parseBackupFile(file)
-          .then(function (parsed) {
-            var preview = _previewImport(parsed);
-            if (!preview.length) {
-              showAlert(
-                T("settings.importFail"),
-                T("settings.importBadFormat"),
-                true,
-              );
-              return;
-            }
-            closeModal();
-            _showImportDialog(parsed, preview);
-          })
-          .catch(function (err) {
-            showAlert(
-              T("settings.importFail"),
-              String((err && err.message) || err),
-              true,
-            );
-          });
+        _parseBackupFile(file).then(function (parsed) {
+          var preview = _previewImport(parsed);
+          if (!preview.length) { showAlert(T("settings.importFail"), T("settings.importBadFormat"), true); return; }
+          closeModal();
+          _showImportDialog(parsed, preview);
+        }).catch(function (err) {
+          showAlert(T("settings.importFail"), String((err && err.message) || err), true);
+        });
       });
     });
   }
+
+  /* --- 导入确认弹窗 --- */
   function _showImportDialog(parsed, preview) {
     openModal(function (box) {
       box.appendChild(el("h3", null, T("settings.importTitle")));
-      box.appendChild(
-        el(
-          "div",
-          "modal-hint",
-          T("settings.importSource", { name: parsed.source }),
-        ),
-      );
+      box.appendChild(el("div", "modal-hint", T("settings.importSource", { name: parsed.source })));
       var list = el("div", "import-list");
       var cbs = [];
       preview.forEach(function (item) {
@@ -4598,19 +3109,13 @@
         cbs.push(cb);
         row.appendChild(cb);
         row.appendChild(el("span", "import-name", T(item.nameKey)));
-        var countText =
-          item.count > 0
-            ? T("settings.importCount", { n: item.count })
-            : "";
+        var countText = item.count > 0 ? T("settings.importCount", { n: item.count }) : "";
         if (item.extra) countText += "（" + item.extra + "）";
         row.appendChild(el("span", "import-count", countText));
         list.appendChild(row);
       });
       box.appendChild(list);
-
-      box.appendChild(
-        el("div", "modal-hint", T("settings.importConflictHint")),
-      );
+      box.appendChild(el("div", "modal-hint", T("settings.importConflictHint")));
       var actions = el("div", "modal-actions");
       var leftWrap = document.createElement("div");
       var cancel = el("button", "link-btn", T("common.cancel"));
@@ -4619,23 +3124,15 @@
       var rg = rightGroup();
       var ok = el("button", null, T("settings.importConfirm"));
       ok.addEventListener("click", function () {
-        var selectedIds = cbs
-          .filter(function (cb) {
-            return cb.checked;
-          })
-          .map(function (cb) {
-            return cb.dataset.id;
-          });
-        if (!selectedIds.length) {
-          showAlert(T("settings.packNoSelection"), "", true);
-          return;
-        }
+        var selectedIds = cbs.filter(function (cb) { return cb.checked; }).map(function (cb) { return cb.dataset.id; });
+        if (!selectedIds.length) { showAlert(T("settings.packNoSelection"), "", true); return; }
         _applyImport(parsed, selectedIds);
         closeModal();
         LANG = detectLang();
         applyTheme(storageGet(THEME_KEY, "light"));
         loadSettings();
         initAIState();
+        _i18nCache = null;
         applyI18nToStatic();
         updateSidebarPages();
         render();
@@ -4648,35 +3145,32 @@
     });
   }
 
-  function loadContent() {
+function loadContent() {
     return fetch(CONTENT_URL, { cache: "no-cache" })
-      .then(function (r) {
-        if (!r.ok) throw new Error("HTTP " + r.status);
-        return r.json();
-      })
+      .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
       .then(function (json) {
         CONTENT = json || {};
-        I18N = json.i18n || {};
+        I18N = CONTENT.i18n || {};
         AI_MODELS = (CONTENT.models || []).slice();
         LANG = detectLang();
       });
   }
   function boot() {
     initStatic();
-    LANG = detectLang();
-    applyTheme(storageGet(THEME_KEY, "light"));
-    loadSettings();
-    initAIState();
-    applyI18nToStatic();
-    updateSidebarPages();
-    render();
+    return initStorage().then(function () {
+      LANG = detectLang();
+      applyTheme(storageGet(THEME_KEY, "light"));
+      loadSettings();
+      initAIState();
+      applyI18nToStatic();
+      updateSidebarPages();
+      render();
+    });
   }
   loadContent()
-    .then(function () {
-      boot();
-    })
+    .then(function () { return boot(); })
     .catch(function (e) {
       console.warn("[content.json] 加载失败，使用默认文案：", e);
-      boot();
+      return boot();
     });
 })();
