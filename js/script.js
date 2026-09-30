@@ -2909,10 +2909,8 @@ function initStatic() {
     });
   }
 
-  /* --- 设置弹窗 --- */
   function showSettingsDialog() {
     openModal(function (box) {
-      /* 标题行：标题 + 右上角关闭 */
       var header = el("div", "settings-header");
       header.appendChild(el("h3", null, T("settings.title")));
       var closeTopBtn = el("button", "settings-close-btn", T("common.close"));
@@ -2921,7 +2919,6 @@ function initStatic() {
       header.appendChild(closeTopBtn);
       box.appendChild(header);
 
-      /* ① 语言 */
       var langSec = el("section", "settings-section");
       langSec.appendChild(el("h4", null, T("settings.langSection")));
       var langGroup = el("div", "lang-group");
@@ -2935,7 +2932,6 @@ function initStatic() {
       langSec.appendChild(langGroup);
       box.appendChild(langSec);
 
-      /* ② 参数 */
       var paramSec = el("section", "settings-section");
       paramSec.appendChild(el("h4", null, T("settings.paramsSection")));
       var params = [
@@ -2993,7 +2989,6 @@ function initStatic() {
       paramSec.appendChild(paramActions);
       box.appendChild(paramSec);
 
-      /* ③ 存储管理 */
       var storageSec = el("section", "settings-section");
       storageSec.appendChild(el("h4", null, T("settings.storageSection")));
       var list = el("div", "storage-list");
@@ -3059,7 +3054,6 @@ function initStatic() {
       }
       renderList();
 
-      /* --- 事件绑定 --- */
       $$(".lang-btn", langGroup).forEach(function (btn) {
         btn.addEventListener("click", function () {
           var code = btn.dataset.lang;
@@ -3068,6 +3062,7 @@ function initStatic() {
           storageSet(LANG_KEY, code);
           _i18nCache = null;
           applyI18nToStatic();
+          updateSidebarPages();
           closeModal();
           render();
           showSettingsDialog();
@@ -3093,7 +3088,6 @@ function initStatic() {
     });
   }
 
-  /* --- 导入确认弹窗 --- */
   function _showImportDialog(parsed, preview) {
     openModal(function (box) {
       box.appendChild(el("h3", null, T("settings.importTitle")));
