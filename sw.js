@@ -1,4 +1,4 @@
-var CACHE_VERSION = "1.01";
+var CACHE_VERSION = "1.03";
 var CACHE_NAME = "randomArt-v" + CACHE_VERSION;
 var PRECACHE_URLS = [
   "./",
