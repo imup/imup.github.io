@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="zh-CN">
+  <!-- ============================================================
+       H1 头部资源
+       作用：meta / CodeMirror CSS / 主题 CSS / style.css / manifest / JSZip
+       机制：CDN 引用（由 SW 缓存）；viewport 禁止缩放
+       ============================================================ -->
+  <head>
+    <!-- 字符编码 -->
+    <meta charset="UTF-8" />
+
+    <!-- 视口：禁止缩放，覆盖安全区 -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+
+    <!-- 页面标题（由 i18n 动态替换） -->
+    <title>randomArt可视化创意编程</title>
+
+    <!-- CodeMirror 基础样式 -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"
+    />
+
+    <!-- CodeMirror 亮色主题：duotone-light -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/duotone-light.min.css"
+      id="cm-theme-light"
+    />
+
+    <!-- CodeMirror 暗色主题：dracula（默认禁用，切主题时启用） -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css"
+      id="cm-theme-dark"
+      disabled
+    />
+
+    <!-- 主样式表：分块 C1–C17 -->
+    <link rel="stylesheet" href="css/style.css" />
+
+    <!-- PWA 清单 -->
+    <link rel="manifest" href="manifest.json" />
+
+    <!-- JSZip：ZIP 打包（作品导出 / 存储备份） -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  </head>
+
+  <body>
+    <!-- ============================================================
+         H2 汉堡按钮
+         作用：左上角侧边栏开关
+         机制：fixed 定位，aria-label 由 i18n 注入
+         ============================================================ -->
+    <button
+      class="hamburger-btn"
+      id="hamburgerBtn"
+      data-i18n-aria="nav.openMenu"
+      aria-expanded="false"
+      aria-controls="sidebar"
+    >
+      ☰
+    </button>
+
+    <!-- ============================================================
+         H3 侧边栏导航
+         作用：左侧抽屉，含搜索 / 导航项 / 我的脚本 / 页脚
+         机制：fixed 抽屉，transform 平移；页脚两个按钮（设置 / 主题）
+         ============================================================ -->
+    <nav class="sidebar" id="sidebar" aria-label="主导航">
+      <!-- 搜索框：过滤作品列表 -->
+      <div class="sidebar-search">
+        <input
+          type="search"
+          id="sidebarSearch"
+          placeholder="搜索脚本..."
+          autocomplete="off"
+          aria-label="搜索脚本"
+          data-i18n-placeholder="nav.searchPlaceholder"
+        />
+      </div>
+
+      <!-- 导航项：首页 -->
+      <div
+        class="nav-item"
+        data-path="#/"
+        role="button"
+        tabindex="0"
+        data-i18n="nav.home"
+      >
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span>首页</span>
+      </div>
+
+      <!-- 导航项：关于 -->
+      <div
+        class="nav-item"
+        data-path="#/about"
+        role="button"
+        tabindex="0"
+        data-i18n="nav.about"
+      >
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        <span>关于</span>
+      </div>
+
+      <!-- 导航项：AI 助手 -->
+      <div
+        class="nav-item"
+        data-path="#/ai"
+        role="button"
+        tabindex="0"
+        data-i18n="nav.ai"
+      >
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="16" r="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        <span>AI助手</span>
+      </div>
+
+      <!-- 导航项：编写脚本 -->
+      <div
+        class="nav-item"
+        data-path="#/generator"
+        role="button"
+        tabindex="0"
+        data-i18n="nav.generator"
+      >
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        <span>编写脚本</span>
+      </div>
+
+      <!-- 分组分割线 -->
+      <div class="divider"></div>
+
+      <!-- 分组标题：我的脚本 -->
+      <div class="section-title" data-i18n="nav.myScripts">我的脚本</div>
+
+      <!-- 作品列表容器（由 JS 动态渲染） -->
+      <div id="sidebar-pages">
+        <div class="no-pages" data-i18n="nav.noScripts">暂无编写的脚本</div>
+      </div>
+
+      <!-- 页脚：设置 / 切换主题 -->
+      <div class="sidebar-footer">
+        <div class="footer-row">
+          <!-- 设置按钮：按需加载 settings.js 后打开弹窗 -->
+          <div
+            class="nav-item footer-item"
+            id="exportZipSidebar"
+            role="button"
+            tabindex="0"
+            data-i18n="nav.settings"
+          >
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+            <span>设置</span>
+          </div>
+
+          <!-- 页脚竖线分隔 -->
+          <div class="footer-vdivider"></div>
+
+          <!-- 主题切换按钮：亮 / 暗 -->
+          <div
+            class="nav-item footer-item"
+            id="themeToggleSidebar"
+            role="button"
+            tabindex="0"
+            data-i18n="nav.themeToggle"
+          >
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            <span>切换主题</span>
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    <!-- ============================================================
+         H4 主容器与模态框
+         作用：侧边栏遮罩 / 主内容容器 / 模态框容器
+         机制：#app 由 JS 动态填充；模态框内容由 JS 注入
+         ============================================================ -->
+    <!-- 侧边栏遮罩：点击关闭侧边栏 -->
+    <div class="overlay" id="overlay"></div>
+
+    <!-- 主内容容器：由 render() 动态渲染 -->
+    <main id="app" data-i18n="site.loading">加载中…</main>
+
+    <!-- 模态框：backdrop + 内容容器 -->
+    <div
+      class="modal-backdrop"
+      id="modalBackdrop"
+      role="dialog"
+      aria-modal="true"
+    >
+      <div class="modal" id="modalBox"></div>
+    </div>
+
+    <!-- ============================================================
+         H5 脚本引入
+         作用：CodeMirror 库 + 拆分后的模块 JS
+         机制：按依赖顺序加载（core → storage → ai → tools → 业务 → app）
+               settings.js 不在此引入，由 app.js 按需加载
+         ============================================================ -->
+    <!-- CodeMirror 核心 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+
+    <!-- CodeMirror JavaScript 模式 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+
+    <!-- 1. 核心层：常量 / 状态 / i18n / DOM 工具 / 模态框 -->
+    <script src="js/core.js"></script>
+
+    <!-- 2. 存储层：IndexedDB + localStorage + memory 兜底 -->
+    <script src="js/storage.js"></script>
+
+    <!-- 3. AI 流式请求核心 -->
+    <script src="js/ai.js"></script>
+
+    <!-- 4. 工具注册表 + 执行 -->
+    <script src="js/tools.js"></script>
+
+    <!-- 5. 首页 + 侧边栏 + 主题 + 共享路由工具 -->
+    <script src="js/home.js"></script>
+
+    <!-- 6. 生成器页 -->
+    <script src="js/generator.js"></script>
+
+    <!-- 7. AI 聊天页 -->
+    <script src="js/ai-chat.js"></script>
+
+    <!-- 8. 启动（最后，调用 boot） -->
+    <script src="js/app.js"></script>
+
+    <!-- ============================================================
+         H6 Service Worker 注册
+         作用：PWA 离线缓存
+         机制：页面加载完成后注册；失败仅警告，不阻塞
+         ============================================================ -->
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", function () {
+          navigator.serviceWorker
+            .register("./sw.js")
+            .catch(function (e) {
+              console.warn("[SW] 注册失败：", e);
+            });
+        });
+      }
+    </script>
+  </body>
+</html>
