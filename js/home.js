@@ -1,7 +1,7 @@
 /* ============================================================
    home.js —— 首页运行器 + 侧边栏 + 主题 + 共享路由
    作用：首页随机/指定/临时运行 + 侧边栏 + 主题切换 + 路由工具
-   机制：iframe srcdoc 加载 p5 脚本；A 版含 sessionImages 注入
+   机制：iframe srcdoc 加载 p5 脚本；iframe 代理转发事件
    加载：依赖 core.js + storage.js
    ============================================================ */
 (function (App) {
@@ -334,7 +334,7 @@
   /* ============================================================
      J15 首页运行器
      作用：首页根据 runner.mode 渲染；三种模式切换
-     机制：A 版 page 模式含 sessionImages 注入（供预览显示图）
+     机制：random 随机脚本 / page 指定作品 / temp 临时 HTML
      ============================================================ */
   App.renderRunner = function () {
     App.destroyEditor();
@@ -352,13 +352,6 @@
       });
       if (page) {
         html = page.html;
-        /* A 版：本次会话有内存图则注入 */
-        if (App.state.sessionImages[page.id]) {
-          html = App.injectSessionImage(
-            html,
-            App.state.sessionImages[page.id],
-          );
-        }
         appEl.dataset.currentPageId = String(page.id);
       } else {
         runner.mode = "random";
@@ -433,11 +426,7 @@
         });
         App.savePages(list);
         App.updateSidebarPages();
-        if (App.state.sessionImages[id]) delete App.state.sessionImages[id];
-        if (
-          App.state.runner.mode === "page" &&
-          App.state.runner.pageId === id
-        ) {
+        if (App.state.runner.mode === "page" && App.state.runner.pageId === id) {
           App.state.runner.mode = "random";
           App.state.runner.pageId = null;
         }
