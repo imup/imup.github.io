@@ -1,7 +1,7 @@
 /* ============================================================
    generator.js —— 生成器页
    作用：编辑器页 DOM + AI 面板 + 图片压缩 + AI 循环
-   机制：CodeMirror 编辑器；AI 工具调用多轮循环；图片 1024 压缩
+   机制：A 版保存时不嵌图；sessionImages 供预览用
    加载：依赖 core.js + storage.js + ai.js + tools.js
    ============================================================ */
 (function (App) {
@@ -12,8 +12,9 @@
      J10 页面生成与导出
      作用：作品 HTML 生成 + 单文件下载 + ZIP 打包
      机制：data URL 优先（iOS Safari 直接落盘）；失败回退 blob
+           A 版含 injectSessionImage（本次会话预览用）
      ============================================================ */
-  /* 生成作品 HTML：含 p5 CDN + imageUrl 声明 + 用户脚本（B 版嵌图） */
+  /* 生成作品 HTML：含 p5 CDN + imageUrl 声明 + 用户脚本 */
   App.generatePageHtml = function (title, script, imageDataUrl, hasImage) {
     var safeTitle = App.escapeHtml(
       (title || App.T("generator.untitledPage")).slice(
@@ -61,9 +62,21 @@
       "    " +
       safeScript +
       "\n" +
-      "  \x3C/script>\n" +
+      "  \x3Cscript>\n" +
       "</body>\n" +
       "</html>"
+    ).replace("</body>", "  \x3C/script>\n</body>");
+  };
+  /* A 版特有：内存注入 */
+  /* 把 HTML 里的 imageUrl = null 替换为真实 dataUrl（本次会话预览用） */
+  App.injectSessionImage = function (html, dataUrl) {
+    if (!html || !dataUrl) return html;
+    var escaped = String(dataUrl)
+      .replace(/\\/g, "\\\\")
+      .replace(/"/g, '\\"');
+    return html.replace(
+      /var imageUrl = (?:null|"[^"]*");/,
+      'var imageUrl = "' + escaped + '";',
     );
   };
   /* 下载单 HTML：data URL 优先（iOS 可直接落盘） */
@@ -150,7 +163,7 @@
      J17 生成器页（部分）
      作用：DOM 构建 + AI 面板
      ============================================================ */
-  /* 生成器页 DOM：菜单栏 + 编辑器 + AI 面板 + 图片 + 标题提交 + 结果区 */
+  /* 生成器页 DOM */
   App.renderGenerator = function () {
     var wrap = App.el("div", "generator-page");
 
@@ -220,7 +233,7 @@
     wrap.appendChild(result);
     return wrap;
   };
-  /* 生成器 AI 面板：状态区 + 输入条 */
+  /* 生成器 AI 面板 */
   App.buildGeneratorAIPanel = function () {
     var frag = document.createDocumentFragment();
     var bar = App.el("div", "gen-ai-bar gen-ai-bar-bare");
@@ -313,7 +326,6 @@
      J21 生成器 AI 循环
      作用：AI 生成代码的主流程（多轮工具调用）
      机制：请求 → 提取 tool_calls → 逐个执行 → 回填 → 循环
-           超时 / 主动取消 / 其他错误分别处理
      ============================================================ */
   /* 按意图写入编辑器 */
   App.genApplyCode = function (code, intent) {
@@ -628,7 +640,7 @@
   /* ============================================================
      J22 生成器主体
      作用：编辑器初始化 + 图片压缩 + 提交作品
-     机制：上传即压缩；提交时嵌图（B 版）；CodeMirror 初始化
+     机制：A 版上传即压缩；提交时不嵌图；sessionImages 供预览
      ============================================================ */
   /* 图片压缩：长边 ≤ maxDim，JPEG 质量 quality */
   App.compressImage = function (dataUrl, maxDim, quality, callback) {
@@ -795,11 +807,11 @@
         return;
       }
       var imageDataUrl = App.state.uploadedImageDataUrl || "";
-      /* B 版：保存时嵌入图片 */
+      /* A 版：保存时不嵌图，只加注解 */
       var htmlContent = App.generatePageHtml(
         title,
         script,
-        imageDataUrl,
+        "",
         !!imageDataUrl,
       );
       var newId = Date.now() + Math.floor(Math.random() * 1000);
@@ -811,6 +823,14 @@
         timestamp: new Date().toISOString(),
       });
       if (!App.savePages(pages)) return;
+      /* A 版：内存保留图片供本次会话预览 */
+      if (imageDataUrl) {
+        App.state.sessionImages[newId] = imageDataUrl;
+        var ids = Object.keys(App.state.sessionImages);
+        if (ids.length > App.MAX_SESSION_IMAGES) {
+          delete App.state.sessionImages[ids[0]];
+        }
+      }
       App.updateSidebarPages();
       /* 成功弹窗 */
       App.openModal(function (box) {
