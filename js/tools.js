@@ -127,7 +127,7 @@
         displayText: App.T("gen.toolPalette", { n: colors.length }),
       };
     },
-    /* 保存当前编辑器内容为作品（A 版：不嵌图，只加注解） */
+    /* 保存当前编辑器内容为作品（B 版：嵌图） */
     save_page: function (args) {
       var title =
         args && typeof args.title === "string" && args.title.trim()
@@ -141,8 +141,12 @@
         return { ok: false, text: "编辑器为空，无法保存" };
       }
       var imageDataUrl = App.state.uploadedImageDataUrl || "";
-      /* A 版：不嵌图，只加注解 */
-      var html = App.generatePageHtml(title, script, "", !!imageDataUrl);
+      var html = App.generatePageHtml(
+        title,
+        script,
+        imageDataUrl,
+        !!imageDataUrl,
+      );
       var newId = Date.now() + Math.floor(Math.random() * 1000);
       var pages = App.getPages();
       pages.push({
@@ -152,14 +156,6 @@
         timestamp: new Date().toISOString(),
       });
       if (App.savePages(pages)) {
-        /* 内存保留图片供本次会话预览 */
-        if (imageDataUrl) {
-          App.state.sessionImages[newId] = imageDataUrl;
-          var ids = Object.keys(App.state.sessionImages);
-          if (ids.length > App.MAX_SESSION_IMAGES) {
-            delete App.state.sessionImages[ids[0]];
-          }
-        }
         App.updateSidebarPages();
         return { ok: true, text: App.T("gen.toolSaved", { title: title }) };
       }
