@@ -1,19 +1,19 @@
 /* ============================================================
-   ai.js —— AI 请求核心
-   作用：双协议 SSE 流式请求 + 结构化累积
-   机制：按 conf.protocol 分支构造请求；统一 SSE 解析
-         超时统一包装为 TimeoutError
-   加载：依赖 core.js
+   ai.js —— AI请求核心
+   作用：双协议SSE流式请求+结构化累积
+   机制：按conf.protocol分支构造请求；统一SSE解析
+         超时统一包装为TimeoutError
+   加载：依赖core.js
    ============================================================ */
 (function (App) {
   "use strict";
 
 
   /* ============================================================
-     J20 AI 流式请求核心
-     作用：双协议 SSE 流式请求 + 结构化累积
+     J20 AI流式请求核心
+     作用：双协议SSE流式请求+结构化累积
      ============================================================ */
-  /* 反查工具名：Gemini functionResponse 需要 name */
+  /* 反查工具名：Gemini functionResponse需要name */
   App.findToolCallName = function (msgs, toolCallId) {
     for (var i = 0; i < msgs.length; i++) {
       var m = msgs[i];
@@ -36,7 +36,7 @@
       if (m.role === "system") {
         systemInstruction = { parts: [{ text: m.content || "" }] };
       } else if (m.role === "user") {
-        /* 多模态：content 为数组时含 text / image_url */
+        /* 多模态：content为数组时含text / image_url */
         if (Array.isArray(m.content)) {
           var uParts = [];
           m.content.forEach(function (c) {
@@ -117,7 +117,7 @@
 
     var conf = App.aiModelConf(model);
     var url, options;
-    /* Gemini 分支 */
+    /* Gemini分支 */
     if (conf.protocol === "gemini") {
       var conv = App.convertToGeminiMessages(messages);
       var body = { contents: conv.contents };
@@ -137,7 +137,7 @@
         body: JSON.stringify(body),
       };
     } else {
-      /* OpenAI 兼容分支 */
+      /* OpenAI兼容分支 */
       var msgs = [];
       if (systemPrompt) msgs.push({ role: "system", content: systemPrompt });
       messages.forEach(function (m) {
@@ -160,7 +160,7 @@
         body: JSON.stringify(reqBody),
       };
     }
-    /* 超时控制：内部 60s；超时时抛 TimeoutError */
+    /* 超时控制：内部60s；超时时抛TimeoutError */
     var timeoutCtl = new AbortController();
     var timedOut = false;
     var timeoutId = setTimeout(function () {
@@ -170,7 +170,7 @@
       } catch (e) {}
     }, App.settings.REQUEST_TIMEOUT_MS);
 
-    /* signal 合并：外部 signal 优先，否则用全局；都与超时合并 */
+    /* signal合并：外部signal优先，否则用全局；都与超时合并 */
     var baseSignal = extSignal;
     if (!baseSignal && App.aiState.abortController) {
       baseSignal = App.aiState.abortController.signal;
@@ -188,7 +188,7 @@
     } else {
       options.signal = timeoutCtl.signal;
     }
-    /* fetch + SSE 解析 */
+    /* fetch+SSE解析 */
     return fetch(url, options)
       .then(function (res) {
         if (!res.ok) {
@@ -211,7 +211,7 @@
         var reader = res.body.getReader();
         var decoder = new TextDecoder();
         var buffer = "";
-        /* 单条 data: 派发 */
+        /* 单条data: 派发 */
         function dispatchData(data) {
           if (!data) return;
           if (data === "[DONE]") {
@@ -224,7 +224,7 @@
             onDelta(obj);
           } catch (e) {}
         }
-        /* 缓冲区解析：按 \n\n 分 SSE 事件 */
+        /* 缓冲区解析：按\n\n分SSE事件 */
         function processBuffer(flush) {
           if (buffer.indexOf("\r") !== -1) {
             buffer = buffer.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
@@ -264,7 +264,7 @@
         return pump();
       })
       .catch(function (err) {
-        /* 超时统一包装为 TimeoutError */
+        /* 超时统一包装为TimeoutError */
         if (timedOut) {
           var e = new Error("REQUEST_TIMEOUT");
           e.name = "TimeoutError";
@@ -288,14 +288,14 @@
     };
     var tcBuf = {};
     var hasToolCall = false;
-    /* 逐 chunk 累积 */
+    /* 逐chunk累积 */
     function consume(obj) {
       if (!obj || obj === "[DONE]") return;
       if (obj.id && !meta.id) meta.id = obj.id;
       if (obj.model && !meta.model) meta.model = obj.model;
       if (obj.created && !meta.created) meta.created = obj.created;
       if (obj.usage) meta.usage = obj.usage;
-      /* OpenAI：delta.tool_calls 拼接 */
+      /* OpenAI：delta.tool_calls拼接 */
       var ch = obj.choices && obj.choices[0];
       if (ch) {
         if (ch.finish_reason) meta.finish_reason = ch.finish_reason;
@@ -346,7 +346,7 @@
           });
         }
       }
-      /* Gemini usageMetadata 映射 */
+      /* Gemini usageMetadata映射 */
       if (obj.usageMetadata) {
         meta.usage = {
           prompt_tokens: obj.usageMetadata.promptTokenCount,
@@ -355,7 +355,7 @@
         };
       }
     }
-    /* 结束：整理 tool_calls 数组 */
+    /* 结束：整理tool_calls数组 */
     function finalize() {
       if (hasToolCall) {
         var arr = [];
