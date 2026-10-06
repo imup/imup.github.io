@@ -2,7 +2,7 @@
    tools.js —— 工具层
    作用：工具注册表+执行调度+代码兜底提取
    机制：TOOL_HANDLERS为注册表；executeToolCall查表执行
-   加载：依赖 core.js
+   加载：依赖core.js
    ============================================================ */
 (function (App) {
   "use strict";
