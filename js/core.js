@@ -1,7 +1,7 @@
 /* ============================================================
    core.js —— 核心层
-   作用：常量 / 状态 / i18n / DOM 工具 / 模态框系统
-   机制：定义 App 命名空间，所有模块挂载于此
+   作用：常量/状态/i18n/DOM工具/模态框系统
+   机制：定义App命名空间，所有模块挂载于此
    加载：必须第一个执行
    ============================================================ */
 window.App = window.App || {};
@@ -10,12 +10,8 @@ window.App = window.App || {};
   "use strict";
 
 
-  /* ============================================================
-     J1 常量声明
-     作用：全模块共享常量 + 工具声明单一数据源
-     机制：TOOL_SPECS 为唯一源；OpenAI / Gemini 双协议派生
-     ============================================================ */
-  /* --- 存储键 --- */
+  /* J1常量声明 */
+  /*  存储键  */
   App.STORAGE_KEY = "p5_pages";
   App.THEME_KEY = "p5_theme";
   App.LANG_KEY = "p5_lang";
@@ -27,7 +23,7 @@ window.App = window.App || {};
   App.AI_CURRENT_MODEL_STORAGE = "p5_ai_current_model";
   App.SETTINGS_KEY = "p5_settings";
 
-  /* --- 默认参数（A 版：图片上限 1.5MB） --- */
+  /*  默认参数（图片上限1.5MB）  */
   App.DEFAULT_SETTINGS = {
     maxImageMB: 1.5,
     maxToolLoop: 5,
@@ -36,7 +32,7 @@ window.App = window.App || {};
     maxTitleLen: 60,
   };
 
-  /* --- UI 常量 --- */
+  /*  UI常量  */
   App.TEST_TIMEOUT_MS = 15000;
   App.CONTENT_URL = "data/content.json";
   App.LONG_PRESS_MS = 500;
@@ -46,12 +42,12 @@ window.App = window.App || {};
   App.STORAGE_KB_MULTIPLIER = 2;
   App.MAX_SESSION_IMAGES = 10;
 
-  /* --- 运行时常量：首页随机脚本 --- */
+  /* 运行时常量：首页随机脚本 */
   App.P5_DIR = "p5/";
   App.P5_CDN = "https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js";
   App.P5_FILES = ["sketch1.js", "sketch2.js", "sketch3.js"];
 
-  /* --- 工具声明单一数据源 --- */
+  /* 工具声明单一数据源 */
   App.TOOL_SPECS = [
     {
       name: "insert_code",
@@ -140,11 +136,11 @@ window.App = window.App || {};
     },
   ];
 
-  /* --- 派生：类型大写化 --- */
+  /* 派生：类型大写化 */
   App._toGeminiType = function (t) {
     return String(t || "").toUpperCase();
   };
-  /* --- 派生：递归转换 schema 为 Gemini 风格 --- */
+  /* 派生：递归转换schema为Gemini风格 */
   App._toGeminiSchema = function (schema) {
     if (!schema || typeof schema !== "object") return schema;
     var out = { type: App._toGeminiType(schema.type) };
@@ -159,7 +155,7 @@ window.App = window.App || {};
     if (schema.required) out.required = schema.required.slice();
     return out;
   };
-  /* --- 派生：OpenAI 格式声明 --- */
+  /* 派生：OpenAI格式声明 */
   App.buildOpenAITools = function () {
     return App.TOOL_SPECS.map(function (t) {
       return {
@@ -172,7 +168,7 @@ window.App = window.App || {};
       };
     });
   };
-  /* --- 派生：Gemini 格式声明 --- */
+  /* 派生：Gemini格式声明 */
   App.buildGeminiTools = function () {
     return [
       {
@@ -187,19 +183,15 @@ window.App = window.App || {};
     ];
   };
 
-  /* --- 运行时数据（由 loadContent 填充） --- */
+  /* 运行时数据（由loadContent填充） */
   App.AI_MODELS = [];
   App.I18N = {};
   App.LANG = "zh";
   App.CONTENT = null;
 
 
-  /* ============================================================
-     J2 全局状态
-     作用：全模块共享的可变状态 + DOM 引用
-     机制：挂到 App.state 单点管理
-     ============================================================ */
-  /* --- AI 状态 --- */
+  /* J2全局状态 */
+  /* AI状态 */
   App.aiState = {
     currentModel: null,
     keys: {},
@@ -210,7 +202,7 @@ window.App = window.App || {};
     abortController: null,
     streamToken: 0,
   };
-  /* --- 生成器状态 --- */
+  /* 生成器状态 */
   App.genState = {
     messages: [],
     busy: false,
@@ -219,7 +211,7 @@ window.App = window.App || {};
     menuOpen: false,
     palette: null,
   };
-  /* --- 运行时可配参数（启动时由 loadSettings 覆盖） --- */
+  /* 运行时可配参数 */
   App.settings = {
     MAX_IMAGE_BYTES: App.DEFAULT_SETTINGS.maxImageMB * 1024 * 1024,
     MAX_TOOL_LOOP: App.DEFAULT_SETTINGS.maxToolLoop,
@@ -227,7 +219,7 @@ window.App = window.App || {};
     REQUEST_TIMEOUT_MS: App.DEFAULT_SETTINGS.requestTimeoutSec * 1000,
     MAX_TITLE_LEN: App.DEFAULT_SETTINGS.maxTitleLen,
   };
-  /* --- DOM 引用 --- */
+  /* DOM引用 */
   App.dom = {
     modalBackdrop: null,
     modalBox: null,
@@ -241,12 +233,12 @@ window.App = window.App || {};
     sidebarSearchTimer: null,
     appEl: null,
   };
-  /* --- 运行状态（A 版特有：sessionImages） --- */
+  /* 运行状态（sessionImages） */
   App.state = {
     editor: null,
     uploadedImageDataUrl: null,
     uploadedImageInfo: null,
-    sessionImages: {},          /* A 版：内存图片映射（供预览用） */
+    sessionImages: {},  /* 内存图片映射（供预览用） */
     generatorDraft: { title: "", script: "" },
     renderedMsgCount: 0,
     renderedModelId: null,
@@ -255,11 +247,7 @@ window.App = window.App || {};
   };
 
 
-  /* ============================================================
-     J3 i18n
-     作用：文案国际化，支持中英文切换
-     机制：T() 取文案；静态节点一次性填充；节点列表首次收集后缓存
-     ============================================================ */
+  /* J3i18n */
   App.T = function (key, params) {
     var pack = App.I18N[App.LANG] || App.I18N.zh || {};
     var text = pack[key];
@@ -271,7 +259,7 @@ window.App = window.App || {};
     }
     return text;
   };
-  /* 语言检测：保存值 > 浏览器语言 > defaultLang > en */
+  /* 语言检测：保存值>浏览器语言>defaultLang>en */
   App.detectLang = function () {
     var saved = App.storageGet(App.LANG_KEY, null);
     if (saved && App.I18N[saved]) return saved;
@@ -287,7 +275,7 @@ window.App = window.App || {};
     }
     return "en";
   };
-  /* i18n 节点缓存 */
+  /* i18n节点缓存 */
   App._i18nCache = null;
   App._collectI18nNodes = function () {
     App._i18nCache = {
@@ -324,11 +312,7 @@ window.App = window.App || {};
   };
 
 
-  /* ============================================================
-     J4 模型查询
-     作用：模型配置的只读查询
-     机制：内置 AI_MODELS + 自定义 customModels 合并遍历
-     ============================================================ */
+  /* J4模型查询 */
   App.getAllModels = function () {
     return App.AI_MODELS.concat(App.aiState.customModels || []);
   };
@@ -350,10 +334,7 @@ window.App = window.App || {};
   };
 
 
-  /* ============================================================
-     J8 DOM 工具
-     作用：DOM 查询 / 创建 + 字符串转义工具
-     ============================================================ */
+  /* J8 DOM工具 */
   App.$ = function (sel, root) {
     return (root || document).querySelector(sel);
   };
@@ -371,7 +352,7 @@ window.App = window.App || {};
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#39;");
   };
-  /* 脚本闭合转义：防止用户脚本提前关闭 <script> */
+  /* 脚本闭合转义：防止用户脚本提前关闭 */
   App.escapeScriptClose = function (str) {
     var LT = "\x3C";
     return String(str)
@@ -402,13 +383,9 @@ window.App = window.App || {};
   };
 
 
-  /* ============================================================
-     J9 模态框系统
-     作用：全站弹窗统一封装
-     机制：backdrop 显示 + modalBox 注入；focus trap 循环 Tab
-     ============================================================ */
+  /* J9模态框系统 */
   App._modalFocusHandler = null;
-  /* 焦点陷阱：Tab 在弹窗内循环 */
+  /* 焦点陷阱：Tab在弹窗内循环 */
   App._installFocusTrap = function (box) {
     App._removeFocusTrap();
     App._modalFocusHandler = function (e) {
@@ -587,7 +564,7 @@ window.App = window.App || {};
       box.appendChild(a);
     });
   };
-  /* 意图选择弹窗：覆盖 / 修改 */
+  /* 意图选择弹窗：覆盖/修改 */
   App.showIntentChoice = function (title, message, onOverwrite, onModify) {
     App.openModal(function (box) {
       box.appendChild(App.el("h3", null, title));
@@ -621,10 +598,7 @@ window.App = window.App || {};
   };
 
 
-  /* ============================================================
-     剪贴板与浮动提示（供多模块复用）
-     作用：复制文本 + 短暂视觉反馈
-     ============================================================ */
+  /* 剪贴板与浮动提示（供多模块复用）*/
   App.copyToClipboard = function (text) {
     if (!text) return;
     if (navigator.clipboard && navigator.clipboard.writeText) {
