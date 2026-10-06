@@ -27,19 +27,13 @@ window.App = window.App || {};
   App.AI_CURRENT_MODEL_STORAGE = "p5_ai_current_model";
   App.SETTINGS_KEY = "p5_settings";
 
-  /* --- IndexedDB 常量（B 版） --- */
-  App.IDB_NAME = "p5_store";
-  App.IDB_STORE = "kv";
-  App.IDB_VERSION = 1;
-  App.IDB_INIT_TIMEOUT_MS = 1500;
-
-  /* --- 默认参数（B 版：图片上限 15MB） --- */
+  /* --- 默认参数（图片上限 1.5MB） --- */
   App.DEFAULT_SETTINGS = {
-    maxImageMB: 15,        // 单图上限（MB）
-    maxToolLoop: 5,        // AI 工具最大轮次
-    maxContext: 30,        // 上下文消息上限
-    requestTimeoutSec: 60, // 请求超时（秒）
-    maxTitleLen: 60,       // 标题最大长度
+    maxImageMB: 1.5,
+    maxToolLoop: 5,
+    maxContext: 30,
+    requestTimeoutSec: 60,
+    maxTitleLen: 60,
   };
 
   /* --- UI 常量 --- */
@@ -50,6 +44,7 @@ window.App = window.App || {};
   App.NEAR_BOTTOM_PX = 80;
   App.SEARCH_DEBOUNCE_MS = 150;
   App.STORAGE_KB_MULTIPLIER = 2;
+  App.MAX_SESSION_IMAGES = 10;
 
   /* --- 运行时常量：首页随机脚本 --- */
   App.P5_DIR = "p5/";
@@ -169,7 +164,11 @@ window.App = window.App || {};
     return App.TOOL_SPECS.map(function (t) {
       return {
         type: "function",
-        function: { name: t.name, description: t.description, parameters: t.params },
+        function: {
+          name: t.name,
+          description: t.description,
+          parameters: t.params,
+        },
       };
     });
   };
@@ -242,11 +241,12 @@ window.App = window.App || {};
     sidebarSearchTimer: null,
     appEl: null,
   };
-  /* --- 首页运行器状态 --- */
+  /* --- 运行状态（A 版特有：sessionImages） --- */
   App.state = {
     editor: null,
     uploadedImageDataUrl: null,
     uploadedImageInfo: null,
+    sessionImages: {},          /* A 版：内存图片映射（供预览用） */
     generatorDraft: { title: "", script: "" },
     renderedMsgCount: 0,
     renderedModelId: null,
@@ -278,7 +278,11 @@ window.App = window.App || {};
     var nav = (navigator.language || "zh").toLowerCase();
     if (nav.indexOf("zh") === 0) return "zh";
     if (nav.indexOf("en") === 0) return "en";
-    if (App.CONTENT && App.CONTENT.defaultLang && App.I18N[App.CONTENT.defaultLang]) {
+    if (
+      App.CONTENT &&
+      App.CONTENT.defaultLang &&
+      App.I18N[App.CONTENT.defaultLang]
+    ) {
       return App.CONTENT.defaultLang;
     }
     return "en";
@@ -431,7 +435,7 @@ window.App = window.App || {};
     }
     App._modalFocusHandler = null;
   };
-  /* 打开弹窗：注入内容 + aria-labelledby + 焦点陷阱 */
+  /* 打开弹窗 */
   App.openModal = function (builder) {
     App.dom.lastFocused = document.activeElement;
     var box = App.dom.modalBox;
@@ -538,7 +542,7 @@ window.App = window.App || {};
       box.appendChild(a);
     });
   };
-  /* 多行文本编辑弹窗（系统提示词） */
+  /* 多行文本编辑弹窗 */
   App.showPromptArea = function (opts) {
     App.openModal(function (box) {
       box.appendChild(App.el("h3", null, opts.title));
@@ -599,7 +603,11 @@ window.App = window.App || {};
         App.closeModal();
         onModify();
       });
-      var overwriteBtn = App.el("button", "danger", App.T("gen.intentOverwrite"));
+      var overwriteBtn = App.el(
+        "button",
+        "danger",
+        App.T("gen.intentOverwrite"),
+      );
       overwriteBtn.addEventListener("click", function () {
         App.closeModal();
         onOverwrite();
