@@ -1,7 +1,7 @@
 /* ============================================================
    app.js —— 路由 + 初始化 + 启动
    作用：hash 路由分发 + 全局事件绑定 + 内容加载 + boot
-   机制：最后执行；settings.js 按需加载
+   机制：最后执行；settings.js 按需加载；A 版 boot 同步
    加载：依赖所有前置模块
    ============================================================ */
 (function (App) {
@@ -11,7 +11,6 @@
   /* ============================================================
      J33 主路由渲染
      作用：hash 路由分发到各页面
-     机制：开头统一清除所有模式类；切换前清理
      ============================================================ */
   App.render = function () {
     var path = App.getRoute();
@@ -75,7 +74,7 @@
       appEl.appendChild(wrap);
     }
   };
-  /* 关于页：标题 + 7 段文案 */
+  /* 关于页 */
   App.renderAbout = function () {
     var wrap = document.createElement("div");
     wrap.appendChild(App.el("h1", null, App.T("about.title")));
@@ -92,8 +91,7 @@
   /* ============================================================
      J34 初始化
      作用：DOM 引用 + 主题 + 全局事件绑定
-     机制：启动时调用一次；所有委托事件在此挂载
-           settings.js 按需加载
+     机制：启动时调用一次；settings.js 按需加载
      ============================================================ */
   /* settings.js 按需加载 */
   App._settingsLoaded = false;
@@ -132,7 +130,7 @@
     } catch (e) {}
     App.applyTheme(savedTheme);
 
-    /* 禁用双指缩放手势（防误触） */
+    /* 禁用双指缩放手势 */
     ["gesturestart", "gesturechange", "gestureend"].forEach(function (type) {
       document.addEventListener(
         type,
@@ -265,7 +263,7 @@
         }
       }
     });
-    /* footer「设置」按钮：按需加载 settings.js 后打开设置弹窗 */
+    /* footer「设置」按钮：按需加载 settings.js */
     var exportZipBtn = App.$("#exportZipSidebar");
     if (exportZipBtn) {
       var openSettings = function () {
@@ -309,7 +307,7 @@
         }
       });
     });
-    /* 侧边栏作品列表：委托处理 open / rename / delete */
+    /* 侧边栏作品列表：委托处理 */
     dom.sidebarPagesEl.addEventListener("click", function (e) {
       var btn = e.target.closest("[data-action]");
       if (!btn) return;
@@ -329,11 +327,11 @@
       App.render();
       App.closeSidebar();
     });
-    /* 屏幕旋转：刷新 CodeMirror */
+    /* 屏幕旋转 */
     window.addEventListener("orientationchange", function () {
       if (App.state.editor) App.state.editor.refresh();
     });
-    /* 窗口 resize：预览适配 + 编辑器刷新（防抖） */
+    /* 窗口 resize */
     var resizeTimer = null;
     window.addEventListener("resize", function () {
       if (dom.appEl.classList.contains("preview-mode")) {
@@ -351,7 +349,7 @@
   /* ============================================================
      J35 启动
      作用：加载内容配置 + 启动引导
-     机制：loadContent 失败时仍 boot（用默认文案）
+     机制：A 版 boot 同步（无 initStorage 等待）
      ============================================================ */
   App.loadContent = function () {
     return fetch(App.CONTENT_URL, { cache: "no-cache" })
@@ -366,26 +364,24 @@
         App.LANG = App.detectLang();
       });
   };
-  /* 启动序列 */
+  /* 启动序列（A 版同步） */
   App.boot = function () {
     App.initStatic();
-    return App.initStorage().then(function () {
-      App.LANG = App.detectLang();
-      App.applyTheme(App.storageGet(App.THEME_KEY, "light"));
-      App.loadSettings();
-      App.initAIState();
-      App.applyI18nToStatic();
-      App.updateSidebarPages();
-      App.render();
-    });
+    App.LANG = App.detectLang();
+    App.applyTheme(App.storageGet(App.THEME_KEY, "light"));
+    App.loadSettings();
+    App.initAIState();
+    App.applyI18nToStatic();
+    App.updateSidebarPages();
+    App.render();
   };
   App.loadContent()
     .then(function () {
-      return App.boot();
+      App.boot();
     })
     .catch(function (e) {
       console.warn("[content.json] 加载失败，使用默认文案：", e);
-      return App.boot();
+      App.boot();
     });
 
 })(window.App);
