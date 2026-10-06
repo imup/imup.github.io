@@ -11,6 +11,7 @@
   /* ============================================================
      J23 AI 页面骨架
      作用：构建 /ai 页 DOM 结构
+     机制：纯 DOM 构建，返回节点由 render 注入 #app
      ============================================================ */
   App.renderAIAssistant = function () {
     var page = App.el("div", "ai-page");
@@ -71,6 +72,7 @@
   /* ============================================================
      J24 AI 模型菜单
      作用：AI 助手页模型菜单（含 T/K/P/J/M 按钮 + 顶行）
+     机制：每项含勾选 + 名称 + T/K/P/J/M；顶行含＋/导入
      ============================================================ */
   App.buildAIModelMenu = function () {
     var menu = App.$("#aiModelMenu");
@@ -182,6 +184,7 @@
   /* ============================================================
      J26 消息工具栏与节点
      作用：单条消息 DOM + 助手工具栏 + 长按展开
+     机制：user 右对齐气泡；assistant 块级 + 工具栏默认收起
      ============================================================ */
   /* 助手工具栏：仅在最后一条助手消息上显示重新生成 */
   App.buildAssistantToolbar = function (m, index) {
@@ -288,7 +291,7 @@
       toggle();
     });
   };
-  /* 单条消息 */
+  /* 单条消息：assistant 块级 / user 气泡 */
   App.buildMsgNode = function (m, index) {
     var row = App.el(
       "div",
@@ -322,11 +325,13 @@
   /* ============================================================
      J27 AI 消息渲染
      作用：消息列表渲染 + 统计 + 增量更新
+     机制：renderedMsgCount 记录已渲染数；新消息只追加
      ============================================================ */
   App.renderAIMessages = function () {
     var box = App.$("#aiMessages");
     if (!box) return;
     var model = App.aiState.currentModel;
+    /* 无模型：显示空状态 */
     if (!model) {
       if (!box.firstChild || !box.querySelector(".ai-empty")) {
         box.replaceChildren(App.buildEmptyNode(App.T("ai.emptyNoModel")));
@@ -336,6 +341,7 @@
       App.updateStatsBar();
       return;
     }
+    /* 模型切换：清空重建 */
     if (App.state.renderedModelId !== model) {
       App.state.renderedModelId = model;
       App.state.renderedMsgCount = 0;
@@ -356,6 +362,7 @@
     }
     if (App.state.renderedMsgCount > chat.length)
       App.state.renderedMsgCount = 0;
+    /* 首次全量渲染 */
     if (App.state.renderedMsgCount === 0) {
       var frag = document.createDocumentFragment();
       for (var i = 0; i < chat.length; i++) {
@@ -367,6 +374,7 @@
       App.updateStatsBar();
       return;
     }
+    /* 增量追加 */
     if (App.state.renderedMsgCount < chat.length) {
       var emptyEl = box.querySelector(".ai-empty");
       if (emptyEl && box.children.length === 1) {
@@ -390,7 +398,7 @@
     }
     App.updateStatsBar();
   };
-  /* 统计条 */
+  /* 统计条：总轮次 + token */
   App.updateStatsBar = function () {
     var bar = App.$("#aiStats");
     if (!bar) return;
@@ -449,6 +457,7 @@
   /* ============================================================
      J28 消息操作
      作用：删除 / 重新生成 / 发送核心
+     机制：aiSendWithText 为统一入口；流式逐字追加 DOM
      ============================================================ */
   App.deleteMessageFrom = function (index) {
     var model = App.aiState.currentModel;
@@ -500,12 +509,15 @@
     }
     var chat = App.aiState.chats[model];
     if (!Array.isArray(chat)) chat = App.aiState.chats[model] = [];
+    /* 避免重复 push 相同用户消息（重生成时） */
     var lastMsg = chat[chat.length - 1];
     if (!(lastMsg && lastMsg.role === "user" && lastMsg.content === text)) {
       chat.push({ role: "user", content: text });
     }
+    /* 占位助手消息（流式填充） */
     chat.push({ role: "assistant", content: "" });
     App.saveAIChats(model);
+    /* 中断上一次请求 */
     if (App.aiState.abortController) {
       try {
         App.aiState.abortController.abort();
@@ -524,6 +536,7 @@
     var isGemini = conf && conf.protocol === "gemini";
     var box = App.$("#aiMessages");
     var acc = App.createStructuredAccumulator();
+    /* 逐字追加 */
     function pushDelta(t2) {
       if (App.aiState.streamToken !== myToken) return;
       if (!t2) return;
@@ -551,6 +564,7 @@
         if (d && d.content) pushDelta(d.content);
       }
     };
+    /* 上下文裁剪：仅 user / assistant，保留最近 N 条 */
     var payload = chat
       .slice(0, -1)
       .filter(function (m) {
@@ -804,7 +818,7 @@
       box.appendChild(actions);
     });
   };
-  /* 删除自定义模型 */
+  /* 删除自定义模型：含 Key / 对话 / Prompt 清理 */
   App.deleteCustomModel = function (modelId) {
     var conf = App.aiModelConf(modelId);
     if (!conf || conf.builtin) return;
@@ -842,7 +856,7 @@
       true,
     );
   };
-  /* 测试连接 */
+  /* 测试连接：发一句 "hi"，仅验证 Key */
   App.testAIModelConnection = function (model) {
     var conf = App.aiModelConf(model);
     if (!conf) return;
@@ -917,7 +931,7 @@
         App.showAlert(App.T("test.failTitle"), msg, true);
       });
   };
-  /* API Key 弹窗 */
+  /* API Key 弹窗：已有 Key 时左侧显示删除 */
   App.promptAPIKey = function (model, onSaved) {
     var hasKey = !!App.aiState.keys[model];
     App.showPrompt(
@@ -962,7 +976,7 @@
       },
     });
   };
-  /* 切换模型 */
+  /* 切换模型：中断当前请求，更新 UI */
   App.selectAIModel = function (model) {
     if (!App.aiModelConf(model)) return;
     if (App.aiState.busy) {
@@ -996,7 +1010,9 @@
   /* ============================================================
      J30 对话导入导出
      作用：MD / JSON 导出 + JSON 导入
+     机制：data URL 优先（iOS Safari 直接落盘）；导入支持追加/覆盖
      ============================================================ */
+  /* 通用下载：data URL 优先 */
   App.triggerDownload = function (content, mime, filename) {
     try {
       var encoded = btoa(unescape(encodeURIComponent(content)));
@@ -1023,6 +1039,7 @@
       }, 1000);
     }
   };
+  /* 导出 Markdown */
   App.downloadAIChatMd = function (model) {
     var chat = App.aiState.chats[model] || [];
     if (!chat.length) {
@@ -1052,6 +1069,7 @@
       "ai_chat_" + model + "_" + Date.now() + ".md",
     );
   };
+  /* 导出 JSON：含结构化元数据 */
   App.downloadAIChatJson = function (model) {
     var chat = App.aiState.chats[model] || [];
     if (!chat.length) {
@@ -1085,6 +1103,7 @@
       "ai_chat_" + model + "_" + Date.now() + ".json",
     );
   };
+  /* 导入 JSON */
   App.importAIChatFromFile = function (file) {
     if (!file) return;
     var reader = new FileReader();
@@ -1104,6 +1123,7 @@
         );
         return;
       }
+      /* 目标模型：优先 data.model，回退按名称匹配 */
       var targetModel = data.model;
       if (!targetModel || !App.aiModelConf(targetModel)) {
         var name = String(data.modelName || "").toLowerCase();
@@ -1123,6 +1143,7 @@
         );
         return;
       }
+      /* 清洗消息：仅保留必要字段 */
       var cleaned = data.messages
         .filter(function (m) {
           return m && typeof m.role === "string";
@@ -1149,10 +1170,12 @@
         );
         return;
       }
+      /* 应用：replace 或 append */
       var applyImport = function (mode) {
         var existing = App.aiState.chats[targetModel] || [];
         if (mode === "replace") App.aiState.chats[targetModel] = cleaned;
         else App.aiState.chats[targetModel] = existing.concat(cleaned);
+        /* 补系统提示词（仅当前为空时） */
         if (
           data.systemPrompt &&
           String(data.systemPrompt).trim() &&
@@ -1192,6 +1215,7 @@
         applyImport("replace");
         return;
       }
+      /* 冲突：追加 / 覆盖 */
       App.openModal(function (box) {
         box.appendChild(App.el("h3", null, App.T("import.conflictTitle")));
         box.appendChild(
@@ -1302,8 +1326,10 @@
   /* ============================================================
      J32 AI 助手绑定
      作用：AI 助手页事件绑定
+     机制：重置渲染缓存 → 初始化 UI → 绑定各交互
      ============================================================ */
   App.bindAIAssistant = function () {
+    /* 每次进入 /ai 页，DOM 重建 → 重置渲染缓存 */
     App.state.renderedModelId = null;
     App.state.renderedMsgCount = 0;
     App.buildAIModelMenu();
@@ -1321,6 +1347,7 @@
         App.toggleAIModelMenu();
       });
     }
+    /* 模型菜单：委托处理各类按钮 */
     if (modelMenu) {
       modelMenu.addEventListener("click", function (e) {
         var importItem = e.target.closest("[data-import]");
@@ -1392,6 +1419,7 @@
         }
       });
     }
+    /* 输入框：自适应高度 + Enter 发送 */
     if (inputEl) {
       inputEl.addEventListener("input", function () {
         this.style.height = "auto";
@@ -1414,6 +1442,7 @@
         App.aiSend();
       });
     }
+    /* 隐藏的导入 input */
     var importFile = App.$("#aiImportFile");
     if (importFile) {
       importFile.addEventListener("change", function () {
