@@ -1,8 +1,8 @@
 /* ============================================================
    generator.js —— 生成器页
-   作用：编辑器页 DOM + AI 面板 + 图片压缩 + AI 循环
-   机制：A 版保存时不嵌图；sessionImages 供预览用
-   加载：依赖 core.js + storage.js + ai.js + tools.js
+   作用：编辑器页DOM+AI面板+图片压缩+AI循环
+   机制：保存时不嵌图；sessionImages供预览用
+   加载：依赖core.js + storage.js + ai.js + tools.js
    ============================================================ */
 (function (App) {
   "use strict";
@@ -10,11 +10,11 @@
 
   /* ============================================================
      J10 页面生成与导出
-     作用：作品 HTML 生成 + 单文件下载 + ZIP 打包
-     机制：data URL 优先（iOS Safari 直接落盘）；失败回退 blob
-           A 版含 injectSessionImage（本次会话预览用）
+     作用：作品HTML生成+单文件下载+ZIP打包
+     机制：data URL优先（iOS Safari 直接落盘）；失败回退blob
+           含injectSessionImage（本次会话预览用）
      ============================================================ */
-  /* 生成作品 HTML：含 p5 CDN + imageUrl 声明 + 用户脚本 */
+  /* 生成作品 HTML：含p5 CDN+imageUrl声明+用户脚本 */
   App.generatePageHtml = function (title, script, imageDataUrl, hasImage) {
     var safeTitle = App.escapeHtml(
       (title || App.T("generator.untitledPage")).slice(
@@ -67,8 +67,8 @@
       "</html>"
     ).replace("</body>", "  \x3C/script>\n</body>");
   };
-  /* A 版特有：内存注入 */
-  /* 把 HTML 里的 imageUrl = null 替换为真实 dataUrl（本次会话预览用） */
+  /* 内存注入 */
+  /* 把HTML里的imageUrl = null 替换为真实 dataUrl（本次会话预览用） */
   App.injectSessionImage = function (html, dataUrl) {
     if (!html || !dataUrl) return html;
     var escaped = String(dataUrl)
@@ -79,7 +79,7 @@
       'var imageUrl = "' + escaped + '";',
     );
   };
-  /* 下载单 HTML：data URL 优先（iOS 可直接落盘） */
+  /* 下载单HTML：data URL优先（iOS 可直接落盘） */
   App.downloadSingleHtml = function (filename, html) {
     try {
       var encoded = btoa(unescape(encodeURIComponent(html)));
@@ -114,7 +114,7 @@
       }
     }
   };
-  /* ZIP 打包：base64 → data URL */
+  /* ZIP打包：base64 → data URL */
   App.exportZip = function () {
     var pages = App.getPages();
     if (!pages.length) {
@@ -161,9 +161,9 @@
 
   /* ============================================================
      J17 生成器页（部分）
-     作用：DOM 构建 + AI 面板
+     作用：DOM构建+AI面板
      ============================================================ */
-  /* 生成器页 DOM */
+  /* 生成器页DOM */
   App.renderGenerator = function () {
     var wrap = App.el("div", "generator-page");
 
@@ -194,7 +194,7 @@
     editorWrap.appendChild(g2);
     wrap.appendChild(editorWrap);
 
-    /* AI 面板 */
+    /* AI面板 */
     wrap.appendChild(App.buildGeneratorAIPanel());
 
     /* 图片上传 */
@@ -212,7 +212,7 @@
     g3.appendChild(previewBox);
     wrap.appendChild(g3);
 
-    /* 标题 + 提交 */
+    /* 标题+提交 */
     var row = App.el("div", "gen-inline-row");
     var titleInput = document.createElement("input");
     titleInput.type = "text";
@@ -233,7 +233,7 @@
     wrap.appendChild(result);
     return wrap;
   };
-  /* 生成器 AI 面板 */
+  /* 生成器 AI面板 */
   App.buildGeneratorAIPanel = function () {
     var frag = document.createDocumentFragment();
     var bar = App.el("div", "gen-ai-bar gen-ai-bar-bare");
@@ -267,8 +267,8 @@
 
   /* ============================================================
      J18 生成器模型菜单
-     作用：编辑器页 AI 面板的模型选择
-     机制：仅显示 supportsTools: true 的模型
+     作用：编辑器页AI面板的模型选择
+     机制：仅显示supportsTools: true的模型
      ============================================================ */
   App.refreshGenModelBtn = function () {
     var btn = App.$("#genModelBtn");
@@ -323,9 +323,9 @@
 
 
   /* ============================================================
-     J21 生成器 AI 循环
-     作用：AI 生成代码的主流程（多轮工具调用）
-     机制：请求 → 提取 tool_calls → 逐个执行 → 回填 → 循环
+     J21 生成器AI循环
+     作用：AI生成代码的主流程（多轮工具调用）
+     机制：请求 → 提取tool_calls → 逐个执行 → 回填 → 循环
      ============================================================ */
   /* 按意图写入编辑器 */
   App.genApplyCode = function (code, intent) {
@@ -382,7 +382,7 @@
       }
     }
     userContent += "\n用户要求：" + userText;
-    /* 有图 + vision 支持 → 多模态消息 */
+    /* 有图 + vision支持 → 多模态消息 */
     var useVision =
       !!App.state.uploadedImageDataUrl && conf.vision === true;
     if (useVision) {
@@ -455,7 +455,7 @@
         .then(function () {
           if (App.genState.streamToken !== myToken) return;
           var meta = acc.finalize();
-          /* 有工具调用：执行 + 回填 + 递归 */
+          /* 有工具调用：执行+回填+递归 */
           if (meta.tool_calls && meta.tool_calls.length) {
             App.genState.messages.push({
               role: "assistant",
@@ -530,7 +530,7 @@
     }
     runOne();
   };
-  /* 发送入口：校验 → 意图判定 → 调 genRunLoop */
+  /* 发送入口：校验→意图判定→调genRunLoop */
   App.genSend = function () {
     if (App.genState.busy) return;
     var model = App.aiState.currentModel;
@@ -639,10 +639,10 @@
 
   /* ============================================================
      J22 生成器主体
-     作用：编辑器初始化 + 图片压缩 + 提交作品
-     机制：A 版上传即压缩；提交时不嵌图；sessionImages 供预览
+     作用：编辑器初始化+图片压缩+提交作品
+     机制：上传即压缩；提交时不嵌图；sessionImages供预览
      ============================================================ */
-  /* 图片压缩：长边 ≤ maxDim，JPEG 质量 quality */
+  /* 图片压缩：长边maxDim，JPEG质量quality */
   App.compressImage = function (dataUrl, maxDim, quality, callback) {
     var img = new Image();
     img.onload = function () {
@@ -680,7 +680,7 @@
     App.state.generatorDraft = App.loadDraft();
     titleInput.value = App.state.generatorDraft.title || "";
     App.destroyEditor();
-    /* CodeMirror 初始化 */
+    /* CodeMirror初始化 */
     if (window.CodeMirror) {
       var themeName =
         App.currentTheme() === "dark" ? "dracula" : "default";
@@ -807,7 +807,7 @@
         return;
       }
       var imageDataUrl = App.state.uploadedImageDataUrl || "";
-      /* A 版：保存时不嵌图，只加注解 */
+      /* 保存时不嵌图，只加注解 */
       var htmlContent = App.generatePageHtml(
         title,
         script,
@@ -823,7 +823,7 @@
         timestamp: new Date().toISOString(),
       });
       if (!App.savePages(pages)) return;
-      /* A 版：内存保留图片供本次会话预览 */
+      /* 内存保留图片供本次会话预览 */
       if (imageDataUrl) {
         App.state.sessionImages[newId] = imageDataUrl;
         var ids = Object.keys(App.state.sessionImages);
