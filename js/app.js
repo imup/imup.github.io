@@ -1,7 +1,7 @@
 /* ============================================================
-   app.js —— 路由 + 初始化 + 启动
-   作用：hash 路由分发 + 全局事件绑定 + 内容加载 + boot
-   机制：最后执行；settings.js 按需加载；A 版 boot 同步
+   app.js —— 路由+初始化+启动
+   作用：hash路由分发+全局事件绑定+内容加载+boot
+   机制：最后执行；settings.js按需加载；boot同步
    加载：依赖所有前置模块
    ============================================================ */
 (function (App) {
@@ -10,7 +10,7 @@
 
   /* ============================================================
      J33 主路由渲染
-     作用：hash 路由分发到各页面
+     作用：hash路由分发到各页面
      ============================================================ */
   App.render = function () {
     var path = App.getRoute();
@@ -31,7 +31,7 @@
       App.genState.streamToken += 1;
       App.genSetBusy(false);
     }
-    /* 非首页：重置 runner */
+    /* 非首页：重置runner */
     if (path !== "/" && path !== "" && path !== "/index.html") {
       if (App.state.runner.mode === "page") {
         App.state.runner.mode = "random";
@@ -49,7 +49,7 @@
     App.destroyEditor();
     appEl.replaceChildren();
     App.setActiveNav(path);
-    /* AI 助手页 */
+    /* AI助手页 */
     if (path === "/ai") {
       appEl.classList.add("ai-mode");
       appEl.appendChild(App.renderAIAssistant());
@@ -90,10 +90,10 @@
 
   /* ============================================================
      J34 初始化
-     作用：DOM 引用 + 主题 + 全局事件绑定
-     机制：启动时调用一次；settings.js 按需加载
+     作用：DOM引用+主题+全局事件绑定
+     机制：启动时调用一次；settings.js按需加载
      ============================================================ */
-  /* settings.js 按需加载 */
+  /* settings.js按需加载 */
   App._settingsLoaded = false;
   App._ensureSettingsLoaded = function () {
     if (App._settingsLoaded) return Promise.resolve();
@@ -112,7 +112,7 @@
   };
 
   App.initStatic = function () {
-    /* DOM 引用 */
+    /* DOM引用 */
     var dom = App.dom;
     dom.modalBackdrop = App.$("#modalBackdrop");
     dom.modalBox = App.$("#modalBox");
@@ -123,7 +123,7 @@
     dom.appEl = App.$("#app");
     dom.sidebarSearchEl = App.$("#sidebarSearch");
 
-    /* 主题：从 localStorage 恢复 */
+    /* 主题：从localStorage恢复 */
     var savedTheme = "light";
     try {
       savedTheme = localStorage.getItem(App.THEME_KEY) || "light";
@@ -177,7 +177,7 @@
       },
       { passive: false },
     );
-    /* 点击空白关闭菜单 / 工具栏 */
+    /* 点击空白关闭菜单/工具栏 */
     document.addEventListener("pointerdown", function (e) {
       var aiMenu = App.$("#aiModelMenu");
       if (aiMenu && aiMenu.classList.contains("show")) {
@@ -215,7 +215,7 @@
         active.blur();
       }
     });
-    /* 侧边栏搜索：防抖输入 + Esc 清空 */
+    /* 侧边栏搜索：防抖输入+Esc清空 */
     if (dom.sidebarSearchEl) {
       dom.sidebarSearchEl.addEventListener("input", function () {
         var v = this.value || "";
@@ -242,13 +242,13 @@
         e.stopPropagation();
       });
     }
-    /* 汉堡 / 遮罩 / 模态框背景 */
+    /* 汉堡/遮罩/模态框背景 */
     dom.hamburgerBtn.addEventListener("click", App.openSidebar);
     dom.overlayEl.addEventListener("click", App.closeSidebar);
     dom.modalBackdrop.addEventListener("click", function (e) {
       if (e.target === dom.modalBackdrop) App.closeModal();
     });
-    /* Esc 键：模态框 > 侧边栏 > 退出预览 */
+    /* Esc键：模态框 > 侧边栏 > 退出预览 */
     document.addEventListener("keydown", function (e) {
       if (e.key === "Escape") {
         if (dom.modalBackdrop.classList.contains("show")) {
@@ -263,7 +263,7 @@
         }
       }
     });
-    /* footer「设置」按钮：按需加载 settings.js */
+    /* footer设置按钮：按需加载settings.js */
     var exportZipBtn = App.$("#exportZipSidebar");
     if (exportZipBtn) {
       var openSettings = function () {
@@ -331,7 +331,7 @@
     window.addEventListener("orientationchange", function () {
       if (App.state.editor) App.state.editor.refresh();
     });
-    /* 窗口 resize */
+    /* 窗口resize */
     var resizeTimer = null;
     window.addEventListener("resize", function () {
       if (dom.appEl.classList.contains("preview-mode")) {
@@ -348,8 +348,8 @@
 
   /* ============================================================
      J35 启动
-     作用：加载内容配置 + 启动引导
-     机制：A 版 boot 同步（无 initStorage 等待）
+     作用：加载内容配置+启动引导
+     机制：boot同步（无initStorage等待）
      ============================================================ */
   App.loadContent = function () {
     return fetch(App.CONTENT_URL, { cache: "no-cache" })
@@ -364,7 +364,7 @@
         App.LANG = App.detectLang();
       });
   };
-  /* 启动序列（A 版同步） */
+  /* 启动序列（同步）*/
   App.boot = function () {
     App.initStatic();
     App.LANG = App.detectLang();
