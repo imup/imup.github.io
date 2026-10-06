@@ -1,8 +1,8 @@
 /* ============================================================
-   settings.js —— 设置弹窗 + 存储管理 + 导入
-   作用：设置弹窗（语言/参数/存储/导出）+ 导入弹窗
-   机制：按需加载，首次点击 footer「设置」时动态引入
-   加载：依赖 core.js + storage.js + home.js + ai-chat.js
+   settings.js —— 设置弹窗+存储管理+导入
+   作用：设置弹窗（语言/参数/存储/导出+导入弹窗
+   机制：按需加载，首次点击footer「设置」时动态引入
+   加载：依赖core.js + storage.js + home.js + ai-chat.js
    ============================================================ */
 (function (App) {
   "use strict";
@@ -10,7 +10,7 @@
 
   /* ============================================================
      存储项辅助函数
-     作用：8 项存储管理（打包 / 删除 / 大小）
+     作用：8项存储管理（打包/删除/大小）
      ============================================================ */
   App._storageItems = function () {
     return [
@@ -123,7 +123,7 @@
       App.refreshAIModelUI();
     }
     if (item.id === "settings") {
-      /* A 版：重置为 1.5MB */
+      /* 重置为1.5MB */
       App.settings.MAX_IMAGE_BYTES =
         App.DEFAULT_SETTINGS.maxImageMB * 1024 * 1024;
       App.settings.MAX_TOOL_LOOP = App.DEFAULT_SETTINGS.maxToolLoop;
@@ -133,7 +133,7 @@
       App.settings.MAX_TITLE_LEN = App.DEFAULT_SETTINGS.maxTitleLen;
     }
   };
-  /* 写入 ZIP：含 manifest.json + 各选中项 */
+  /* 写入ZIP：含manifest.json+各选中项 */
   App._writeItemsToZip = function (zip, selected) {
     var itemKeys = selected.map(function (it) {
       return it.dynamic === "chats" ? "p5_ai_chats" : it.keys[0];
@@ -212,7 +212,7 @@
         );
       });
   };
-  /* 解析备份文件（ZIP / JSON） */
+  /* 解析备份文件（ZIP/JSON） */
   App._parseBackupFile = function (file) {
     return new Promise(function (resolve, reject) {
       var reader = new FileReader();
@@ -411,11 +411,11 @@
 
   /* ============================================================
      设置弹窗
-     作用：标题行 + 语言 + 参数 + 存储管理
+     作用：标题行+语言+参数+存储管理
      ============================================================ */
   App.showSettingsDialog = function () {
     App.openModal(function (box) {
-      /* 标题行：标题 + 右上角关闭 */
+      /* 标题行：标题+右上角关闭 */
       var header = App.el("div", "settings-header");
       header.appendChild(App.el("h3", null, App.T("settings.title")));
       var closeTopBtn = App.el(
@@ -428,7 +428,7 @@
       header.appendChild(closeTopBtn);
       box.appendChild(header);
 
-      /* ① 语言 */
+      /* 语言 */
       var langSec = App.el("section", "settings-section");
       langSec.appendChild(App.el("h4", null, App.T("settings.langSection")));
       var langGroup = App.el("div", "lang-group");
@@ -445,7 +445,7 @@
       langSec.appendChild(langGroup);
       box.appendChild(langSec);
 
-      /* ② 参数 */
+      /* 参数 */
       var paramSec = App.el("section", "settings-section");
       paramSec.appendChild(App.el("h4", null, App.T("settings.paramsSection")));
       var params = [
@@ -522,7 +522,7 @@
       paramSec.appendChild(paramActions);
       box.appendChild(paramSec);
 
-      /* ③ 存储管理 */
+      /* 存储管理 */
       var storageSec = App.el("section", "settings-section");
       storageSec.appendChild(
         App.el("h4", null, App.T("settings.storageSection")),
@@ -679,7 +679,7 @@
 
   /* ============================================================
      导入确认弹窗
-     作用：预览导入项 + 用户勾选 + 应用
+     作用：预览导入项+用户勾选+应用
      ============================================================ */
   App._showImportDialog = function (parsed, preview) {
     App.openModal(function (box) {
