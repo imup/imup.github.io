@@ -1,7 +1,7 @@
 /* ============================================================
    tools.js —— 工具层
-   作用：工具注册表 + 执行调度 + 代码兜底提取
-   机制：TOOL_HANDLERS 为注册表；executeToolCall 查表执行
+   作用：工具注册表+执行调度+代码兜底提取
+   机制：TOOL_HANDLERS为注册表；executeToolCall查表执行
    加载：依赖 core.js
    ============================================================ */
 (function (App) {
@@ -9,15 +9,15 @@
 
 
   /* ============================================================
-     J19 生成器 AI 状态与工具
-     作用：状态输出 + 工具注册表 + 调度 + 代码兜底提取
+     J19 生成器AI状态与工具
+     作用：状态输出+工具注册表+调度+代码兜底提取
      ============================================================ */
   /* 状态区清空 */
   App.genStatusClear = function () {
     var box = App.$("#genStatus");
     if (box) box.replaceChildren();
   };
-  /* 状态区追加一行，最多保留 12 行 */
+  /* 状态区追加一行，最多保留12行 */
   App.genStatusLine = function (text, kind) {
     var box = App.$("#genStatus");
     if (!box) return;
@@ -69,7 +69,7 @@
         displayText: App.T("gen.toolRead", { n: v.length }),
       };
     },
-    /* 替换编辑器选中内容（无选中则 setValue） */
+    /* 替换编辑器选中内容（无选中则setValue） */
     replace_selection: function (args) {
       var editor = App.state.editor;
       if (!editor) throw new Error("editor not found");
@@ -87,7 +87,7 @@
         text: App.T("gen.toolReplace", { n: code.length }),
       };
     },
-    /* 获取画布尺寸：优先解析数字 createCanvas；否则返回响应式语义值 */
+    /* 获取画布尺寸：优先解析数字createCanvas；否则返回响应式语义值 */
     get_canvas_size: function (args) {
       var editor = App.state.editor;
       var src = editor ? editor.getValue() || "" : "";
@@ -127,7 +127,7 @@
         displayText: App.T("gen.toolPalette", { n: colors.length }),
       };
     },
-    /* 保存当前编辑器内容为作品（A 版：不嵌图，只加注解） */
+    /* 保存当前编辑器内容为作品（不嵌图，只加注解） */
     save_page: function (args) {
       var title =
         args && typeof args.title === "string" && args.title.trim()
@@ -141,7 +141,7 @@
         return { ok: false, text: "编辑器为空，无法保存" };
       }
       var imageDataUrl = App.state.uploadedImageDataUrl || "";
-      /* A 版：不嵌图，只加注解 */
+      /* 不嵌图，只加注解 */
       var html = App.generatePageHtml(title, script, "", !!imageDataUrl);
       var newId = Date.now() + Math.floor(Math.random() * 1000);
       var pages = App.getPages();
@@ -165,7 +165,7 @@
       }
       return { ok: false, text: "保存失败" };
     },
-    /* 即时预览（不保存，走 temp 模式） */
+    /* 即时预览（不保存，走temp模式） */
     open_preview: function (args) {
       var editor = App.state.editor;
       if (!editor) throw new Error("editor not found");
@@ -189,7 +189,7 @@
     },
   };
 
-  /* 工具调度：查表 + 异常包装 */
+  /* 工具调度：查表+异常包装 */
   App.executeToolCall = function (toolName, args) {
     var handler = App.TOOL_HANDLERS[toolName];
     if (!handler) {
@@ -211,7 +211,7 @@
   App.extractCodeFromText = function (text) {
     if (!text) return null;
     var t = String(text);
-    /* ① ```js / ```javascript 代码块 */
+    /* ```js / ```javascript代码块 */
     var jsBlocks = [];
     var reJs = /```(?:js|javascript)\s*\n([\s\S]*?)```/gi;
     var m;
@@ -219,14 +219,14 @@
       if (m[1]) jsBlocks.push(m[1].replace(/\s+$/, ""));
     }
     if (jsBlocks.length) return jsBlocks.join("\n\n");
-    /* ② ``` 无语言代码块 */
+    /* ``` 无语言代码块 */
     var blocks = [];
     var re = /```\s*\n([\s\S]*?)```/g;
     while ((m = re.exec(t))) {
       if (m[1]) blocks.push(m[1].replace(/\s+$/, ""));
     }
     if (blocks.length) return blocks.join("\n\n");
-    /* ③ 直接含 setup/draw 定义 */
+    /* 直接含setup/draw定义 */
     if (
       /function\s+setup\s*\(/.test(t) ||
       /function\s+draw\s*\(/.test(t)
