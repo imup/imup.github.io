@@ -1,10 +1,6 @@
 <!doctype html>
 <html lang="zh-CN">
-  <!-- ============================================================
-       H1 头部资源
-       作用：meta / CodeMirror CSS / 主题 CSS / style.css / manifest / JSZip
-       机制：CDN 引用（由 SW 缓存）；viewport 禁止缩放
-       ============================================================ -->
+  <!-- 头部资源 -->
   <head>
     <!-- 字符编码 -->
     <meta charset="UTF-8" />
@@ -15,23 +11,23 @@
       content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
 
-    <!-- 页面标题（由 i18n 动态替换） -->
+    <!-- 页面标题（由i18n动态替换） -->
     <title>randomArt可视化创意编程</title>
 
-    <!-- CodeMirror 基础样式 -->
+    <!-- CodeMirror基础样式 -->
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"
     />
 
-    <!-- CodeMirror 亮色主题：duotone-light -->
+    <!-- CodeMirror亮色主题：duotone-light -->
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/duotone-light.min.css"
       id="cm-theme-light"
     />
 
-    <!-- CodeMirror 暗色主题：dracula（默认禁用，切主题时启用） -->
+    <!-- CodeMirror暗色主题：dracula（默认禁用，切主题时启用） -->
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css"
@@ -39,22 +35,18 @@
       disabled
     />
 
-    <!-- 主样式表：分块 C1–C17 -->
+    <!-- 主样式表 -->
     <link rel="stylesheet" href="css/style.css" />
 
-    <!-- PWA 清单 -->
+    <!-- PWA清单 -->
     <link rel="manifest" href="manifest.json" />
 
-    <!-- JSZip：ZIP 打包（作品导出 / 存储备份） -->
+    <!-- JSZip：ZIP打包（作品导出/存储备份） -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   </head>
 
   <body>
-    <!-- ============================================================
-         H2 汉堡按钮
-         作用：左上角侧边栏开关
-         机制：fixed 定位，aria-label 由 i18n 注入
-         ============================================================ -->
+    <!-- 汉堡按钮 -->
     <button
       class="hamburger-btn"
       id="hamburgerBtn"
@@ -65,11 +57,7 @@
       ☰
     </button>
 
-    <!-- ============================================================
-         H3 侧边栏导航
-         作用：左侧抽屉，含搜索 / 导航项 / 我的脚本 / 页脚
-         机制：fixed 抽屉，transform 平移；页脚两个按钮（设置 / 主题）
-         ============================================================ -->
+    <!-- 侧边栏导航 -->
     <nav class="sidebar" id="sidebar" aria-label="主导航">
       <!-- 搜索框：过滤作品列表 -->
       <div class="sidebar-search">
@@ -107,7 +95,7 @@
         <span>关于</span>
       </div>
 
-      <!-- 导航项：AI 助手 -->
+      <!-- 导航项：AI助手 -->
       <div
         class="nav-item"
         data-path="#/ai"
@@ -137,15 +125,15 @@
       <!-- 分组标题：我的脚本 -->
       <div class="section-title" data-i18n="nav.myScripts">我的脚本</div>
 
-      <!-- 作品列表容器（由 JS 动态渲染） -->
+      <!-- 作品列表容器（由JS动态渲染） -->
       <div id="sidebar-pages">
         <div class="no-pages" data-i18n="nav.noScripts">暂无编写的脚本</div>
       </div>
 
-      <!-- 页脚：设置 / 切换主题 -->
+      <!-- 页脚：设置/切换主题 -->
       <div class="sidebar-footer">
         <div class="footer-row">
-          <!-- 设置按钮：按需加载 settings.js 后打开弹窗 -->
+          <!-- 设置按钮：按需加载后打开弹窗 -->
           <div
             class="nav-item footer-item"
             id="exportZipSidebar"
@@ -160,7 +148,7 @@
           <!-- 页脚竖线分隔 -->
           <div class="footer-vdivider"></div>
 
-          <!-- 主题切换按钮：亮 / 暗 -->
+          <!-- 主题切换按钮：亮/暗 -->
           <div
             class="nav-item footer-item"
             id="themeToggleSidebar"
@@ -175,18 +163,14 @@
       </div>
     </nav>
 
-    <!-- ============================================================
-         H4 主容器与模态框
-         作用：侧边栏遮罩 / 主内容容器 / 模态框容器
-         机制：#app 由 JS 动态填充；模态框内容由 JS 注入
-         ============================================================ -->
+    <!-- 主容器与模态框 -->
     <!-- 侧边栏遮罩：点击关闭侧边栏 -->
     <div class="overlay" id="overlay"></div>
 
-    <!-- 主内容容器：由 render() 动态渲染 -->
+    <!-- 主内容容器：由render()动态渲染 -->
     <main id="app" data-i18n="site.loading">加载中…</main>
 
-    <!-- 模态框：backdrop + 内容容器 -->
+    <!-- 模态框：backdrop+内容容器 -->
     <div
       class="modal-backdrop"
       id="modalBackdrop"
@@ -196,47 +180,38 @@
       <div class="modal" id="modalBox"></div>
     </div>
 
-    <!-- ============================================================
-         H5 脚本引入
-         作用：CodeMirror 库 + 拆分后的模块 JS
-         机制：按依赖顺序加载（core → storage → ai → tools → 业务 → app）
-               settings.js 不在此引入，由 app.js 按需加载
-         ============================================================ -->
-    <!-- CodeMirror 核心 -->
+    <!-- 脚本引入 -->
+    <!-- CodeMirror核心 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
 
-    <!-- CodeMirror JavaScript 模式 -->
+    <!-- CodeMirror JavaScript模式 -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
 
-    <!-- 1. 核心层：常量 / 状态 / i18n / DOM 工具 / 模态框 -->
+    <!-- 1. 核心层：常量/状态/i18n/DOM工具/模态框 -->
     <script src="js/core.js"></script>
 
-    <!-- 2. 存储层：IndexedDB + localStorage + memory 兜底 -->
+    <!-- 2. 存储层 -->
     <script src="js/storage.js"></script>
 
-    <!-- 3. AI 流式请求核心 -->
+    <!-- 3. AI流式请求核心 -->
     <script src="js/ai.js"></script>
 
-    <!-- 4. 工具注册表 + 执行 -->
+    <!-- 4. 工具注册表+执行 -->
     <script src="js/tools.js"></script>
 
-    <!-- 5. 首页 + 侧边栏 + 主题 + 共享路由工具 -->
+    <!-- 5. 首页+侧边栏+主题+共享路由工具 -->
     <script src="js/home.js"></script>
 
     <!-- 6. 生成器页 -->
     <script src="js/generator.js"></script>
 
-    <!-- 7. AI 聊天页 -->
+    <!-- 7. AI聊天页 -->
     <script src="js/ai-chat.js"></script>
 
-    <!-- 8. 启动（最后，调用 boot） -->
+    <!-- 8. 启动（最后，调用boot） -->
     <script src="js/app.js"></script>
 
-    <!-- ============================================================
-         H6 Service Worker 注册
-         作用：PWA 离线缓存
-         机制：页面加载完成后注册；失败仅警告，不阻塞
-         ============================================================ -->
+    <!-- Service Worker注册 -->
     <script>
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", function () {
