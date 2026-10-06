@@ -1,8 +1,8 @@
 /* ============================================================
-   home.js —— 首页运行器 + 侧边栏 + 主题 + 共享路由
-   作用：首页随机/指定/临时运行 + 侧边栏 + 主题切换 + 路由工具
-   机制：iframe srcdoc 加载 p5 脚本；A 版含 sessionImages 注入
-   加载：依赖 core.js + storage.js
+   home.js —— 首页运行器+侧边栏+主题+共享路由
+   作用：首页随机/指定/临时运行+侧边栏+主题切换+路由工具
+   机制：iframe srcdoc加载p5脚本；含 sessionImages注入
+   加载：依赖core.js + storage.js
    ============================================================ */
 (function (App) {
   "use strict";
@@ -10,14 +10,14 @@
 
   /* ============================================================
      共享路由工具（供其他模块调用）
-     作用：路由解析 + 导航高亮 + 编辑器销毁
+     作用：路由解析+导航高亮+编辑器销毁
      ============================================================ */
   App.getRoute = function () {
     var hash = location.hash;
     if (!hash || hash === "#" || hash === "#/") return "/";
     return hash.replace(/^#/, "") || "/";
   };
-  /* 侧边栏高亮：匹配 data-path */
+  /* 侧边栏高亮：匹配data-path */
   App.setActiveNav = function (path) {
     App.$$(".sidebar .nav-item[data-path]").forEach(function (el) {
       if (el.getAttribute("data-path") === "#" + path) {
@@ -38,9 +38,9 @@
 
 
   /* ============================================================
-     J11 随机 p5 与 srcdoc
-     作用：首页随机脚本抽取 + iframe srcdoc 生成
-     机制：currentRandomFile 排除上次；srcdoc 内嵌 CDN + 脚本
+     J11 随机p5与srcdoc
+     作用：首页随机脚本抽取+iframe srcdoc生成
+     机制：currentRandomFile排除上次；srcdoc内嵌CDN+脚本
      ============================================================ */
   App.pickRandomP5File = function () {
     var files = App.P5_FILES;
@@ -52,7 +52,7 @@
     if (!pool.length) pool = files.slice();
     return pool[Math.floor(Math.random() * pool.length)];
   };
-  /* 路径编码：中文 / 空格等安全化 */
+  /* 路径编码：中文/空格等安全化 */
   App.encodePath = function (fileName) {
     return String(fileName)
       .split("/")
@@ -61,7 +61,7 @@
       })
       .join("/");
   };
-  /* srcdoc：完整 HTML 字符串，交给 iframe.srcdoc */
+  /* srcdoc：完整HTML字符串，交给iframe.srcdoc */
   App.buildP5SrcDoc = function (fileName) {
     var src = App.P5_DIR + App.encodePath(fileName);
     return (
@@ -89,8 +89,8 @@
 
   /* ============================================================
      J12 侧边栏页面列表
-     作用：渲染作品列表 + 关键词过滤
-     机制：documentFragment 批量插入；data-action 委托事件
+     作用：渲染作品列表+关键词过滤
+     机制：documentFragment批量插入；data-action委托事件
      ============================================================ */
   App.updateSidebarPages = function () {
     var pages = App.getPages();
@@ -137,10 +137,9 @@
 
 
   /* ============================================================
-     J13 iframe 代理
-     作用：把外部事件转发到 iframe 内的 canvas，使预览可交互
-     机制：MutationObserver 等待 canvas 出现；document 捕获事件后
-           构造 MouseEvent 派发到 canvas
+     J13 iframe代理
+     作用：把外部事件转发到iframe内的canvas，使预览可交互
+     机制：MutationObserver等待canvas出现；document捕获事件后构造MouseEvent派发到canvas
      ============================================================ */
   App.bindIframeProxy = function (iframe) {
     var iwin, idoc;
@@ -268,8 +267,8 @@
 
   /* ============================================================
      J14 预览锁定与截图
-     作用：预览模式下锁尺寸 + 截图按钮
-     机制：直接改 appEl 内联 style；截图用 canvas.toDataURL
+     作用：预览模式下锁尺寸+截图按钮
+     机制：直接改appEl内联style；截图用 canvas.toDataURL
      ============================================================ */
   App.lockAppSize = function () {
     document.body.classList.add("preview-lock");
@@ -293,7 +292,7 @@
     appEl.style.height = "";
     appEl.style.overflow = "";
   };
-  /* 截图按钮：注入 iframe，点击后 canvas → PNG 下载 */
+  /* 截图按钮：注入iframe，点击后canvas→PNG下载 */
   App.buildScreenshotButton = function (iframe) {
     var btn = App.el("button", "preview-screenshot-btn", "📷");
     btn.id = "screenshotBtn";
@@ -333,8 +332,8 @@
 
   /* ============================================================
      J15 首页运行器
-     作用：首页根据 runner.mode 渲染；三种模式切换
-     机制：A 版 page 模式含 sessionImages 注入（供预览显示图）
+     作用：首页根据runner.mode渲染；三种模式切换
+     机制：page模式含sessionImages注入（供预览显示图）
      ============================================================ */
   App.renderRunner = function () {
     App.destroyEditor();
@@ -345,14 +344,14 @@
     App.setActiveNav("/");
     var runner = App.state.runner;
     var html = null;
-    /* ① 指定作品模式 */
+    /* 指定作品模式 */
     if (runner.mode === "page") {
       var page = App.getPages().find(function (p) {
         return p.id === runner.pageId;
       });
       if (page) {
         html = page.html;
-        /* A 版：本次会话有内存图则注入 */
+        /* 本次会话有内存图则注入 */
         if (App.state.sessionImages[page.id]) {
           html = App.injectSessionImage(
             html,
@@ -365,14 +364,14 @@
         runner.pageId = null;
       }
     }
-    /* ② 临时 HTML 模式 */
+    /* 临时HTML模式 */
     if (runner.mode === "temp") {
       html = runner.tempHtml || null;
       runner.mode = "random";
       runner.tempHtml = null;
       delete appEl.dataset.currentPageId;
     }
-    /* ③ 随机脚本模式（默认） */
+    /* 随机脚本模式（默认） */
     if (html === null) {
       var file = App.pickRandomP5File();
       if (!file) {
@@ -463,8 +462,8 @@
 
   /* ============================================================
      J16 侧边栏与主题
-     作用：侧边栏开关 + 亮/暗主题切换
-     机制：body.dark-mode 类切换；CodeMirror 主题同步
+     作用：侧边栏开关+亮/暗主题切换
+     机制：body.dark-mode类切换；CodeMirror主题同步
      ============================================================ */
   App.openSidebar = function () {
     App.dom.sidebarEl.classList.add("open");
@@ -478,7 +477,7 @@
     document.body.classList.remove("sidebar-open");
     App.dom.hamburgerBtn.setAttribute("aria-expanded", "false");
   };
-  /* 应用主题：切 CSS 主题 + CodeMirror 主题 */
+  /* 应用主题：切CSS主题+CodeMirror主题 */
   App.applyTheme = function (theme) {
     var lightTheme = App.$("#cm-theme-light");
     var darkTheme = App.$("#cm-theme-dark");
