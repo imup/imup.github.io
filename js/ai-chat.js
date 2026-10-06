@@ -1,16 +1,16 @@
 /* ============================================================
-   ai-chat.js —— AI 聊天页
-   作用：聊天页 DOM + 消息渲染 + 消息操作 + 模型编辑 + 对话导入导出
+   ai-chat.js —— AI聊天页
+   作用：聊天页DOM+消息渲染+消息操作+模型编辑+对话导入导出
    机制：增量渲染消息；流式逐字更新；每模型独立对话
-   加载：依赖 core.js + storage.js + ai.js
+   加载：依赖core.js + storage.js + ai.js
    ============================================================ */
 (function (App) {
   "use strict";
 
 
   /* ============================================================
-     J23 AI 页面骨架
-     作用：构建 /ai 页 DOM 结构
+     J23 AI页面骨架
+     作用：构建/ai页DOM结构
      ============================================================ */
   App.renderAIAssistant = function () {
     var page = App.el("div", "ai-page");
@@ -19,7 +19,7 @@
     clearBtn.id = "aiClearBtn";
     clearBtn.type = "button";
     clearBtn.title = App.T("ai.clearTitle");
-    /* 隐藏的 JSON 导入 input */
+    /* 隐藏的JSON导入input */
     var fileInput = document.createElement("input");
     fileInput.type = "file";
     fileInput.id = "aiImportFile";
@@ -69,14 +69,14 @@
 
 
   /* ============================================================
-     J24 AI 模型菜单
-     作用：AI 助手页模型菜单（含 T/K/P/J/M 按钮 + 顶行）
+     J24 AI模型菜单
+     作用：AI助手页模型菜单（含T/K/P/J/M按钮 + 顶行）
      ============================================================ */
   App.buildAIModelMenu = function () {
     var menu = App.$("#aiModelMenu");
     if (!menu) return;
     var frag = document.createDocumentFragment();
-    /* 顶行：自定义 + 导入 */
+    /* 顶行：自定义+导入 */
     var topRow = App.el("div", "ai-model-toprow");
     var addBtn = App.el(
       "div",
@@ -107,17 +107,17 @@
         name.appendChild(editBtn);
       }
       item.appendChild(name);
-      /* T 测试连接 */
+      /* T测试连接 */
       var testBtn = App.el("button", "ai-dl", "T");
       testBtn.type = "button";
       testBtn.title = App.T("ai.menuTest");
       testBtn.dataset.test = m.id;
-      /* K 设置 Key */
+      /* K设置Key */
       var keyBtn = App.el("button", "ai-key", "K");
       keyBtn.type = "button";
       keyBtn.title = App.T("ai.menuKey");
       keyBtn.dataset.key = m.id;
-      /* P 系统提示词 */
+      /* P系统提示词 */
       var promptBtn = App.el("button", "ai-prompt", "P");
       promptBtn.type = "button";
       promptBtn.title = App.T("ai.menuPrompt");
@@ -125,12 +125,12 @@
       if (App.aiState.prompts[m.id] && App.aiState.prompts[m.id].trim()) {
         promptBtn.classList.add("has-prompt");
       }
-      /* J 下载 JSON */
+      /* J下载JSON */
       var jsonBtn = App.el("button", "ai-dl", "J");
       jsonBtn.type = "button";
       jsonBtn.title = App.T("ai.menuDownloadJson");
       jsonBtn.dataset.json = m.id;
-      /* M 下载 Markdown */
+      /* M下载Markdown */
       var mdBtn = App.el("button", "ai-dl", "M");
       mdBtn.type = "button";
       mdBtn.title = App.T("ai.menuDownloadMd");
@@ -144,7 +144,7 @@
     });
     menu.replaceChildren(frag);
   };
-  /* 刷新选中态 + 模型按钮显示 */
+  /* 刷新选中态+模型按钮显示 */
   App.refreshAIModelUI = function () {
     App.$$(".ai-model-item").forEach(function (el) {
       if (
@@ -181,7 +181,7 @@
 
   /* ============================================================
      J26 消息工具栏与节点
-     作用：单条消息 DOM + 助手工具栏 + 长按展开
+     作用：单条消息DOM+助手工具栏+长按展开
      ============================================================ */
   /* 助手工具栏：仅在最后一条助手消息上显示重新生成 */
   App.buildAssistantToolbar = function (m, index) {
@@ -216,7 +216,7 @@
       App.deleteMessageFrom(index);
     });
     left.appendChild(delBtn);
-    /* token 统计 */
+    /* token统计 */
     if (m.usage) {
       var up = m.usage.prompt_tokens || 0;
       var down = m.usage.completion_tokens || 0;
@@ -243,7 +243,7 @@
     toolbar.appendChild(right);
     return toolbar;
   };
-  /* 长按 / 点击展开工具栏 */
+  /* 长按/点击展开工具栏 */
   App.bindRowToggleActions = function (row) {
     var pressTimer = null;
     var longPressed = false;
@@ -320,8 +320,8 @@
 
 
   /* ============================================================
-     J27 AI 消息渲染
-     作用：消息列表渲染 + 统计 + 增量更新
+     J27 AI消息渲染
+     作用：消息列表渲染+统计+增量更新
      ============================================================ */
   App.renderAIMessages = function () {
     var box = App.$("#aiMessages");
@@ -448,7 +448,7 @@
 
   /* ============================================================
      J28 消息操作
-     作用：删除 / 重新生成 / 发送核心
+     作用：删除/重新生成/发送核心
      ============================================================ */
   App.deleteMessageFrom = function (index) {
     var model = App.aiState.currentModel;
@@ -634,7 +634,7 @@
 
   /* ============================================================
      J29 模型编辑与选择
-     作用：自定义模型管理 + 连接测试 + Key / Prompt 设置 + 切换
+     作用：自定义模型管理+连接测试+Key/Prompt设置 +切换
      ============================================================ */
   App.showModelEditor = function (modelId) {
     var isEdit = !!modelId;
@@ -674,7 +674,7 @@
       epInput.value = isEdit ? existing.endpoint : "";
       epInput.autocomplete = "off";
       epInput.spellcheck = false;
-      /* API 模型 ID */
+      /* API模型ID */
       var l3 = App.el("label", null, App.T("model.labelApiModel"));
       l3.style.cssText = l1.style.cssText;
       var apiInput = document.createElement("input");
@@ -917,7 +917,7 @@
         App.showAlert(App.T("test.failTitle"), msg, true);
       });
   };
-  /* API Key 弹窗 */
+  /* API Key弹窗 */
   App.promptAPIKey = function (model, onSaved) {
     var hasKey = !!App.aiState.keys[model];
     App.showPrompt(
@@ -995,7 +995,7 @@
 
   /* ============================================================
      J30 对话导入导出
-     作用：MD / JSON 导出 + JSON 导入
+     作用：MD/JSON导出+JSON导入
      ============================================================ */
   App.triggerDownload = function (content, mime, filename) {
     try {
@@ -1236,8 +1236,8 @@
 
 
   /* ============================================================
-     J31 AI 发送与清空
-     作用：AI 助手页的发送入口 + 清空对话
+     J31 AI发送与清空
+     作用：AI助手页的发送入口+清空对话
      ============================================================ */
   App.aiSend = function () {
     if (App.aiState.busy) return;
@@ -1300,8 +1300,8 @@
 
 
   /* ============================================================
-     J32 AI 助手绑定
-     作用：AI 助手页事件绑定
+     J32 AI助手绑定
+     作用：AI助手页事件绑定
      ============================================================ */
   App.bindAIAssistant = function () {
     App.state.renderedModelId = null;
