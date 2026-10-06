@@ -2,8 +2,7 @@
    settings.js —— 设置弹窗 + 存储管理 + 导入
    作用：设置弹窗（语言/参数/存储/导出）+ 导入弹窗
    机制：按需加载，首次点击 footer「设置」时动态引入
-   加载：依赖 core.js + storage.js + home.js（updateSidebarPages）
-         + ai-chat.js（buildAIModelMenu / refreshAIModelUI）
+   加载：依赖 core.js + storage.js + home.js + ai-chat.js
    ============================================================ */
 (function (App) {
   "use strict";
@@ -124,6 +123,7 @@
       App.refreshAIModelUI();
     }
     if (item.id === "settings") {
+      /* A 版：重置为 1.5MB */
       App.settings.MAX_IMAGE_BYTES =
         App.DEFAULT_SETTINGS.maxImageMB * 1024 * 1024;
       App.settings.MAX_TOOL_LOOP = App.DEFAULT_SETTINGS.maxToolLoop;
@@ -218,7 +218,6 @@
       var reader = new FileReader();
       reader.onload = function (e) {
         var buf = e.target.result;
-        /* ZIP 魔数检测 */
         var isZip = false;
         try {
           var arr = new Uint8Array(buf, 0, 4);
@@ -269,7 +268,6 @@
             .catch(reject);
           return;
         }
-        /* 单 JSON */
         try {
           var txt = new TextDecoder("utf-8").decode(new Uint8Array(buf));
           var obj = JSON.parse(txt);
@@ -394,13 +392,17 @@
       f["p5_ai_current_model.json"]
     ) {
       var cm = f["p5_ai_current_model.json"];
-      if (typeof cm === "string") App.storageSet(App.AI_CURRENT_MODEL_STORAGE, cm);
+      if (typeof cm === "string")
+        App.storageSet(App.AI_CURRENT_MODEL_STORAGE, cm);
     }
     if (selectedIds.indexOf("chats") !== -1 && f["p5_ai_chats.json"]) {
       var chatsMap = f["p5_ai_chats.json"];
       if (chatsMap && typeof chatsMap === "object") {
         Object.keys(chatsMap).forEach(function (modelId) {
-          App.storageSet(App.AI_CHAT_STORAGE + "_" + modelId, chatsMap[modelId]);
+          App.storageSet(
+            App.AI_CHAT_STORAGE + "_" + modelId,
+            chatsMap[modelId],
+          );
         });
       }
     }
@@ -621,7 +623,7 @@
       }
       renderList();
 
-      /* 事件绑定：语言 / 打包 / 导入 */
+      /* 事件绑定 */
       App.$$(".lang-btn", langGroup).forEach(function (btn) {
         btn.addEventListener("click", function () {
           var code = btn.dataset.lang;
