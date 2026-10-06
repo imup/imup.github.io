@@ -1,17 +1,17 @@
 /* ============================================================
    storage.js —— 存储层（localStorage）
-   作用：统一存储层 + AI 存储 + 页面存储 + 存储配额
-   机制：storageGet/Set/Remove 封装 JSON 读写；设置独立存取
-   加载：依赖 core.js
+   作用：统一存储层+AI存储+页面存储+存储配额
+   机制：storageGet/Set/Remove封装JSON读写；设置独立存取
+   加载：依赖core.js
    ============================================================ */
 (function (App) {
   "use strict";
 
 
   /* ============================================================
-     J5 存储封装 + AI 存储
-     作用：统一存储层（localStorage 后端）
-     机制：storageGet/Set/Remove 封装 JSON 读写；设置独立存取
+     J5 存储封装+AI存储
+     作用：统一存储层（localStorage后端）
+     机制：storageGet/Set/Remove封装JSON读写；设置独立存取
      ============================================================ */
   /* 读取：解析失败返回原始字符串，键不存在返回 fallback */
   App.storageGet = function (key, fallback) {
@@ -75,7 +75,7 @@
     App._applySettings(obj);
   };
 
-  /* AI 存储：Key / 当前模型 / 对话 / 提示词 / 自定义模型 */
+  /* AI存储：Key/当前模型/对话/提示词/自定义模型 */
   App.loadAIKeys = function () {
     var v = App.storageGet(App.AI_KEY_STORAGE, {});
     return v && typeof v === "object" ? v : {};
@@ -123,7 +123,7 @@
       App.aiState.customModels || [],
     );
   };
-  /* 初始化 AI 状态（启动时调用） */
+  /* 初始化 AI状态（启动时调用） */
   App.initAIState = function () {
     App.aiState.keys = App.loadAIKeys();
     App.aiState.customModels = App.loadCustomModels();
@@ -142,7 +142,7 @@
 
   /* ============================================================
      J6 页面与草稿存储
-     作用：作品列表 + 编辑器草稿
+     作用：作品列表+编辑器草稿
      ============================================================ */
   App.getPages = function () {
     var v = App.storageGet(App.STORAGE_KEY, []);
@@ -172,8 +172,8 @@
 
   /* ============================================================
      J7 存储配额
-     作用：localStorage 满时的统一检测与提示
-     机制：捕获 QuotaExceededError → 估算占用 → 弹窗建议清理
+     作用：localStorage满时的统一检测与提示
+     机制：捕获QuotaExceededError → 估算占用 → 弹窗建议清理
      ============================================================ */
   App.isQuotaError = function (e) {
     if (!e) return false;
@@ -182,7 +182,7 @@
     if (e.code === 22 || e.code === 1014) return true;
     return false;
   };
-  /* 估算：所有键值长度 × 2 字节 ÷ 1024（KB） */
+  /* 估算：所有键值长度×2字节÷1024（KB） */
   App.estimateStorageKB = function () {
     var total = 0;
     try {
