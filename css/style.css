@@ -1,7 +1,7 @@
 /* ============================================================
    C1 主题变量
-   作用：全站 CSS 变量定义，供所有块引用
-   机制：:root 为亮色默认值；body.dark-mode 覆盖为暗色值
+   作用：全站CSS变量定义，供所有块引用
+   机制：:root为亮色默认值；body.dark-mode 覆盖为暗色值
    ============================================================ */
 :root {
   /* 品牌色：主色/悬停/焦点/危险/成功/警告/强调/中性 */
@@ -13,56 +13,46 @@
   --warn: #f0ad4e;
   --purple: #9b59b6;
   --neutral-btn: #6c757d;
-
   /* 基础色：页面底色/卡片/正文/汉堡图标 */
   --bg: #f5f5f5;
   --surface: #ffffff;
   --text: #222222;
   --hamburger: #333333;
-
   /* 文字层级：弱化/次要/三级/占位 */
   --text-muted: #888888;
   --text-secondary: #888888;
   --text-tertiary: #999999;
   --text-placeholder: #9aa0a6;
-
   /* 交互反馈：通用hover/强hover/Key/Prompt/下载 */
   --hover: rgba(0, 0, 0, 0.055);
   --hover-strong: rgba(0, 0, 0, 0.06);
   --hover-key: rgba(240, 173, 78, 0.15);
   --hover-prompt: rgba(155, 89, 182, 0.15);
   --hover-dl: rgba(0, 0, 0, 0.08);
-
   /* 边框线：分割线/输入框/CodeMirror */
   --line: rgba(0, 0, 0, 0.08);
   --border-input: #cccccc;
   --cm-border: #cccccc;
-
   /* 输入与结果：透明输入/填充背景/结果区背景 */
   --input-bg: transparent;
   --input-bg-fill: #ffffff;
   --result-bg: #e9f7fe;
-
   /* 模态框：背景/文字/阴影 */
   --modal-bg: #ffffff;
   --modal-text: #222222;
   --shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.4);
-
   /* 聊天气泡：用户（主色）/助手（浅灰） */
   --bubble-user-bg: #007bff;
   --bubble-user-text: #ffffff;
   --bubble-assistant-bg: #e9ecef;
   --bubble-assistant-text: #222222;
-
   /* AI 输入栏：底部渐变/浮起阴影 */
   --ai-input-grad: linear-gradient(to top, #ffffff 62%, rgba(255, 255, 255, 0));
   --shadow-ai-bar: 0 8px 26px rgba(0, 0, 0, 0.16);
-
   /* 侧边栏：内阴影/宽度（最小280px，最大78vw） */
   --sidebar-shadow: rgba(0, 0, 0, 0.55);
   --sidebar-w: min(280px, 78vw);
 }
-
 /* 暗色模式：覆盖同名变量（仅改色值，结构不变） */
 body.dark-mode {
   --bg: #1e1e1e;
@@ -92,16 +82,14 @@ body.dark-mode {
   --shadow-ai-bar: 0 8px 26px rgba(0, 0, 0, 0.55);
   --sidebar-shadow: rgba(0, 0, 0, 1);
 }
-
 /* ============================================================
    C2 基础重置
-   作用：全局盒模型 / 页面基础样式 / 预览锁屏态
+   作用：全局盒模型/页面基础样式/预览锁屏态
    ============================================================ */
 /* 全局盒模型：宽高含padding与border */
 * {
   box-sizing: border-box;
 }
-
 /* html/body：去边距、铺满、禁用双指缩放、主题过渡 */
 html,
 body {
@@ -120,7 +108,6 @@ body {
     background 0.3s,
     color 0.3s;
 }
-
 /* 预览锁屏：固定全屏+禁用滚动与手势 */
 body.preview-lock {
   position: fixed;
@@ -134,10 +121,9 @@ body.preview-lock {
   overscroll-behavior: none;
   touch-action: none;
 }
-
 /* ============================================================
    C3 汉堡按钮
-   作用：左上角侧边栏开关按钮（fixed 定位）
+   作用：左上角侧边栏开关按钮（fixed定位）
    ============================================================ */
 /* 按钮基础：固定左上、自适应字号、hover放大 */
 .hamburger-btn {
@@ -162,20 +148,17 @@ body.preview-lock {
 .hamburger-btn:hover {
   transform: scale(1.1);
 }
-
 /* 预览模式：白字+阴影，保证在画布上可见 */
 body.preview-lock .hamburger-btn {
   color: #fff;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
 }
-
 /* 侧边栏打开时：淡出并禁用点击 */
 body.sidebar-open .hamburger-btn {
   opacity: 0;
   transform: scale(0.6);
   pointer-events: none;
 }
-
 /* ============================================================
    C4 侧边栏
    作用：左侧抽屉导航，含搜索/导航项/我的脚本/页脚
@@ -209,7 +192,6 @@ body.sidebar-open .hamburger-btn {
 .sidebar.open {
   transform: translateX(0);
 }
-
 /* 搜索框容器：顶部内边距 */
 .sidebar-search {
   padding: 0 clamp(14px, 4vw, 18px) 12px;
@@ -388,7 +370,6 @@ body.sidebar-open .hamburger-btn {
   flex: 0 0 1px;
   background: var(--line);
 }
-
 /* ============================================================
    C5 遮罩层
    作用：侧边栏打开时的半透明背景层
@@ -407,7 +388,6 @@ body.sidebar-open .hamburger-btn {
   display: block;
   opacity: 1;
 }
-
 /* ============================================================
    C6 主容器与排版
    作用：#app 主体容器、三种模式（普通/预览/AI/生成器）、标题段落
@@ -491,7 +471,6 @@ body.sidebar-open .hamburger-btn {
   line-height: 1.6;
   margin: 0.3em 0;
 }
-
 /* ============================================================
    C7 表单与编辑器
    作用：编辑器页表单控件+CodeMirror容器+占位浮层
@@ -559,7 +538,6 @@ body.sidebar-open .hamburger-btn {
   user-select: none;
   overflow: hidden;
 }
-
 /* ============================================================
    C8 按钮与结果
    作用：通用按钮/结果区/图片预览/操作按钮组
@@ -613,7 +591,6 @@ button:disabled {
 .action-buttons button.download {
   background: var(--success);
 }
-
 /* ============================================================
    C9 模态框
    作用：全站弹窗（alert/confirm/prompt/设置/导入）
@@ -728,7 +705,6 @@ button:disabled {
   right: 0;
   margin-top: 6px;
 }
-
 /* ============================================================
    C10 AI页面骨架
    作用：AI聊天页最外层结构（清空按钮/消息区/统计条）
@@ -807,7 +783,6 @@ button:disabled {
   text-align: center;
   font-family: ui-monospace, Menlo, Consolas, monospace;
 }
-
 /* ============================================================
    C11 AI消息与工具栏
    作用：聊天气泡/助手工具栏/复制提示/长按展开
@@ -966,7 +941,6 @@ button:disabled {
   white-space: nowrap;
   line-height: 1.2;
 }
-
 /* ============================================================
    C12 AI输入栏
    作用：底部输入框+模型选择器+发送按钮
@@ -1201,7 +1175,7 @@ button:disabled {
 .gen-ai-bar textarea::placeholder {
   color: var(--text-placeholder);
 }
-/* 隐藏textarea原生滚动条（Android灰竖条修复） */
+/* 隐藏textarea原生滚动条（安卓灰竖条修复） */
 .ai-input-bar textarea::-webkit-scrollbar,
 .gen-ai-bar textarea::-webkit-scrollbar {
   width: 0;
@@ -1245,7 +1219,6 @@ button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
-
 /* ============================================================
    C13 生成器AI面板
    作用：编辑器页内嵌的AI生成栏+状态输出+标题输入行
@@ -1329,7 +1302,6 @@ button:disabled {
   flex: 0 0 auto;
   white-space: nowrap;
 }
-
 /* ============================================================
    C14 预览截图按钮
    作用：预览模式下右上角截图按钮
@@ -1357,7 +1329,6 @@ button:disabled {
 .preview-screenshot-btn:active {
   transform: scale(0.95);
 }
-
 /* ============================================================
    C15 媒体查询
    作用：小屏 / 矮屏适配
@@ -1400,7 +1371,6 @@ button:disabled {
     padding-top: 54px;
   }
 }
-
 /* ============================================================
    C16 生成器菜单栏与编辑器
    作用：顶部菜单栏+编辑器紧贴全宽+编辑器外内容带边距
@@ -1491,7 +1461,6 @@ button:disabled {
 .generator-page > .gen-ai-bar-bare {
   margin: 12px 0;
 }
-
 /* ============================================================
    C17 设置弹窗
    作用：语言/参数/存储管理/导出
