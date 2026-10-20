@@ -1,13 +1,3 @@
-/**
- * core/page-html.js — 生成作品 HTML（p5 / three 两种引擎）
- *
- * three 引擎：
- *   - 不注入 importmap（iOS Safari 的 srcdoc iframe 不支持）
- *   - 自动注入 THREE，并包装 WebGLRenderer 强制 preserveDrawingBuffer: true
- *     （让 canvas.toDataURL 能正常截图，避免输出黑图）
- *   - 用户代码约束（禁止 import、禁用 addons、只用 TouchEvent）由
- *     content.json 的 gen.systemPromptThree 告知 AI
- */
 import { escapeHtml, escapeScriptClose } from "./dom.js";
 
 const P5_CDN = "https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js";
@@ -16,7 +6,6 @@ const THREE_URL =
   "https://cdn.jsdelivr.net/npm/three@" + THREE_VERSION + "/build/three.module.js";
 
 function _threeImportMapBlock() {
-  // 已废弃：srcdoc iframe 不支持 importmap，改为在 _generateThreeHtml 内注入 import。
   return "";
 }
 
@@ -77,7 +66,6 @@ function _generateThreeHtml(opts) {
   const safeCode = escapeScriptClose(code);
   const hasImport = /^\s*import\s+/m.test(code);
 
-  // 用户代码含 import 时无法包装 THREE（THREE 由用户自己定义），跳过注入
   const injectBlock = hasImport
     ? ""
     : `    import * as _THREE_NS from "${THREE_URL}";\n` +
