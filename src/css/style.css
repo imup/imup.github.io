@@ -452,11 +452,24 @@ body.sidebar-open .hamburger-btn {
   max-width: none;
   margin: 0;
 }
-/* iOS 键盘弹起时的避让：用 visualViewport 高度覆盖 100dvh */
-html.keyboard-open #app.ai-mode,
-html.keyboard-open .ai-page {
-  height: var(--vvh, 100dvh);
+/* iOS 键盘避让：
+   - #app.ai-mode 用 fixed + top:offsetTop 精确对齐 visualViewport
+   - 汉堡按钮 top 补偿 offsetTop（fixed 元素相对 layout viewport，iOS 会平移 layout viewport）
+   - 清除按钮是 absolute 相对 .ai-page，.ai-page 已对齐，自动跟随 */
+html.keyboard-open #app.ai-mode {
+  position: fixed;
+  top: var(--vv-top, 0);
+  left: 0;
+  right: 0;
+  height: var(--vv-height, 100dvh);
 }
+html.keyboard-open .ai-page {
+  height: 100%;
+}
+html.keyboard-open .hamburger-btn {
+  top: calc(clamp(8px, 2vw, 14px) + var(--vv-top, 0px));
+}
+
 #app.generator-mode {
   padding: 0;
   max-width: none;
