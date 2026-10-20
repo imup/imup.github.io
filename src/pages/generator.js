@@ -1,4 +1,3 @@
-/** pages/generator.js — 编写脚本页（含引擎切换与 AI 生成） */
 import { $, $$, el } from "../core/dom.js";
 import { T } from "../core/i18n.js";
 import { showAlert, showConfirm, showIntentChoice } from "../core/modal.js";
@@ -23,7 +22,6 @@ import { setPage } from "../state/runner.js";
 export function renderGenerator() {
   const wrap = el("div", "generator-page");
 
-  // menubar：标题 + 引擎切换
   const menubar = el("div", "generator-menubar");
   menubar.appendChild(el("div", "generator-menubar-title", T("generator.title")));
   const engineSwitch = el("div", "engine-switch-menubar");
@@ -35,7 +33,6 @@ export function renderGenerator() {
   menubar.appendChild(engineSwitch);
   wrap.appendChild(menubar);
 
-  // 编辑器容器
   const editorWrap = el("div", "generator-editor-wrap");
   const g2 = el("div", "form-group generator-form-group");
   const ta = document.createElement("textarea");
@@ -44,10 +41,8 @@ export function renderGenerator() {
   editorWrap.appendChild(g2);
   wrap.appendChild(editorWrap);
 
-  // AI 面板
   wrap.appendChild(buildGeneratorAIPanel());
 
-  // 图片上传
   const g3 = el("div", "form-group");
   const fileInput = document.createElement("input");
   fileInput.type = "file"; fileInput.id = "image"; fileInput.accept = "image/*";
@@ -56,7 +51,6 @@ export function renderGenerator() {
   g3.appendChild(fileInput); g3.appendChild(l3); g3.appendChild(previewBox);
   wrap.appendChild(g3);
 
-  // 标题 + 提交
   const row = el("div", "gen-inline-row");
   const titleInput = document.createElement("input");
   titleInput.type = "text"; titleInput.id = "title";
@@ -67,7 +61,6 @@ export function renderGenerator() {
   row.appendChild(titleInput); row.appendChild(submit);
   wrap.appendChild(row);
 
-  // 结果区
   const result = el("div", "result");
   result.id = "result"; result.style.display = "none";
   wrap.appendChild(result);
@@ -340,7 +333,6 @@ export function bindGenerator() {
 
   if (titleInput) titleInput.addEventListener("input", function () { generatorDraft.title = this.value; saveDraft(); });
 
-  // 引擎切换
   const engineBtns = $$(".engine-switch-menubar button");
   engineBtns.forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -358,7 +350,6 @@ export function bindGenerator() {
     });
   });
 
-  // 图片上传
   if (fileInput) {
     fileInput.addEventListener("change", function () {
       const file = this.files && this.files[0];
@@ -391,14 +382,13 @@ export function bindGenerator() {
     });
   }
 
-  // 提交
   if (buildBtn) {
     buildBtn.addEventListener("click", () => {
       const title = (titleInput ? titleInput.value.trim().slice(0, getMaxTitleLen()) : "") || T("generator.untitled");
       const script = (ed.getValue() || "").trim();
       if (!script) { showAlert(T("page.noScriptTitle"), T("page.noScriptBody"), true); return; }
       const imageDataUrl = uploadedImageRef.dataUrl || "";
-      // 图片直接嵌入 HTML（IndexedDB 容量充足，不再省略）
+
       const htmlContent = generatePageHtml({
         engine: generatorDraft.engine,
         title, code: script,
