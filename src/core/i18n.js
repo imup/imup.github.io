@@ -1,7 +1,3 @@
-/**
- * core/i18n.js — 国际化
- * 自读 localStorage 的 p5_lang，不依赖 storage.js（断环）
- */
 const LANG_KEY = "p5_lang";
 
 let I18N = {};
