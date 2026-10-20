@@ -550,7 +550,6 @@ button {
   border-radius: 4px;
   cursor: pointer;
   font-size: 0.95rem;
-  font-family: inherit;
   transition: background 0.2s;
 }
 button:hover {
