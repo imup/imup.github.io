@@ -1,4 +1,3 @@
-/** main.js — 应用入口（无构建，纯 ESM） */
 import { $, $$ } from "./core/dom.js";
 import { detectLang, setLang, setI18nData, applyI18nToStatic } from "./core/i18n.js";
 import { applyTheme } from "./core/theme.js";
@@ -13,23 +12,13 @@ import {
   bindSidebar, updateSidebarPages, closeSidebar, isSidebarOpen,
 } from "./sidebar.js";
 import { render } from "./router.js";
-
-/** 按你实际json文件名改 */
 const CONTENT_URL = "src/data/content.json";
-
-/**
- * iOS Safari 的 fetch 有时会永久挂起（不 resolve 不 reject）。
- * 加 5 秒超时兜底：即使 fetch 挂死，5 秒后走 catch → boot() 降级启动。
- */
 const CONTENT_TIMEOUT_MS = 5000;
 
 function initGlobalGuards() {
   ["gesturestart", "gesturechange", "gestureend"].forEach((type) => {
     document.addEventListener(type, (e) => e.preventDefault(), { passive: false });
   });
-
-  // 锁定主文档双指/多指缩放（原代码逻辑）。
-  // preventDefault 只阻止浏览器默认行为，不影响 iframe 内部 three 注册的触摸事件。
   document.addEventListener("touchstart", (e) => {
     if (e.touches && e.touches.length > 1) e.preventDefault();
   }, { passive: false });
@@ -135,9 +124,6 @@ function boot() {
   render();
 }
 
-// ============================================================
-// 启动链：存储初始化 → 内容加载 → boot
-// ============================================================
 (async function start() {
   try {
     await initStorage();
