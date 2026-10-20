@@ -8,7 +8,7 @@ var PRECACHE_URLS = [
   "./src/css/style.css",
   "./src/data/content.json",
 
-  // ESM 模块（27 个，缺一不可）
+  // ESM模块（27个，缺一不可）
   "./src/main.js",
   "./src/router.js",
   "./src/sidebar.js",
@@ -37,12 +37,12 @@ var PRECACHE_URLS = [
   "./src/features/backup.js",
   "./src/features/settings-dialog.js",
 
-  // 内置 p5 脚本
+  // 内置p5脚本
   "./p5/sketch1.js",
   "./p5/sketch2.js",
   "./p5/sketch3.js",
 
-  // 图标（实际在 img/ 目录）
+  // 图标
   "./img/icon-192.png",
   "./img/icon-512.png",
 
@@ -57,7 +57,7 @@ var PRECACHE_URLS = [
   "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js"
 ];
 
-var NETWORK_FIRST_PATHS = ["./data/contents.json"];
+var NETWORK_FIRST_PATHS = ["./src/data/content.json"];
 
 function isNetworkFirst(url) {
   var path = url.pathname;
