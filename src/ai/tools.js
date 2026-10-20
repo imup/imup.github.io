@@ -1,4 +1,3 @@
-/** ai/tools.js — 工具规格与执行器 */
 import { T } from "../core/i18n.js";
 import { getMaxTitleLen } from "../core/settings.js";
 import { generatePageHtml } from "../core/page-html.js";
@@ -80,7 +79,6 @@ export const TOOL_HANDLERS = {
     const inputTitle = titleInput && titleInput.value ? titleInput.value.trim() : "";
     const title = ((args && typeof args.title === "string" && args.title.trim()) ? args.title.trim() : inputTitle || T("generator.untitled")).slice(0, getMaxTitleLen());
     const imageDataUrl = uploadedImageRef.dataUrl || "";
-    // 图片直接嵌入 HTML（IndexedDB 容量充足，不再省略）
     const html = generatePageHtml({
       engine: generatorDraft.engine,
       title, code: script,
