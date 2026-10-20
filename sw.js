@@ -46,7 +46,7 @@ var PRECACHE_URLS = [
   "./img/icon-192.png",
   "./img/icon-512.png",
 
-// CDN
+  // CDN
   "https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css",
   "https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/duotone-light.min.css",
   "https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css",
