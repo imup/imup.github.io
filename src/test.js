@@ -1,4 +1,4 @@
-/** main.js — 运行时探针版（诊断用） */
+/** 运行时探针版（诊断用） */
 import { $, $$ } from "./core/dom.js";
 import { detectLang, setLang, setI18nData, applyI18nToStatic } from "./core/i18n.js";
 import { applyTheme } from "./core/theme.js";
@@ -14,7 +14,7 @@ import {
 } from "./sidebar.js";
 import { render } from "./router.js";
 
-// ========== 运行时探针：页面上显示每一步 ==========
+//  运行时探针：页面上显示每一步 
 const diagBox = document.createElement("div");
 diagBox.id = "__diag";
 diagBox.style.cssText =
@@ -40,10 +40,10 @@ window.addEventListener("error", (e) =>
 window.addEventListener("unhandledrejection", (e) =>
   log("[REJ] " + ((e.reason && e.reason.message) || String(e.reason || "?")), "#f66"),
 );
-// =================================================
 
-/** ⚠️ 按你实际 json 文件名改 */
-const CONTENT_URL = "data/contents.json";
+
+/* 按实际json文件名改 */
+const CONTENT_URL = "src/data/content.json";
 
 function initGlobalGuards() {
   ["gesturestart", "gesturechange", "gestureend"].forEach((type) => {
