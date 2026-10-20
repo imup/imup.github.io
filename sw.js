@@ -5,8 +5,8 @@ var PRECACHE_URLS = [
   "./",
   "./index.html",
   "./manifest.json",
-  "./css/styles.css",
-  "./data/contents.json",
+  "./src/css/style.css",
+  "./src/data/content.json",
 
   // ESM 模块（27 个，缺一不可）
   "./src/main.js",
