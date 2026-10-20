@@ -1,4 +1,3 @@
-/** features/settings-dialog.js — 设置弹窗 */
 import { $, $$, el, flashTip } from "../core/dom.js";
 import { showAlert, showConfirm, openModal, closeModal, rightGroup } from "../core/modal.js";
 import { T, getLang, detectLang, setLang, applyI18nToStatic } from "../core/i18n.js";
@@ -40,8 +39,6 @@ function _buildLangSection() {
       const next = btn.dataset.lang;
       if (!next || next === getLang()) return;
       setLang(next); applyI18nToStatic();
-      // 侧边栏"暂无作品"是 updateSidebarPages 动态生成的节点，
-      // 不在 applyI18nToStatic 覆盖范围，派发 app:pagesChanged 触发重渲染。
       try { window.dispatchEvent(new CustomEvent("app:pagesChanged")); } catch (e) {}
       closeModal(); emitRoute(); showSettingsDialog();
     });
