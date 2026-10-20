@@ -23,12 +23,12 @@ import { setPage } from "../state/runner.js";
 export function renderGenerator() {
   const wrap = el("div", "generator-page");
 
-  // menubar：标题 + 引擎切换（替代原帮助按钮）
+  // menubar：标题 + 引擎切换
   const menubar = el("div", "generator-menubar");
   menubar.appendChild(el("div", "generator-menubar-title", T("generator.title")));
   const engineSwitch = el("div", "engine-switch-menubar");
   ["p5", "three"].forEach((eng) => {
-    const btn = el("button", eng === generatorDraft.engine ? "active" : "", eng === "p5" ? "p5" : "three");
+    const btn = el("button", eng === generatorDraft.engine ? "active" : "", eng === "p5" ? "p5.js" : "three.js");
     btn.type = "button"; btn.dataset.engine = eng; btn.title = eng === "p5" ? "p5.js" : "three.js";
     engineSwitch.appendChild(btn);
   });
@@ -398,9 +398,12 @@ export function bindGenerator() {
       const script = (ed.getValue() || "").trim();
       if (!script) { showAlert(T("page.noScriptTitle"), T("page.noScriptBody"), true); return; }
       const imageDataUrl = uploadedImageRef.dataUrl || "";
+      // 图片直接嵌入 HTML（IndexedDB 容量充足，不再省略）
       const htmlContent = generatePageHtml({
         engine: generatorDraft.engine,
-        title, code: script, imageDataUrl: "", hasImage: !!imageDataUrl,
+        title, code: script,
+        imageDataUrl: imageDataUrl,
+        hasImage: !!imageDataUrl,
         maxTitleLen: getMaxTitleLen(),
       });
       const newId = Date.now() + Math.floor(Math.random() * 1000);
