@@ -1,4 +1,3 @@
-/** core/nav.js — hash 路由最小封装 */
 const ROUTE_EVENT = "app:emitRoute";
 
 export function getRoute() {
