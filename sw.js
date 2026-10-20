@@ -46,14 +46,15 @@ var PRECACHE_URLS = [
   "./img/icon-192.png",
   "./img/icon-512.png",
 
-  // CDN
+// CDN
   "https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css",
   "https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/duotone-light.min.css",
   "https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css",
   "https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js",
   "https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js",
   "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js",
-  "https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"
+  "https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js",
+  "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js"
 ];
 
 var NETWORK_FIRST_PATHS = ["./data/contents.json"];
