@@ -1,4 +1,3 @@
-/** state/ai-state.js — AI 状态单例 */
 import {
   storageGet, storageSet, storageRemove,
   AI_KEY_STORAGE, AI_CHAT_STORAGE, AI_PROMPT_STORAGE,
