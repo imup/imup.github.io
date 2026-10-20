@@ -1336,47 +1336,50 @@ button:disabled {
 .generator-menubar {
   position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  height: 56px;
-  padding: 0 12px;
   background: var(--surface);
   border-bottom: 1px solid var(--line);
 }
+
+/* 标题区：保持原 56px 高度，垂直居中 → 与汉堡平齐 */
 .generator-menubar-title {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 1rem;
   font-weight: bold;
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  flex: 1 1 auto;
-  min-width: 0;
+  text-align: center;
+  width: 100%;
+  /* 左侧留出汉堡空间，避免长标题与汉堡重叠；短标题仍能居中 */
+  padding-left: 60px;
+  padding-right: 16px;
+  box-sizing: border-box;
+}
+/* 引擎切换：在标题下方，水平居中，字号为标题的一半 */
+.engine-switch-menubar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 4px;
 }
 
-/*
-  引擎切换：位于 menubar 右侧，替代原帮助按钮位置
-  尺寸比通用 button 更紧凑（menubar 高 56px，按钮约 22px 高）
-  类名 .engine-switch-menubar 与 .engine-switch 区分：
-    - 原 .engine-switch 计划放在编辑器上方的独立行（已废弃）
-    - 现只用 menubar 内紧凑版
-*/
-.engine-switch-menubar {
-  flex: 0 0 auto;
-  display: flex;
-  gap: 4px;
-}
 .engine-switch-menubar button {
-  padding: 4px 10px;
+  /* 字号：标题 1rem → 按钮 0.5rem（严格一半） */
+  font-size: 0.8rem;
+  /* 用 padding 撑出足够的点击区域，弥补小字号 */
+  padding: 2px 6px;
   border: 1px solid var(--border-input);
   background: var(--input-bg-fill);
   color: var(--text);
   border-radius: 4px;
   cursor: pointer;
-  font-size: 0.78rem;
   font-family: inherit;
-  line-height: 1.2;
+  line-height: 1.4;
   transition:
     background 0.15s,
     border-color 0.15s,
