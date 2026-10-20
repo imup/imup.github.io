@@ -1,4 +1,3 @@
-/** pages/about.js — 关于页 */
 import { el } from "../core/dom.js";
 import { T } from "../core/i18n.js";
 
