@@ -1,4 +1,3 @@
-/** ai/providers.js — 模型请求层 */
 import { getRequestTimeoutMs, getTestTimeoutMs } from "../core/settings.js";
 import { T } from "../core/i18n.js";
 import { aiModelConf } from "../state/ai-state.js";
