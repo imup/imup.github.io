@@ -41,7 +41,6 @@ window.addEventListener("unhandledrejection", (e) =>
   log("[REJ] " + ((e.reason && e.reason.message) || String(e.reason || "?")), "#f66"),
 );
 
-
 /* 按实际json文件名改 */
 const CONTENT_URL = "src/data/content.json";
 
