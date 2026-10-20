@@ -1,4 +1,3 @@
-/** pages/ai.js — AI 助手页 */
 import { $, $$, el, flashTip } from "../core/dom.js";
 import { T } from "../core/i18n.js";
 import { showAlert, showConfirm, openModal, closeModal, rightGroup } from "../core/modal.js";
