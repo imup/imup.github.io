@@ -14,7 +14,7 @@ import {
 } from "./sidebar.js";
 import { render } from "./router.js";
 
-/** ⚠️ 按你实际 json 路径 */
+/** 按你实际json文件名改 */
 const CONTENT_URL = "src/data/content.json";
 
 /**
@@ -101,67 +101,6 @@ function initGlobalGuards() {
   });
 }
 
-/**
- * iOS Safari 键盘避让：
- * 1) AI 页激活时给 html 加 ai-active 类，配合 CSS 锁定 body 不可滚动，
- *    消除 iOS 键盘弹起时的自动 scroll 补偿（"先推上再回位"卡顿的根源）。
- * 2) 键盘弹起时，把 .ai-page 高度收缩到 visualViewport.height，
- *    使输入框紧贴键盘、汉堡和清除按钮保持可见。
- */
-function initKeyboardAvoidance() {
-  if (!window.visualViewport) return;
-  const vv = window.visualViewport;
-  const root = document.documentElement;
-  let rafId = null;
-
-  function update() {
-    const aiPage = document.querySelector(".ai-page");
-    if (aiPage) {
-      root.classList.add("ai-active");
-    } else {
-      root.classList.remove("ai-active", "keyboard-open");
-      root.style.removeProperty("--vv-height");
-      root.style.removeProperty("--vv-top");
-      return;
-    }
-
-    const height = vv.height;
-    const offsetTop = vv.offsetTop || 0;
-    const keyboardHeight = window.innerHeight - height - offsetTop;
-
-    if (keyboardHeight > 100) {
-      root.classList.add("keyboard-open");
-      root.style.setProperty("--vv-height", height + "px");
-      root.style.setProperty("--vv-top", offsetTop + "px");
-    } else {
-      root.classList.remove("keyboard-open");
-      root.style.removeProperty("--vv-height");
-      root.style.removeProperty("--vv-top");
-    }
-  }
-
-  function schedule() {
-    if (rafId) cancelAnimationFrame(rafId);
-    rafId = requestAnimationFrame(update);
-  }
-
-  vv.addEventListener("resize", schedule);
-  vv.addEventListener("scroll", schedule);
-
-  document.addEventListener("focusin", (e) => {
-    const t = e.target;
-    if (t && (t.tagName === "TEXTAREA" || t.tagName === "INPUT")) schedule();
-  });
-
-  // AI 页进出时（render 替换 DOM）重算
-  const appEl = document.getElementById("app");
-  if (appEl) {
-    new MutationObserver(schedule).observe(appEl, { childList: true });
-  }
-
-  schedule();
-}
-
 function loadContent() {
   const timeoutPromise = new Promise((_, reject) => {
     setTimeout(() => reject(new Error("content load timeout")), CONTENT_TIMEOUT_MS);
@@ -184,7 +123,6 @@ function boot() {
   initModal();
   bindSidebar();
   initGlobalGuards();
-  initKeyboardAvoidance();
 
   applyTheme(storageGet(THEME_KEY, "light"));
   loadSettings();
