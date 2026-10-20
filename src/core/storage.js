@@ -1,23 +1,6 @@
-/**
- * core/storage.js — IndexedDB 存储层（同步 API 不变）
- *
- * 设计：
- *   - 启动时 initStorage() 打开 IDB，全量读入内存 Map
- *   - 之后 storageGet / storageSet / storageRemove 保持同步（读写内存）
- *   - 写操作：同步改内存 + 异步落盘 IDB（fire-and-forget）
- *   - IDB 不可用时回退 localStorage（同步全量读入内存）
- *
- * 兼容：
- *   - p5_theme / p5_lang 双写 localStorage：
- *       index.html 首屏预闪脚本需要同步读 p5_theme
- *       i18n.js 自读 p5_lang（断开循环依赖）
- *   - 失败重试：iOS 内存压力下 IDB 连接可能被系统关闭，
- *     写入失败自动重连一次；仍失败则兜底写 localStorage
- */
 import { showAlert } from "./modal.js";
 import { T } from "./i18n.js";
 
-/* ---------- 存储键常量（保持不变） ---------- */
 export const STORAGE_KEY = "p5_pages";
 export const THEME_KEY = "p5_theme";
 export const LANG_KEY = "p5_lang";
@@ -29,24 +12,18 @@ export const AI_CUSTOM_MODELS_STORAGE = "p5_ai_custom_models";
 export const AI_CURRENT_MODEL_STORAGE = "p5_ai_current_model";
 export const SETTINGS_KEY = "p5_settings";
 
-/* ---------- 必须双写 localStorage 的键 ---------- */
 const DUAL_WRITE_KEYS = new Set([THEME_KEY, LANG_KEY]);
 
-/* ---------- IndexedDB 配置 ---------- */
 const IDB_NAME = "randomArtDB";
 const IDB_VERSION = 1;
 const IDB_STORE = "kv";
 const IDB_OPEN_TIMEOUT_MS = 3000;
 
-/* ---------- 内存缓存 ---------- */
 const _cache = new Map();
 let _idb = null;
 let _ready = false;
 let _initPromise = null;
 
-/* ============================================================
- * IndexedDB 底层
- * ========================================================== */
 function _openIDB() {
   return new Promise((resolve, reject) => {
     if (typeof window === "undefined" || !("indexedDB" in window)) {
@@ -147,9 +124,6 @@ function _idbRemove(key) {
   });
 }
 
-/* ============================================================
- * localStorage 直通（保留供外部直接使用）
- * ========================================================== */
 export function storageGetRaw(key, fallback) {
   try {
     const raw = localStorage.getItem(key);
@@ -173,9 +147,6 @@ export function storageRemoveRaw(key) {
   try { localStorage.removeItem(key); } catch (e) {}
 }
 
-/* ============================================================
- * 初始化
- * ========================================================== */
 export function initStorage() {
   if (_initPromise) return _initPromise;
   _initPromise = (async () => {
@@ -212,9 +183,6 @@ export function initStorage() {
   return _initPromise;
 }
 
-/* ============================================================
- * 业务 API（同步）
- * ========================================================== */
 export function storageGet(key, fallback) {
   if (_cache.has(key)) return _cache.get(key);
   if (!_ready) {
@@ -234,9 +202,6 @@ export function storageRemove(key) {
   _persistRemove(key);
 }
 
-/* ============================================================
- * 内部：落盘
- * ========================================================== */
 function _persistSet(key, value) {
   const needLocal = DUAL_WRITE_KEYS.has(key) || !_ready;
   if (needLocal) {
@@ -261,9 +226,6 @@ function _persistRemove(key) {
   }
 }
 
-/* ============================================================
- * 内部：失败重试（iOS 上 IDB 连接可能被系统关闭）
- * ========================================================== */
 function _retrySet(key, value, firstErr) {
   console.warn("[storage] IDB 写入失败，尝试重连：" + key, firstErr);
   (async () => {
@@ -293,9 +255,6 @@ function _retryRemove(key, firstErr) {
   })();
 }
 
-/* ============================================================
- * Quota / 诊断
- * ========================================================== */
 export function isQuotaError(e) {
   if (!e) return false;
   if (e.name === "QuotaExceededError") return true;
