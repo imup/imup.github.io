@@ -1,4 +1,3 @@
-/** state/editor.js — CodeMirror 实例（UMD，window.CodeMirror） */
 import { applyTheme, currentTheme } from "../core/theme.js";
 
 let _editor = null;
