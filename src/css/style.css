@@ -1,26 +1,3 @@
-/* ============================================================
-   randomArt — 主样式表
-
-   路径：/css/style.css（原 src/css/style.css 移出 src/）
-
-   改造要点（相对最初版本）：
-     - 选择器 html.dark-mode 替代 body.dark-mode（配合 index.html 首屏预闪脚本）
-     - P0-1：.overlay 淡入修复（visibility + pointer-events 替代 display 切换）
-     - P0-2：.ai-clear-btn clamp 参数倒置修复
-     - A3：.preview-mode 补 position: relative 使 z-index 生效
-     - A4：.ai-model-menu z-index 500→350 + max-width，防盖 modal / 窄屏溢出
-     - A5：.form-group 补 position: relative
-     - A6：全局 button 补 font-family: inherit
-     - C1：--text-muted 提升对比度至 WCAG AA
-     - C2：:focus-visible 键盘焦点环
-     - C3：prefers-reduced-motion 动效降级
-     - C4：html/body touch-action 由 pan-x pan-y 改为 auto（允许缩放）
-     - C5：.modal max-height 补 88dvh 兜底 iOS 地址栏伸缩
-     - 引擎切换：.generator-menubar 改 space-between，删 .generator-menubar-help，
-       新增 .engine-switch-menubar（原帮助按钮位置）
-   ============================================================ */
-
-/* ---------- 1. 变量：亮色主题 ---------- */
 :root {
   --primary: #007bff;
   --primary-hover: #0056b3;
@@ -34,10 +11,7 @@
   --surface: #ffffff;
   --text: #222222;
   --hamburger: #333333;
-
-  /* C1：由 #888888 提升至 #6b6b6b，#f5f5f5 上约 4.9:1 */
   --text-muted: #6b6b6b;
-
   --text-secondary: #888888;
   --text-tertiary: #999999;
   --text-placeholder: #9aa0a6;
@@ -64,19 +38,11 @@
   --sidebar-shadow: rgba(0, 0, 0, 0.55);
   --sidebar-w: min(280px, 78vw);
 }
-
-/* ---------- 2. 变量：暗色主题 ---------- */
-/*
-  选择器由 body.dark-mode 改为 html.dark-mode：
-  index.html 的首屏预闪脚本在 CSS 加载前执行，只能操作 documentElement；
-  将其加在 html 上，body 的所有后代才能继承 CSS 变量。
-*/
 html.dark-mode {
   --bg: #1e1e1e;
   --surface: #2d2d2d;
   --text: #dddddd;
   --hamburger: #ffffff;
-  /* C1：dark 下由 #888888 提升至 #a8a8a8，#2d2d2d 上约 6.3:1 */
   --text-muted: #a8a8a8;
   --text-secondary: #999999;
   --text-tertiary: #888888;
@@ -102,7 +68,6 @@ html.dark-mode {
   --sidebar-shadow: rgba(0, 0, 0, 1);
 }
 
-/* ---------- 3. 基础重置 ---------- */
 * {
   box-sizing: border-box;
 }
@@ -118,22 +83,12 @@ body {
   color: var(--text);
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  /* C4：原 pan-x pan-y 等价禁缩放，改为 auto 允许 pinch-zoom */
   touch-action: auto;
   overscroll-behavior: none;
   transition:
     background 0.3s,
     color 0.3s;
 }
-
-/*
-  预览态锁定：
-  当 #app 处于 .preview-mode（作品全屏 iframe）时，body 加此类。
-  - position: fixed 避免 iOS 地址栏收缩引起的重排
-  - touch-action: none 让 iframe 内的触摸手势成为唯一手势通道
-  - 注意：主文档对多指的 preventDefault 由 main.js 的 initGlobalGuards 负责，
-    且对 #app.preview-mode 内的触摸放行（让 three 双指可用）
-*/
 body.preview-lock {
   position: fixed;
   top: 0;
@@ -147,7 +102,6 @@ body.preview-lock {
   touch-action: none;
 }
 
-/* ---------- 4. 汉堡按钮 ---------- */
 .hamburger-btn {
   position: fixed;
   top: clamp(8px, 2vw, 14px);
@@ -180,7 +134,6 @@ body.sidebar-open .hamburger-btn {
   pointer-events: none;
 }
 
-/* ---------- 5. 侧边栏 ---------- */
 .sidebar {
   position: fixed;
   top: 0;
@@ -370,12 +323,6 @@ body.sidebar-open .hamburger-btn {
   background: var(--line);
 }
 
-/* ---------- 6. 遮罩 ---------- */
-/*
-  P0-1 改造：
-  原 display:none → block 与 opacity 同帧，transition 不触发，遮罩瞬间出现。
-  改为常驻 display:block + visibility 延迟 0.3s 切换，并加 pointer-events 双保险。
-*/
 .overlay {
   display: block;
   position: fixed;
@@ -396,7 +343,6 @@ body.sidebar-open .hamburger-btn {
   transition: opacity 0.3s ease;
 }
 
-/* ---------- 7. 主区 #app ---------- */
 #app {
   width: 100%;
   min-height: 100vh;
@@ -418,11 +364,6 @@ body.sidebar-open .hamburger-btn {
 #app > div.generator-page {
   max-width: none;
 }
-
-/*
-  A3 改造：原 z-index:100 因 #app 无 position 不生效，补 relative。
-  注意：relative 会创建层叠上下文，hamburger（300）> preview（100）依然正确。
-*/
 #app.preview-mode {
   padding: 0;
   max-width: none;
@@ -474,8 +415,6 @@ body.sidebar-open .hamburger-btn {
   margin: 0.3em 0;
 }
 
-/* ---------- 8. 表单 ---------- */
-/* A5 改造：补 position:relative，为未来可能的绝对定位子元素建立参考 */
 .form-group {
   position: relative;
   margin-bottom: 15px;
@@ -497,11 +436,6 @@ body.sidebar-open .hamburger-btn {
   background: var(--input-bg-fill);
   color: var(--modal-text);
 }
-/*
-  注：generator 页的 .generator-form-group .CodeMirror 用更高特异性覆盖本规则。
-  两处 !important 是为了对抗 JS 里 editor.setSize(null, "100%") 写入的内联高度，
-  内联样式优先级高于任何选择器，无 !important 无法覆盖。
-*/
 .form-group .CodeMirror {
   border: 1px solid var(--cm-border);
   border-radius: 4px;
@@ -540,8 +474,6 @@ body.sidebar-open .hamburger-btn {
   overflow: hidden;
 }
 
-/* ---------- 9. 按钮 ---------- */
-/* A6 改造：补 font-family:inherit，避免各浏览器回退到系统按钮字体 */
 button {
   background: var(--primary);
   color: white;
@@ -588,7 +520,6 @@ button:disabled {
   background: var(--success);
 }
 
-/* ---------- 10. 模态框 ---------- */
 .modal-backdrop {
   display: none;
   position: fixed;
@@ -599,11 +530,6 @@ button:disabled {
   justify-content: center;
   padding: 16px;
 }
-/*
-  支持 HTML 的 hidden 属性作为权威隐藏状态：
-  即使 JS 残留 .show 类，hidden 也强制隐藏。
-  openModal/closeModal 由 core/modal.js 维护 hidden 与 aria-hidden。
-*/
 .modal-backdrop[hidden] {
   display: none !important;
 }
@@ -615,7 +541,6 @@ button:disabled {
   color: var(--modal-text);
   border-radius: 8px;
   width: min(480px, 100%);
-  /* C5 改造：补 dvh 兜底 iOS 地址栏伸缩 */
   max-height: 88vh;
   max-height: 88dvh;
   overflow-y: auto;
@@ -702,7 +627,6 @@ button:disabled {
   margin-top: 6px;
 }
 
-/* ---------- 11. AI 助手页 ---------- */
 .ai-page {
   position: relative;
   display: flex;
@@ -714,7 +638,6 @@ button:disabled {
 }
 .ai-clear-btn {
   position: absolute;
-  /* P0-2 改造：clamp(MIN, VAL, MAX) 参数倒置（原 16px > 14px），修正为 14px ≤ 16px */
   top: clamp(14px, 2vw, 16px);
   right: clamp(16px, 3vw, 18px);
   z-index: 60;
@@ -884,10 +807,6 @@ button:disabled {
   align-items: center;
   flex: 0 0 auto;
 }
-/*
-  注：!important 是对全局 button 样式（padding / background 等）的反制。
-  若未来把全局 button 样式收窄为 .btn 类，可移除这些 !important。
-*/
 .assistant-tool-btn {
   background: transparent !important;
   color: var(--text-muted);
@@ -923,7 +842,6 @@ button:disabled {
   line-height: 1.2;
 }
 
-/* ---------- 12. AI 输入区 ---------- */
 .ai-input-wrap {
   flex: 0 0 auto;
   padding: 10px 12px calc(12px + env(safe-area-inset-bottom));
@@ -993,9 +911,7 @@ button:disabled {
   border-radius: 12px;
   box-shadow: 0 12px 34px rgba(0, 0, 0, 0.32);
   min-width: 320px;
-  /* C6 改造：防窄屏溢出 */
   max-width: calc(100vw - 24px);
-  /* A4 改造：500→350，避免盖住 z-index:400 的 modal-backdrop */
   z-index: 350;
   overflow: hidden;
 }
@@ -1187,7 +1103,6 @@ button:disabled {
   cursor: not-allowed;
 }
 
-/* ---------- 13. 生成器 AI 面板 ---------- */
 .gen-ai-bar {
   display: flex;
   align-items: flex-end;
@@ -1263,7 +1178,6 @@ button:disabled {
   white-space: nowrap;
 }
 
-/* ---------- 14. 预览截图按钮 ---------- */
 .preview-screenshot-btn {
   position: fixed;
   top: clamp(8px, 2vw, 14px);
@@ -1287,7 +1201,6 @@ button:disabled {
   transform: scale(0.95);
 }
 
-/* ---------- 15. 响应式断点 ---------- */
 @media (max-width: 420px) {
   .hamburger-btn {
     font-size: 28px;
@@ -1325,13 +1238,6 @@ button:disabled {
   }
 }
 
-/* ---------- 16. 生成器页布局 ---------- */
-/*
-  menubar 改造：
-    - 原 justify-content: center + .generator-menubar-help 绝对定位在右侧
-    - 现改为 space-between：标题左，引擎切换按钮右
-    - .generator-menubar-help 相关规则已删除
-*/
 .generator-menubar {
   position: relative;
   display: flex;
@@ -1340,8 +1246,6 @@ button:disabled {
   background: var(--surface);
   border-bottom: 1px solid var(--line);
 }
-
-/* 标题区：保持原 56px 高度，垂直居中 → 与汉堡平齐 */
 .generator-menubar-title {
   height: 56px;
   display: flex;
@@ -1355,12 +1259,10 @@ button:disabled {
   text-overflow: ellipsis;
   text-align: center;
   width: 100%;
-  /* 左侧留出汉堡空间，避免长标题与汉堡重叠；短标题仍能居中 */
   padding-left: 60px;
   padding-right: 16px;
   box-sizing: border-box;
 }
-/* 引擎切换：在标题下方，水平居中，字号为标题的一半 */
 .engine-switch-menubar {
   display: flex;
   gap: 6px;
@@ -1398,10 +1300,6 @@ button:disabled {
 .generator-form-group {
   margin: 0;
 }
-/*
-  注：!important 对抗 JS 的 setSize(null, "100%") 内联高度，
-  与 .form-group .CodeMirror 的 !important 靠"后写优先"生效。
-*/
 .generator-form-group .CodeMirror {
   height: 50vh !important;
   border: none;
@@ -1423,7 +1321,6 @@ button:disabled {
   margin: 12px 0;
 }
 
-/* ---------- 17. 设置弹窗 ---------- */
 .settings-section {
   margin-bottom: 20px;
   padding-bottom: 16px;
@@ -1647,16 +1544,10 @@ button:disabled {
   transform: scale(0.96);
 }
 
-/* ---------- 18. 无障碍与动效降级 ---------- */
-/* 键盘焦点环：作用于按钮、链接、表单输入 */
 :focus-visible {
   outline: 2px solid var(--primary-focus);
   outline-offset: 2px;
 }
-
-/* 编辑器是大面积输入区，CodeMirror 内部任何聚焦元素都不显示焦点环。
-   用 *:focus 是因为 iOS Safari 下 CodeMirror 的输入层是 contenteditable，
-   不是 textarea —— 只写 textarea 匹配不到。 */
 .CodeMirror:focus,
 .CodeMirror:focus-visible,
 .CodeMirror *:focus,
@@ -1665,10 +1556,6 @@ button:disabled {
   box-shadow: none !important;
 }
 
-/*
-  C3：尊重系统 prefers-reduced-motion。
-  时长压到 0.01ms 而非 0，避免 transitionend 事件不触发。
-*/
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
