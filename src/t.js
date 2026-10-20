@@ -1,5 +1,5 @@
 /**
- * 可视化探针版（仅诊断用，手机上直接显示）
+ * 可视化探针版（仅诊断用）
  */
 (function () {
   const box = document.createElement("div");
