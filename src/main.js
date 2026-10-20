@@ -103,9 +103,9 @@ function initGlobalGuards() {
 
 /**
  * iOS Safari 键盘避让：
- * 键盘弹起时不 resize layout viewport，而是 scroll 页面，
- * 导致固定输入区被遮挡、汉堡/清除按钮被推出视口。
- * 用 visualViewport 拿可视高度，动态收缩 .ai-page 到可视区域。
+ * 键盘弹起时 iOS 会平移 layout viewport（visualViewport.offsetTop > 0），
+ * 用 fixed 定位 + top: offsetTop 把 .ai-page 精确对齐到可视区，
+ * 避免 fixed 元素被推出视口，也避免 scroll 补偿导致的抖动。
  */
 function initKeyboardAvoidance() {
   if (!window.visualViewport) return;
@@ -115,28 +115,23 @@ function initKeyboardAvoidance() {
   function update() {
     const aiPage = document.querySelector(".ai-page");
     if (!aiPage) {
-      document.documentElement.style.removeProperty("--vvh");
       document.documentElement.classList.remove("keyboard-open");
+      document.documentElement.style.removeProperty("--vv-top");
+      document.documentElement.style.removeProperty("--vv-height");
       return;
     }
-    const layoutHeight = window.innerHeight;
-    const visualHeight = vv.height;
     const offsetTop = vv.offsetTop || 0;
-    const keyboardHeight = layoutHeight - visualHeight - offsetTop;
+    const height = vv.height;
+    const keyboardHeight = window.innerHeight - height - offsetTop;
 
     if (keyboardHeight > 100) {
-      // 键盘弹起
-      document.documentElement.style.setProperty("--vvh", visualHeight + "px");
       document.documentElement.classList.add("keyboard-open");
-      // 阻止 iOS 自动 scroll 页面（否则汉堡/清除按钮被推走）
-      if (window.scrollY !== 0) window.scrollTo(0, 0);
-      // 消息区滚到底部，保证最新消息可见
-      const box = document.querySelector("#aiMessages");
-      if (box) box.scrollTop = box.scrollHeight;
+      document.documentElement.style.setProperty("--vv-top", offsetTop + "px");
+      document.documentElement.style.setProperty("--vv-height", height + "px");
     } else {
-      // 键盘收起
-      document.documentElement.style.removeProperty("--vvh");
       document.documentElement.classList.remove("keyboard-open");
+      document.documentElement.style.removeProperty("--vv-top");
+      document.documentElement.style.removeProperty("--vv-height");
     }
   }
 
@@ -147,8 +142,6 @@ function initKeyboardAvoidance() {
 
   vv.addEventListener("resize", schedule);
   vv.addEventListener("scroll", schedule);
-
-  // 输入框聚焦时也触发一次（部分 iOS 版本 focus 后才会更新 visualViewport）
   document.addEventListener("focusin", (e) => {
     const t = e.target;
     if (t && (t.tagName === "TEXTAREA" || t.tagName === "INPUT")) schedule();
