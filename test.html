@@ -34,9 +34,10 @@
         - 实际“禁止双指缩放屏幕”由 main.js 的 initGlobalGuards 实现，
           且对 #app.preview-mode（作品预览 iframe）放行
     -->
+    <!-- 视口：禁止缩放，覆盖安全区 -->
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+      content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
 
     <!-- 让浏览器原生控件（滚动条、表单、日期选择器）跟随亮/暗主题 -->
