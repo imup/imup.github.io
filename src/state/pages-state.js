@@ -1,4 +1,3 @@
-/** state/pages-state.js — 作品持久化 + 会话图片 */
 import { storageGet, storageSet, STORAGE_KEY } from "../core/storage.js";
 
 export const sessionImages = {};
