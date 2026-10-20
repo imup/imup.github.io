@@ -14,7 +14,7 @@ import {
 } from "./sidebar.js";
 import { render } from "./router.js";
 
-/** 按你实际json文件名改 */
+/** ⚠️ 按你实际 json 路径 */
 const CONTENT_URL = "src/data/content.json";
 
 /**
@@ -101,6 +101,60 @@ function initGlobalGuards() {
   });
 }
 
+/**
+ * iOS Safari 键盘避让：
+ * 键盘弹起时不 resize layout viewport，而是 scroll 页面，
+ * 导致固定输入区被遮挡、汉堡/清除按钮被推出视口。
+ * 用 visualViewport 拿可视高度，动态收缩 .ai-page 到可视区域。
+ */
+function initKeyboardAvoidance() {
+  if (!window.visualViewport) return;
+  const vv = window.visualViewport;
+  let rafId = null;
+
+  function update() {
+    const aiPage = document.querySelector(".ai-page");
+    if (!aiPage) {
+      document.documentElement.style.removeProperty("--vvh");
+      document.documentElement.classList.remove("keyboard-open");
+      return;
+    }
+    const layoutHeight = window.innerHeight;
+    const visualHeight = vv.height;
+    const offsetTop = vv.offsetTop || 0;
+    const keyboardHeight = layoutHeight - visualHeight - offsetTop;
+
+    if (keyboardHeight > 100) {
+      // 键盘弹起
+      document.documentElement.style.setProperty("--vvh", visualHeight + "px");
+      document.documentElement.classList.add("keyboard-open");
+      // 阻止 iOS 自动 scroll 页面（否则汉堡/清除按钮被推走）
+      if (window.scrollY !== 0) window.scrollTo(0, 0);
+      // 消息区滚到底部，保证最新消息可见
+      const box = document.querySelector("#aiMessages");
+      if (box) box.scrollTop = box.scrollHeight;
+    } else {
+      // 键盘收起
+      document.documentElement.style.removeProperty("--vvh");
+      document.documentElement.classList.remove("keyboard-open");
+    }
+  }
+
+  function schedule() {
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(update);
+  }
+
+  vv.addEventListener("resize", schedule);
+  vv.addEventListener("scroll", schedule);
+
+  // 输入框聚焦时也触发一次（部分 iOS 版本 focus 后才会更新 visualViewport）
+  document.addEventListener("focusin", (e) => {
+    const t = e.target;
+    if (t && (t.tagName === "TEXTAREA" || t.tagName === "INPUT")) schedule();
+  });
+}
+
 function loadContent() {
   const timeoutPromise = new Promise((_, reject) => {
     setTimeout(() => reject(new Error("content load timeout")), CONTENT_TIMEOUT_MS);
@@ -123,6 +177,7 @@ function boot() {
   initModal();
   bindSidebar();
   initGlobalGuards();
+  initKeyboardAvoidance();
 
   applyTheme(storageGet(THEME_KEY, "light"));
   loadSettings();
