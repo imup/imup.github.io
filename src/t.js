@@ -1,6 +1,4 @@
-/**
- * 可视化探针版（仅诊断用）
- */
+/* 可视化探针版（仅诊断用）*/
 (function () {
   const box = document.createElement("div");
   box.style.cssText =
