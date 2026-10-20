@@ -1,4 +1,3 @@
-/** core/dom.js — 纯 DOM 工具，零依赖 */
 const FLASH_TIP_MS = 1200;
 
 export function $(sel, root) { return (root || document).querySelector(sel); }
