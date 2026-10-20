@@ -14,8 +14,8 @@ import {
 } from "./sidebar.js";
 import { render } from "./router.js";
 
-/** ⚠️ 按你实际 json 文件名改 */
-const CONTENT_URL = "data/contents.json";
+/** 按你实际json文件名改 */
+const CONTENT_URL = "src/data/content.json";
 
 /**
  * iOS Safari 的 fetch 有时会永久挂起（不 resolve 不 reject）。
