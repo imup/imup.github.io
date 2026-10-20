@@ -1,4 +1,3 @@
-/** core/download.js — 通用下载工具 */
 export function triggerDownload(content, mime, filename) {
   try {
     const encoded = btoa(unescape(encodeURIComponent(content)));
