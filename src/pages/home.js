@@ -1,4 +1,3 @@
-/** pages/home.js — 首页运行器（p5 / three 双引擎） */
 import { $, el } from "../core/dom.js";
 import { T } from "../core/i18n.js";
 import { injectSessionImage } from "../core/page-html.js";
@@ -206,7 +205,6 @@ export function renderRunner() {
   iframe.addEventListener("load", () => bindIframeProxy(iframe, engine));
   appEl.appendChild(iframe);
 
-  // 所有已保存作品都显示截图按钮（three 已在 HTML 层强制 preserveDrawingBuffer: true）
   if (runner.mode === "page" && currentPage) {
     appEl.appendChild(buildScreenshotButton(iframe));
   }
