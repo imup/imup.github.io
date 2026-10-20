@@ -1,4 +1,3 @@
-/** features/backup.js — 备份、导入导出、存储项管理 */
 import { flashTip } from "../core/dom.js";
 import {
   storageGet, storageSet, storageRemove,
