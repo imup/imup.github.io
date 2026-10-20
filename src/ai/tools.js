@@ -80,7 +80,14 @@ export const TOOL_HANDLERS = {
     const inputTitle = titleInput && titleInput.value ? titleInput.value.trim() : "";
     const title = ((args && typeof args.title === "string" && args.title.trim()) ? args.title.trim() : inputTitle || T("generator.untitled")).slice(0, getMaxTitleLen());
     const imageDataUrl = uploadedImageRef.dataUrl || "";
-    const html = generatePageHtml({ engine: generatorDraft.engine, title, code: script, imageDataUrl: "", hasImage: !!imageDataUrl, maxTitleLen: getMaxTitleLen() });
+    // 图片直接嵌入 HTML（IndexedDB 容量充足，不再省略）
+    const html = generatePageHtml({
+      engine: generatorDraft.engine,
+      title, code: script,
+      imageDataUrl: imageDataUrl,
+      hasImage: !!imageDataUrl,
+      maxTitleLen: getMaxTitleLen(),
+    });
     const newId = Date.now() + Math.floor(Math.random() * 1000);
     const pages = getPages();
     pages.push({ id: newId, title, html, engine: generatorDraft.engine, timestamp: new Date().toISOString() });
@@ -111,7 +118,6 @@ export function executeToolCall(toolName, args) {
 export function extractCodeFromText(text) {
   if (!text) return null;
   const t = String(text);
-  // ✅ 修复：const m; 是语法错误（const 必须初始化），改为 let m;
   let m;
   const jsBlocks = [];
   const reJs = /```(?:js|javascript)\s*\n([\s\S]*?)```/gi;
