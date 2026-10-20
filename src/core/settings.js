@@ -1,4 +1,3 @@
-/** core/settings.js — 参数（支持 content.json 注入默认值/范围） */
 import { storageGet, storageSet, SETTINGS_KEY } from "./storage.js";
 
 export const DEFAULT_SETTINGS = {
