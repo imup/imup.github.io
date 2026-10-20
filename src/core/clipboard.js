@@ -1,4 +1,3 @@
-/** core/clipboard.js — 剪贴板复制 */
 export function copyToClipboard(text) {
   if (!text) return;
   if (navigator.clipboard && navigator.clipboard.writeText) {
