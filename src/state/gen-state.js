@@ -1,4 +1,3 @@
-/** state/gen-state.js — 生成器状态 + 草稿 + 会话上传图片 */
 import { storageGet, storageSet, storageRemove, DRAFT_KEY } from "../core/storage.js";
 
 export const genState = {
@@ -8,7 +7,6 @@ export const genState = {
 
 export const generatorDraft = { title: "", script: "", engine: "p5" };
 
-/** 当前上传图片（会话级，不持久化）。供 generator.js 与 tools.js 共用。 */
 export const uploadedImageRef = { dataUrl: null, info: null };
 
 export function loadDraft() {
