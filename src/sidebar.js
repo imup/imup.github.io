@@ -1,4 +1,3 @@
-/** sidebar.js — 侧边栏交互 */
 import { $, $$, el } from "./core/dom.js";
 import { T } from "./core/i18n.js";
 import { showConfirm, showPrompt } from "./core/modal.js";
