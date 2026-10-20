@@ -1,4 +1,3 @@
-/** router.js — 路由分派 + teardown */
 import { $, el } from "./core/dom.js";
 import { T } from "./core/i18n.js";
 import { getRoute } from "./core/nav.js";
@@ -27,7 +26,6 @@ export function teardown() {
   document.body.classList.remove("preview-lock");
   const appEl = $("#app");
   if (appEl) {
-    // 先清空 iframe srcdoc 触发内部 WebGL/p5 实例回收
     const iframe = appEl.querySelector("iframe");
     if (iframe) { try { iframe.srcdoc = ""; } catch (e) {} }
     appEl.style.position = ""; appEl.style.top = ""; appEl.style.left = "";
