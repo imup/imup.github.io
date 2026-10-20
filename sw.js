@@ -1,40 +1,70 @@
-var CACHE_VERSION = "1.03";
+var CACHE_VERSION = "1.0";
 var CACHE_NAME = "randomArt-v" + CACHE_VERSION;
+
 var PRECACHE_URLS = [
   "./",
   "./index.html",
-  "./css/style.css",
-  "./data/content.json",
-  "./js/core.js",
-  "./js/storage.js",
-  "./js/ai.js",
-  "./js/tools.js",
-  "./js/home.js",
-  "./js/generator.js",
-  "./js/ai-chat.js",
-  "./js/settings.js",
-  "./js/app.js",
   "./manifest.json",
-  "./img/icon-192.png",
-  "./img/icon-512.png",
+  "./css/styles.css",
+  "./data/contents.json",
+
+  // ESM 模块（27 个，缺一不可）
+  "./src/main.js",
+  "./src/router.js",
+  "./src/sidebar.js",
+  "./src/core/dom.js",
+  "./src/core/nav.js",
+  "./src/core/storage.js",
+  "./src/core/i18n.js",
+  "./src/core/modal.js",
+  "./src/core/settings.js",
+  "./src/core/theme.js",
+  "./src/core/clipboard.js",
+  "./src/core/page-html.js",
+  "./src/core/download.js",
+  "./src/state/pages-state.js",
+  "./src/state/ai-state.js",
+  "./src/state/gen-state.js",
+  "./src/state/editor.js",
+  "./src/state/runner.js",
+  "./src/ai/providers.js",
+  "./src/ai/tools.js",
+  "./src/ai/model-menu.js",
+  "./src/pages/home.js",
+  "./src/pages/about.js",
+  "./src/pages/generator.js",
+  "./src/pages/ai.js",
+  "./src/features/backup.js",
+  "./src/features/settings-dialog.js",
+
+  // 内置 p5 脚本
   "./p5/sketch1.js",
   "./p5/sketch2.js",
   "./p5/sketch3.js",
+
+  // 图标（实际在 img/ 目录）
+  "./img/icon-192.png",
+  "./img/icon-512.png",
+
+  // CDN
   "https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css",
   "https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/duotone-light.min.css",
   "https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/dracula.min.css",
   "https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js",
   "https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js",
   "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js",
-  "https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js",
+  "https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"
 ];
-var NETWORK_FIRST_PATHS = ["./data/content.json"];
+
+var NETWORK_FIRST_PATHS = ["./data/contents.json"];
+
 function isNetworkFirst(url) {
   var path = url.pathname;
   return NETWORK_FIRST_PATHS.some(function (p) {
     return path.indexOf(p.replace("./", "")) !== -1;
   });
 }
+
 self.addEventListener("install", function (event) {
   event.waitUntil(
     caches
@@ -50,6 +80,7 @@ self.addEventListener("install", function (event) {
       }),
   );
 });
+
 self.addEventListener("activate", function (event) {
   event.waitUntil(
     caches
@@ -66,9 +97,11 @@ self.addEventListener("activate", function (event) {
       }),
   );
 });
+
 self.addEventListener("fetch", function (event) {
   var req = event.request;
   if (req.method !== "GET") return;
+
   var url;
   try {
     url = new URL(req.url);
@@ -76,6 +109,7 @@ self.addEventListener("fetch", function (event) {
     return;
   }
   if (url.protocol !== "http:" && url.protocol !== "https:") return;
+
   if (isNetworkFirst(url)) {
     event.respondWith(
       fetch(req)
@@ -94,6 +128,7 @@ self.addEventListener("fetch", function (event) {
     );
     return;
   }
+
   event.respondWith(
     caches.match(req).then(function (cached) {
       if (cached) return cached;
