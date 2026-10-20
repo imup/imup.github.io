@@ -1,4 +1,3 @@
-/** core/theme.js — 亮/暗主题（与 state/editor.js 有函数级互引，可接受） */
 import { storageSet, THEME_KEY, storageGet } from "./storage.js";
 import { getEditor } from "../state/editor.js";
 
