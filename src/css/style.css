@@ -452,20 +452,47 @@ body.sidebar-open .hamburger-btn {
   max-width: none;
   margin: 0;
 }
-/* iOS 键盘避让：
-   - #app.ai-mode 用 fixed + top:offsetTop 精确对齐 visualViewport
-   - 汉堡按钮 top 补偿 offsetTop（fixed 元素相对 layout viewport，iOS 会平移 layout viewport）
-   - 清除按钮是 absolute 相对 .ai-page，.ai-page 已对齐，自动跟随 */
-html.keyboard-open #app.ai-mode {
+
+/* AI 助手页激活时，锁定整页不可滚动。
+   这是消除 iOS 键盘弹起时"先推上再回位"卡顿的关键：
+   当 html + body 都 overflow:hidden 且 body 固定时，iOS 的自动 scroll 补偿失效，
+   位置完全由我们的 CSS 控制，只定位一次。 */
+html.ai-active {
+  height: 100%;
+  overflow: hidden;
+}
+html.ai-active body {
+  position: fixed;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  overflow: hidden;
+}
+
+/* AI 页内部高度 100%，跟随 html 收缩 */
+html.ai-active #app.ai-mode {
+  height: 100%;
+  padding: 0;
+}
+html.ai-active .ai-page {
+  height: 100%;
+}
+
+/* 键盘弹起时：.ai-page 高度收缩到可视区，顶部对齐可视区顶部 */
+html.keyboard-open #app.ai-mode,
+html.keyboard-open .ai-page {
+  height: var(--vv-height, 100dvh);
+}
+html.keyboard-open .ai-page {
   position: fixed;
   top: var(--vv-top, 0);
   left: 0;
   right: 0;
-  height: var(--vv-height, 100dvh);
 }
-html.keyboard-open .ai-page {
-  height: 100%;
-}
+
+/* 汉堡按钮是 fixed 相对 layout viewport 定位，
+   iOS 的 visualViewport 可能整体偏移 offsetTop，加补偿让它跟可视区顶部对齐 */
 html.keyboard-open .hamburger-btn {
   top: calc(clamp(8px, 2vw, 14px) + var(--vv-top, 0px));
 }
