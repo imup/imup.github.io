@@ -103,35 +103,40 @@ function initGlobalGuards() {
 
 /**
  * iOS Safari 键盘避让：
- * 键盘弹起时 iOS 会平移 layout viewport（visualViewport.offsetTop > 0），
- * 用 fixed 定位 + top: offsetTop 把 .ai-page 精确对齐到可视区，
- * 避免 fixed 元素被推出视口，也避免 scroll 补偿导致的抖动。
+ * 1) AI 页激活时给 html 加 ai-active 类，配合 CSS 锁定 body 不可滚动，
+ *    消除 iOS 键盘弹起时的自动 scroll 补偿（"先推上再回位"卡顿的根源）。
+ * 2) 键盘弹起时，把 .ai-page 高度收缩到 visualViewport.height，
+ *    使输入框紧贴键盘、汉堡和清除按钮保持可见。
  */
 function initKeyboardAvoidance() {
   if (!window.visualViewport) return;
   const vv = window.visualViewport;
+  const root = document.documentElement;
   let rafId = null;
 
   function update() {
     const aiPage = document.querySelector(".ai-page");
-    if (!aiPage) {
-      document.documentElement.classList.remove("keyboard-open");
-      document.documentElement.style.removeProperty("--vv-top");
-      document.documentElement.style.removeProperty("--vv-height");
+    if (aiPage) {
+      root.classList.add("ai-active");
+    } else {
+      root.classList.remove("ai-active", "keyboard-open");
+      root.style.removeProperty("--vv-height");
+      root.style.removeProperty("--vv-top");
       return;
     }
-    const offsetTop = vv.offsetTop || 0;
+
     const height = vv.height;
+    const offsetTop = vv.offsetTop || 0;
     const keyboardHeight = window.innerHeight - height - offsetTop;
 
     if (keyboardHeight > 100) {
-      document.documentElement.classList.add("keyboard-open");
-      document.documentElement.style.setProperty("--vv-top", offsetTop + "px");
-      document.documentElement.style.setProperty("--vv-height", height + "px");
+      root.classList.add("keyboard-open");
+      root.style.setProperty("--vv-height", height + "px");
+      root.style.setProperty("--vv-top", offsetTop + "px");
     } else {
-      document.documentElement.classList.remove("keyboard-open");
-      document.documentElement.style.removeProperty("--vv-top");
-      document.documentElement.style.removeProperty("--vv-height");
+      root.classList.remove("keyboard-open");
+      root.style.removeProperty("--vv-height");
+      root.style.removeProperty("--vv-top");
     }
   }
 
@@ -142,10 +147,19 @@ function initKeyboardAvoidance() {
 
   vv.addEventListener("resize", schedule);
   vv.addEventListener("scroll", schedule);
+
   document.addEventListener("focusin", (e) => {
     const t = e.target;
     if (t && (t.tagName === "TEXTAREA" || t.tagName === "INPUT")) schedule();
   });
+
+  // AI 页进出时（render 替换 DOM）重算
+  const appEl = document.getElementById("app");
+  if (appEl) {
+    new MutationObserver(schedule).observe(appEl, { childList: true });
+  }
+
+  schedule();
 }
 
 function loadContent() {
