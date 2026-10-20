@@ -1,4 +1,3 @@
-/** ai/model-menu.js — 模型菜单与配置 */
 import { $, $$, el } from "../core/dom.js";
 import { showAlert, showConfirm, showPrompt, showPromptArea, openModal, closeModal } from "../core/modal.js";
 import { T } from "../core/i18n.js";
