@@ -1,4 +1,3 @@
-/** state/runner.js — 首页运行器状态 */
 import { getRoute, setHash } from "../core/nav.js";
 
 export const runner = { mode: "random", pageId: null, tempHtml: null };
