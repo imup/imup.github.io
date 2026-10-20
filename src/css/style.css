@@ -452,6 +452,11 @@ body.sidebar-open .hamburger-btn {
   max-width: none;
   margin: 0;
 }
+/* iOS 键盘弹起时的避让：用 visualViewport 高度覆盖 100dvh */
+html.keyboard-open #app.ai-mode,
+html.keyboard-open .ai-page {
+  height: var(--vvh, 100dvh);
+}
 #app.generator-mode {
   padding: 0;
   max-width: none;
