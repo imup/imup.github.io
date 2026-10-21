@@ -14,5 +14,13 @@
   <main id="app">加载中…</main>
   <div id="modalBackdrop" hidden><div id="modalBox"></div></div>
   <script src="js/script.js"></script>
+  <script>
+  window.addEventListener("error", function(e) {
+    console.error("[GLOBAL]", e.message, e.filename, e.lineno, e.error);
+  });
+  window.addEventListener("unhandledrejection", function(e) {
+    console.error("[PROMISE]", e.reason);
+  });
+</script>
 </body>
 </html>
