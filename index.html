@@ -43,6 +43,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
     <link rel="stylesheet" href="src/css/style.css" />
+    <link rel="manifest" href="manifest.json" />
   </head>
 
   <body>
@@ -243,5 +244,17 @@
     </div>
     
     <script type="module" src="src/main.js"></script>
+
+    <script>
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", function () {
+          navigator.serviceWorker
+            .register("./sw.js")
+            .catch(function (e) {
+              console.warn("[SW] 注册失败：", e);
+            });
+        });
+      }
+    </script>
   </body>
 </html>
