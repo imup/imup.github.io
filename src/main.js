@@ -95,7 +95,7 @@ function loadContent() {
     setTimeout(() => reject(new Error("content load timeout")), CONTENT_TIMEOUT_MS);
   });
   return Promise.race([
-    fetch(CONTENT_URL, { cache: "no-cache" }).then((r) => {
+    fetch(CONTENT_URL).then((r) => {
       if (!r.ok) throw new Error("HTTP " + r.status);
       return r.json();
     }),
