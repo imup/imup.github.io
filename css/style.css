@@ -1,10 +1,4 @@
-/* ============================================================
-   C1 主题变量
-   作用：全站CSS变量定义，供所有块引用
-   机制：:root为亮色默认值；body.dark-mode 覆盖为暗色值
-   ============================================================ */
 :root {
-  /* 品牌色：主色/悬停/焦点/危险/成功/警告/强调/中性 */
   --primary: #007bff;
   --primary-hover: #0056b3;
   --primary-focus: #007bff;
@@ -13,52 +7,43 @@
   --warn: #f0ad4e;
   --purple: #9b59b6;
   --neutral-btn: #6c757d;
-  /* 基础色：页面底色/卡片/正文/汉堡图标 */
   --bg: #f5f5f5;
   --surface: #ffffff;
   --text: #222222;
   --hamburger: #333333;
-  /* 文字层级：弱化/次要/三级/占位 */
-  --text-muted: #888888;
+  --text-muted: #6b6b6b;
   --text-secondary: #888888;
   --text-tertiary: #999999;
   --text-placeholder: #9aa0a6;
-  /* 交互反馈：通用hover/强hover/Key/Prompt/下载 */
   --hover: rgba(0, 0, 0, 0.055);
   --hover-strong: rgba(0, 0, 0, 0.06);
   --hover-key: rgba(240, 173, 78, 0.15);
   --hover-prompt: rgba(155, 89, 182, 0.15);
   --hover-dl: rgba(0, 0, 0, 0.08);
-  /* 边框线：分割线/输入框/CodeMirror */
   --line: rgba(0, 0, 0, 0.08);
   --border-input: #cccccc;
   --cm-border: #cccccc;
-  /* 输入与结果：透明输入/填充背景/结果区背景 */
   --input-bg: transparent;
   --input-bg-fill: #ffffff;
   --result-bg: #e9f7fe;
-  /* 模态框：背景/文字/阴影 */
   --modal-bg: #ffffff;
   --modal-text: #222222;
   --shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.4);
-  /* 聊天气泡：用户（主色）/助手（浅灰） */
   --bubble-user-bg: #007bff;
   --bubble-user-text: #ffffff;
   --bubble-assistant-bg: #e9ecef;
   --bubble-assistant-text: #222222;
-  /* AI 输入栏：底部渐变/浮起阴影 */
   --ai-input-grad: linear-gradient(to top, #ffffff 62%, rgba(255, 255, 255, 0));
   --shadow-ai-bar: 0 8px 26px rgba(0, 0, 0, 0.16);
-  /* 侧边栏：内阴影/宽度（最小280px，最大78vw） */
   --sidebar-shadow: rgba(0, 0, 0, 0.55);
   --sidebar-w: min(280px, 78vw);
 }
-/* 暗色模式：覆盖同名变量（仅改色值，结构不变） */
-body.dark-mode {
+html.dark-mode {
   --bg: #1e1e1e;
   --surface: #2d2d2d;
   --text: #dddddd;
   --hamburger: #ffffff;
+  --text-muted: #a8a8a8;
   --text-secondary: #999999;
   --text-tertiary: #888888;
   --text-placeholder: #8a8a8a;
@@ -82,15 +67,11 @@ body.dark-mode {
   --shadow-ai-bar: 0 8px 26px rgba(0, 0, 0, 0.55);
   --sidebar-shadow: rgba(0, 0, 0, 1);
 }
-/* ============================================================
-   C2 基础重置
-   作用：全局盒模型/页面基础样式/预览锁屏态
-   ============================================================ */
-/* 全局盒模型：宽高含padding与border */
+
 * {
   box-sizing: border-box;
 }
-/* html/body：去边距、铺满、禁用双指缩放、主题过渡 */
+
 html,
 body {
   margin: 0;
@@ -102,13 +83,12 @@ body {
   color: var(--text);
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  touch-action: pan-x pan-y;
+  touch-action: auto;
   overscroll-behavior: none;
   transition:
     background 0.3s,
     color 0.3s;
 }
-/* 预览锁屏：固定全屏+禁用滚动与手势 */
 body.preview-lock {
   position: fixed;
   top: 0;
@@ -121,11 +101,7 @@ body.preview-lock {
   overscroll-behavior: none;
   touch-action: none;
 }
-/* ============================================================
-   C3 汉堡按钮
-   作用：左上角侧边栏开关按钮（fixed定位）
-   ============================================================ */
-/* 按钮基础：固定左上、自适应字号、hover放大 */
+
 .hamburger-btn {
   position: fixed;
   top: clamp(8px, 2vw, 14px);
@@ -148,22 +124,16 @@ body.preview-lock {
 .hamburger-btn:hover {
   transform: scale(1.1);
 }
-/* 预览模式：白字+阴影，保证在画布上可见 */
 body.preview-lock .hamburger-btn {
   color: #fff;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
 }
-/* 侧边栏打开时：淡出并禁用点击 */
 body.sidebar-open .hamburger-btn {
   opacity: 0;
   transform: scale(0.6);
   pointer-events: none;
 }
-/* ============================================================
-   C4 侧边栏
-   作用：左侧抽屉导航，含搜索/导航项/我的脚本/页脚
-   ============================================================ */
-/* 骨架：固定左侧抽屉，默认平移出视口，flex纵向布局 */
+
 .sidebar {
   position: fixed;
   top: 0;
@@ -188,16 +158,13 @@ body.sidebar-open .hamburger-btn {
   border-right: 1px solid var(--line);
   touch-action: pan-y;
 }
-/* 打开状态：平移进视口 */
 .sidebar.open {
   transform: translateX(0);
 }
-/* 搜索框容器：顶部内边距 */
 .sidebar-search {
   padding: 0 clamp(14px, 4vw, 18px) 12px;
   margin-top: -4px;
 }
-/* 搜索输入框：圆角、无填充背景、聚焦主色边 */
 .sidebar-search input {
   width: 100%;
   padding: 9px 12px;
@@ -218,7 +185,6 @@ body.sidebar-open .hamburger-btn {
 .sidebar-search input::placeholder {
   color: var(--text-placeholder);
 }
-/* 搜索框清除按钮：CSS画叉替代默认 */
 .sidebar-search input[type="search"]::-webkit-search-cancel-button {
   -webkit-appearance: none;
   appearance: none;
@@ -241,7 +207,6 @@ body.sidebar-open .hamburger-btn {
     );
   cursor: pointer;
 }
-/* 导航项：flex横向、底部细线、hover高亮 */
 .sidebar .nav-item {
   display: flex;
   align-items: center;
@@ -250,7 +215,6 @@ body.sidebar-open .hamburger-btn {
   cursor: pointer;
   transition: background 0.15s;
 }
-/* 导航图标：18px大小、当前色描边 */
 .sidebar .nav-item .nav-icon {
   width: 18px;
   height: 18px;
@@ -260,7 +224,6 @@ body.sidebar-open .hamburger-btn {
   fill: none;
   color: inherit;
 }
-/* 导航文字：自动缩略 */
 .sidebar .nav-item > span {
   flex: 1;
   min-width: 0;
@@ -271,24 +234,19 @@ body.sidebar-open .hamburger-btn {
 .sidebar .nav-item:hover {
   background: var(--hover);
 }
-/* 当前激活导航项：背景高亮 */
 .sidebar .nav-item[aria-current="page"] {
   background: var(--hover);
 }
-
-/* 分割线 */
 .sidebar .divider {
   border-top: 1px solid var(--line);
   margin: 10px 0;
 }
-/* 分组标题：如我的脚本 */
 .sidebar .section-title {
   padding: 8px clamp(16px, 4vw, 20px);
   font-size: 0.85rem;
   color: var(--text-secondary);
   font-weight: bold;
 }
-/* 作品列表项：横向排列，底部细线 */
 .sidebar .page-item {
   display: flex;
   justify-content: space-between;
@@ -299,7 +257,6 @@ body.sidebar-open .hamburger-btn {
 .sidebar .page-item:hover {
   background: var(--hover);
 }
-/* 作品标题：自动缩略，点击打开 */
 .sidebar .page-item .page-title {
   flex: 1;
   color: inherit;
@@ -308,7 +265,6 @@ body.sidebar-open .hamburger-btn {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* 作品操作按钮（重命名/删除） */
 .sidebar .page-item .actions button {
   background: none;
   border: none;
@@ -324,13 +280,11 @@ body.sidebar-open .hamburger-btn {
 .sidebar .page-item .actions .del:hover {
   color: var(--danger);
 }
-/* 空列表提示 */
 .sidebar .no-pages {
   padding: 12px clamp(16px, 4vw, 20px);
   color: var(--text-muted);
   font-style: italic;
 }
-/* 页脚：自动贴底，横向两列（设置/主题） */
 .sidebar-footer {
   margin-top: auto;
   border-top: 1px solid var(--line);
@@ -340,7 +294,6 @@ body.sidebar-open .hamburger-btn {
   display: flex;
   align-items: stretch;
 }
-/* 页脚按钮：均分宽度，居中 */
 .sidebar-footer .footer-item {
   flex: 1 1 0;
   min-width: 0;
@@ -364,35 +317,32 @@ body.sidebar-open .hamburger-btn {
   height: 16px;
   margin-right: 6px;
 }
-/* 页脚两列之间的竖线分隔 */
 .sidebar-footer .footer-vdivider {
   width: 1px;
   flex: 0 0 1px;
   background: var(--line);
 }
-/* ============================================================
-   C5 遮罩层
-   作用：侧边栏打开时的半透明背景层
-   ============================================================ */
-/* 默认隐藏；.show时淡入显示 */
+
 .overlay {
-  display: none;
+  display: block;
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.35);
   z-index: 150;
   opacity: 0;
-  transition: opacity 0.3s ease;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 0.3s ease,
+    visibility 0s linear 0.3s;
 }
 .overlay.show {
-  display: block;
   opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition: opacity 0.3s ease;
 }
-/* ============================================================
-   C6 主容器与排版
-   作用：#app 主体容器、三种模式（普通/预览/AI/生成器）、标题段落
-   ============================================================ */
-/* 默认：卡片式内边距、主题色过渡 */
+
 #app {
   width: 100%;
   min-height: 100vh;
@@ -406,26 +356,23 @@ body.sidebar-open .hamburger-btn {
     color 0.3s;
   overflow-x: hidden;
 }
-/* 内容限宽 940px居中 */
 #app > div {
   width: 100%;
   max-width: 940px;
   margin: 0 auto;
 }
-/* 生成器页：不限宽（由C16负责具体布局） */
 #app > div.generator-page {
   max-width: none;
 }
-/* 预览模式：全屏+黑底+无padding */
 #app.preview-mode {
   padding: 0;
   max-width: none;
   min-height: 0;
   background: #000;
   overflow: hidden;
+  position: relative;
   z-index: 100;
 }
-/* 预览iframe：铺满全屏 */
 #app.preview-mode iframe {
   width: 100%;
   height: 100%;
@@ -434,7 +381,6 @@ body.sidebar-open .hamburger-btn {
   background: #fff;
   touch-action: none;
 }
-/* AI模式：锁高度、隐藏溢出（消息区自己滚动） */
 #app.ai-mode {
   padding: 0;
   max-width: none;
@@ -447,7 +393,6 @@ body.sidebar-open .hamburger-btn {
   max-width: none;
   margin: 0;
 }
-/* 生成器模式：去padding，全宽，不锁高度（允许滚动） */
 #app.generator-mode {
   padding: 0;
   max-width: none;
@@ -458,34 +403,28 @@ body.sidebar-open .hamburger-btn {
   max-width: none;
   margin: 0;
 }
-/* 一级标题：自适应字号、防溢出 */
 #app h1 {
   font-size: clamp(1.35rem, 4.5vw, 1.9rem);
   margin: 0 0 0.4em;
   line-height: 1.25;
   word-break: break-word;
 }
-/* 段落：行高1.6、自适应字号 */
 #app p {
   font-size: clamp(0.9rem, 2.6vw, 1rem);
   line-height: 1.6;
   margin: 0.3em 0;
 }
-/* ============================================================
-   C7 表单与编辑器
-   作用：编辑器页表单控件+CodeMirror容器+占位浮层
-   ============================================================ */
+
 .form-group {
+  position: relative;
   margin-bottom: 15px;
 }
-/* 标签：加粗、下方小间距 */
 .form-group label {
   display: block;
   font-weight: bold;
   margin-bottom: 5px;
   font-size: clamp(0.85rem, 2.5vw, 0.95rem);
 }
-/* 通用输入控件：等宽字体、浅色填充 */
 .form-group input,
 .form-group textarea {
   width: 100%;
@@ -497,14 +436,12 @@ body.sidebar-open .hamburger-btn {
   background: var(--input-bg-fill);
   color: var(--modal-text);
 }
-/* CodeMirror容器：默认高度160–240px */
 .form-group .CodeMirror {
   border: 1px solid var(--cm-border);
   border-radius: 4px;
   height: clamp(160px, 32vh, 240px) !important;
   font-size: 14px;
 }
-/* 文件输入：去掉默认边框 */
 .form-group input[type="file"] {
   width: auto;
   max-width: 100%;
@@ -514,7 +451,6 @@ body.sidebar-open .hamburger-btn {
   display: inline-block;
   cursor: pointer;
 }
-/* 图片下方小字标签 */
 .form-group label.image-label-below {
   margin-top: 2px;
   margin-bottom: 0;
@@ -522,7 +458,6 @@ body.sidebar-open .hamburger-btn {
   font-size: 0.85rem;
   color: var(--text-secondary);
 }
-/* 编辑器占位浮层：编辑器空时右上角显示提示 */
 .cm-placeholder-overlay {
   position: absolute;
   top: 5px;
@@ -538,11 +473,7 @@ body.sidebar-open .hamburger-btn {
   user-select: none;
   overflow: hidden;
 }
-/* ============================================================
-   C8 按钮与结果
-   作用：通用按钮/结果区/图片预览/操作按钮组
-   ============================================================ */
-/* 通用按钮：主色、圆角、hover加深、禁用降透明度 */
+
 button {
   background: var(--primary);
   color: white;
@@ -560,7 +491,6 @@ button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
-/* 结果区：浅蓝底、自动换行 */
 .result {
   margin-top: 20px;
   padding: 12px;
@@ -568,7 +498,6 @@ button:disabled {
   border-radius: 4px;
   word-break: break-word;
 }
-/* 图片预览缩略图 */
 .preview-img {
   max-width: min(200px, 60vw);
   max-height: 200px;
@@ -577,7 +506,6 @@ button:disabled {
   border-radius: 4px;
   display: block;
 }
-/* 操作按钮组：横向排列、换行 */
 .action-buttons {
   display: flex;
   gap: 10px;
@@ -591,11 +519,7 @@ button:disabled {
 .action-buttons button.download {
   background: var(--success);
 }
-/* ============================================================
-   C9 模态框
-   作用：全站弹窗（alert/confirm/prompt/设置/导入）
-   ============================================================ */
-/* 背景层：半透明黑，flex居中 */
+
 .modal-backdrop {
   display: none;
   position: fixed;
@@ -606,16 +530,19 @@ button:disabled {
   justify-content: center;
   padding: 16px;
 }
+.modal-backdrop[hidden] {
+  display: none !important;
+}
 .modal-backdrop.show {
   display: flex;
 }
-/* 弹窗容器：最大480px、限高88vh、可滚动 */
 .modal {
   background: var(--modal-bg);
   color: var(--modal-text);
   border-radius: 8px;
   width: min(480px, 100%);
   max-height: 88vh;
+  max-height: 88dvh;
   overflow-y: auto;
   padding: clamp(16px, 4vw, 22px);
   box-shadow: var(--shadow-modal);
@@ -629,7 +556,6 @@ button:disabled {
   line-height: 1.55;
   word-break: break-word;
 }
-/* 单行输入 */
 .modal input {
   width: 100%;
   padding: 8px 10px;
@@ -640,7 +566,6 @@ button:disabled {
   background: var(--input-bg-fill);
   color: var(--modal-text);
 }
-/* 多行输入 */
 .modal textarea {
   width: 100%;
   padding: 8px 10px;
@@ -659,14 +584,12 @@ button:disabled {
 .modal textarea:focus {
   border-color: var(--primary-focus);
 }
-/* 提示小字 */
 .modal .modal-hint {
   font-size: 0.82rem;
   color: var(--text-secondary);
   margin: -8px 0 12px;
   line-height: 1.5;
 }
-/* 底部按钮区：左右分布 */
 .modal-actions {
   display: flex;
   justify-content: space-between;
@@ -685,7 +608,6 @@ button:disabled {
 .modal-actions .danger {
   background: var(--danger);
 }
-/* 链接式按钮（左下方） */
 .modal-actions .link-btn {
   background: transparent;
   color: var(--text-muted);
@@ -698,18 +620,13 @@ button:disabled {
   background: var(--hover-strong);
   color: var(--danger);
 }
-/* 弹窗内提示气泡：显示在元素下方（避免被max-height裁切） */
 .modal .msg-flash-tip {
   top: 100%;
   bottom: auto;
   right: 0;
   margin-top: 6px;
 }
-/* ============================================================
-   C10 AI页面骨架
-   作用：AI聊天页最外层结构（清空按钮/消息区/统计条）
-   ============================================================ */
-/* 页面骨架：flex纵向、锁高度 */
+
 .ai-page {
   position: relative;
   display: flex;
@@ -719,10 +636,9 @@ button:disabled {
   width: 100%;
   overflow: hidden;
 }
-/* 右上角清除对话按钮：圆形无边框 */
 .ai-clear-btn {
   position: absolute;
-  top: clamp(16px, 2vw, 14px);
+  top: clamp(14px, 2vw, 16px);
   right: clamp(16px, 3vw, 18px);
   z-index: 60;
   width: 28px;
@@ -755,7 +671,6 @@ button:disabled {
 .ai-clear-btn:active {
   transform: scale(0.95);
 }
-/* 消息列表：flex撑满中间、可滚动 */
 .ai-messages {
   flex: 1 1 auto;
   min-height: 0;
@@ -765,7 +680,6 @@ button:disabled {
   scroll-behavior: smooth;
   touch-action: pan-y;
 }
-/* 空状态文案：居中、保留换行 */
 .ai-empty {
   color: var(--text-tertiary);
   text-align: center;
@@ -774,7 +688,6 @@ button:disabled {
   line-height: 1.8;
   white-space: pre-line;
 }
-/* 统计条：会话轮次+token汇总 */
 .ai-stats {
   flex: 0 0 auto;
   padding: 6px 14px 0;
@@ -783,11 +696,7 @@ button:disabled {
   text-align: center;
   font-family: ui-monospace, Menlo, Consolas, monospace;
 }
-/* ============================================================
-   C11 AI消息与工具栏
-   作用：聊天气泡/助手工具栏/复制提示/长按展开
-   ============================================================ */
-/* 消息行：默认flex横向 */
+
 .ai-msg {
   margin-bottom: 12px;
   display: flex;
@@ -802,7 +711,6 @@ button:disabled {
   justify-content: flex-end;
   position: relative;
 }
-/* 用户气泡：主色底、白字、右下角小圆角 */
 .ai-msg.user .bubble {
   max-width: 84%;
   padding: 9px 13px;
@@ -815,7 +723,6 @@ button:disabled {
   color: var(--bubble-user-text);
   border-bottom-right-radius: 4px;
 }
-/* 复制提示：短暂浮现的气泡，自动消失 */
 .msg-flash-tip {
   position: absolute;
   top: -20px;
@@ -829,7 +736,6 @@ button:disabled {
   pointer-events: none;
   animation: flashFade 1.2s ease forwards;
 }
-/* 提示动画：淡入/停留/淡出 */
 @keyframes flashFade {
   0% {
     opacity: 0;
@@ -846,13 +752,11 @@ button:disabled {
     opacity: 0;
   }
 }
-/* 助手消息：块级布局 */
 .ai-msg.assistant {
   display: block;
   align-items: stretch;
   margin-bottom: 18px;
 }
-/* 助手正文 */
 .ai-msg.assistant .assistant-body {
   font-size: 0.95rem;
   line-height: 1.6;
@@ -861,12 +765,10 @@ button:disabled {
   white-space: pre-wrap;
   padding: 2px 0;
 }
-/* 思考中状态：半透明+斜体 */
 .ai-msg.assistant .assistant-body.pending {
   opacity: 0.65;
   font-style: italic;
 }
-/* 助手工具栏：默认收起，actions-visible时展开 */
 .assistant-toolbar {
   display: flex;
   justify-content: space-between;
@@ -905,7 +807,6 @@ button:disabled {
   align-items: center;
   flex: 0 0 auto;
 }
-/* 工具栏按钮：极小号、hover主色 */
 .assistant-tool-btn {
   background: transparent !important;
   color: var(--text-muted);
@@ -932,7 +833,6 @@ button:disabled {
   background: var(--hover) !important;
   color: var(--primary);
 }
-/* token计数：等宽小字 */
 .assistant-token {
   color: var(--text-muted);
   font-family: ui-monospace, Menlo, Consolas, monospace;
@@ -941,18 +841,13 @@ button:disabled {
   white-space: nowrap;
   line-height: 1.2;
 }
-/* ============================================================
-   C12 AI输入栏
-   作用：底部输入框+模型选择器+发送按钮
-   ============================================================ */
-/* 输入容器：底部渐变+安全区 */
+
 .ai-input-wrap {
   flex: 0 0 auto;
   padding: 10px 12px calc(12px + env(safe-area-inset-bottom));
   background: var(--ai-input-grad);
   pointer-events: none;
 }
-/* 输入条：圆角胶囊+阴影 */
 .ai-input-bar {
   display: flex;
   align-items: flex-end;
@@ -970,12 +865,10 @@ button:disabled {
     background 0.3s,
     border-color 0.3s;
 }
-/* 模型选择器容器 */
 .ai-model-picker {
   position: relative;
   flex: 0 0 auto;
 }
-/* 模型按钮：圆形、显示+或首字母 */
 .ai-model-btn {
   width: 38px;
   height: 38px;
@@ -1002,13 +895,11 @@ button:disabled {
 .ai-model-btn:active {
   transform: scale(0.94);
 }
-/* 已选模型：淡蓝底+加粗 */
 .ai-model-btn.has-model {
   font-size: 18px;
   font-weight: bold;
   background: rgba(0, 123, 255, 0.12);
 }
-/* 模型菜单：向上弹出 */
 .ai-model-menu {
   display: none;
   position: absolute;
@@ -1020,13 +911,13 @@ button:disabled {
   border-radius: 12px;
   box-shadow: 0 12px 34px rgba(0, 0, 0, 0.32);
   min-width: 320px;
-  z-index: 500;
+  max-width: calc(100vw - 24px);
+  z-index: 350;
   overflow: hidden;
 }
 .ai-model-menu.show {
   display: block;
 }
-/* 菜单顶行：＋自定义/导入 */
 .ai-model-toprow {
   display: flex;
   align-items: stretch;
@@ -1053,7 +944,6 @@ button:disabled {
 .ai-model-toprow .ai-model-topbtn + .ai-model-topbtn {
   border-left: 1px solid var(--line);
 }
-/* 模型项：勾选+名称+T/K/P/J/M按钮 */
 .ai-model-item {
   display: flex;
   align-items: center;
@@ -1066,7 +956,6 @@ button:disabled {
 .ai-model-item:hover {
   background: var(--hover);
 }
-/* 勾选标记：默认隐藏，激活时显示 */
 .ai-model-item .ai-check {
   width: 16px;
   flex: 0 0 16px;
@@ -1094,7 +983,6 @@ button:disabled {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* 编辑模型按钮（自定义模型才显示） */
 .ai-model-item .ai-model-edit {
   flex: 0 0 auto;
   padding: 1px 5px;
@@ -1115,7 +1003,6 @@ button:disabled {
   color: var(--primary);
   border-color: var(--primary);
 }
-/* T/K/P/J/M小按钮：透明底+细边框 */
 .ai-model-item .ai-key,
 .ai-model-item .ai-prompt,
 .ai-model-item .ai-dl {
@@ -1144,7 +1031,6 @@ button:disabled {
   background: var(--hover-dl);
   color: var(--primary);
 }
-/* 已设置提示词：紫色+圆点 */
 .ai-model-item .ai-prompt.has-prompt {
   color: var(--purple);
 }
@@ -1153,7 +1039,6 @@ button:disabled {
   margin-left: 1px;
   color: var(--purple);
 }
-/* textarea：自适应高度、隐藏原生滚动条 */
 .ai-input-bar textarea,
 .gen-ai-bar textarea {
   flex: 1 1 auto;
@@ -1175,7 +1060,6 @@ button:disabled {
 .gen-ai-bar textarea::placeholder {
   color: var(--text-placeholder);
 }
-/* 隐藏textarea原生滚动条（安卓灰竖条修复） */
 .ai-input-bar textarea::-webkit-scrollbar,
 .gen-ai-bar textarea::-webkit-scrollbar {
   width: 0;
@@ -1187,7 +1071,6 @@ button:disabled {
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
-/* 发送按钮：圆形主色 */
 .ai-send-btn {
   flex: 0 0 auto;
   width: 38px;
@@ -1219,11 +1102,7 @@ button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
-/* ============================================================
-   C13 生成器AI面板
-   作用：编辑器页内嵌的AI生成栏+状态输出+标题输入行
-   ============================================================ */
-/* AI输入条：方角+细边（区别于AI页胶囊形） */
+
 .gen-ai-bar {
   display: flex;
   align-items: flex-end;
@@ -1237,7 +1116,6 @@ button:disabled {
 .gen-ai-bar-bare {
   margin: 12px 0;
 }
-/* 生成器发送按钮：透明底+细边 */
 .gen-ai-bar .ai-send-btn {
   background: transparent;
   color: var(--text);
@@ -1252,7 +1130,6 @@ button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
-/* 状态输出区：等宽小字，最多展示若干行 */
 .gen-status {
   margin-top: 10px;
   font-family: ui-monospace, Menlo, Consolas, monospace;
@@ -1270,7 +1147,6 @@ button:disabled {
 .gen-status .gen-status-line {
   padding: 2px 0;
 }
-/* 状态行按类型着色 */
 .gen-status .gen-status-line.error {
   color: var(--danger);
 }
@@ -1280,7 +1156,6 @@ button:disabled {
 .gen-status .gen-status-line.ok {
   color: var(--success);
 }
-/* 标题+提交按钮行 */
 .gen-inline-row {
   display: flex;
   gap: 10px;
@@ -1302,11 +1177,7 @@ button:disabled {
   flex: 0 0 auto;
   white-space: nowrap;
 }
-/* ============================================================
-   C14 预览截图按钮
-   作用：预览模式下右上角截图按钮
-   ============================================================ */
-/* 固定右上、白字、阴影、hover放大 */
+
 .preview-screenshot-btn {
   position: fixed;
   top: clamp(8px, 2vw, 14px);
@@ -1329,11 +1200,7 @@ button:disabled {
 .preview-screenshot-btn:active {
   transform: scale(0.95);
 }
-/* ============================================================
-   C15 媒体查询
-   作用：小屏 / 矮屏适配
-   ============================================================ */
-/* 窄屏（小于420px）：缩小汉堡、边距、按钮尺寸 */
+
 @media (max-width: 420px) {
   .hamburger-btn {
     font-size: 28px;
@@ -1362,7 +1229,6 @@ button:disabled {
     font-size: 0.62rem;
   }
 }
-/* 矮屏（小于480px）：压编辑器高度、缩消息区顶部留白 */
 @media (max-height: 480px) {
   .form-group .CodeMirror {
     height: 140px !important;
@@ -1371,72 +1237,69 @@ button:disabled {
     padding-top: 54px;
   }
 }
-/* ============================================================
-   C16 生成器菜单栏与编辑器
-   作用：顶部菜单栏+编辑器紧贴全宽+编辑器外内容带边距
-   ============================================================ */
-/* 顶部菜单栏：56px高，标题居中，全宽 */
+
 .generator-menubar {
   position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  height: 56px;
-  padding: 0 12px;
   background: var(--surface);
   border-bottom: 1px solid var(--line);
 }
-/* 菜单栏标题：单行缩略 */
 .generator-menubar-title {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 1rem;
   font-weight: bold;
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: calc(100% - 48px);
+  text-align: center;
+  width: 100%;
+  padding-left: 60px;
+  padding-right: 16px;
+  box-sizing: border-box;
 }
-/* 右边帮助按钮：绝对定位右侧、圆形、hover主色 */
-.generator-menubar-help {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 26px;
-  height: 26px;
-  min-width: 26px;
-  padding: 0;
-  border-radius: 50%;
-  background: transparent;
-  color: var(--text-muted);
-  border: none;
-  font-size: 15px;
-  line-height: 1;
+.engine-switch-menubar {
   display: flex;
-  align-items: center;
-  justify-content: center;
+  gap: 6px;
+  margin-top: -10px;
+  margin-bottom: 4px;
+}
+.engine-switch-menubar button {
+  font-size: 0.8rem;
+  padding: 2px 6px;
+  border: 1px solid var(--border-input);
+  background: var(--input-bg-fill);
+  color: var(--text);
+  border-radius: 4px;
   cursor: pointer;
+  font-family: inherit;
+  line-height: 1.4;
   transition:
     background 0.15s,
+    border-color 0.15s,
     color 0.15s;
 }
-.generator-menubar-help:hover {
-  background: var(--hover);
-  color: var(--primary);
+.engine-switch-menubar button:hover {
+  border-color: var(--primary-focus);
 }
-.generator-menubar-help:active {
-  transform: translateY(-50%) scale(0.92);
+.engine-switch-menubar button.active {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
 }
-/* 编辑器容器：全宽 */
+
 .generator-editor-wrap {
   width: 100%;
   background: var(--surface);
 }
-/* 编辑器表单组：去掉默认margin */
 .generator-form-group {
   margin: 0;
 }
-/* 编辑器高度50vh、无圆角无边框（紧贴菜单栏） */
 .generator-form-group .CodeMirror {
   height: 50vh !important;
   border: none;
@@ -1444,28 +1307,20 @@ button:disabled {
   border-bottom: 1px solid var(--line);
   font-size: 14px;
 }
-/* 编辑器之外的直接子元素：统一加左右边距 */
 .generator-page > *:not(.generator-menubar):not(.generator-editor-wrap) {
   padding-left: clamp(14px, 4vw, 28px);
   padding-right: clamp(14px, 4vw, 28px);
 }
-/* 生成器页底部留白（滚动到底部时） */
 .generator-page {
   padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
 }
-/* 状态区顶部间距（有内容时） */
 .generator-page > .gen-status:not(:empty) {
   padding-top: 10px;
 }
-/* AI输入条上下间距 */
 .generator-page > .gen-ai-bar-bare {
   margin: 12px 0;
 }
-/* ============================================================
-   C17 设置弹窗
-   作用：语言/参数/存储管理/导出
-   ============================================================ */
-/* 区块：浅色底分隔，最后一块无下边框 */
+
 .settings-section {
   margin-bottom: 20px;
   padding-bottom: 16px;
@@ -1481,12 +1336,10 @@ button:disabled {
   color: var(--text-secondary);
   font-weight: bold;
 }
-/* 语言按钮组：横向排列 */
 .lang-group {
   display: flex;
   gap: 8px;
 }
-/* 语言按钮：默认透明，激活主色填充 */
 .lang-btn {
   padding: 6px 16px;
   border: 1px solid var(--border-input);
@@ -1508,7 +1361,6 @@ button:disabled {
   color: #fff;
   border-color: var(--primary);
 }
-/* 参数行：左标签+右输入框 */
 .settings-param-row {
   display: flex;
   align-items: center;
@@ -1535,32 +1387,27 @@ button:disabled {
 .settings-param-row input:focus {
   border-color: var(--primary-focus);
 }
-/* 参数区按钮组：靠右 */
 .settings-param-actions {
   display: flex;
   gap: 8px;
   margin-top: 10px;
   justify-content: flex-end;
 }
-/* 恢复默认：灰色 */
 .settings-restore-btn {
   background: var(--neutral-btn);
   font-size: 0.82rem;
   padding: 6px 12px;
 }
-/* 保存参数：主色 */
 .settings-save-btn {
   font-size: 0.82rem;
   padding: 6px 12px;
 }
-/* 存储列表：限高200px，可滚动 */
 .storage-list {
   max-height: 200px;
   overflow-y: auto;
   border: 1px solid var(--line);
   border-radius: 6px;
 }
-/* 单项行：勾选+名称+大小+删除 */
 .storage-row {
   display: flex;
   align-items: center;
@@ -1576,7 +1423,6 @@ button:disabled {
   margin: 0;
   flex: 0 0 auto;
 }
-/* 存储项名称：自动缩略 */
 .storage-name {
   flex: 1;
   min-width: 0;
@@ -1585,14 +1431,12 @@ button:disabled {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* 存储项大小：等宽小字 */
 .storage-size {
   flex: 0 0 auto;
   font-size: 0.78rem;
   color: var(--text-muted);
   font-family: ui-monospace, Menlo, Consolas, monospace;
 }
-/* 单项删除按钮：圆形细边 */
 .storage-del-btn {
   flex: 0 0 auto;
   width: 26px;
@@ -1611,7 +1455,6 @@ button:disabled {
   color: var(--danger);
   border-color: var(--danger);
 }
-/* 总计：右对齐等宽小字 */
 .storage-total {
   text-align: right;
   font-size: 0.8rem;
@@ -1619,7 +1462,6 @@ button:disabled {
   padding: 6px 2px;
   font-family: ui-monospace, Menlo, Consolas, monospace;
 }
-/* 存储操作按钮组：靠右（打包/导入/导出） */
 .settings-storage-actions {
   display: flex;
   justify-content: flex-end;
@@ -1630,11 +1472,9 @@ button:disabled {
   font-size: 0.82rem;
   padding: 6px 12px;
 }
-/* 导出脚本ZIP 按钮：灰色区分 */
 .settings-export-btn {
   background: var(--neutral-btn);
 }
-/* 导入弹窗列表：限高、可滚动 */
 .import-list {
   max-height: 40vh;
   overflow-y: auto;
@@ -1671,7 +1511,6 @@ button:disabled {
   color: var(--text-muted);
   font-family: ui-monospace, Menlo, Consolas, monospace;
 }
-/* 设置弹窗标题行：标题+右上角关闭 */
 .settings-header {
   display: flex;
   align-items: center;
@@ -1682,7 +1521,6 @@ button:disabled {
 .settings-header h3 {
   margin: 0;
 }
-/* 关闭按钮：细边、hover主色 */
 .settings-close-btn {
   flex: 0 0 auto;
   background: transparent;
@@ -1704,4 +1542,27 @@ button:disabled {
 }
 .settings-close-btn:active {
   transform: scale(0.96);
+}
+
+:focus-visible {
+  outline: 2px solid var(--primary-focus);
+  outline-offset: 2px;
+}
+.CodeMirror:focus,
+.CodeMirror:focus-visible,
+.CodeMirror *:focus,
+.CodeMirror *:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
