@@ -57,7 +57,7 @@ var PRECACHE_URLS = [
   "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js"
 ];
 
-var NETWORK_FIRST_PATHS = ["./src/data/content.json"];
+var NETWORK_FIRST_PATHS = [];
 
 function isNetworkFirst(url) {
   var path = url.pathname;
