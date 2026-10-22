@@ -410,9 +410,9 @@ body.sidebar-open .hamburger-btn {
   word-break: break-word;
 }
 #app > div.about-page > h1 {
-  height: 56px;
-  line-height: 56px;
-  margin: calc(-1 * clamp(56px, 10vw, 78px)) 0 1em;
+  height: 50px;
+  line-height: 50px;
+  margin: calc(-1 * clamp(50px, 10vw, 70px)) 0 0em;
   padding: 0 16px;
   box-sizing: border-box;
   text-align: center;
