@@ -409,6 +409,20 @@ body.sidebar-open .hamburger-btn {
   line-height: 1.25;
   word-break: break-word;
 }
+#app > div.about-page > h1 {
+  height: 46px;
+  line-height: 46px;
+  margin: calc(-1 * clamp(46px, 10vw, 68px)) 0 0em;
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: var(--text);
+  padding: 0 16px;
+  box-sizing: border-box;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 #app p {
   font-size: clamp(0.9rem, 2.6vw, 1rem);
   line-height: 1.6;
@@ -638,7 +652,7 @@ button:disabled {
 }
 .ai-clear-btn {
   position: absolute;
-  top: clamp(14px, 2vw, 16px);
+  top: clamp(16px, 2vw, 16px);
   right: clamp(16px, 3vw, 18px);
   z-index: 60;
   width: 28px;
@@ -1259,19 +1273,19 @@ button:disabled {
   text-overflow: ellipsis;
   text-align: center;
   width: 100%;
-  padding-left: 60px;
+  padding-left: 16px;
   padding-right: 16px;
   box-sizing: border-box;
 }
 .engine-switch-menubar {
   display: flex;
   gap: 6px;
-  margin-top: -10px;
+  margin-top: -12px;
   margin-bottom: 4px;
 }
 .engine-switch-menubar button {
   font-size: 0.8rem;
-  padding: 2px 6px;
+  padding: 2px 8px;
   border: 1px solid var(--border-input);
   background: var(--input-bg-fill);
   color: var(--text);
@@ -1554,6 +1568,13 @@ button:disabled {
 .CodeMirror *:focus-visible {
   outline: none !important;
   box-shadow: none !important;
+}
+.CodeMirror textarea,
+.CodeMirror [contenteditable="true"],
+.CodeMirror [contenteditable=""],
+.CodeMirror [contenteditable="plaintext-only"] {
+  font-size: 16px !important;
+  touch-action: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
