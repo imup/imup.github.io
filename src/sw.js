@@ -4,7 +4,7 @@ var CACHE_NAME = "randomArt-v" + CACHE_VERSION;
 var PRECACHE_URLS = [
   "/",
   "/src/index.html",
-  "/src//manifest.json",
+  "/src/manifest.json",
   "/src/css/style.css",
   "/src/data/content.json",
 
