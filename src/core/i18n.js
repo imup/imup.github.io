@@ -33,7 +33,7 @@ export function setLang(code) {
   _writeLangRaw(code);
   try { document.documentElement.lang = code === "zh" ? "zh-CN" : "en"; } catch (e) {}
 }
-
+/*
 export function detectLang() {
   const saved = _readLangRaw();
   if (saved && I18N[saved]) return saved;
@@ -41,6 +41,14 @@ export function detectLang() {
   if (nav.indexOf("zh") === 0) return "zh";
   if (nav.indexOf("en") === 0) return "en";
   if (DEFAULT_LANG && I18N[DEFAULT_LANG]) return DEFAULT_LANG;
+  return "en";
+}
+*/
+export function detectLang() {
+  const saved = _readLangRaw();
+  if (saved && I18N[saved]) return saved;
+  const nav = (navigator.language || "en").toLowerCase();
+  if (nav.indexOf("zh") === 0) return "zh";
   return "en";
 }
 
