@@ -409,6 +409,17 @@ body.sidebar-open .hamburger-btn {
   line-height: 1.25;
   word-break: break-word;
 }
+#app > div.about-page > h1 {
+  height: 56px;
+  line-height: 56px;
+  margin: calc(-1 * clamp(56px, 10vw, 78px)) 0 1em;
+  padding: 0 16px;
+  box-sizing: border-box;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 #app p {
   font-size: clamp(0.9rem, 2.6vw, 1rem);
   line-height: 1.6;
