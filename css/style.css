@@ -1555,6 +1555,13 @@ button:disabled {
   outline: none !important;
   box-shadow: none !important;
 }
+.CodeMirror textarea,
+.CodeMirror [contenteditable="true"],
+.CodeMirror [contenteditable=""],
+.CodeMirror [contenteditable="plaintext-only"] {
+  font-size: 16px !important;
+  touch-action: none;
+}
 
 @media (prefers-reduced-motion: reduce) {
   *,
