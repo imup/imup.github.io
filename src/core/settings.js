@@ -1,7 +1,7 @@
 import { storageGet, storageSet, SETTINGS_KEY } from "./storage.js";
 
 export const DEFAULT_SETTINGS = {
-  maxImageMB: 1.5,
+  maxImageMB: 5,
   maxToolLoop: 5,
   maxContext: 30,
   requestTimeoutSec: 60,
