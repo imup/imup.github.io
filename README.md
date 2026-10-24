@@ -49,7 +49,7 @@ randomArt可视化创意编程是款纯前端p5.js、three.js创意编程工具�
 |---|---|---|
 | 编辑器 | CodeMirror 5.65.16 | CDN UMD（`window.CodeMirror`） |
 | 压缩 | JSZip 3.10.1 | CDN UMD（`window.JSZip`） |
-| 图形 | p5.js 1.9.0 / three.js 0.186.0 | 运行时 CDN |
+| 图形 | p5.js 1.11.13 / three.js 0.186.0 | 运行时 CDN |
 | 部署 | GitHub Pages | 纯静态，无构建 |
 
 ---
