@@ -18,7 +18,7 @@ var PRECACHE_URLS = [
   "https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js",
   "https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js",
   "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js",
-  "https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js",
+  "https://cdn.jsdelivr.net/npm/p5@1.11.13/lib/p5.min.js",
   "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js"
 ];
 
