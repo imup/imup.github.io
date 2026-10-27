@@ -109,7 +109,10 @@
       "preview.screenshot": "保存截图",
       "preview.screenshotFail": "无法截图：画面含外部资源",
       "preview.noCanvas": "未找到画布",
-
+      "preview.record": "录制视频",
+      "preview.recordStop": "停止录制",
+      "preview.recordFail": "无法录制：当前浏览器不支持",
+      
       "ai.clearTitle": "清除当前模型的对话内容",
       "ai.inputPlaceholder": "输入消息回车发送，Shift+回车换行",
       "ai.modelPickerTitle": "选择模型",
@@ -363,6 +366,9 @@
       "preview.screenshot": "Save PNG",
       "preview.screenshotFail": "Cannot capture: canvas has external resources",
       "preview.noCanvas": "Canvas not found",
+      "preview.record": "Record Video",
+      "preview.recordStop": "Stop Recording",
+      "preview.recordFail": "Cannot record: browser not supported",
 
       "ai.clearTitle": "Clear this model's conversation",
       "ai.inputPlaceholder": "Type a message and press Enter. Shift+Enter for newline.",
