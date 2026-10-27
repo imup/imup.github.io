@@ -1,13 +1,10 @@
+/**
+ * core/page-html.js — 生成作品 HTML（p5 / three 两种引擎）
+ */
 import { escapeHtml, escapeScriptClose } from "./dom.js";
 
-const P5_CDN = "https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js";
-const THREE_VERSION = "0.186.0";
-const THREE_URL =
-  "https://cdn.jsdelivr.net/npm/three@" + THREE_VERSION + "/build/three.module.js";
-
-function _threeImportMapBlock() {
-  return "";
-}
+const P5_CDN = "src/lib/p5.min.js";
+const THREE_URL = "src/lib/three.module.js";
 
 export function generatePageHtml(a, b, c, d, e) {
   if (arguments.length > 1 && typeof a === "string") {
@@ -16,7 +13,13 @@ export function generatePageHtml(a, b, c, d, e) {
   const opts = a || {};
   return (opts.engine || "p5") === "three"
     ? _generateThreeHtml(opts)
-    : _generateP5Html(opts.title, opts.code, opts.imageDataUrl, opts.hasImage, opts.maxTitleLen);
+    : _generateP5Html(
+        opts.title,
+        opts.code,
+        opts.imageDataUrl,
+        opts.hasImage,
+        opts.maxTitleLen,
+      );
 }
 
 function _generateP5Html(title, script, imageDataUrl, hasImage, maxTitleLen) {
@@ -58,18 +61,24 @@ function _generateP5Html(title, script, imageDataUrl, hasImage, maxTitleLen) {
 function _generateThreeHtml(opts) {
   const len = typeof opts.maxTitleLen === "number" ? opts.maxTitleLen : 60;
   const safeTitle = escapeHtml((opts.title || "Untitled").slice(0, len));
+
   const imgVar = opts.imageDataUrl
     ? 'var imageUrl = "' + opts.imageDataUrl + '";'
     : "var imageUrl = null;";
   const safeImgVar = escapeScriptClose(imgVar);
+
+  const modelVar = opts.modelDataUrl
+    ? 'var modelUrl = "' + opts.modelDataUrl + '";\n    var modelFormat = "' + (opts.modelFormat || "") + '";'
+    : "var modelUrl = null;\n    var modelFormat = null;";
+  const safeModelVar = escapeScriptClose(modelVar);
+
   const code = opts.code || "";
   const safeCode = escapeScriptClose(code);
   const hasImport = /^\s*import\s+/m.test(code);
 
   const injectBlock = hasImport
     ? ""
-    : `    import * as _THREE_NS from "${THREE_URL}";\n` +
-      "    // 复制为可写对象，并强制 preserveDrawingBuffer: true，让截图功能可用\n" +
+    : '    import * as _THREE_NS from "' + THREE_URL + '";\n' +
       "    const THREE = Object.assign({}, _THREE_NS);\n" +
       "    {\n" +
       "      const _OrigRenderer = _THREE_NS.WebGLRenderer;\n" +
@@ -93,6 +102,8 @@ function _generateThreeHtml(opts) {
     "  </style>\n</head>\n<body>\n" +
     "  \x3Cscript>\n    " +
     safeImgVar +
+    "\n    " +
+    safeModelVar +
     "\n  \x3C/script>\n" +
     '  \x3Cscript type="module">\n' +
     injectBlock +
