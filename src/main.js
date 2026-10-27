@@ -12,7 +12,7 @@ import {
   bindSidebar, updateSidebarPages, closeSidebar, isSidebarOpen,
 } from "./sidebar.js";
 import { render } from "./router.js";
-const CONTENT_URL = "/src/data/content.json";
+const CONTENT_URL = "./data/content.json";
 const CONTENT_TIMEOUT_MS = 5000;
 
 function initGlobalGuards() {
