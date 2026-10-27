@@ -13,35 +13,60 @@ import { setActiveNav } from "./sidebar.js";
 
 export function teardown() {
   if (aiState.busy) {
-    if (aiState.abortController) { try { aiState.abortController.abort(); } catch (e) {} }
-    aiState.streamToken += 1; aiState.busy = false;
-    const sendBtn = $("#aiSendBtn"); if (sendBtn) sendBtn.disabled = false;
+    if (aiState.abortController) {
+      try { aiState.abortController.abort(); } catch (e) {}
+    }
+    aiState.streamToken += 1;
+    aiState.busy = false;
+    var sendBtn = $("#aiSendBtn");
+    if (sendBtn) sendBtn.disabled = false;
   }
+
   if (genState.busy) {
-    if (genState.abortController) { try { genState.abortController.abort(); } catch (e) {} }
-    genState.streamToken += 1; genState.busy = false;
-    const genBtn = $("#genSendBtn"); if (genBtn) genBtn.disabled = false;
+    if (genState.abortController) {
+      try { genState.abortController.abort(); } catch (e) {}
+    }
+    genState.streamToken += 1;
+    genState.busy = false;
+    var genBtn = $("#genSendBtn");
+    if (genBtn) genBtn.disabled = false;
   }
+
   destroyEditor();
+
+  try {
+    window.dispatchEvent(new CustomEvent("app:teardown"));
+  } catch (e) {}
+
   document.body.classList.remove("preview-lock");
-  const appEl = $("#app");
+  var appEl = $("#app");
   if (appEl) {
-    const iframe = appEl.querySelector("iframe");
-    if (iframe) { try { iframe.srcdoc = ""; } catch (e) {} }
-    appEl.style.position = ""; appEl.style.top = ""; appEl.style.left = "";
-    appEl.style.width = ""; appEl.style.height = ""; appEl.style.overflow = "";
+    var iframe = appEl.querySelector("iframe");
+    if (iframe) {
+      try { iframe.srcdoc = ""; } catch (e) {}
+    }
+    appEl.style.position = "";
+    appEl.style.top = "";
+    appEl.style.left = "";
+    appEl.style.width = "";
+    appEl.style.height = "";
+    appEl.style.overflow = "";
   }
 }
 
 export function render() {
   teardown();
-  const path = getRoute();
-  const appEl = $("#app");
+  var path = getRoute();
+  var appEl = $("#app");
   if (!appEl) return;
 
   if (path !== "/" && path !== "" && path !== "/index.html") {
-    if (runner.mode === "page") { runner.mode = "random"; runner.pageId = null; }
+    if (runner.mode === "page") {
+      runner.mode = "random";
+      runner.pageId = null;
+    }
   }
+
   if (path === "/" || path === "" || path === "/index.html") {
     setActiveNav("/");
     renderRunner();
@@ -61,18 +86,29 @@ export function render() {
     bindAIAssistant();
     return;
   }
-  if (path === "/about") { appEl.appendChild(renderAbout()); return; }
+
+  if (path === "/about") {
+    appEl.appendChild(renderAbout());
+    return;
+  }
+
   if (path === "/generator") {
     appEl.classList.add("generator-mode");
     appEl.appendChild(renderGenerator());
     bindGenerator();
     return;
   }
-  const wrap = document.createElement("div");
-  wrap.appendChild(el("h1", null, T("page.notFoundTitle", { path })));
+
+  var wrap = document.createElement("div");
+  wrap.appendChild(el("h1", null, T("page.notFoundTitle", { path: path })));
   wrap.appendChild(el("p", null, T("page.notFoundBody")));
   appEl.appendChild(wrap);
 }
 
-export function setRandom() { _setRandom(); }
-export function runPage(id) { setPage(id); }
+export function setRandom() {
+  _setRandom();
+}
+
+export function runPage(id) {
+  setPage(id);
+}
