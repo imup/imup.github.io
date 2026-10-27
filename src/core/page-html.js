@@ -4,7 +4,7 @@
 import { escapeHtml, escapeScriptClose } from "./dom.js";
 
 const P5_CDN = "https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js";
-const THREE_URL = "src/lib/three.module.js";
+const THREE_URL = "https://cdn.jsdelivr.net/npm/three@0.186.0/build/three.module.js";
 
 export function generatePageHtml(a, b, c, d, e) {
   if (arguments.length > 1 && typeof a === "string") {
