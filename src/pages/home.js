@@ -269,10 +269,13 @@ function startRecording(iframe, btn) {
     }
     var mime = "";
     var candidates = [
+      "video/mp4;codecs=avc1.42E01E",
+      "video/mp4;codecs=avc1",
+      "video/mp4",
+      "video/webm;codecs=h264",
       "video/webm;codecs=vp9",
       "video/webm;codecs=vp8",
       "video/webm",
-      "video/mp4",
     ];
     if (typeof MediaRecorder.isTypeSupported === "function") {
       for (var i = 0; i < candidates.length; i++) {
