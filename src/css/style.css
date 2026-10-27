@@ -1215,6 +1215,44 @@ button:disabled {
   transform: scale(0.95);
 }
 
+.preview-record-btn {
+  position: fixed;
+  top: clamp(8px, 2vw, 14px);
+  right: calc(clamp(10px, 3vw, 18px) + 48px);
+  z-index: 300;
+  background: none;
+  border: none;
+  color: #fff;
+  font-size: clamp(24px, 4.5vw, 32px);
+  cursor: pointer;
+  padding: 4px 8px;
+  line-height: 1;
+  user-select: none;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  transition:
+    transform 0.15s,
+    color 0.15s;
+}
+.preview-record-btn:hover {
+  transform: scale(1.1);
+}
+.preview-record-btn:active {
+  transform: scale(0.95);
+}
+.preview-record-btn.recording {
+  color: var(--danger);
+  animation: recordPulse 1s ease-in-out infinite;
+}
+@keyframes recordPulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
 @media (max-width: 420px) {
   .hamburger-btn {
     font-size: 28px;
