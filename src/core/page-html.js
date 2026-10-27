@@ -3,7 +3,7 @@
  */
 import { escapeHtml, escapeScriptClose } from "./dom.js";
 
-const P5_CDN = "src/lib/p5.min.js";
+const P5_CDN = "https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js";
 const THREE_URL = "src/lib/three.module.js";
 
 export function generatePageHtml(a, b, c, d, e) {
