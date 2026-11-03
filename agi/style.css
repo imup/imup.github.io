@@ -193,10 +193,18 @@ body.searching .search-box { transform: scale(1); opacity: 1; }
 .search-filter-bar::-webkit-scrollbar { display: none; }
 .search-filter-bar > * { flex-shrink: 0; }
 body.searching .search-filter-bar { display: flex; }
-.search-filter-bar select {
-  padding: 6px 10px; border: 1px solid var(--border-2); border-radius: 6px;
-  background: var(--surface); font-size: 13px; color: var(--text); max-width: 200px; outline: none;
-}
+/* 固定宽度：收起状态三个 select 视觉统一，不再按最长 option 撑宽；
+     展开下拉时浏览器原生弹出层不受 width 限制，长选项仍完整显示 */
+  .search-filter-bar select {
+    width: 120px;
+    padding: 6px 10px;
+    border: 1px solid var(--border-2);
+    border-radius: 6px;
+    background: var(--surface);
+    font-size: 13px;
+    color: var(--text);
+    outline: none;
+  }
 .search-filter-bar button {
   padding: 6px 12px; border: 1px solid var(--border-2); border-radius: 6px;
   background: var(--surface-3); font-size: 13px; cursor: pointer; color: var(--text);
