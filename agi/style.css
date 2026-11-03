@@ -1,8 +1,4 @@
-/* ============================================================
-   AGI 会员瀑布流作品展示 · 样式
-   ============================================================ */
-
-/* ---------- 主题变量 ---------- */
+/*  主题变量 */
 :root {
   --bg: #f5f5f5;
   --surface: #ffffff;
@@ -38,7 +34,7 @@
   --heart: #ff3b6b;
 
   /* 药丸菜单磨砂变量 */
-  --pill-bg: rgba(250,250,250,.15);
+  --pill-bg: rgba(255,255,255,.55);
   --pill-divider: rgba(0,0,0,.10);
   --pill-hover: rgba(0,0,0,.055);
 
@@ -82,7 +78,7 @@
   color-scheme: dark;
 }
 
-/* ---------- 全局重置 ---------- */
+/*  全局重置  */
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 body {
@@ -103,7 +99,7 @@ body.view-about #gallery,
 body.view-about #status,
 body.view-about #loadMoreWrap { display: none !important; }
 
-/* ---------- 顶栏 ---------- */
+/*  顶栏  */
 .topbar {
   position: fixed; top: 0; left: 0; right: 0; width: 100%;
   z-index: 60;
@@ -118,7 +114,7 @@ body.view-about #loadMoreWrap { display: none !important; }
 .icon-cell:hover { background: var(--surface-2); }
 #hamburger { border-left: 1px solid var(--border); flex-shrink: 0; }
 
-/* ---------- 搜索（顶栏） ---------- */
+/*  搜索（顶栏）  */
 .center-search-btn {
   position: absolute;
   left: 50%; top: 50%;
@@ -185,7 +181,7 @@ body.searching .search-box { transform: scale(1); opacity: 1; }
 .search-box.has-value .search-clear { display: flex; }
 .search-clear:hover { background: var(--clear-bg-hover); }
 
-/* ---------- 搜索筛选条 ---------- */
+/*  搜索筛选条  */
 .search-filter-bar {
   position: fixed; top: 64px; left: 0; right: 0; z-index: 55;
   background: var(--surface); border-bottom: 1px solid var(--border);
@@ -219,7 +215,7 @@ body.searching .search-filter-bar { display: flex; }
 }
 .filter-chip button:hover { background: var(--accent-soft-2); }
 
-/* ---------- 瀑布流 ---------- */
+/*  瀑布流  */
 .gallery {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
   gap: 16px; padding: 16px; align-items: start;
@@ -237,7 +233,7 @@ body.searching .search-filter-bar { display: flex; }
   .gallery.js-ready .col { gap: 12px; }
 }
 
-/* ---------- 卡片 ---------- */
+/*  卡片  */
 .card {
   position: relative; background: var(--surface);
   border: 1px solid var(--border); border-radius: 8px;
@@ -265,7 +261,7 @@ body.searching .search-filter-bar { display: flex; }
 
 mark { background: var(--mark-bg); color: var(--mark-text); padding: 0 1px; border-radius: 2px; }
 
-/* ---------- 状态 / 加载更多 ---------- */
+/*  状态 / 加载更多  */
 .status { text-align: center; padding: 20px; color: var(--text-3); font-size: 13px; }
 #sentinel { height: 1px; }
 
@@ -278,7 +274,7 @@ mark { background: var(--mark-bg); color: var(--mark-text); padding: 0 1px; bord
 .load-more-btn:hover { background: var(--surface-3); }
 .load-more-btn:disabled { opacity: .5; cursor: default; }
 
-/* ---------- 主题图标（基础） ---------- */
+/*  主题图标（基础）  */
 .theme-toggle {
   width: 36px; height: 36px;
   border: none; background: transparent; color: var(--text);
@@ -291,12 +287,9 @@ mark { background: var(--mark-bg); color: var(--mark-text); padding: 0 1px; bord
 [data-theme="dark"] .theme-toggle .icon-sun { display: block; }
 [data-theme="dark"] .theme-toggle .icon-moon { display: none; }
 
-/* ============================================================
-   药丸菜单（关于 / 收藏 / 发现 / 主题）
-   ============================================================ */
+/* 药丸菜单（关于 / 收藏 / 发现 / 主题） */
 .pill-menu {
   --pill-gap: clamp(6px, 1.8vw, 14px);       /* 分隔线对齐基准 */
-
   position: fixed;
   top: 50%;
   left: 50%;
@@ -317,7 +310,7 @@ mark { background: var(--mark-bg); color: var(--mark-text); padding: 0 1px; bord
   overflow-x: auto;
   scrollbar-width: none;
 
-  /* 防闪：强制合成层，避免 backdrop-filter 首次采样硬切 */
+  /* 防闪：强制合成层，避免首次采样硬切 */
   will-change: transform, opacity;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
@@ -397,7 +390,7 @@ body.pill-open .pill-menu {
   pointer-events: none;
 }
 
-/* ---------- 页面视图（发现 / 关于） ---------- */
+/*  页面视图（发现 / 关于）  */
 .page-view { max-width: 1200px; margin: 0 auto; padding: 24px 16px 48px; }
 @media (max-width: 640px) { .page-view { padding: 16px 12px 32px; } }
 
@@ -465,7 +458,7 @@ body.pill-open .pill-menu {
   font-size: 12px; color: var(--text);
 }
 
-/* ---------- 灯箱 ---------- */
+/*  灯箱  */
 .lightbox {
   position: fixed; inset: 0; z-index: 100;
   background: var(--lb-bg);
@@ -601,7 +594,7 @@ body.pill-open .pill-menu {
   .center-search-btn { width: 40px; height: 40px; }
 }
 
-/* ---------- Toast ---------- */
+/*  Toast  */
 .toast {
   position: fixed; bottom: 32px; left: 50%;
   transform: translateX(-50%) translateY(20px);
@@ -613,7 +606,7 @@ body.pill-open .pill-menu {
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-/* ---------- 无障碍：减少动画 ---------- */
+/*  无障碍：减少动画  */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     transition-duration: 0.01ms !important;
