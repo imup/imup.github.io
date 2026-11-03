@@ -5,12 +5,12 @@
   'use strict';
 
   const IMAGE_BASE_URL = 'https://a-g-i.s3.eu-west-3.amazonaws.com';
-  const DATA_URL = './data.json';
+  const DATA_URL = './data/data.json';
   const FAV_KEY = 'gallery_favorites_v1';
   const THEME_KEY = 'gallery_theme_v1';
-  const SEEN_KEY = 'gallery_seen_ids_v1';   // 已看过的作品 id（localStorage，跨会话保留）
-  const BATCH_SIZE = 300;                   // 每批随机抽取数量
-  const PILL_AUTO_CLOSE_MS = 5000;          // 药丸打开后 5 秒自动关闭
+  const SEEN_KEY = 'gallery_seen_ids_v1';
+  const BATCH_SIZE = 300;
+  const PILL_AUTO_CLOSE_MS = 5000;
 
   const VARIANT_TEMPLATES = {
     small:  '_500xAUTO_crop_center-center_75_none',
@@ -96,7 +96,6 @@
   }
   function escapeRegExp(s) { return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 
-  // 单次正则替换，杜绝多词依次替换破坏已插入的 <mark> 标签
   function highlightHtml(text, terms) {
     const safe = escapeHtml(text || '');
     if (!terms || !terms.length) return safe;
@@ -107,7 +106,6 @@
     return safe.replace(new RegExp('(' + pattern + ')', 'gi'), '<mark>$1</mark>');
   }
 
-  // 保序过滤
   function filterBySet(base, other) {
     if (!base || !base.length || !other || !other.length) return [];
     const set = new Set(other);
@@ -300,7 +298,6 @@
     try { localStorage.setItem(SEEN_KEY, JSON.stringify([...seen])); } catch (e) {}
   }
 
-  // 无筛选：从「未看过池」随机抽 BATCH_SIZE 个，记入已看过
   function buildBatchQueue() {
     const allItems = buildProjectQueue(state.allProjects);
     if (!allItems.length) return [];
@@ -308,7 +305,6 @@
     const seen = loadSeenIds();
     let candidates = allItems.filter(it => !seen.has(String(it.record.id)));
 
-    // 剩余不足一批 → 一轮看完，清空记录开始新一轮
     if (candidates.length < BATCH_SIZE) {
       seen.clear();
       candidates = allItems;
@@ -321,7 +317,6 @@
     return batch;
   }
 
-  // 筛选状态：从筛选结果随机洗全部，不消耗已看过记录
   function buildFilteredQueue() {
     const records = state.allProjects.filter(matchHomeFilter);
     return shuffleArray(buildProjectQueue(records));
@@ -346,8 +341,6 @@
   }
 
   function rebuildHomeQueue() {
-    // 有筛选 → 随机洗筛选结果（不消耗已看过记录）
-    // 无筛选 → 从「未看过池」抽新一批 300
     if (state.homeFilterType && state.homeFilterValue) {
       state.loadQueue = buildFilteredQueue();
     } else {
@@ -434,14 +427,12 @@
       computeAboutStats();
       rebuildFilters();
 
-      // 检查 URL 是否已经有参数（hf、view、搜索参数）——如果有，后续由 restoreFromUrl 处理
       const params = new URLSearchParams(location.search);
       const hasUrlParams = params.get('hf') || params.get('view') || params.get('q')
                         || params.get('year') || params.get('type')
                         || params.get('country') || params.get('designer');
 
       if (!hasUrlParams) {
-        // 无 URL 参数：构建首屏批次
         state.loadQueue = buildBatchQueue();
         if (!state.loadQueue.length) {
           statusEl.textContent = '数据中没有可用的图片';
@@ -661,7 +652,6 @@
 
     if (state.view === 'all') setupObserver();
 
-    // 用真实列高校正估算值
     requestAnimationFrame(() => {
       for (let i = 0; i < state.columns.length; i++) {
         const h = state.columns[i].offsetHeight;
@@ -864,7 +854,6 @@
           appendCardToColumn(card);
           success++;
         }
-        // 每帧末用真实高度校准列高
         for (let c = 0; c < state.columns.length; c++) {
           const h = state.columns[c].offsetHeight;
           if (h > 0) state.columnHeights[c] = h + state.gap;
@@ -898,7 +887,6 @@
     }
 
     const batchSize = state.chunksPerBatch * CHUNK_SIZE;
-    // 本批 300 个已在 buildBatchQueue 中洗过，顺序本身随机，下拉只是顺序递增，无需再洗。
     const nextItems = state.loadQueue.slice(state.currentIndex, state.currentIndex + batchSize);
     state.currentIndex += nextItems.length;
 
@@ -919,8 +907,7 @@
     if (text) { statusEl.textContent = text; updateLoadMore(); return; }
     if (state.view === 'search') {
       if (state.searchTotal > 0) {
-        const more = state.searchShown < state.searchTotal ? ' · 可继续加载' : '';
-        statusEl.textContent = `找到 ${state.searchTotal} 个匹配「${state.searchDesc}」的项目 · 已显示 ${state.searchShown}${more}`;
+        statusEl.textContent = `找到 ${state.searchTotal} 个匹配「${state.searchDesc}」的项目 · 已全部显示`;
       }
       updateLoadMore(); return;
     }
@@ -938,10 +925,8 @@
     let show = false, label = '加载更多';
     if (state.view === 'all') {
       show = !state.finished;
-    } else if (state.view === 'search') {
-      show = state.searchResults.length > state.searchShown;
-      label = '加载更多结果';
     }
+    // 搜索已改为一次性加载全部结果，不再显示「加载更多」
     loadMoreWrap.style.display = show ? 'block' : 'none';
     loadMoreBtn.disabled = state.loading;
     loadMoreBtn.textContent = state.loading ? '加载中…' : label;
@@ -998,6 +983,7 @@
       renderDiscover();
       state.discoverRendered = true;
     }
+    window.scrollTo({ top: 0, behavior: 'auto' });
     syncUrl();
   }
 
@@ -1142,6 +1128,7 @@
     const av = document.getElementById('aboutView');
     av.hidden = false;
     renderAbout();
+    window.scrollTo({ top: 0, behavior: 'auto' });
     syncUrl();
   }
 
@@ -1346,39 +1333,35 @@
     syncUrl();
   }
 
-  function showSearchResults(reset) {
-    if (reset) {
+  async function showSearchResults(reset) {
+    if (!state.searchResults.length) {
       clearGalleryForSearch();
       state.searchShown = 0;
-    }
-    if (!state.searchResults.length) {
       statusEl.textContent = '未找到匹配的项目';
       updateLoadMore();
       return;
     }
-    const next = state.searchResults.slice(state.searchShown, state.searchShown + SEARCH_PAGE);
-    if (!next.length) { updateStatus(); return; }
 
-    const cards = [];
-    next.forEach(rec => {
+    const items = [];
+    state.searchResults.forEach(rec => {
       const cover = findCoverImage(rec);
       if (!cover) return;
-      const card = createCard({ record: rec, cover });
-      if (card) cards.push(card);
+      items.push({ record: rec, cover });
     });
-    state.searchShown += next.length;
+    state.searchShown = state.searchResults.length;
 
-    if (reset) {
-      setCards(cards);
-    } else {
-      cards.forEach(c => { state.cardQueue.push(c); appendCardToColumn(c); });
-    }
-
-    if (!cards.length && reset) {
+    if (!items.length) {
+      clearGalleryForSearch();
       statusEl.textContent = `找到 ${state.searchTotal} 个匹配项目，但没有可用图片`;
       updateLoadMore();
       return;
     }
+
+    if (reset) {
+      setCards([]);
+    }
+
+    await renderItemsChunked(items);
     updateStatus();
   }
 
@@ -1408,6 +1391,7 @@
     state.currentTerms = [];
     syncUrl();
     renderFavorites();
+    window.scrollTo({ top: 0, behavior: 'auto' });
   }
 
   function renderFavorites() {
@@ -1608,9 +1592,11 @@
     if (!entry || entry.loaded) return;
     entry.loaded = true;
 
-    const urlOrig = resolveUrl(entry.data.url);
-    const urlFallback = resolveUrl(entry.data.large) || resolveUrl(entry.data.small);
-    const primary = urlOrig || urlFallback;
+    // 优先加载大图（2000px），失败降级到中图，再失败到小图。
+    // 原图（data.url）通常 5~15MB，海外加载极慢，灯箱默认不再加载它。
+    const urlPrimary  = resolveUrl(entry.data.large);
+    const urlFallback = resolveUrl(entry.data.medium) || resolveUrl(entry.data.small);
+    const primary = urlPrimary || urlFallback;
 
     if (!primary) { entry.wrap.style.display = 'none'; return; }
 
@@ -1982,7 +1968,7 @@
 
   loadMoreBtn.addEventListener('click', () => {
     if (state.view === 'all') loadNextBatch();
-    else if (state.view === 'search') showSearchResults(false);
+    // 搜索已改为一次性加载全部结果，不再有「加载更多」
   });
 
   window.addEventListener('resize', scheduleRelayout);
