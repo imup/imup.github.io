@@ -196,7 +196,7 @@ body.searching .search-filter-bar { display: flex; }
 /* 固定宽度：收起状态三个 select 视觉统一，不再按最长 option 撑宽；
      展开下拉时浏览器原生弹出层不受 width 限制，长选项仍完整显示 */
   .search-filter-bar select {
-    width: 120px;
+    width: 85px;
     padding: 6px 10px;
     border: 1px solid var(--border-2);
     border-radius: 6px;
