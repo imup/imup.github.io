@@ -453,7 +453,7 @@ body.pill-open .pill-menu {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 16px 14px;
+  padding: 6px 4px;
   min-height: 28px;
   min-width: 0;
   overflow: hidden;
@@ -541,7 +541,7 @@ body.pill-open .pill-menu {
   justify-content: space-between;
   align-items: center;
   gap: 8px;
-  padding: 20px 14px;
+  padding: 10px 14px;
   min-height: 38px;
   min-width: 0;
   overflow: hidden;
