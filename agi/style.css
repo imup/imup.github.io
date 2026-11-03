@@ -25,7 +25,7 @@
   --lb-bg: rgba(0,0,0,.92);
   --lb-surface: #ffffff;
   /* 灯箱顶栏：深色半透明底，保证白色图标/文字在浅色图片上也有反差 */
-  --lb-bar-bg: rgba(0,0,0,.5);
+  --lb-bar-bg: rgba(0,0,0,.15);
   --lb-bar-border: rgba(255,255,255,.18);
   --lb-text: #ffffff;
   --toast-bg: rgba(0,0,0,.82);
