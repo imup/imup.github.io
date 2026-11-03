@@ -5,7 +5,7 @@
   'use strict';
 
   const IMAGE_BASE_URL = 'https://a-g-i.s3.eu-west-3.amazonaws.com';
-  const DATA_URL = './data/data.json';
+  const DATA_URL = './data.json';
   const FAV_KEY = 'gallery_favorites_v1';
   const THEME_KEY = 'gallery_theme_v1';
   const SEEN_KEY = 'gallery_seen_ids_v1';   // 已看过的作品 id（localStorage，跨会话保留）
