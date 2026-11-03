@@ -399,20 +399,27 @@ body.pill-open .pill-menu {
 .page-view { max-width: 1200px; margin: 0 auto; padding: 24px 16px 48px; }
 @media (max-width: 640px) { .page-view { padding: 16px 12px 32px; } }
 
-/* 发现页全宽：解除 1200px 限制，表格撑满屏幕 */
+/* 发现页全宽：解除 1200px 限制，左右 padding 归零让表格真正贴屏幕边；
+   文字元素各自单独留 padding（见下方 .page-stats / .az-letters） */
 #discoverView.page-view {
   max-width: 100%;
-  padding: clamp(16px, 2vw, 24px) clamp(12px, 3vw, 40px) clamp(32px, 4vw, 48px);
+  padding: clamp(16px, 2vw, 24px) 0 clamp(32px, 4vw, 48px);
 }
 
-.page-stats { color: var(--text-2); font-size: 14px; margin: 0 0 20px; }
+.page-stats {
+  color: var(--text-2);
+  font-size: 14px;
+  margin: 0 0 20px;
+  padding-left: clamp(12px, 3vw, 40px);
+  padding-right: clamp(12px, 3vw, 40px);
+}
 
 /* 删除「发现」大标题，只保留统计 */
 .discover-head h1 { display: none; }
 
 .discover-section { margin-bottom: 28px; }
 
-/* 小节标题：文字居中，两侧横线延伸到边缘 */
+/* 小节标题：文字居中，两侧横线延伸到屏幕边缘 */
 .discover-section-title {
   display: flex;
   align-items: center;
@@ -432,10 +439,11 @@ body.pill-open .pill-menu {
   background: var(--border);
 }
 
-/* 国家 / 类型 / 领域：三列表格，自动撑满容器宽度，行列紧贴 */
+/* 国家 / 类型 / 领域：三列表格，自动撑满容器宽度，行列紧贴。
+   minmax(0, 1fr) 强制列宽可收缩到 0，避免长名字撑破三列导致第三列溢出屏幕 */
 .discover-chips {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0;
   border-top: 1px solid var(--border);
   border-left: 1px solid var(--border);
@@ -443,7 +451,7 @@ body.pill-open .pill-menu {
   overflow: hidden;
 }
 
-/* 单元格：占满格子，左右分列名称与数量 */
+/* 单元格：占满格子，左右分列名称与数量；min-width/overflow 确保内容可收缩 */
 .discover-chip {
   display: flex;
   align-items: center;
@@ -451,6 +459,8 @@ body.pill-open .pill-menu {
   gap: 8px;
   padding: 16px 14px;
   min-height: 64px;
+  min-width: 0;
+  overflow: hidden;
   border: none;
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
@@ -463,7 +473,7 @@ body.pill-open .pill-menu {
   transition: background .15s, color .15s;
 }
 
-/* 三列表格斑马纹（写在 hover 之前，hover 后出现可覆盖） */
+/* 三列表格斑马纹：白行与浅灰行交替（每 3 个 chip 换一行，6n 一组） */
 .discover-chip:nth-child(6n+1),
 .discover-chip:nth-child(6n+2),
 .discover-chip:nth-child(6n+3) {
@@ -475,8 +485,12 @@ body.pill-open .pill-menu {
   background: var(--surface-2);
 }
 
-/* hover 用蓝色淡底，避免与斑马纹的浅灰撞色 */
-.discover-chip:hover { background: var(--accent-soft); color: var(--accent); }
+/* hover：在斑马纹底色上叠加一层全局蓝，形成「比底色深一点的蓝」，
+   不替换 background-color，白行与浅灰行 hover 后仍保留色差 */
+.discover-chip:hover {
+  background-image: linear-gradient(var(--accent-soft), var(--accent-soft));
+  color: var(--accent);
+}
 
 .discover-chip > span:first-child {
   flex: 1;
@@ -493,11 +507,13 @@ body.pill-open .pill-menu {
 }
 .discover-chip:hover .discover-chip-count { color: var(--accent); }
 
-/* 设计师 A-Z 字母导航 */
+/* 设计师 A-Z 字母导航（贴边时圆角会被切，所以保留左右 padding） */
 .az-letters {
   display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 16px;
   padding: 8px; background: var(--surface-3); border-radius: 8px;
   position: sticky; top: 0; z-index: 5;
+  margin-left: clamp(12px, 3vw, 40px);
+  margin-right: clamp(12px, 3vw, 40px);
 }
 .az-letters button {
   width: 28px; height: 28px; border: none; border-radius: 6px;
@@ -531,6 +547,8 @@ body.pill-open .pill-menu {
   gap: 8px;
   padding: 20px 14px;
   min-height: 64px;
+  min-width: 0;
+  overflow: hidden;
   border: none;
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
@@ -544,11 +562,15 @@ body.pill-open .pill-menu {
   transition: background .15s, color .15s;
 }
 
-/* 设计师列表斑马纹（写在 hover 之前） */
+/* 设计师列表斑马纹：奇偶交替 */
 .az-item:nth-child(odd) { background: var(--surface); }
 .az-item:nth-child(even) { background: var(--surface-2); }
 
-.az-item:hover { background: var(--accent-soft); color: var(--accent); }
+/* hover：叠加全局蓝，不替换 background-color */
+.az-item:hover {
+  background-image: linear-gradient(var(--accent-soft), var(--accent-soft));
+  color: var(--accent);
+}
 
 .az-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
 .az-count {
