@@ -1,4 +1,8 @@
-/*  主题变量 */
+/* ============================================================
+   AGI 会员瀑布流作品展示 · 样式
+   ============================================================ */
+
+/* ---------- 主题变量 ---------- */
 :root {
   --bg: #f5f5f5;
   --surface: #ffffff;
@@ -24,6 +28,7 @@
   --overlay: rgba(0,0,0,.4);
   --lb-bg: rgba(0,0,0,.92);
   --lb-surface: #ffffff;
+  /* 灯箱顶栏：深色半透明底，保证白色图标/文字在浅色图片上也有反差 */
   --lb-bar-bg: rgba(0,0,0,.5);
   --lb-bar-border: rgba(255,255,255,.18);
   --lb-text: #ffffff;
@@ -78,7 +83,7 @@
   color-scheme: dark;
 }
 
-/*  全局重置  */
+/* ---------- 全局重置 ---------- */
 * { box-sizing: border-box; }
 html, body { margin: 0; padding: 0; }
 body {
@@ -99,7 +104,7 @@ body.view-about #gallery,
 body.view-about #status,
 body.view-about #loadMoreWrap { display: none !important; }
 
-/*  顶栏  */
+/* ---------- 顶栏 ---------- */
 .topbar {
   position: fixed; top: 0; left: 0; right: 0; width: 100%;
   z-index: 60;
@@ -114,7 +119,7 @@ body.view-about #loadMoreWrap { display: none !important; }
 .icon-cell:hover { background: var(--surface-2); }
 #hamburger { border-left: 1px solid var(--border); flex-shrink: 0; }
 
-/*  搜索（顶栏）  */
+/* ---------- 搜索（顶栏） ---------- */
 .center-search-btn {
   position: absolute;
   left: 50%; top: 50%;
@@ -181,7 +186,7 @@ body.searching .search-box { transform: scale(1); opacity: 1; }
 .search-box.has-value .search-clear { display: flex; }
 .search-clear:hover { background: var(--clear-bg-hover); }
 
-/*  搜索筛选条  */
+/* ---------- 搜索筛选条 ---------- */
 .search-filter-bar {
   position: fixed; top: 64px; left: 0; right: 0; z-index: 55;
   background: var(--surface); border-bottom: 1px solid var(--border);
@@ -215,7 +220,7 @@ body.searching .search-filter-bar { display: flex; }
 }
 .filter-chip button:hover { background: var(--accent-soft-2); }
 
-/*  瀑布流  */
+/* ---------- 瀑布流 ---------- */
 .gallery {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
   gap: 16px; padding: 16px; align-items: start;
@@ -233,7 +238,7 @@ body.searching .search-filter-bar { display: flex; }
   .gallery.js-ready .col { gap: 12px; }
 }
 
-/*  卡片  */
+/* ---------- 卡片 ---------- */
 .card {
   position: relative; background: var(--surface);
   border: 1px solid var(--border); border-radius: 8px;
@@ -261,7 +266,7 @@ body.searching .search-filter-bar { display: flex; }
 
 mark { background: var(--mark-bg); color: var(--mark-text); padding: 0 1px; border-radius: 2px; }
 
-/*  状态 / 加载更多  */
+/* ---------- 状态 / 加载更多 ---------- */
 .status { text-align: center; padding: 20px; color: var(--text-3); font-size: 13px; }
 #sentinel { height: 1px; }
 
@@ -274,7 +279,7 @@ mark { background: var(--mark-bg); color: var(--mark-text); padding: 0 1px; bord
 .load-more-btn:hover { background: var(--surface-3); }
 .load-more-btn:disabled { opacity: .5; cursor: default; }
 
-/*  主题图标（基础）  */
+/* ---------- 主题图标（基础） ---------- */
 .theme-toggle {
   width: 36px; height: 36px;
   border: none; background: transparent; color: var(--text);
@@ -287,9 +292,12 @@ mark { background: var(--mark-bg); color: var(--mark-text); padding: 0 1px; bord
 [data-theme="dark"] .theme-toggle .icon-sun { display: block; }
 [data-theme="dark"] .theme-toggle .icon-moon { display: none; }
 
-/* 药丸菜单（关于 / 收藏 / 发现 / 主题） */
+/* ============================================================
+   药丸菜单（关于 / 收藏 / 发现 / 主题）
+   ============================================================ */
 .pill-menu {
-  --pill-gap: clamp(6px, 1.8vw, 14px);       /* 分隔线对齐基准 */
+  --pill-gap: clamp(6px, 1.8vw, 14px);
+
   position: fixed;
   top: 50%;
   left: 50%;
@@ -310,12 +318,10 @@ mark { background: var(--mark-bg); color: var(--mark-text); padding: 0 1px; bord
   overflow-x: auto;
   scrollbar-width: none;
 
-  /* 防闪：强制合成层，避免首次采样硬切 */
   will-change: transform, opacity;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
 
-  /* 初始态：位移更近（-60vh）+ 微缩放 */
   opacity: 0;
   visibility: hidden;
   transform: translate(-50%, -50%) translateY(-60vh) scale(.96);
@@ -341,7 +347,6 @@ body.pill-open .pill-menu {
 .pill-menu .pill-btn,
 .pill-menu .theme-toggle { flex-shrink: 0; }
 
-/* 相邻按钮之间用竖线分隔 */
 .pill-menu > * { position: relative; }
 .pill-menu > * + *::before {
   content: '';
@@ -390,32 +395,105 @@ body.pill-open .pill-menu {
   pointer-events: none;
 }
 
-/*  页面视图（发现 / 关于）  */
+/* ---------- 页面视图（发现 / 关于） ---------- */
 .page-view { max-width: 1200px; margin: 0 auto; padding: 24px 16px 48px; }
 @media (max-width: 640px) { .page-view { padding: 16px 12px 32px; } }
 
-.page-stats { color: var(--text-2); font-size: 14px; margin: 0 0 20px; }
-.discover-head h1 { margin: 0 0 6px; font-size: 28px; color: var(--text); }
-.discover-section { margin-bottom: 28px; }
-.discover-section-title {
-  margin: 0 0 12px; font-size: 18px; font-weight: 600; color: var(--text);
-  padding-bottom: 8px; border-bottom: 1px solid var(--border);
+/* 发现页全宽：解除 1200px 限制，表格撑满屏幕 */
+#discoverView.page-view {
+  max-width: 100%;
+  padding: clamp(16px, 2vw, 24px) clamp(12px, 3vw, 40px) clamp(32px, 4vw, 48px);
 }
 
-.discover-chips { display: flex; flex-wrap: wrap; gap: 8px; }
-.discover-chip {
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 8px 14px; border: 1px solid var(--border); border-radius: 20px;
-  background: var(--surface); color: var(--text); font-size: 14px; cursor: pointer;
-  transition: border-color .15s, color .15s, background .15s;
+.page-stats { color: var(--text-2); font-size: 14px; margin: 0 0 20px; }
+
+/* 删除「发现」大标题，只保留统计 */
+.discover-head h1 { display: none; }
+
+.discover-section { margin-bottom: 28px; }
+
+/* 小节标题：文字居中，两侧横线延伸到边缘 */
+.discover-section-title {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 14px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+  padding-bottom: 0;
+  border-bottom: none;
 }
-.discover-chip:hover { border-color: var(--accent); color: var(--accent); background: var(--surface-2); }
+.discover-section-title::before,
+.discover-section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* 国家 / 类型 / 领域：三列表格，自动撑满容器宽度，行列紧贴 */
+.discover-chips {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0;
+  border-top: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+/* 单元格：占满格子，左右分列名称与数量 */
+.discover-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 16px 14px;
+  min-height: 64px;
+  border: none;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+  transition: background .15s, color .15s;
+}
+
+/* 三列表格斑马纹（写在 hover 之前，hover 后出现可覆盖） */
+.discover-chip:nth-child(6n+1),
+.discover-chip:nth-child(6n+2),
+.discover-chip:nth-child(6n+3) {
+  background: var(--surface);
+}
+.discover-chip:nth-child(6n+4),
+.discover-chip:nth-child(6n+5),
+.discover-chip:nth-child(6n+6) {
+  background: var(--surface-2);
+}
+
+/* hover 用蓝色淡底，避免与斑马纹的浅灰撞色 */
+.discover-chip:hover { background: var(--accent-soft); color: var(--accent); }
+
+.discover-chip > span:first-child {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .discover-chip-count {
   font-size: 11px; color: var(--text-3); background: var(--surface-3);
   padding: 1px 6px; border-radius: 8px;
+  flex-shrink: 0;
 }
 .discover-chip:hover .discover-chip-count { color: var(--accent); }
 
+/* 设计师 A-Z 字母导航 */
 .az-letters {
   display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 16px;
   padding: 8px; background: var(--surface-3); border-radius: 8px;
@@ -428,26 +506,57 @@ body.pill-open .pill-menu {
 }
 .az-letters button:hover { background: var(--surface); color: var(--accent); }
 
-.az-group { margin-bottom: 20px; }
+.az-group { margin-bottom: 14px; }
 .az-group h3 {
   margin: 0 0 8px; font-size: 16px; color: var(--accent);
   position: sticky; top: 48px; background: var(--bg);
   padding: 4px 0; z-index: 4;
 }
-.az-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 4px; }
-.az-item {
-  display: flex; justify-content: space-between; align-items: center; gap: 8px;
-  padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px;
-  background: var(--surface); color: var(--text); font-size: 13px;
-  cursor: pointer; text-align: left; width: 100%;
+
+/* 设计师列表：桌面多列平铺，手机 1 列；上下紧凑，用表格线代替间距 */
+.az-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0;
+  border-top: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
 }
-.az-item:hover { border-color: var(--accent); background: var(--surface-2); }
-.az-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.az-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 20px 14px;
+  min-height: 64px;
+  border: none;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: background .15s, color .15s;
+}
+
+/* 设计师列表斑马纹（写在 hover 之前） */
+.az-item:nth-child(odd) { background: var(--surface); }
+.az-item:nth-child(even) { background: var(--surface-2); }
+
+.az-item:hover { background: var(--accent-soft); color: var(--accent); }
+
+.az-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
 .az-count {
   flex-shrink: 0; font-size: 11px; color: var(--text-3);
   background: var(--surface-3); padding: 1px 6px; border-radius: 8px;
 }
 
+/* 关于页 */
 .about-section { margin-bottom: 32px; }
 .about-section h2 { margin: 0 0 12px; font-size: 18px; color: var(--text); }
 .about-section p { margin: 0 0 12px; line-height: 1.7; color: var(--text-2); font-size: 14px; }
@@ -458,7 +567,7 @@ body.pill-open .pill-menu {
   font-size: 12px; color: var(--text);
 }
 
-/*  灯箱  */
+/* ---------- 灯箱 ---------- */
 .lightbox {
   position: fixed; inset: 0; z-index: 100;
   background: var(--lb-bg);
@@ -518,12 +627,14 @@ body.pill-open .pill-menu {
 .lb-fav.active { color: var(--heart); }
 .lb-fav.active svg { fill: currentColor; }
 .lb-fav svg { width: clamp(22px, 5.5vw, 26px); height: clamp(22px, 5.5vw, 26px); }
-  .lb-fav svg,
-  .lightbox-close,
-  .lb-count {
-    filter: drop-shadow(0 1px 2px rgba(0,0,0,.45));
-  }
 .lightbox-close { font-size: clamp(24px, 6.5vw, 30px); line-height: 1; }
+
+/* 灯箱顶栏图标/计数加轻微阴影，进一步保证任意背景下可读 */
+.lb-fav svg,
+.lightbox-close,
+.lb-count {
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,.45));
+}
 
 .lb-count {
   height: clamp(34px, 9vw, 40px);
@@ -599,7 +710,7 @@ body.pill-open .pill-menu {
   .center-search-btn { width: 40px; height: 40px; }
 }
 
-/*  Toast  */
+/* ---------- Toast ---------- */
 .toast {
   position: fixed; bottom: 32px; left: 50%;
   transform: translateX(-50%) translateY(20px);
@@ -611,7 +722,14 @@ body.pill-open .pill-menu {
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-/*  无障碍：减少动画  */
+/* ---------- 手机端：设计师列表改为单列 ---------- */
+@media (max-width: 640px) {
+  .az-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- 无障碍：减少动画 ---------- */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     transition-duration: 0.01ms !important;
