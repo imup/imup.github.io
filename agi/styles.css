@@ -362,7 +362,7 @@ body.pill-open .pill-menu {
 }
 
 /* 图标按钮：固定方形，与主题按钮尺寸一致 */
-.pill-menu .pill-btn {
+.pill-menu .pill-btn .theme-toggle {
   flex: 0 0 auto;
   width: clamp(80px, 8.5vw, 80px);
   height: clamp(40px, 8.5vw, 44px);
@@ -379,7 +379,7 @@ body.pill-open .pill-menu {
 }
 
 /* pill-btn 内图标：与主题图标尺寸一致 */
-.pill-menu .pill-btn svg {
+.pill-menu .pill-btn .theme-toggle svg {
   display: block;
   flex: 0 0 auto;
   width: clamp(40px, 5.5vw, 44px);
@@ -389,20 +389,21 @@ body.pill-open .pill-menu {
 
 .pill-menu .pill-btn:hover,
 .pill-menu .theme-toggle:hover { background: var(--pill-hover); }
-
+/*
 .pill-menu .theme-toggle {
   flex: 0 0 auto;
   width: clamp(80px, 8.5vw, 80px);
   height: clamp(40px, 5.5vw, 44px);
 }
+/* 主题图标：抗压缩 + 强制方形（不要写 display，交给 .icon-sun / .icon-moon 控制显隐） 
 
-/* 主题图标：抗压缩 + 强制方形（不要写 display，交给 .icon-sun / .icon-moon 控制显隐） */
 .pill-menu .theme-toggle svg {
   flex: 0 0 auto;
   width: clamp(20px, 5.5vw, 24px);
   height: clamp(20px, 5.5vw, 24px);
   pointer-events: none;
 }
+*/
 
 /*  页面视图（发现 / 关于）  */
 .page-view { max-width: 1200px; margin: 0 auto; padding: 24px 16px 48px; }
