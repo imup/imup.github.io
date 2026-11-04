@@ -67,7 +67,9 @@
     "favorites.title": "收藏夹：{count} 个项目",
 
     "about.intro.title": "项目简介",
-    "about.intro.text": "本站是 AGI（Alliance Graphique Internationale）会员作品展示墙，以瀑布流方式浏览会员的设计作品，支持搜索、筛选、收藏与深色模式。",
+    "about.intro.p1": "AGI（Alliance Graphique Internationale，国际平面设计联盟）成立于 1951 年，由全球顶尖平面设计师组成，致力于推动平面设计专业的国际交流与学术发展。",
+    "about.intro.p2": "本站汇集 AGI 会员的代表性设计作品，以瀑布流方式向公众呈现当代平面设计的多元面貌，涵盖品牌、海报、书籍、字体、包装、导视等多个领域。",
+    "about.intro.p3": "浏览时可按国家、类型、领域或设计师索引查找作品，支持关键词搜索、条件筛选、收藏与深色模式；打开作品灯箱可查看完整信息与多张图片，支持双指缩放与双击放大。",
     "about.usage.title": "使用说明",
     "about.usage.search.title": "搜索",
     "about.usage.search.text": "：支持标题、设计师、客户、标签等关键词；可叠加年份、国家、类型筛选。",
@@ -173,7 +175,9 @@
     "favorites.title": "Favorites: {count} projects",
 
     "about.intro.title": "About",
-    "about.intro.text": "This site is the gallery of AGI (Alliance Graphique Internationale) members' works. Browse in a masonry layout, with search, filters, favorites, and dark mode.",
+    "about.intro.p1": "AGI (Alliance Graphique Internationale) was founded in 1951 and brings together the world's leading graphic designers, promoting international exchange and academic development of the graphic design profession.",
+    "about.intro.p2": "This site gathers representative works by AGI members, presenting the diversity of contemporary graphic design through a masonry layout, covering branding, posters, books, typography, packaging, wayfinding and more.",
+    "about.intro.p3": "Browse by country, type, sector or designer index, with keyword search, filters, favorites and dark mode. Open the lightbox to view complete information and multiple images, with pinch-to-zoom and double-tap-to-zoom.",
     "about.usage.title": "How to use",
     "about.usage.search.title": "Search",
     "about.usage.search.text": ": supports title, designer, client, tags and more; can combine with year, country, type filters.",
