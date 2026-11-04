@@ -189,7 +189,6 @@ body.searching .search-box { transform: scale(1); opacity: 1; }
   display: none; padding: 10px 16px; gap: 8px; align-items: center;
   flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain;
   scrollbar-width: none;
-  transform-origin: center;
 }
 .search-filter-bar::-webkit-scrollbar { display: none; }
 .search-filter-bar > * { flex-shrink: 0; }
