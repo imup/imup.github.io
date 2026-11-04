@@ -146,7 +146,7 @@ body.searching .search-wrap { opacity: 1; pointer-events: auto; }
 
 .search-box {
   display: flex; align-items: center; gap: 8px;
-  width: 100%; max-width: 600px; height: 44px;
+  width: 100%; max-width: 500px; height: 44px;
   padding: 0 14px;
   background: var(--surface-3);
   border: 1px solid var(--border);
@@ -189,6 +189,7 @@ body.searching .search-box { transform: scale(1); opacity: 1; }
   display: none; padding: 10px 16px; gap: 8px; align-items: center;
   flex-wrap: nowrap; overflow-x: auto; overscroll-behavior-x: contain;
   scrollbar-width: none;
+  transform-origin: center;
 }
 .search-filter-bar::-webkit-scrollbar { display: none; }
 .search-filter-bar > * { flex-shrink: 0; }
