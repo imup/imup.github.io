@@ -56,11 +56,11 @@
     "toast.originalFailed": "原图加载失败",
 
     "discover.title": "发现",
-    "discover.sectionCountry": "按国家",
-    "discover.sectionType": "按类型",
-    "discover.sectionSector": "按领域",
-    "discover.sectionDesigner": "按设计师 A-Z",
-    "discover.stats": "{total} 个项目 · {designers} 位设计师 · {countries} 个国家 · {types} 种类型 · {sectors} 个领域",
+    "discover.sectionCountry": "国家",
+    "discover.sectionType": "类型",
+    "discover.sectionSector": "领域",
+    "discover.sectionDesigner": "设计师 A-Z",
+    "discover.stats": "{total}个项目 · {designers}位设计师 · {countries}个国家 · {types}种类型 · {sectors}个领域",
     "discover.noData": "暂无数据",
 
     "favorites.empty": "暂无收藏，点击灯箱左上角 ♥ 收藏",
