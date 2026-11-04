@@ -387,6 +387,7 @@ body.pill-open .pill-menu {
   pointer-events: none;
 }
 
+.pill-menu .theme-toggle:hover,
 .pill-menu .pill-btn:hover,
 .pill-menu .theme-toggle:hover { background: var(--pill-hover); }
 
