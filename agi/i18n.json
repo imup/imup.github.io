@@ -56,10 +56,10 @@
     "toast.originalFailed": "原图加载失败",
 
     "discover.title": "发现",
-    "discover.sectionCountry": "{countries}国家",
-    "discover.sectionType": "{types}类型",
-    "discover.sectionSector": "{sectors}领域",
-    "discover.sectionDesigner": "{designers}设计师 A-Z",
+    "discover.sectionCountry": "国家",
+    "discover.sectionType": "类型",
+    "discover.sectionSector": "领域",
+    "discover.sectionDesigner": "设计师 A-Z",
     "discover.stats": "{total}个项目 · {designers}位设计师 · {countries}个国家 · {types}种类型 · {sectors}个领域",
     "discover.noData": "暂无数据",
 
