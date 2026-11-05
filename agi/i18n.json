@@ -15,24 +15,13 @@
     "filter.clear": "清除筛选",
     "filter.clearDesigner": "清除设计师过滤",
 
-    "loadMore.button": "加载更多",
-    "loadMore.loading": "加载中…",
-
-    "status.downloading": "正在下载数据…",
-    "status.parsing": "正在解析数据…",
-    "status.buildingIndex": "正在构建搜索索引… {end}/{total}",
-    "status.loaded": "成功加载{total}个项目，本批{batch}个，开始渲染…",
-    "status.rendering": "渲染中…",
-    "status.rendered": "已渲染{loaded}个 · 剩余约{remain}个 · 滚动加载更多",
-    "status.allLoaded": "已加载全部{total}个项目",
-    "status.noImage": "数据中没有可用的图片",
+    "status.preparing": "正在准备数据…",
+    "status.searchHint": "输入关键词或选择筛选条件",
     "status.noMatch": "未找到匹配的项目",
     "status.noMatchNoImage": "找到{total}个匹配项目，但没有可用图片",
-    "status.searchHint": "输入关键词或选择筛选条件",
-    "status.found": "找到{total}个匹配「{desc}」的项目 · 已全部显示",
+    "status.noImage": "数据中没有可用的图片",
     "status.layoutFailed": "布局初始化失败，请刷新页面",
-    "status.noFilterResult": "没有找到「{label} · {value}对应的作品",
-    "status.loading": "正在加载…",
+    "status.noFilterResult": "没有找到「{label} · {value}」对应的作品",
     "status.loadFailed": "加载失败：{msg}。",
     "status.loadFailedFile": "加载失败：浏览器限制。",
     "status.retry": "重试",
@@ -48,12 +37,8 @@
     "pill.discover": "发现",
     "pill.theme": "切换深色模式",
 
-    "toast.favAdded": "已加入收藏",
     "toast.favRemoved": "已取消收藏",
-    "toast.darkOn": "已切换到深色模式",
-    "toast.darkOff": "已切换到浅色模式",
     "toast.newRound": "已看完全部作品，开始新一轮",
-    "toast.originalFailed": "原图加载失败",
 
     "discover.title": "发现",
     "discover.sectionCountry": "国家",
@@ -64,7 +49,6 @@
     "discover.noData": "暂无数据",
 
     "favorites.empty": "暂无收藏，点击灯箱左上角 ♥ 收藏",
-    "favorites.title": "收藏夹：{count} 个项目",
 
     "about.intro.title": "项目简介",
     "about.intro.p1": "AGI（Alliance Graphique Internationale，国际平面设计联盟）成立于 1951 年，由全球顶尖平面设计师组成，致力于推动平面设计专业的国际交流与学术发展。",
@@ -85,7 +69,6 @@
     "about.statsComputing": "统计中…",
 
     "lightbox.aria": "项目详情",
-    "lightbox.fav": "收藏",
     "lightbox.favAria": "收藏",
     "lightbox.close": "关闭",
     "lightbox.designerLabel": "设计师:",
@@ -94,19 +77,16 @@
     "lightbox.client": "客户",
     "lightbox.type": "类型",
     "lightbox.sector": "领域",
-    "lightbox.details": "详细分类",
     "lightbox.detailsPrefix": "详细分类: ",
     "lightbox.untitled": "无标题",
-    "lightbox.unknownDesigner": "未知",
 
     "card.unknownDesigner": "Unknown",
     "card.viewDetails": "查看图片",
     "card.openHint": "，按回车打开详情",
     "card.image": "图片",
-    "card.untitled": "无标题",
-
-    "lang.detected": "检测到系统语言"
+    "card.untitled": "无标题"
   },
+
   "en": {
     "app.title": "AGI Members Gallery",
     "app.description": "Alliance Graphique Internationale Members Gallery",
@@ -123,24 +103,13 @@
     "filter.clear": "Clear filters",
     "filter.clearDesigner": "Clear designer filter",
 
-    "loadMore.button": "Load more",
-    "loadMore.loading": "Loading…",
-
-    "status.downloading": "Downloading data…",
-    "status.parsing": "Parsing data…",
-    "status.buildingIndex": "Building search index… {end}/{total}",
-    "status.loaded": "Loaded {total} projects ({batch} in this batch), rendering…",
-    "status.rendering": "Rendering…",
-    "status.rendered": "Rendered {loaded} · ~{remain} remaining · scroll to load more",
-    "status.allLoaded": "All {total} projects loaded",
-    "status.noImage": "No usable images in the data.",
+    "status.preparing": "Preparing data…",
+    "status.searchHint": "Enter keywords or select filters.",
     "status.noMatch": "No matching projects found.",
     "status.noMatchNoImage": "Found {total} matching projects but no usable images.",
-    "status.searchHint": "Enter keywords or select filters.",
-    "status.found": "Found {total} projects matching \"{desc}\" · all shown",
+    "status.noImage": "No usable images in the data.",
     "status.layoutFailed": "Layout initialization failed. Please refresh the page.",
-    "status.noFilterResult": "No projects found for {label} · {value}",
-    "status.loading": "Loading…",
+    "status.noFilterResult": "No projects found for \"{label} · {value}\"",
     "status.loadFailed": "Load failed: {msg}.",
     "status.loadFailedFile": "Load failed: browser restricts reading local.",
     "status.retry": "Retry",
@@ -156,23 +125,18 @@
     "pill.discover": "Discover",
     "pill.theme": "Toggle theme",
 
-    "toast.favAdded": "Added to favorites",
     "toast.favRemoved": "Removed from favorites",
-    "toast.darkOn": "Switched to dark mode",
-    "toast.darkOff": "Switched to light mode",
     "toast.newRound": "All projects viewed. Starting a new round.",
-    "toast.originalFailed": "Failed to load original image",
 
     "discover.title": "Discover",
-    "discover.sectionCountry": "country",
-    "discover.sectionType": "type",
-    "discover.sectionSector": "sector",
-    "discover.sectionDesigner": "designer A-Z",
+    "discover.sectionCountry": "Country",
+    "discover.sectionType": "Type",
+    "discover.sectionSector": "Sector",
+    "discover.sectionDesigner": "Designer A-Z",
     "discover.stats": "{total} projects · {designers} designers · {countries} countries · {types} types · {sectors} sectors",
     "discover.noData": "No data",
 
     "favorites.empty": "No favorites yet. Tap ♥ in the lightbox to save.",
-    "favorites.title": "Favorites: {count} projects",
 
     "about.intro.title": "About",
     "about.intro.p1": "AGI (Alliance Graphique Internationale) was founded in 1951 and brings together the world's leading graphic designers, promoting international exchange and academic development of the graphic design profession.",
@@ -193,7 +157,6 @@
     "about.statsComputing": "Computing…",
 
     "lightbox.aria": "Project details",
-    "lightbox.fav": "Favorite",
     "lightbox.favAria": "Favorite",
     "lightbox.close": "Close",
     "lightbox.designerLabel": "Designer:",
@@ -202,17 +165,13 @@
     "lightbox.client": "Client",
     "lightbox.type": "Type",
     "lightbox.sector": "Sector",
-    "lightbox.details": "Details",
     "lightbox.detailsPrefix": "Details: ",
     "lightbox.untitled": "Untitled",
-    "lightbox.unknownDesigner": "Unknown",
 
     "card.unknownDesigner": "Unknown",
     "card.viewDetails": "View image",
     "card.openHint": ", press Enter to open details",
     "card.image": "Image",
-    "card.untitled": "Untitled",
-
-    "lang.detected": "Detected system language"
+    "card.untitled": "Untitled"
   }
 }
