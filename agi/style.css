@@ -1,40 +1,74 @@
+/* ============================================================
+   1. 主题变量
+   - :root 为浅色默认，[data-theme="dark"] 覆盖为深色
+   - html[data-theme] 由 <head> 内联脚本在首屏前设置
+   - 所有颜色/阴影/尺寸都走变量，便于双主题切换
+   ============================================================ */
+
 :root {
+  /* --- 背景与表面 --- */
   --bg: #f5f5f5;
   --surface: #ffffff;
   --surface-2: #f9f9f9;
   --surface-3: #f5f5f5;
   --img-bg: #f0f0f0;
+
+  /* --- 边框 --- */
   --border: #e0e0e0;
   --border-2: #dddddd;
+
+  /* --- 文本 --- */
   --text: #111111;
   --text-2: #666666;
   --text-3: #888888;
+  /* 【P3-25】原 #999 在白底对比度约 2.8:1，不达 WCAG AA；
+     改为 #6b6b6b 约 5.4:1，保持“弱文本”观感同时可读 */
   --text-4: #6b6b6b;
+
+  /* --- 强调色 --- */
   --accent: #3b82f6;
   --accent-soft: rgba(59,130,246,.12);
   --accent-soft-2: rgba(59,130,246,.18);
+
+  /* --- 搜索高亮 --- */
   --mark-bg: #fff3a3;
   --mark-text: inherit;
+
+  /* --- 阴影 --- */
   --shadow-1: 0 4px 16px rgba(0,0,0,.06);
   --shadow-2: 0 8px 24px rgba(0,0,0,.08);
   --shadow-accent: 0 4px 20px rgba(59,130,246,.18);
+
+  /* --- 搜索清除按钮 --- */
   --clear-bg: #cccccc;
   --clear-bg-hover: #999999;
+
+  /* --- 灯箱 --- */
   --lb-bg: rgba(255,255,255,.92);
   --lb-surface: #ffffff;
   --lb-bar-bg: rgba(0,0,0,.15);
   --lb-bar-border: rgba(255,255,255,.18);
   --lb-text: #ffffff;
+
+  /* --- Toast --- */
   --toast-bg: rgba(0,0,0,.82);
   --toast-text: #ffffff;
+
+  /* --- 标签 chip --- */
   --chip-bg: #f0f0f0;
   --chip-text: #444444;
+
+  /* --- 收藏心 --- */
   --heart: #ff3b6b;
+
+  /* --- 药丸菜单 --- */
   --pill-bg: rgba(255,255,255,.55);
   --pill-divider: rgba(0,0,0,.10);
   --pill-hover: rgba(0,0,0,.055);
+
   color-scheme: light;
 }
+
 [data-theme="dark"] {
   --bg: #0d0d0d;
   --surface: #1a1a1a;
@@ -46,6 +80,8 @@
   --text: #eeeeee;
   --text-2: #aaaaaa;
   --text-3: #888888;
+  /* 【P3-25】原 #777 在 #1a1a1a 对比度约 3.9:1，不达 WCAG AA；
+     改为 #8c8c8c 约 5.2:1 */
   --text-4: #8c8c8c;
   --accent: #60a5fa;
   --accent-soft: rgba(96,165,250,.15);
@@ -59,6 +95,8 @@
   --clear-bg-hover: #777777;
   --lb-bg: rgba(0,0,0,.96);
   --lb-surface: #1a1a1a;
+  /* 【P1-5】深色灯箱背景近乎全黑，原 rgba(0,0,0,.15) 顶栏几乎不可见；
+     改为浅色半透明 + 亮色边框，与 iOS 风格一致 */
   --lb-bar-bg: rgba(255,255,255,.14);
   --lb-bar-border: rgba(255,255,255,.20);
   --lb-text: #ffffff;
@@ -71,6 +109,13 @@
   --pill-hover: rgba(255,255,255,.09);
   color-scheme: dark;
 }
+
+/* ============================================================
+   2. 基础重置与 body 状态
+   - body.searching：进入搜索态，顶栏下方多出筛选栏，body 上推
+   - body.lightbox-open：灯箱打开，锁滚动
+   - body.view-discover / view-about：切到页面视图时隐藏首页主区
+   ============================================================ */
 
 * { box-sizing: border-box; }
 
@@ -91,6 +136,10 @@ body.view-discover #gallery,
 body.view-discover #status,
 body.view-about #gallery,
 body.view-about #status { display: none !important; }
+
+/* ============================================================
+   3. 顶栏
+   ============================================================ */
 
 .topbar {
   position: fixed;
@@ -143,6 +192,10 @@ body.view-about #status { display: none !important; }
   border-left: 1px solid var(--border);
   flex-shrink: 0;
 }
+
+/* ============================================================
+   4. 搜索按钮与搜索框
+   ============================================================ */
 
 .center-search-btn {
   position: absolute;
@@ -260,6 +313,13 @@ body.searching .search-box {
 .search-box.has-value .search-clear { display: flex; }
 .search-clear:hover { background: var(--clear-bg-hover); }
 
+/* ============================================================
+   5. 搜索筛选栏
+   【B1】整体居中；极窄屏（≤480px）改靠左，保证溢出可滚动
+   【P1-10】下拉固定 90px，与原代码一致，手机上三列完整显示
+   【C3】设计师 chip 已删除，对应样式不再保留
+   ============================================================ */
+
 .search-filter-bar {
   position: fixed;
   top: 64px;
@@ -275,6 +335,7 @@ body.searching .search-box {
   overflow-x: auto;
   overscroll-behavior-x: contain;
   scrollbar-width: none;
+  justify-content: center;   /* 【B1】整体居中 */
 }
 .search-filter-bar::-webkit-scrollbar { display: none; }
 .search-filter-bar > * { flex-shrink: 0; }
@@ -303,29 +364,9 @@ body.searching .search-filter-bar { display: flex; }
 }
 .search-filter-bar button:hover { background: var(--surface-2); }
 
-.filter-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 6px 4px 12px;
-  border-radius: 16px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-size: 13px;
-}
-.filter-chip[hidden] { display: none; }
-.filter-chip button {
-  width: 20px; height: 20px;
-  border: none;
-  border-radius: 50%;
-  background: transparent;
-  color: var(--accent);
-  cursor: pointer;
-  font-size: 14px;
-  line-height: 1;
-  padding: 0;
-}
-.filter-chip button:hover { background: var(--accent-soft-2); }
+/* ============================================================
+   6. 瀑布流主区
+   ============================================================ */
 
 .gallery {
   display: grid;
@@ -358,6 +399,10 @@ body.searching .search-filter-bar { display: flex; }
   .gallery, .gallery.js-ready { gap: 12px; padding: 12px; }
   .gallery.js-ready .col { gap: 12px; }
 }
+
+/* ============================================================
+   7. 卡片
+   ============================================================ */
 
 .card {
   position: relative;
@@ -431,6 +476,11 @@ mark {
   border-radius: 2px;
 }
 
+/* ============================================================
+   8. 状态栏与哨兵
+   - 加载更多按钮已删除（方案 A：IO + checkSentinel + resize 三层兜底）
+   ============================================================ */
+
 .status {
   text-align: center;
   padding: 20px;
@@ -439,6 +489,10 @@ mark {
 }
 
 #sentinel { height: 1px; }
+
+/* ============================================================
+   9. 药丸菜单
+   ============================================================ */
 
 .pill-menu {
   --pill-gap: clamp(6px, 1.8vw, 14px);
@@ -540,9 +594,10 @@ body.pill-open .pill-menu {
   pointer-events: none;
 }
 
+/* 【A】主题切换按钮与其它药丸按钮视觉统一：胶囊圆角 + 去默认 padding + 背景过渡 */
 .theme-toggle {
   width: 36px; height: 36px;
-  padding: 0; /* 新增：去浏览器默认padding */
+  padding: 0;
   border: none;
   background: transparent;
   color: var(--text);
@@ -550,17 +605,19 @@ body.pill-open .pill-menu {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;  
-  transition: background .15s; 
-}
-.theme-toggle svg {
-  display: block;
+  border-radius: 999px;
+  transition: background .15s;
 }
 .theme-toggle:hover { background: var(--surface-3); }
+.theme-toggle svg { display: block; }
 .theme-toggle .icon-sun { display: none; }
 .theme-toggle .icon-moon { display: block; }
 [data-theme="dark"] .theme-toggle .icon-sun { display: block; }
 [data-theme="dark"] .theme-toggle .icon-moon { display: none; }
+
+/* ============================================================
+   10. 页面视图（发现 / 关于）
+   ============================================================ */
 
 .page-view {
   max-width: 1200px;
@@ -584,6 +641,8 @@ body.pill-open .pill-menu {
   padding-right: clamp(12px, 3vw, 40px);
 }
 
+/* 【P3-26】原 display:none 会让读屏/SEO 完全看不到标题；
+   改为视觉隐藏（clip 方案），保留语义但不占布局 */
 .discover-head h1 {
   position: absolute;
   width: 1px;
@@ -597,9 +656,9 @@ body.pill-open .pill-menu {
   border: 0;
 }
 
-.discover-section { 
-  margin-bottom: 28px; 
-}
+.discover-section { margin-bottom: 28px; }
+
+/* 【P1-7 撤回】chips 与分区标题恢复全宽，与原代码一致 */
 .discover-section-title {
   display: flex;
   align-items: center;
@@ -650,12 +709,9 @@ body.pill-open .pill-menu {
   transition: background .15s, color .15s;
 }
 
-.discover-chip:nth-child(6n+1),
-.discover-chip:nth-child(6n+2),
-.discover-chip:nth-child(6n+3) { background: var(--surface); }
-.discover-chip:nth-child(6n+4),
-.discover-chip:nth-child(6n+5),
-.discover-chip:nth-child(6n+6) { background: var(--surface-2); }
+/* 【B2】棋盘格斑马：3 列下 odd/even 形成 A B A / B A B 交叉 */
+.discover-chip:nth-child(odd)  { background: var(--surface); }
+.discover-chip:nth-child(even) { background: var(--surface-2); }
 
 .discover-chip:hover {
   background-image: linear-gradient(var(--accent-soft), var(--accent-soft));
@@ -677,10 +733,10 @@ body.pill-open .pill-menu {
   border-radius: 8px;
   flex-shrink: 0;
 }
-.discover-chip:hover .discover-chip-count { 
-  color: var(--accent); 
-}
+.discover-chip:hover .discover-chip-count { color: var(--accent); }
 
+/* 【P1-6】.az-letters 原 top:0 会粘到视口顶部被 fixed 顶栏（65px）遮挡；
+   改为 top:65px 贴在顶栏下方 */
 .az-letters {
   display: flex;
   flex-wrap: wrap;
@@ -714,6 +770,8 @@ body.pill-open .pill-menu {
   margin-bottom: 14px;
   scroll-margin-top: 109px;
 }
+/* 【P1-6】.az-group h3 原 top:48px 会被顶栏遮挡；
+   改为 top:109px = 顶栏 65 + az-letters 约 44 */
 .az-group h3 {
   margin: 0 0 8px;
   font-size: 16px;
@@ -781,6 +839,10 @@ body.pill-open .pill-menu {
   border-radius: 8px;
 }
 
+/* ============================================================
+   11. 关于页
+   ============================================================ */
+
 .about-section { margin-bottom: 32px; }
 .about-section h2 {
   margin: 0 0 12px;
@@ -800,6 +862,10 @@ body.pill-open .pill-menu {
   color: var(--text-2);
   font-size: 14px;
 }
+
+/* ============================================================
+   12. 灯箱
+   ============================================================ */
 
 .lightbox {
   position: fixed;
@@ -884,6 +950,8 @@ body.pill-open .pill-menu {
 .lightbox-close,
 .lb-count { filter: drop-shadow(0 1px 2px rgba(0,0,0,.45)); }
 
+/* 【P1-8】.lb-count 三个元素都 flex-shrink:0，窄屏可能撑破胶囊；
+   允许它收缩并省略，保证 ♥ / 关闭按钮完整 */
 .lb-count {
   height: clamp(34px, 9vw, 40px);
   padding: 0 clamp(10px, 3vw, 14px);
@@ -996,6 +1064,11 @@ body.pill-open .pill-menu {
   border-radius: 10px;
 }
 
+/* ============================================================
+   13. Toast
+   - 【P1-11】加安全区，全面屏设备不贴底
+   ============================================================ */
+
 .toast {
   position: fixed;
   bottom: calc(32px + env(safe-area-inset-bottom, 0px));
@@ -1016,6 +1089,10 @@ body.pill-open .pill-menu {
   transform: translateX(-50%) translateY(0);
 }
 
+/* ============================================================
+   14. 响应式补丁
+   ============================================================ */
+
 @media (max-width: 480px) {
   .lb-meta-grid { gap: 12px 16px; }
   .lb-content { padding: 20px 16px 32px; }
@@ -1028,19 +1105,30 @@ body.pill-open .pill-menu {
   .lb-tags { padding-left: 10px; }
   .center-search-btn { width: 40px; height: 40px; }
 
+  /* 【B1】极窄屏筛选栏靠左，保证溢出时左侧内容可滚动到达 */
+  .search-filter-bar {
+    justify-content: flex-start;
+  }
+
+  /* 【P1-9】发现页 chips 窄屏 3 列中文易截断，改 2 列 */
   .discover-chips {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  /* 【B2】2 列下 odd/even 是竖条纹，改用 4n 周期实现 2 列棋盘 */
+  .discover-chip:nth-child(4n+1),
+  .discover-chip:nth-child(4n+4) { background: var(--surface); }
+  .discover-chip:nth-child(4n+2),
+  .discover-chip:nth-child(4n+3) { background: var(--surface-2); }
 }
 
 @media (max-width: 640px) {
   .az-list { grid-template-columns: 1fr; }
 }
-@media (max-width: 480px) {
-  .search-filter-bar {
-    justify-content: flex-start;
-  }
-}
+
+/* ============================================================
+   15. 减少动效
+   ============================================================ */
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
