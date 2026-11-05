@@ -1,95 +1,160 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AGI会员瀑布流作品展示</title>
-
-<script>
-  (function () {
-    try {
-      var t = localStorage.getItem('gallery_theme_v1');
-      if (t !== 'dark' && t !== 'light') {
-        t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AGI会员瀑布流作品展示</title>
+  <meta name="description" content="AGI会员作品展示墙" data-i18n-content="app.description">
+  <script>
+    (function () {
+      try {
+        var t = localStorage.getItem('gallery_theme_v1');
+        if (t !== 'dark' && t !== 'light') {
+          t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        document.documentElement.setAttribute('data-theme', t);
+      } catch (e) {
+        document.documentElement.setAttribute('data-theme', 'light');
       }
-      document.documentElement.setAttribute('data-theme', t);
-    } catch (e) {
-      document.documentElement.setAttribute('data-theme', 'light');
-    }
-  })();
-</script>
+    })();
+  </script>
 
-<link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
 <div class="topbar">
   <div class="topbar-inner">
+
     <a href="#" class="nav-cell logo-cell" aria-label="首页" id="logoCell">
-      <svg width="42" height="42" viewBox="-30 -30 160 160"><g fill="currentColor"><rect x="30" y="10" width="20" height="20" /><path d="M 10 50 L 50 50 L 50 90 L 30 90 L 30 70 L 10 70 Z" /><rect x="70" y="50" width="20" height="20" /></g></svg>
+      <svg width="42" height="42" viewBox="-30 -30 160 160">
+        <g fill="currentColor">
+          <rect x="30" y="10" width="20" height="20" />
+          <path d="M 10 50 L 50 50 L 50 90 L 30 90 L 30 70 L 10 70 Z" />
+          <rect x="70" y="50" width="20" height="20" />
+        </g>
+      </svg>
     </a>
+
     <div class="nav-cell center-cell">
-      <button class="center-search-btn" id="searchBtn" aria-label="搜索" data-i18n-aria="search.aria" type="button">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="16.5" y1="16.5" x2="21" y2="21"/></svg>
+
+      <button class="center-search-btn" id="searchBtn"
+              aria-label="搜索" data-i18n-aria="search.aria" type="button">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="7" />
+          <line x1="16.5" y1="16.5" x2="21" y2="21" />
+        </svg>
       </button>
-      <div class="search-wrap" id="searchWrap">
+
+      <div class="search-wrap">
         <div class="search-box" id="searchBox">
-          <svg class="icon-search" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="11" cy="11" r="7"/>
-            <line x1="16.5" y1="16.5" x2="21" y2="21"/>
+          <svg class="icon-search" width="18" height="18" viewBox="0 0 24 24"
+               fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="7" />
+            <line x1="16.5" y1="16.5" x2="21" y2="21" />
           </svg>
-          <input type="search" class="search-input" id="searchInput" placeholder="搜索标题、设计师、客户…" data-i18n-placeholder="search.placeholder" autocomplete="off">
-          <button type="button" class="search-clear" id="searchClear" aria-label="清除搜索" data-i18n-aria="search.clear">×</button>
+          <input type="search" class="search-input" id="searchInput"
+                 placeholder="搜索标题、设计师、客户…"
+                 data-i18n-placeholder="search.placeholder"
+                 autocomplete="off">
+          <button type="button" class="search-clear" id="searchClear"
+                  aria-label="清除搜索" data-i18n-aria="search.clear">×</button>
         </div>
       </div>
     </div>
-    <button class="nav-cell icon-cell" id="hamburger" aria-label="菜单" data-i18n-aria="menu.aria" type="button">
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+
+    <button class="nav-cell icon-cell" id="hamburger"
+            aria-label="菜单" data-i18n-aria="menu.aria" type="button">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+           stroke="currentColor" stroke-width="2">
+        <line x1="3" y1="12" x2="21" y2="12" />
+        <line x1="3" y1="6" x2="21" y2="6" />
+        <line x1="3" y1="18" x2="21" y2="18" />
+      </svg>
     </button>
+
   </div>
 </div>
 
 <div class="pill-menu" id="pillMenu" role="menu" aria-hidden="true">
-  <button class="pill-btn" type="button" role="menuitem" data-view="about" aria-label="关于" data-i18n-aria="pill.about">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <circle cx="12" cy="12" r="10"/>
-      <line x1="12" y1="16" x2="12" y2="12"/>
-      <line x1="12" y1="8" x2="12.01" y2="8"/>
+
+  <button class="pill-btn" type="button" role="menuitem" data-view="about"
+          aria-label="关于" data-i18n-aria="pill.about">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="16" x2="12" y2="12" />
+      <line x1="12" y1="8" x2="12.01" y2="8" />
     </svg>
   </button>
-  <button class="pill-btn" type="button" role="menuitem" data-view="favorites" aria-label="收藏" data-i18n-aria="pill.favorites">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+
+  <button class="pill-btn" type="button" role="menuitem" data-view="favorites"
+          aria-label="收藏" data-i18n-aria="pill.favorites">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
     </svg>
   </button>
-  <button class="pill-btn" type="button" role="menuitem" data-view="discover" aria-label="发现" data-i18n-aria="pill.discover">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <circle cx="12" cy="12" r="10"/>
-      <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
+
+  <button class="pill-btn" type="button" role="menuitem" data-view="discover"
+          aria-label="发现" data-i18n-aria="pill.discover">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="10" />
+      <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
     </svg>
   </button>
-  <button class="theme-toggle" id="themeToggle" type="button" role="menuitem" aria-label="切换深色模式" data-i18n-aria="pill.theme">
-    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+
+  <button class="theme-toggle" id="themeToggle" type="button"
+          role="menuitemcheckbox" aria-checked="false"
+          aria-label="切换深色模式" data-i18n-aria="pill.theme">
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="5" />
+      <line x1="12" y1="1" x2="12" y2="3" />
+      <line x1="12" y1="21" x2="12" y2="23" />
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+      <line x1="1" y1="12" x2="3" y2="12" />
+      <line x1="21" y1="12" x2="23" y2="12" />
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+    </svg>
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+         stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+    </svg>
   </button>
+
 </div>
 
-<div class="search-filter-bar" id="searchFilterBar">
-  <select id="filterYear" aria-label="按年份筛选"><option value="" data-i18n="filter.allYears">全部年份</option></select>
-  <select id="filterCountry" aria-label="按国家筛选"><option value="" data-i18n="filter.allCountries">全部国家</option></select>
-  <select id="filterType" aria-label="按类型筛选"><option value="" data-i18n="filter.allTypes">全部类型</option></select>
+<div class="search-filter-bar">
+  <select id="filterYear" aria-label="按年份筛选">
+    <option value="" data-i18n="filter.allYears">全部年份</option>
+  </select>
+  <select id="filterCountry" aria-label="按国家筛选">
+    <option value="" data-i18n="filter.allCountries">全部国家</option>
+  </select>
+  <select id="filterType" aria-label="按类型筛选">
+    <option value="" data-i18n="filter.allTypes">全部类型</option>
+  </select>
   <span class="filter-chip" id="designerChip" hidden>
     <span data-i18n="filter.designerLabel">设计师:</span> <span id="designerChipName"></span>
-    <button type="button" id="designerChipClear" aria-label="清除设计师过滤" data-i18n-aria="filter.clearDesigner">×</button>
+    <button type="button" id="designerChipClear"
+            aria-label="清除设计师过滤" data-i18n-aria="filter.clearDesigner">×</button>
   </span>
   <button id="clearFilters" type="button" data-i18n="filter.clear">清除筛选</button>
 </div>
 
 <main id="gallery" class="gallery"></main>
-<div id="status" class="status">正在下载中…</div>
-<div class="load-more-wrap" id="loadMoreWrap">
-  <button class="load-more-btn" id="loadMoreBtn" type="button" data-i18n="loadMore.button">加载更多</button>
-</div>
+
+<noscript>
+  <p class="status">本站作品展示需要启用 JavaScript。</p>
+</noscript>
+
+<div id="status" class="status" role="status" aria-live="polite">正在下载中…</div>
+
 <div id="sentinel"></div>
 
 <section id="discoverView" class="page-view" hidden>
@@ -139,14 +204,20 @@
   </div>
 </section>
 
-<div id="lightbox" class="lightbox" role="dialog" aria-modal="true" aria-label="项目详情" data-i18n-aria="lightbox.aria">
+<div id="lightbox" class="lightbox" role="dialog" aria-modal="true"
+     aria-labelledby="lb-title" aria-label="项目详情" data-i18n-aria="lightbox.aria">
+
   <div class="lb-topbar">
-    <button class="lb-fav" id="lbFav" aria-label="收藏" data-i18n-aria="lightbox.favAria" aria-pressed="false">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+    <button class="lb-fav" id="lbFav" aria-label="收藏"
+            data-i18n-aria="lightbox.favAria" aria-pressed="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+      </svg>
     </button>
     <div class="lb-count" id="lb-count"></div>
     <button class="lightbox-close" aria-label="关闭" data-i18n-aria="lightbox.close">×</button>
   </div>
+
   <div class="lightbox-inner">
     <div class="lb-gallery-wrap">
       <div class="lb-gallery" id="lb-gallery"></div>
@@ -166,5 +237,6 @@
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script src="script.js"></script>
+
 </body>
 </html>
