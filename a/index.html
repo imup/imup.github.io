@@ -4,17 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AGI会员瀑布流作品展示</title>
-
-  <!-- 页面描述：由 applyI18n 通过 data-i18n-content 更新 -->
   <meta name="description" content="AGI会员作品展示墙" data-i18n-content="app.description">
-
-  <!-- ============================================
-       主题初始化（内联，防首屏闪烁）
-       - 优先读 localStorage 中的 gallery_theme_v1
-       - 无记录时回退到系统 prefers-color-scheme
-       - 在 <body> 渲染前设置 html[data-theme]
-       - 与 script.js 的 themeToggle 共用同一个 key
-       ============================================ -->
   <script>
     (function () {
       try {
@@ -33,18 +23,9 @@
 </head>
 <body>
 
-<!-- ============================================
-     顶栏（fixed）
-     布局：[Logo] [中间搜索区] [汉堡]
-     状态：
-       - body.searching 时中间按钮隐藏、搜索框展开、下方筛选栏出现
-       - 点击 #logoCell 回首页（resetToHome）
-       - 点击 #hamburger 打开药丸菜单
-     ============================================ -->
 <div class="topbar">
   <div class="topbar-inner">
 
-    <!-- Logo：点击回首页 -->
     <a href="#" class="nav-cell logo-cell" aria-label="首页" id="logoCell">
       <svg width="42" height="42" viewBox="-30 -30 160 160">
         <g fill="currentColor">
@@ -55,10 +36,8 @@
       </svg>
     </a>
 
-    <!-- 中间区：搜索按钮 / 展开后的搜索框（二选一） -->
     <div class="nav-cell center-cell">
 
-      <!-- 未进入搜索态时的圆形按钮 -->
       <button class="center-search-btn" id="searchBtn"
               aria-label="搜索" data-i18n-aria="search.aria" type="button">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
@@ -68,7 +47,6 @@
         </svg>
       </button>
 
-      <!-- 进入搜索态（body.searching）后展开的搜索框 -->
       <div class="search-wrap">
         <div class="search-box" id="searchBox">
           <svg class="icon-search" width="18" height="18" viewBox="0 0 24 24"
@@ -80,14 +58,12 @@
                  placeholder="搜索标题、设计师、客户…"
                  data-i18n-placeholder="search.placeholder"
                  autocomplete="off">
-          <!-- 清除按钮：.search-box.has-value 时显示 -->
           <button type="button" class="search-clear" id="searchClear"
                   aria-label="清除搜索" data-i18n-aria="search.clear">×</button>
         </div>
       </div>
     </div>
 
-    <!-- 汉堡：打开药丸菜单 -->
     <button class="nav-cell icon-cell" id="hamburger"
             aria-label="菜单" data-i18n-aria="menu.aria" type="button">
       <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
@@ -101,19 +77,8 @@
   </div>
 </div>
 
-<!-- ============================================
-     药丸菜单（点击汉堡后从顶部滑入）
-     - body.pill-open 时显示
-     - 点击外部 / Esc / 5s 自动关闭
-     按钮：
-       关于   → enterAbout()
-       收藏   → enterFavorites()
-       发现   → enterDiscover()
-       主题   → 切换 html[data-theme]，同步 aria-checked
-     ============================================ -->
 <div class="pill-menu" id="pillMenu" role="menu" aria-hidden="true">
 
-  <!-- 关于 -->
   <button class="pill-btn" type="button" role="menuitem" data-view="about"
           aria-label="关于" data-i18n-aria="pill.about">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -124,7 +89,6 @@
     </svg>
   </button>
 
-  <!-- 收藏 -->
   <button class="pill-btn" type="button" role="menuitem" data-view="favorites"
           aria-label="收藏" data-i18n-aria="pill.favorites">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -133,7 +97,6 @@
     </svg>
   </button>
 
-  <!-- 发现 -->
   <button class="pill-btn" type="button" role="menuitem" data-view="discover"
           aria-label="发现" data-i18n-aria="pill.discover">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -143,7 +106,6 @@
     </svg>
   </button>
 
-  <!-- 主题切换：视为可勾选菜单项，aria-checked 由 JS 同步 -->
   <button class="theme-toggle" id="themeToggle" type="button"
           role="menuitemcheckbox" aria-checked="false"
           aria-label="切换深色模式" data-i18n-aria="pill.theme">
@@ -167,13 +129,6 @@
 
 </div>
 
-<!-- ============================================
-     搜索筛选栏（仅 body.searching 时显示）
-     控件：
-       #filterYear / #filterCountry / #filterType  下拉，由 rebuildFilters() 填充
-       #designerChip  设计师 chip（从发现页跳转时显示，hidden 切换）
-       #clearFilters  清空所有筛选
-     ============================================ -->
 <div class="search-filter-bar">
   <select id="filterYear" aria-label="按年份筛选">
     <option value="" data-i18n="filter.allYears">全部年份</option>
@@ -192,30 +147,16 @@
   <button id="clearFilters" type="button" data-i18n="filter.clear">清除筛选</button>
 </div>
 
-<!-- ============================================
-     瀑布流主区（首页 / 搜索 / 收藏共用）
-     - 初始 CSS grid；JS 接管后加 .js-ready 变 flex 多列
-     - 卡片由 script.js 动态插入
-     ============================================ -->
 <main id="gallery" class="gallery"></main>
 
-<!-- JS 禁用提示：本站为动态渲染，无脚本时给出明确说明 -->
 <noscript>
   <p class="status">本站作品展示需要启用 JavaScript。</p>
 </noscript>
 
-<!-- 状态栏：加载 / 无结果 / 异常等文案；aria-live 让读屏播报 -->
 <div id="status" class="status" role="status" aria-live="polite">正在下载中…</div>
 
-<!-- 哨兵：IntersectionObserver 监听其可见性触发下一批 -->
 <div id="sentinel"></div>
 
-<!-- ============================================
-     发现页（body.view-discover 时显示）
-     由 renderDiscover() 填充：
-       - 国家 / 类型 / 领域 chips → 点击回首页过滤
-       - 设计师 A-Z 分组列表   → 点击回首页过滤
-     ============================================ -->
 <section id="discoverView" class="page-view" hidden>
   <header class="discover-head">
     <h1 data-i18n="discover.title">发现</h1>
@@ -243,10 +184,6 @@
   </section>
 </section>
 
-<!-- ============================================
-     关于页（body.view-about 时显示）
-     文案由 i18n 渲染；#aboutStats 由 computeAboutStats() 填
-     ============================================ -->
 <section id="aboutView" class="page-view" hidden>
   <div class="about-section">
     <h2 data-i18n="about.intro.title">项目简介</h2>
@@ -267,14 +204,6 @@
   </div>
 </section>
 
-<!-- ============================================
-     灯箱（点击卡片打开）
-     - aria-labelledby 优先用 #lb-title 做标题，aria-label 作为后备
-     - .lb-topbar   顶部悬浮胶囊（收藏 / 计数 / 关闭）
-     - .lb-gallery  多图纵向堆叠，支持缩放/拖动
-     - .lb-content  标题 / 设计师 / 元信息 / 详情 / 标签
-     打开时：body.lightbox-open（锁滚动）+ .open class
-     ============================================ -->
 <div id="lightbox" class="lightbox" role="dialog" aria-modal="true"
      aria-labelledby="lb-title" aria-label="项目详情" data-i18n-aria="lightbox.aria">
 
@@ -305,10 +234,8 @@
   </div>
 </div>
 
-<!-- 全局提示（新一轮 / 收藏移除等必要反馈） -->
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<!-- 主脚本：实际引用压缩版 script-min.js -->
 <script src="script.js"></script>
 
 </body>
