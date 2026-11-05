@@ -617,6 +617,7 @@ body.pill-open .pill-menu {
 
 .theme-toggle {
   width: 36px; height: 36px;
+  padding: 0; /* 新增：去浏览器默认padding */
   border: none;
   background: transparent;
   color: var(--text);
@@ -624,7 +625,11 @@ body.pill-open .pill-menu {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
+  border-radius: 999px;  /* 修改：50% → 999px，与 .pill-btn 胶囊一致 */
+  transition: background .15s;   /* 新增：与 .pill-btn 一致 */
+}
+.theme-toggle svg {
+  display: block;
 }
 .theme-toggle:hover { background: var(--surface-3); }
 .theme-toggle .icon-sun { display: none; }
