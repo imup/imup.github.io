@@ -315,6 +315,7 @@ body.searching .search-box {
 
 /* ============================================================
    5. 搜索筛选栏
+   【P1-10 撤回】恢复固定 90px，与原代码一致，手机上三列可完整显示
    ============================================================ */
 
 .search-filter-bar {
@@ -338,12 +339,8 @@ body.searching .search-box {
 
 body.searching .search-filter-bar { display: flex; }
 
-/* 【P1-10】原固定 90px 会截断“全部年份/全部国家”，
-   改为最小 90、按内容自适应、上限 160，兼顾窄屏与英文 */
 .search-filter-bar select {
-  min-width: 90px;
-  width: auto;
-  max-width: 160px;
+  width: 90px;
   padding: 6px 6px;
   border: 1px solid var(--border-2);
   border-radius: 6px;
@@ -502,8 +499,6 @@ mark {
 
 /* ============================================================
    8. 状态栏与哨兵
-   - #status：加载 / 无结果 / 异常等文案
-   - #sentinel：1px 哨兵，IntersectionObserver 监听
    - 加载更多按钮已删除（方案 A：IO + checkSentinel + resize 三层兜底）
    ============================================================ */
 
@@ -680,20 +675,12 @@ body.pill-open .pill-menu {
 
 .discover-section { margin-bottom: 28px; }
 
-/* 【P1-7】发现页左右 padding 为 0，chips 与标题会贴边；
-   补与 .page-stats / .az-letters 一致的左右间距，视觉对齐 */
-.discover-chips,
-.discover-section-title {
-  margin-left: clamp(12px, 3vw, 40px);
-  margin-right: clamp(12px, 3vw, 40px);
-}
-
+/* 【P1-7 撤回】chips 与分区标题恢复全宽，与原代码一致 */
 .discover-section-title {
   display: flex;
   align-items: center;
   gap: 14px;
-  margin-top: 0;
-  margin-bottom: 14px;
+  margin: 0 0 14px;
   font-size: 16px;
   font-weight: 600;
   color: var(--text);
@@ -801,11 +788,10 @@ body.pill-open .pill-menu {
 
 .az-group {
   margin-bottom: 14px;
-  /* 锚点跳转时留出 sticky 头部高度，避免标题被遮挡 */
   scroll-margin-top: 109px;
 }
 /* 【P1-6】.az-group h3 原 top:48px 会被顶栏遮挡；
-   改为 top:109px = 顶栏 65 + az-letters 约 44（padding 8*2 + 按钮 28） */
+   改为 top:109px = 顶栏 65 + az-letters 约 44 */
 .az-group h3 {
   margin: 0 0 8px;
   font-size: 16px;
