@@ -1139,6 +1139,11 @@ body.pill-open .pill-menu {
 @media (max-width: 640px) {
   .az-list { grid-template-columns: 1fr; }
 }
+@media (max-width: 480px) {
+  .search-filter-bar {
+    justify-content: flex-start;
+  }
+}
 
 /* ============================================================
    15. 减少动效
