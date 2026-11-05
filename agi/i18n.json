@@ -11,9 +11,7 @@
     "filter.allYears": "全部年份",
     "filter.allCountries": "全部国家",
     "filter.allTypes": "全部类型",
-    "filter.designerLabel": "设计师:",
     "filter.clear": "清除筛选",
-    "filter.clearDesigner": "清除设计师过滤",
 
     "status.preparing": "正在准备数据…",
     "status.searchHint": "输入关键词或选择筛选条件",
@@ -99,9 +97,7 @@
     "filter.allYears": "All years",
     "filter.allCountries": "All countries",
     "filter.allTypes": "All types",
-    "filter.designerLabel": "Designer:",
     "filter.clear": "Clear filters",
-    "filter.clearDesigner": "Clear designer filter",
 
     "status.preparing": "Preparing data…",
     "status.searchHint": "Enter keywords or select filters.",
