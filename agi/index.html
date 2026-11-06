@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AGI会员瀑布流作品展示</title>
+  <meta name="description" content="AGI会员作品展示墙" data-i18n-content="app.description">
   <script>
     (function () {
       try {
@@ -24,8 +25,7 @@
 
 <div class="topbar">
   <div class="topbar-inner">
-
-    <a href="#" class="nav-cell logo-cell" aria-label="首页" id="logoCell">
+    <a href="#" class="nav-cell logo-cell" aria-label="首页" data-i18n-aria="logo.aria" id="logoCell">
       <svg width="42" height="42" viewBox="-30 -30 160 160">
         <g fill="currentColor">
           <rect x="30" y="10" width="20" height="20" />
@@ -129,13 +129,13 @@
 </div>
 
 <div class="search-filter-bar">
-  <select id="filterYear" aria-label="按年份筛选">
+  <select id="filterYear" aria-label="按年份筛选" data-i18n-aria="filter.yearAria">
     <option value="" data-i18n="filter.allYears"></option>
   </select>
-  <select id="filterCountry" aria-label="按国家筛选">
+  <select id="filterCountry" aria-label="按国家筛选" data-i18n-aria="filter.countryAria">
     <option value="" data-i18n="filter.allCountries"></option>
   </select>
-  <select id="filterType" aria-label="按类型筛选">
+  <select id="filterType" aria-label="按类型筛选" data-i18n-aria="filter.typeAria">
     <option value="" data-i18n="filter.allTypes"></option>
   </select>
   <button id="clearFilters" type="button" data-i18n="filter.clear"></button>
@@ -143,7 +143,7 @@
 
 <main id="gallery" class="gallery"></main>
 
-<div id="status" class="status" role="status" aria-live="polite">正在下载中…</div>
+<div id="status" class="status" role="status" aria-live="polite"></div>
 
 <div id="sentinel"></div>
 
