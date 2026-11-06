@@ -36,7 +36,7 @@
     "pill.theme": "切换深色模式",
 
     "toast.favRemoved": "已取消收藏",
-    "toast.newRound": "已看完全部作品，开始新一轮",
+    "toast.newRound": "重新随机加载",
 
     "discover.title": "发现",
     "discover.sectionCountry": "国家",
