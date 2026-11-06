@@ -788,11 +788,30 @@ body.pill-open .pill-menu {
 .about-section { 
   margin-bottom: 32px; 
 }
+/*
 .about-section h2 {
   margin: 0 0 12px;
   font-size: 18px;
   color: var(--text);
 }
+*/
+.about-section h2 {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin: 0 0 14px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+}
+.about-section h2::before,
+.about-section h2::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
 .about-section p {
   margin: 0 0 12px;
   line-height: 1.7;
