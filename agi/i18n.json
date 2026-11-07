@@ -49,7 +49,7 @@
     "discover.sectionType": "类型",
     "discover.sectionSector": "领域",
     "discover.sectionDesigner": "设计师 A-Z",
-    "discover.stats": "本站汇集AGI会员的代表性设计作品，涵盖品牌、海报、书籍、字体、包装、导视等多个领域。共{total}个项目 · {designers}位设计师 · {countries}个国家 · {types}种类型 · {sectors}个领域。数据来源于AGI（国际平面设计联盟）官方公开资料，所有作品版权归原作者及设计师所有，仅供学习交流使用，不得用于商业用途。",
+    "discover.stats": "作品涵盖品牌、海报、书籍、字体、包装、导视等多个领域。共{total}个项目 · {designers}位设计师 · {countries}个国家 · {types}种类型 · {sectors}个领域。数据来源于AGI官方，所有作品版权归原作者及设计师所有，仅供学习交流使用，不得用于商业用途。",
     "discover.noData": "暂无数据",
 
     "favorites.empty": "暂无收藏，点击灯箱左上角 ♥ 收藏",
