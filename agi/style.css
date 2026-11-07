@@ -825,11 +825,12 @@ body.pill-open .pill-menu {
   color: var(--text-2);
   font-size: 14px;
 }
+/*
 #aboutView .page-stats {
   padding-left: 0;
   padding-right: 0;
 }
-
+*/
 .lightbox {
   position: fixed;
   inset: 0;
