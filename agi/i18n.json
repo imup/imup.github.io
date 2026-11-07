@@ -49,7 +49,7 @@
     "discover.sectionType": "类型",
     "discover.sectionSector": "领域",
     "discover.sectionDesigner": "设计师 A-Z",
-    "discover.stats": "{total}个项目 · {designers}位设计师 · {countries}个国家 · {types}种类型 · {sectors}个领域",
+    "discover.stats": "本站汇集AGI会员的代表性设计作品，以瀑布流方式向公众呈现当代平面设计的多元面貌，涵盖品牌、海报、书籍、字体、包装、导视等多个领域。共{total}个项目 · {designers}位设计师 · 覆盖{countries}个国家 · 创作跨度{span}年。数据来源于AGI（国际平面设计联盟）官方公开资料，所有作品版权归原作者及设计师所有，仅供学习交流使用，不得用于商业用途。",
     "discover.noData": "暂无数据",
 
     "favorites.empty": "暂无收藏，点击灯箱左上角 ♥ 收藏",
@@ -65,8 +65,6 @@
     "about.usage.fav.text": "：灯箱左上角 ♥ 收藏作品，收藏保存在浏览器本地，换设备不同步。",
     "about.usage.theme.title": "主题/手势",
     "about.usage.theme.text": "：点击右上角汉堡打开药丸菜单，点太阳/月亮图标切换主题，灯箱内支持双指缩放、双击放大后可拖动。",
-    "about.usage.gesture.title": "手势",
-    "about.usage.gesture.text": "：灯箱内双指缩放、双击放大，放大后可拖动。",
     "about.stats": "本站汇集AGI会员的代表性设计作品，以瀑布流方式向公众呈现当代平面设计的多元面貌，涵盖品牌、海报、书籍、字体、包装、导视等多个领域。共{total}个项目 · {designers}位设计师 · 覆盖{countries}个国家 · 创作跨度{span}年。数据来源于AGI（国际平面设计联盟）官方公开资料，所有作品版权归原作者及设计师所有，仅供学习交流使用，不得用于商业用途。",
     "about.statsComputing": "统计中…",
 
@@ -153,10 +151,8 @@
     "about.usage.index.text": ": browse by country, type, sector, or designer A-Z; tap any item to return to the homepage filtered. Tap the logo to return to all works.",
     "about.usage.fav.title": "Favorites",
     "about.usage.fav.text": ": tap ♥ in the lightbox to save. Favorites are stored locally in the browser (localStorage) and won't sync across devices.",
-    "about.usage.theme.title": "Theme/ Gesture",
-    "about.usage.theme.text": ": open the pill menu via the hamburger, then tap the sun / moon icon；pinch to zoom, double-tap to zoom in; drag when zoomed.",
-    "about.usage.gesture.title": "Gestures",
-    "about.usage.gesture.text": ": pinch to zoom, double-tap to zoom in; drag when zoomed.",
+    "about.usage.theme.title": "Theme/Gestures",
+    "about.usage.theme.text": ": open the pill menu via the hamburger, then tap the sun / moon icon to switch theme. In the lightbox, pinch to zoom, double-tap to zoom in, and drag when zoomed.",
     "about.stats": "This site gathers representative works by AGI members, presenting the diversity of contemporary graphic design through a masonry layout, covering branding, posters, books, typography, packaging, wayfinding and more. {total} projects · {designers} designers · {countries} countries · span {span}. Data is sourced from the official AGI (Alliance Graphique Internationale) public materials. All works are copyrighted by their respective authors and designers, and are provided for study and exchange purposes only, not for commercial use.",
     "about.statsComputing": "Computing…",
 
