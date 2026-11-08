@@ -1700,32 +1700,24 @@ window.addEventListener('resize', () => {
   if (!editorMenu.hidden)  positionDropdown(btnEditorMenu,  editorMenu);
 });
 
-const DEFAULT_CODE = `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="320" viewBox="0 0 480 320">
-  <!-- 渐变与发光滤镜 -->
-  <defs>
-    <linearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#3b82f6"/>
-      <stop offset="100%" stop-color="#a855f7"/>
-    </linearGradient>
-    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
-      <feGaussianBlur stdDeviation="7" result="blur"/>
-      <feMerge>
-        <feMergeNode in="blur"/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
-    </filter>
-  </defs>
-
-  <rect width="480" height="320" rx="16" fill="#0f172a"/>
-
-  <circle cx="240" cy="140" r="64" fill="url(#grad)" filter="url(#glow)">
-    <animate attributeName="r" values="58;70;58" dur="2.4s" repeatCount="indefinite"/>
-  </circle>
-
-  <text x="240" y="252" text-anchor="middle" fill="#94a3b8"
-        font-family="system-ui, sans-serif" font-size="15">
-    编辑下方代码，实时预览
-  </text>
+const DEFAULT_CODE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%">
+  <circle cx="50" cy="50" r="50" fill="#33FAFC" />
+  <g stroke="#000000" stroke-width="2.0" stroke-linecap="round">
+    <line x1="34" y1="50" x2="50" y2="50" />
+    <line x1="66" y1="34" x2="66" y2="50" />
+    <line x1="50" y1="66" x2="66" y2="66" />
+  </g>
+  <g fill="#000000">
+    <circle cx="34" cy="34" r="3.0" />
+    <circle cx="50" cy="34" r="3.0" />
+    <circle cx="66" cy="34" r="3.0" />
+    <circle cx="34" cy="50" r="3.0" />
+    <circle cx="50" cy="50" r="3.0" />
+    <circle cx="66" cy="50" r="3.0" />
+    <circle cx="34" cy="66" r="3.0" />
+    <circle cx="50" cy="66" r="3.0" />
+    <circle cx="66" cy="66" r="3.0" />
+  </g>
 </svg>`;
 
 const draft = loadDraft();
