@@ -1,0 +1,2869 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0,
+               maximum-scale=1.0, user-scalable=no,
+               viewport-fit=cover,
+               interactive-widget=resizes-content"
+    />
+    <title>SVG编辑器</title>
+
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+
+      html {
+        height: 100%;
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+      }
+
+      body {
+        margin: 0;
+        height: 100%;
+        font-family:
+          system-ui,
+          -apple-system,
+          "Segoe UI",
+          "PingFang SC",
+          "Microsoft YaHei",
+          sans-serif;
+        background: #f8fafc;
+        color: #0f172a;
+        overflow: hidden;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      .app {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        height: 100vh;
+        height: 100dvh;
+      }
+
+      .preview-wrap {
+        position: relative;
+        flex: 80 1 0;
+        min-height: 80px;
+        background: #ffffff;
+        overflow: hidden;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+      }
+
+      .preview {
+        width: 100%;
+        height: 100%;
+      }
+
+      .preview-actions {
+        position: absolute;
+        top: calc(14px + env(safe-area-inset-top, 0px));
+        right: calc(14px + env(safe-area-inset-right, 0px));
+        z-index: 8;
+      }
+
+      .fab {
+        display: inline-grid;
+        place-items: center;
+        width: 40px;
+        height: 34px;
+        padding: 0;
+        font-family: inherit;
+        font-size: 20px;
+        font-weight: 700;
+        line-height: 1;
+        border: 1px solid transparent;
+        border-radius: 9px;
+        cursor: pointer;
+        touch-action: manipulation;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+        transition:
+          transform 0.12s,
+          box-shadow 0.2s,
+          background 0.2s,
+          border-color 0.2s,
+          opacity 0.2s;
+      }
+
+      .fab:active:not(:disabled) {
+        transform: scale(0.95);
+      }
+      .fab:focus-visible {
+        outline: 2px solid #93c5fd;
+        outline-offset: 2px;
+      }
+      .fab:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+
+      .fab--ghost {
+        color: #1e293b;
+        background: rgba(255, 255, 255, 0.94);
+        border-color: #cbd5e1;
+        box-shadow: 0 3px 10px rgba(15, 23, 42, 0.1);
+        backdrop-filter: blur(6px);
+      }
+      .fab--ghost:hover:not(:disabled) {
+        background: #ffffff;
+        border-color: #94a3b8;
+      }
+
+      .dropdown {
+        position: absolute;
+        top: calc(100% + 6px);
+        right: 0;
+        z-index: 30;
+        display: flex;
+        flex-direction: column;
+        min-width: 168px;
+        padding: 5px;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
+        transform-origin: top right;
+        animation: popIn 0.14s ease;
+      }
+      .dropdown[hidden] {
+        display: none;
+      }
+
+      @keyframes popIn {
+        from {
+          opacity: 0;
+          transform: scale(0.96) translateY(-4px);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1) translateY(0);
+        }
+      }
+
+      .dropdown > button {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        padding: 9px 12px;
+        font-family: inherit;
+        font-size: 13px;
+        font-weight: 400;
+        color: #1e293b;
+        text-align: left;
+        background: transparent;
+        border: 0;
+        border-radius: 6px;
+        cursor: pointer;
+        white-space: nowrap;
+        touch-action: manipulation;
+        transition: background 0.14s;
+      }
+      .dropdown > button:hover {
+        background: #f1f5f9;
+      }
+
+      .dropdown__sep {
+        height: 1px;
+        margin: 4px 4px;
+        background: #e2e8f0;
+      }
+
+      .dropdown__check {
+        width: 14px;
+        text-align: center;
+        font-size: 12px;
+        color: #2563eb;
+        opacity: 0;
+      }
+
+      .dropdown > [aria-checked="true"] .dropdown__check {
+        opacity: 1;
+      }
+
+      .dropdown--dark {
+        background: #1e293b;
+        border-color: #334155;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.42);
+      }
+      .dropdown--dark > button {
+        color: #e2e8f0;
+      }
+      .dropdown--dark > button:hover {
+        background: #334155;
+      }
+      .dropdown--dark .dropdown__sep {
+        background: #334155;
+      }
+      .dropdown--dark .dropdown__check {
+        color: #60a5fa;
+      }
+
+      .view-controls {
+        position: absolute;
+        left: calc(14px + env(safe-area-inset-left, 0px));
+        bottom: 12px;
+        z-index: 8;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 6px 10px;
+        background: rgba(255, 255, 255, 0.94);
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        box-shadow: 0 3px 12px rgba(15, 23, 42, 0.1);
+        backdrop-filter: blur(8px);
+      }
+
+      .bg-switcher {
+        display: flex;
+        gap: 5px;
+      }
+
+      .bg-btn {
+        width: 20px;
+        height: 20px;
+        padding: 0;
+        border: 1px solid #cbd5e1;
+        border-radius: 4px;
+        cursor: pointer;
+        touch-action: manipulation;
+        transition:
+          box-shadow 0.14s,
+          border-color 0.14s;
+      }
+      .bg-btn[data-bg="checker"] {
+        background-image:
+          linear-gradient(45deg, #cbd5e1 25%, transparent 25%),
+          linear-gradient(-45deg, #cbd5e1 25%, transparent 25%),
+          linear-gradient(45deg, transparent 75%, #cbd5e1 75%),
+          linear-gradient(-45deg, transparent 75%, #cbd5e1 75%);
+        background-size: 8px 8px;
+        background-position:
+          0 0,
+          0 4px,
+          4px -4px,
+          -4px 0;
+        background-color: #f8fafc;
+      }
+      .bg-btn[data-bg="white"] {
+        background: #ffffff;
+      }
+      .bg-btn[data-bg="dark"] {
+        background: #1e293b;
+        border-color: #334155;
+      }
+
+      .bg-btn.is-active {
+        box-shadow: 0 0 0 2px #2563eb;
+        border-color: #2563eb;
+      }
+
+      .view-controls__sep {
+        width: 1px;
+        height: 18px;
+        background: #e2e8f0;
+      }
+
+      .zoom-controls {
+        display: flex;
+        align-items: center;
+        gap: 3px;
+      }
+
+      .zoom-btn {
+        min-width: 24px;
+        height: 24px;
+        padding: 0 4px;
+        display: grid;
+        place-items: center;
+        font-family: inherit;
+        font-size: 15px;
+        font-weight: 600;
+        color: #334155;
+        background: transparent;
+        border: 0;
+        border-radius: 5px;
+        cursor: pointer;
+        touch-action: manipulation;
+        transition: background 0.14s;
+      }
+      .zoom-btn:hover {
+        background: #f1f5f9;
+      }
+
+      .zoom-label {
+        min-width: 48px;
+        height: 24px;
+        padding: 0 4px;
+        font-family: inherit;
+        font-size: 11.5px;
+        font-weight: 600;
+        color: #334155;
+        font-variant-numeric: tabular-nums;
+        background: transparent;
+        border: 0;
+        border-radius: 5px;
+        cursor: pointer;
+        touch-action: manipulation;
+        transition: background 0.14s;
+      }
+      .zoom-label:hover {
+        background: #f1f5f9;
+      }
+
+      .zoom-btn--actual {
+        margin-left: 4px;
+        padding: 0 8px;
+        font-size: 11.5px;
+        letter-spacing: 0.02em;
+        color: #1e293b;
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+      }
+      .zoom-btn--actual:hover {
+        background: #e2e8f0;
+        border-color: #cbd5e1;
+      }
+
+      .badge {
+        position: absolute;
+        right: 14px;
+        bottom: 12px;
+        z-index: 4;
+        padding: 4px 9px;
+        border-radius: 6px;
+        background: rgba(15, 23, 42, 0.72);
+        color: #e2e8f0;
+        font-size: 11px;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.02em;
+        pointer-events: none;
+        backdrop-filter: blur(4px);
+      }
+      .badge[hidden] {
+        display: none;
+      }
+
+      .error {
+        position: absolute;
+        top: calc(14px + env(safe-area-inset-top, 0px));
+        left: 14px;
+        right: 76px;
+        z-index: 6;
+        padding: 10px 14px;
+        background: #fef2f2;
+        border: 1px solid #fecaca;
+        border-left: 3px solid #ef4444;
+        border-radius: 8px;
+        color: #b91c1c;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12.5px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        word-break: break-word;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+      }
+      .error[hidden] {
+        display: none;
+      }
+
+      .warning-bar {
+        position: absolute;
+        top: calc(14px + env(safe-area-inset-top, 0px));
+        left: 14px;
+        right: 76px;
+        z-index: 5;
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 9px 10px 9px 12px;
+        background: #fffbeb;
+        border: 1px solid #fde68a;
+        border-left: 3px solid #f59e0b;
+        border-radius: 8px;
+        color: #92400e;
+        font-size: 12.5px;
+        line-height: 1.5;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+      }
+      .warning-bar[hidden] {
+        display: none;
+      }
+
+      .warning-bar__icon {
+        flex: 0 0 auto;
+        font-size: 14px;
+        line-height: 1.35;
+      }
+      .warning-bar__text {
+        flex: 1;
+        word-break: break-word;
+      }
+
+      .warning-bar__close {
+        flex: 0 0 auto;
+        width: 18px;
+        height: 18px;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        font-family: inherit;
+        font-size: 12px;
+        color: #92400e;
+        background: transparent;
+        border: 0;
+        border-radius: 4px;
+        cursor: pointer;
+        touch-action: manipulation;
+        opacity: 0.55;
+        transition:
+          opacity 0.14s,
+          background 0.14s;
+      }
+      .warning-bar__close:hover {
+        opacity: 1;
+        background: rgba(245, 158, 11, 0.15);
+      }
+
+      .splitter {
+        flex: 0 0 26px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0 10px;
+        background: #f1f5f9;
+        border-top: 1px solid #e2e8f0;
+        border-bottom: 1px solid #e2e8f0;
+        user-select: none;
+        -webkit-user-select: none;
+        position: relative;
+        z-index: 5;
+        touch-action: none;
+      }
+
+      .splitter__btn {
+        flex: 0 0 auto;
+        height: 20px;
+        padding: 0 8px;
+        font-family: inherit;
+        font-size: 11px;
+        font-weight: 500;
+        color: #64748b;
+        background: transparent;
+        border: 1px solid transparent;
+        border-radius: 4px;
+        cursor: pointer;
+        touch-action: manipulation;
+        white-space: nowrap;
+        transition:
+          color 0.14s,
+          background 0.14s,
+          border-color 0.14s;
+      }
+      .splitter__btn:hover {
+        color: #1e293b;
+        background: #e2e8f0;
+      }
+      .splitter__btn.is-active {
+        color: #1d4ed8;
+        background: #dbeafe;
+        border-color: #93c5fd;
+      }
+
+      .splitter__grip {
+        flex: 1;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: ns-resize;
+        position: relative;
+        min-width: 20px;
+      }
+      .splitter__grip::before {
+        content: "";
+        width: 40px;
+        height: 4px;
+        background: #cbd5e1;
+        border-radius: 2px;
+        transition:
+          background 0.14s,
+          width 0.14s;
+      }
+      .splitter__grip:hover::before {
+        background: #94a3b8;
+        width: 52px;
+      }
+
+      .editor {
+        --ed-font:
+          ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono",
+          monospace;
+        --ed-size: 13px;
+        --ed-lh: 1.65;
+        --ed-py: 16px;
+        --ed-px: 18px;
+
+        position: relative;
+        display: flex;
+        flex: 20 1 0;
+        min-height: 100px;
+        background: #0f172a;
+        overflow: hidden;
+      }
+
+      .gutter {
+        flex: 0 0 auto;
+        height: 100%;
+        overflow: hidden;
+        padding: var(--ed-py) 8px var(--ed-py) 12px;
+        background: #0b1220;
+        border-right: 1px solid #1e293b;
+        color: #475569;
+        font-family: var(--ed-font);
+        font-size: var(--ed-size);
+        line-height: var(--ed-lh);
+        text-align: right;
+        user-select: none;
+        -webkit-user-select: none;
+        position: relative;
+        z-index: 1;
+      }
+
+      .gutter > .gutter-line {
+        height: calc(var(--ed-size) * var(--ed-lh));
+        line-height: var(--ed-lh);
+      }
+
+      .code-area {
+        position: relative;
+        flex: 1;
+        height: 100%;
+        min-width: 0;
+        overflow: hidden;
+      }
+
+      .highlight,
+      .code-input {
+        position: absolute;
+        inset: 0;
+        margin: 0;
+        padding: var(--ed-py) var(--ed-px);
+        border: 0;
+        font-family: var(--ed-font);
+        font-size: var(--ed-size);
+        line-height: var(--ed-lh);
+        letter-spacing: 0;
+        tab-size: 2;
+        -moz-tab-size: 2;
+        white-space: pre;
+        word-wrap: normal;
+        overflow-wrap: normal;
+        overflow: auto;
+      }
+
+      .highlight {
+        pointer-events: none;
+        background: transparent;
+        color: #e2e8f0;
+        overflow: hidden;
+        z-index: 1;
+      }
+
+      .highlight code {
+        display: block;
+        font: inherit;
+        white-space: inherit;
+        tab-size: inherit;
+      }
+
+      .code-input {
+        background: transparent;
+        color: transparent;
+        -webkit-text-fill-color: transparent;
+        caret-color: #60a5fa;
+        resize: none;
+        outline: 0;
+        -webkit-appearance: none;
+        appearance: none;
+        z-index: 2;
+      }
+
+      .code-input::selection {
+        background: rgba(96, 165, 250, 0.3);
+        color: transparent;
+        -webkit-text-fill-color: transparent;
+      }
+
+      .code-input::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+      }
+      .code-input::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .code-input::-webkit-scrollbar-thumb {
+        background: #334155;
+        border-radius: 5px;
+      }
+      .code-input::-webkit-scrollbar-thumb:hover {
+        background: #475569;
+      }
+
+      .editor.is-wrap .code-input,
+      .editor.is-wrap .highlight {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+        word-wrap: break-word;
+      }
+      .editor.is-wrap .code-input {
+        overflow-x: hidden;
+      }
+
+      .highlight .line {
+        display: block;
+        min-height: calc(var(--ed-size) * var(--ed-lh));
+      }
+
+      .editor-actions {
+        position: absolute;
+        top: 8px;
+        right: 10px;
+        z-index: 4;
+      }
+
+      .editor-action {
+        width: 30px;
+        height: 30px;
+        display: grid;
+        place-items: center;
+        padding: 0;
+        font-family: inherit;
+        font-size: 18px;
+        font-weight: 700;
+        background: rgba(30, 41, 59, 0.85);
+        color: #e2e8f0;
+        border: 1px solid #334155;
+        border-radius: 6px;
+        cursor: pointer;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: transparent;
+        transition:
+          background 0.16s,
+          border-color 0.16s,
+          transform 0.1s;
+      }
+      .editor-action:hover {
+        background: rgba(51, 65, 85, 0.95);
+        border-color: #475569;
+      }
+      .editor-action:active {
+        transform: scale(0.95);
+      }
+      .editor-action:focus-visible {
+        outline: 2px solid #60a5fa;
+        outline-offset: 2px;
+      }
+
+      .tok-comment {
+        color: #64748b;
+        font-style: italic;
+      }
+      .tok-tag {
+        color: #7dd3fc;
+      }
+      .tok-attr {
+        color: #fbbf24;
+      }
+      .tok-string {
+        color: #86efac;
+      }
+      .tok-pi {
+        color: #c4b5fd;
+      }
+      .tok-doctype {
+        color: #c4b5fd;
+      }
+      .tok-cdata {
+        color: #94a3b8;
+      }
+
+      .modal-mask {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        background: rgba(15, 23, 42, 0.52);
+        backdrop-filter: blur(4px);
+        animation: fadeIn 0.16s ease;
+      }
+      .modal-mask[hidden] {
+        display: none;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      .modal {
+        width: 100%;
+        max-width: 400px;
+        max-height: calc(100vh - 40px);
+        overflow-y: auto;
+        padding: 22px 22px 18px;
+        background: #ffffff;
+        border-radius: 14px;
+        box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
+        animation: popIn 0.2s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+      }
+
+      .modal__title {
+        margin: 0 0 4px;
+        font-size: 16px;
+        font-weight: 600;
+      }
+      .modal__subtitle {
+        margin: 0 0 16px;
+        font-size: 12.5px;
+        color: #64748b;
+      }
+
+      .modal__row {
+        display: flex;
+        align-items: flex-end;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+
+      .modal__field {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 0;
+      }
+
+      .modal__label {
+        font-size: 12px;
+        color: #64748b;
+      }
+
+      .modal__input,
+      .modal__select {
+        width: 100%;
+        height: 38px;
+        padding: 0 10px;
+        font-family: inherit;
+        font-size: 14px;
+        font-variant-numeric: tabular-nums;
+        color: #0f172a;
+        background: #ffffff;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        outline: none;
+        -webkit-appearance: none;
+        appearance: none;
+        transition:
+          border-color 0.18s,
+          box-shadow 0.18s;
+      }
+      .modal__input:focus,
+      .modal__select:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+      }
+      .modal__input::-webkit-outer-spin-button,
+      .modal__input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+      .modal__input[type="number"] {
+        -moz-appearance: textfield;
+        appearance: textfield;
+      }
+
+      .modal__select {
+        padding-right: 28px;
+        background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path d='M0 0l5 6 5-6z' fill='%2364748b'/></svg>");
+        background-repeat: no-repeat;
+        background-position: right 10px center;
+        background-size: 10px 6px;
+        cursor: pointer;
+      }
+
+      .modal__x {
+        padding-bottom: 10px;
+        font-size: 14px;
+        color: #94a3b8;
+      }
+
+      .modal__lock {
+        flex: 0 0 auto;
+        width: 38px;
+        height: 38px;
+        display: grid;
+        place-items: center;
+        font-size: 15px;
+        background: #f1f5f9;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        cursor: pointer;
+        touch-action: manipulation;
+        transition:
+          background 0.18s,
+          border-color 0.18s,
+          color 0.18s;
+      }
+      .modal__lock:hover {
+        background: #e2e8f0;
+      }
+      .modal__lock.is-locked {
+        color: #1d4ed8;
+        background: #dbeafe;
+        border-color: #93c5fd;
+      }
+
+      .modal__hint {
+        margin: 0 0 10px;
+        padding: 8px 10px;
+        font-size: 12px;
+        color: #b45309;
+        background: #fffbeb;
+        border: 1px solid #fde68a;
+        border-radius: 6px;
+        line-height: 1.5;
+      }
+      .modal__hint[hidden] {
+        display: none;
+      }
+
+      .modal__check {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 2px 0 10px;
+        padding: 8px 10px;
+        font-size: 12.5px;
+        color: #334155;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        cursor: pointer;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent;
+        transition:
+          background 0.18s,
+          border-color 0.18s;
+      }
+      .modal__check:hover {
+        background: #f1f5f9;
+      }
+      .modal__check[hidden] {
+        display: none;
+      }
+
+      .modal__check input {
+        flex: 0 0 auto;
+        width: 16px;
+        height: 16px;
+        margin: 0;
+        accent-color: #2563eb;
+        cursor: pointer;
+      }
+
+      .modal__check-desc {
+        flex: 1;
+        line-height: 1.4;
+      }
+
+      .modal__actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 14px;
+      }
+
+      .modal__actions .btn {
+        flex: 1;
+        height: 38px;
+        font-family: inherit;
+        font-size: 13px;
+        font-weight: 500;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        cursor: pointer;
+        touch-action: manipulation;
+        transition:
+          background 0.18s,
+          border-color 0.18s,
+          transform 0.1s;
+      }
+      .modal__actions .btn:active:not(:disabled) {
+        transform: translateY(1px);
+      }
+      .modal__actions .btn--ghost {
+        color: #334155;
+        background: #ffffff;
+        border-color: #cbd5e1;
+      }
+      .modal__actions .btn--ghost:hover {
+        background: #f1f5f9;
+      }
+      .modal__actions .btn--primary {
+        color: #ffffff;
+        background: #2563eb;
+        border-color: #2563eb;
+      }
+      .modal__actions .btn--primary:hover {
+        background: #1d4ed8;
+      }
+      .modal__actions .btn:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+
+      .drop-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 500;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(37, 99, 235, 0.15);
+        backdrop-filter: blur(3px);
+        pointer-events: none;
+      }
+      .drop-overlay[hidden] {
+        display: none;
+      }
+
+      .drop-overlay__inner {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+        padding: 32px 40px;
+        background: #ffffff;
+        border: 2px dashed #2563eb;
+        border-radius: 16px;
+        box-shadow: 0 24px 60px rgba(15, 23, 42, 0.24);
+      }
+
+      .drop-overlay__icon {
+        font-size: 32px;
+      }
+      .drop-overlay__text {
+        font-size: 14px;
+        font-weight: 500;
+        color: #1e293b;
+      }
+
+      .toast {
+        position: fixed;
+        left: 50%;
+        bottom: 24px;
+        z-index: 999;
+        max-width: calc(100% - 32px);
+        padding: 10px 18px;
+        border-radius: 999px;
+        background: rgba(15, 23, 42, 0.94);
+        color: #f8fafc;
+        font-size: 13px;
+        text-align: center;
+        opacity: 0;
+        pointer-events: none;
+        transform: translate(-50%, 14px);
+        transition:
+          opacity 0.22s ease,
+          transform 0.22s ease;
+      }
+      .toast.is-show {
+        opacity: 1;
+        transform: translate(-50%, 0);
+      }
+
+      @media (max-width: 480px) {
+        .preview-actions {
+          top: calc(10px + env(safe-area-inset-top, 0px));
+          right: calc(10px + env(safe-area-inset-right, 0px));
+        }
+        .fab {
+          width: 36px;
+          height: 32px;
+          font-size: 18px;
+        }
+
+        .error,
+        .warning-bar {
+          top: calc(10px + env(safe-area-inset-top, 0px));
+          left: 10px;
+          right: 60px;
+          font-size: 12px;
+        }
+
+        .view-controls {
+          left: 8px;
+          bottom: 8px;
+          gap: 8px;
+          padding: 5px 8px;
+        }
+        .zoom-label {
+          min-width: 42px;
+          font-size: 11px;
+        }
+        .zoom-btn--actual {
+          font-size: 11px;
+          padding: 0 6px;
+        }
+
+        .splitter {
+          flex-basis: 24px;
+          padding: 0 6px;
+          gap: 4px;
+        }
+        .splitter__btn {
+          font-size: 10px;
+          padding: 0 6px;
+          height: 18px;
+        }
+        .splitter__grip::before {
+          width: 32px;
+          height: 3px;
+        }
+        .splitter__grip:hover::before {
+          width: 42px;
+        }
+
+        .editor {
+          --ed-size: 16px;
+          --ed-lh: 1.5;
+          --ed-py: 12px;
+          --ed-px: 14px;
+        }
+        .gutter {
+          padding-left: 8px;
+          padding-right: 6px;
+        }
+        .editor-actions {
+          top: 6px;
+          right: 8px;
+        }
+        .editor-action {
+          width: 28px;
+          height: 28px;
+          font-size: 16px;
+        }
+
+        .modal {
+          padding: 20px 18px 16px;
+        }
+        .modal__title {
+          font-size: 15px;
+        }
+      }
+
+      @media (max-height: 480px) {
+        .editor {
+          min-height: 80px;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="app" id="appRoot">
+      <section class="preview-wrap" id="previewWrap">
+        <div id="preview" class="preview"></div>
+        <div id="badge" class="badge" hidden></div>
+
+        <div id="warningBar" class="warning-bar" hidden>
+          <span class="warning-bar__icon">⚠️</span>
+          <span class="warning-bar__text" id="warningText"></span>
+          <button
+            id="warningClose"
+            class="warning-bar__close"
+            type="button"
+            aria-label="关闭警告"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div class="preview-actions" id="previewActions">
+          <button
+            id="btnPreviewMenu"
+            class="fab fab--ghost"
+            type="button"
+            aria-label="更多操作"
+            aria-haspopup="menu"
+            aria-expanded="false"
+            title="更多操作"
+          >
+            ⋯
+          </button>
+
+          <div id="previewMenu" class="dropdown" hidden role="menu">
+            <button id="menuCopyPng" type="button" role="menuitem">
+              复制 PNG
+            </button>
+            <button id="menuCopySvg" type="button" role="menuitem">
+              复制 SVG
+            </button>
+            <div class="dropdown__sep"></div>
+            <button id="menuSavePng" type="button" role="menuitem">
+              保存 PNG
+            </button>
+            <button id="menuSaveSvg" type="button" role="menuitem">
+              保存 SVG
+            </button>
+          </div>
+        </div>
+
+        <div class="view-controls">
+          <div class="bg-switcher" role="group" aria-label="预览背景">
+            <button
+              class="bg-btn is-active"
+              data-bg="checker"
+              type="button"
+              aria-label="棋盘格背景"
+              title="棋盘格"
+            ></button>
+            <button
+              class="bg-btn"
+              data-bg="white"
+              type="button"
+              aria-label="白色背景"
+              title="白色"
+            ></button>
+            <button
+              class="bg-btn"
+              data-bg="dark"
+              type="button"
+              aria-label="深色背景"
+              title="深色"
+            ></button>
+          </div>
+          <span class="view-controls__sep"></span>
+          <div class="zoom-controls">
+            <button
+              id="zoomOut"
+              class="zoom-btn"
+              type="button"
+              aria-label="缩小"
+              title="缩小"
+            >
+              −
+            </button>
+            <button
+              id="zoomReset"
+              class="zoom-label"
+              type="button"
+              aria-label="重置视图"
+              title="点击重置为适应窗口"
+            >
+              100%
+            </button>
+            <button
+              id="zoomIn"
+              class="zoom-btn"
+              type="button"
+              aria-label="放大"
+              title="放大"
+            >
+              +
+            </button>
+            <button
+              id="zoomActual"
+              class="zoom-btn zoom-btn--actual"
+              type="button"
+              aria-label="实际大小 100%，居中显示"
+              title="实际大小 100%，居中显示"
+            >
+              1:1
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <div class="splitter" id="splitter">
+        <button
+          id="btnPreviewMax"
+          class="splitter__btn"
+          type="button"
+          title="预览最大化（再点恢复默认）"
+          aria-pressed="false"
+        >
+          预览
+        </button>
+        <div
+          id="splitterGrip"
+          class="splitter__grip"
+          title="拖动调整布局 · 双击恢复默认"
+        ></div>
+        <button
+          id="btnCodeMax"
+          class="splitter__btn"
+          type="button"
+          title="代码最大化（再点恢复默认）"
+          aria-pressed="false"
+        >
+          代码
+        </button>
+      </div>
+
+      <section class="editor" id="editorSection">
+        <div class="editor-actions" id="editorActions">
+          <button
+            id="btnEditorMenu"
+            class="editor-action"
+            type="button"
+            aria-label="更多操作"
+            aria-haspopup="menu"
+            aria-expanded="false"
+            title="更多操作"
+          >
+            ⋯
+          </button>
+
+          <div
+            id="editorMenu"
+            class="dropdown dropdown--dark"
+            hidden
+            role="menu"
+          >
+            <button id="menuOpen" type="button" role="menuitem">
+              打开 SVG
+            </button>
+            <button id="menuFormat" type="button" role="menuitem">
+              格式化
+            </button>
+            <div class="dropdown__sep"></div>
+            <button
+              id="menuWrap"
+              type="button"
+              role="menuitemcheckbox"
+              aria-checked="false"
+            >
+              <span class="dropdown__check">✓</span>自动换行
+            </button>
+          </div>
+        </div>
+
+        <div id="gutter" class="gutter" aria-hidden="true"></div>
+
+        <div class="code-area">
+          <pre
+            id="highlight"
+            class="highlight"
+            aria-hidden="true"
+          ><code id="highlightCode"></code></pre>
+
+          <textarea
+            id="code"
+            class="code-input"
+            wrap="off"
+            spellcheck="false"
+            autocomplete="off"
+            autocapitalize="off"
+            autocorrect="off"
+            aria-label="SVG 源码输入"
+            placeholder="在此粘贴或输入 SVG 代码…"
+          ></textarea>
+        </div>
+      </section>
+    </div>
+
+    <input id="fileInput" type="file" accept=".svg,image/svg+xml" hidden />
+
+    <div id="dropOverlay" class="drop-overlay" hidden>
+      <div class="drop-overlay__inner">
+        <div class="drop-overlay__icon">📂</div>
+        <div class="drop-overlay__text">松开以载入 SVG 文件</div>
+      </div>
+    </div>
+
+    <div id="modalMask" class="modal-mask" hidden>
+      <div
+        class="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modalTitle"
+      >
+        <h3 id="modalTitle" class="modal__title">导出 SVG</h3>
+        <p id="modalSubtitle" class="modal__subtitle">
+          设置输出尺寸，点击导出即可保存
+        </p>
+
+        <div class="modal__row">
+          <div class="modal__field">
+            <label class="modal__label" for="exportW">宽度（px）</label>
+            <input
+              id="exportW"
+              class="modal__input"
+              type="number"
+              inputmode="numeric"
+              min="1"
+              step="1"
+            />
+          </div>
+          <span class="modal__x">×</span>
+          <div class="modal__field">
+            <label class="modal__label" for="exportH">高度（px）</label>
+            <input
+              id="exportH"
+              class="modal__input"
+              type="number"
+              inputmode="numeric"
+              min="1"
+              step="1"
+            />
+          </div>
+          <button
+            id="exportLock"
+            class="modal__lock is-locked"
+            type="button"
+            aria-label="锁定宽高比"
+            aria-pressed="true"
+            title="锁定 / 解锁宽高比"
+          >
+            🔒
+          </button>
+        </div>
+
+        <p id="exportHint" class="modal__hint" hidden></p>
+
+        <div
+          id="formatRow"
+          class="modal__field"
+          style="margin-bottom: 10px"
+          hidden
+        >
+          <label class="modal__label" for="exportFormat">图片格式</label>
+          <select id="exportFormat" class="modal__select">
+            <option value="png">PNG（支持透明）</option>
+            <option value="webp">WebP（支持透明）</option>
+            <option value="jpg">JPG（不支持透明）</option>
+          </select>
+        </div>
+
+        <label id="bgRow" class="modal__check" hidden>
+          <input id="exportWhiteBg" type="checkbox" />
+          <span class="modal__check-desc">白色背景（不勾选则透明）</span>
+        </label>
+
+        <div class="modal__actions">
+          <button id="exportOriginal" class="btn btn--ghost" type="button">
+            原始尺寸
+          </button>
+          <button id="exportCancel" class="btn btn--ghost" type="button">
+            取消
+          </button>
+          <button id="exportConfirm" class="btn btn--primary" type="button">
+            导出
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+    <script>
+      (function () {
+        "use strict";
+
+        const appEl = document.getElementById("appRoot");
+        const previewHost = document.getElementById("preview");
+        const previewWrap = document.getElementById("previewWrap");
+        const editorEl = document.getElementById("editorSection");
+        const codeEl = document.getElementById("code");
+        const highlightEl = document.getElementById("highlight");
+        const highlightCode = document.getElementById("highlightCode");
+        const gutterEl = document.getElementById("gutter");
+        const badge = document.getElementById("badge");
+        const toastEl = document.getElementById("toast");
+        const fileInput = document.getElementById("fileInput");
+        const dropOverlay = document.getElementById("dropOverlay");
+
+        const previewActions = document.getElementById("previewActions");
+        const btnPreviewMenu = document.getElementById("btnPreviewMenu");
+        const previewMenu = document.getElementById("previewMenu");
+        const menuCopyPng = document.getElementById("menuCopyPng");
+        const menuCopySvg = document.getElementById("menuCopySvg");
+        const menuSavePng = document.getElementById("menuSavePng");
+        const menuSaveSvg = document.getElementById("menuSaveSvg");
+
+        const editorActions = document.getElementById("editorActions");
+        const btnEditorMenu = document.getElementById("btnEditorMenu");
+        const editorMenu = document.getElementById("editorMenu");
+        const menuOpen = document.getElementById("menuOpen");
+        const menuFormat = document.getElementById("menuFormat");
+        const menuWrap = document.getElementById("menuWrap");
+
+        const zoomInBtn = document.getElementById("zoomIn");
+        const zoomOutBtn = document.getElementById("zoomOut");
+        const zoomResetBtn = document.getElementById("zoomReset");
+        const zoomLabel = zoomResetBtn;
+        const zoomActualBtn = document.getElementById("zoomActual");
+        const bgBtns = Array.from(document.querySelectorAll(".bg-btn"));
+
+        const splitterEl = document.getElementById("splitter");
+        const splitterGrip = document.getElementById("splitterGrip");
+        const btnPreviewMax = document.getElementById("btnPreviewMax");
+        const btnCodeMax = document.getElementById("btnCodeMax");
+
+        const warningBar = document.getElementById("warningBar");
+        const warningText = document.getElementById("warningText");
+        const warningClose = document.getElementById("warningClose");
+
+        const modalMask = document.getElementById("modalMask");
+        const modalTitle = document.getElementById("modalTitle");
+        const modalSubtitle = document.getElementById("modalSubtitle");
+        const exportWInput = document.getElementById("exportW");
+        const exportHInput = document.getElementById("exportH");
+        const exportLock = document.getElementById("exportLock");
+        const exportHint = document.getElementById("exportHint");
+        const formatRow = document.getElementById("formatRow");
+        const exportFormat = document.getElementById("exportFormat");
+        const bgRow = document.getElementById("bgRow");
+        const exportWhiteBg = document.getElementById("exportWhiteBg");
+        const exportOriginal = document.getElementById("exportOriginal");
+        const exportCancel = document.getElementById("exportCancel");
+        const exportConfirm = document.getElementById("exportConfirm");
+
+        const shadow = previewHost.attachShadow({ mode: "open" });
+        shadow.innerHTML = `
+    <style>
+      :host { display: block; width: 100%; height: 100%; }
+      .stage {
+        position: relative;
+        width: 100%; height: 100%;
+        overflow: hidden;
+        background: #ffffff;
+      }
+      .stage.bg-checker {
+        background-color: #f8fafc;
+        background-image:
+          linear-gradient(45deg, #e2e8f0 25%, transparent 25%),
+          linear-gradient(-45deg, #e2e8f0 25%, transparent 25%),
+          linear-gradient(45deg, transparent 75%, #e2e8f0 75%),
+          linear-gradient(-45deg, transparent 75%, #e2e8f0 75%);
+        background-size: 16px 16px;
+        background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+      }
+      .stage.bg-white { background: #ffffff; }
+      .stage.bg-dark  { background: #0f172a; }
+      .canvas {
+        position: absolute;
+        left: 0; top: 0;
+        transform-origin: 0 0;
+        will-change: transform;
+      }
+      .canvas > svg {
+        display: block;
+        max-width: none;
+        max-height: none;
+      }
+    </style>
+    <div class="stage bg-checker">
+      <div class="canvas"></div>
+    </div>
+  `;
+        const stageEl = shadow.querySelector(".stage");
+        const canvasEl = shadow.querySelector(".canvas");
+
+        let currentSvg = null;
+        let lastGoodCode = null;
+        let renderTimer = null;
+        let toastTimer = null;
+        let draftTimer = null;
+
+        let previewScale = 1;
+        let previewTx = 0;
+        let previewTy = 0;
+
+        let exportState = null;
+        let isWrapMode = false;
+        let measureRafId = 0;
+
+        let splitState = "default";
+        let splitRatio = 0.8;
+
+        const MAX_SIDE = 4096;
+        const DRAFT_KEY = "svg-editor.draft.v1";
+
+        function stamp() {
+          const d = new Date();
+          const p = (n) => String(n).padStart(2, "0");
+          return (
+            `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}` +
+            `-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`
+          );
+        }
+
+        function showToast(msg) {
+          toastEl.textContent = msg;
+          toastEl.classList.add("is-show");
+          clearTimeout(toastTimer);
+          toastTimer = setTimeout(
+            () => toastEl.classList.remove("is-show"),
+            2400,
+          );
+        }
+
+        function setError(msg) {
+          if (msg) {
+            errorEl.textContent = msg;
+            errorEl.hidden = false;
+            warningBar.hidden = true;
+          } else {
+            errorEl.hidden = true;
+            errorEl.textContent = "";
+          }
+        }
+
+        function showWarning(msg) {
+          if (!errorEl.hidden) return;
+          warningText.textContent = msg;
+          warningBar.hidden = false;
+        }
+
+        function hideWarning() {
+          warningBar.hidden = true;
+        }
+
+        function updateButtons() {
+          const ok = !!currentSvg;
+          btnPreviewMenu.disabled = !ok;
+          menuCopyPng.disabled = !ok;
+          menuCopySvg.disabled = !ok;
+          menuSavePng.disabled = !ok;
+          menuSaveSvg.disabled = !ok;
+        }
+
+        function downloadBlob(blob, filename) {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = filename;
+          a.style.display = "none";
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          setTimeout(() => URL.revokeObjectURL(url), 2000);
+        }
+
+        const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+
+        const errorEl = document.createElement("div");
+        errorEl.className = "error";
+        errorEl.hidden = true;
+        previewWrap.appendChild(errorEl);
+
+        function parseSVG(code) {
+          const doc = new DOMParser().parseFromString(code, "image/svg+xml");
+          const errNode = doc.querySelector("parsererror");
+          if (errNode) {
+            const detail = (errNode.textContent || "")
+              .replace(/\s+/g, " ")
+              .trim()
+              .slice(0, 180);
+            throw new Error("SVG 语法错误：" + detail);
+          }
+          const root = doc.documentElement;
+          if (!root || root.nodeName.toLowerCase() !== "svg") {
+            throw new Error("根元素必须是 <svg>");
+          }
+          sanitize(root);
+          ensureNamespaces(root);
+          return root;
+        }
+
+        function sanitize(root) {
+          Array.from(root.getElementsByTagName("script")).forEach((n) =>
+            n.remove(),
+          );
+          const nodes = [root, ...Array.from(root.querySelectorAll("*"))];
+          nodes.forEach((el) => {
+            if (!el.attributes) return;
+            Array.from(el.attributes).forEach((attr) => {
+              const name = attr.name.toLowerCase();
+              const value = (attr.value || "").trim().toLowerCase();
+              if (name.startsWith("on")) {
+                el.removeAttribute(attr.name);
+              } else if (
+                (name === "href" || name === "xlink:href" || name === "src") &&
+                value.startsWith("javascript:")
+              ) {
+                el.removeAttribute(attr.name);
+              }
+            });
+          });
+        }
+
+        function ensureNamespaces(root) {
+          if (!root.getAttribute("xmlns")) {
+            root.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+          }
+          let usesXlink = false;
+          const nodes = [root, ...Array.from(root.querySelectorAll("*"))];
+          for (const el of nodes) {
+            if (!el.attributes) continue;
+            for (const attr of Array.from(el.attributes)) {
+              if (attr.name.toLowerCase().startsWith("xlink:")) {
+                usesXlink = true;
+                break;
+              }
+            }
+            if (usesXlink) break;
+          }
+          if (usesXlink && !root.getAttribute("xmlns:xlink")) {
+            root.setAttribute("xmlns:xlink", "http://www.w3.org/1999/xlink");
+          }
+        }
+
+        const RESOURCE_TAGS = ["image", "use", "feimage"];
+
+        function detectExternalRefs(root) {
+          const refs = [];
+          const nodes = [root, ...Array.from(root.querySelectorAll("*"))];
+          for (const el of nodes) {
+            const tag = el.nodeName.toLowerCase();
+            if (!RESOURCE_TAGS.includes(tag)) continue;
+            const href =
+              el.getAttribute("href") || el.getAttribute("xlink:href");
+            if (!href) continue;
+            const v = href.trim();
+            if (!v || v.startsWith("data:") || v.startsWith("#")) continue;
+            refs.push(v);
+            if (refs.length >= 3) break;
+          }
+          return refs;
+        }
+
+        function parseLength(value) {
+          if (!value) return null;
+          const s = String(value).trim();
+          if (s.endsWith("%")) return null;
+          const n = parseFloat(s);
+          return isFinite(n) && n > 0 ? n : null;
+        }
+
+        function getSize(svg) {
+          let vbBox = null;
+          const vb = svg.getAttribute("viewBox");
+          if (vb) {
+            const p = vb
+              .trim()
+              .split(/[\s,]+/)
+              .map(Number);
+            if (p.length === 4 && p[2] > 0 && p[3] > 0) {
+              vbBox = { w: p[2], h: p[3] };
+            }
+          }
+          const w = parseLength(svg.getAttribute("width"));
+          const h = parseLength(svg.getAttribute("height"));
+          if (w && h) return { width: w, height: h };
+          if (vbBox) {
+            if (w && !h) return { width: w, height: (w * vbBox.h) / vbBox.w };
+            if (h && !w) return { width: (h * vbBox.w) / vbBox.h, height: h };
+            return { width: vbBox.w, height: vbBox.h };
+          }
+          if (w && !h) return { width: w, height: w * 0.75 };
+          if (h && !w) return { width: h * 0.75, height: h };
+          return { width: 800, height: 600 };
+        }
+
+        function serializeSVG(svg, width, height) {
+          const clone = svg.cloneNode(true);
+          if (!clone.getAttribute("xmlns")) {
+            clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+          }
+          if (width != null && height != null) {
+            clone.setAttribute("width", String(width));
+            clone.setAttribute("height", String(height));
+          }
+          let xml = new XMLSerializer().serializeToString(clone);
+          if (!/^\s*<\?xml/.test(xml)) {
+            xml = '<?xml version="1.0" encoding="UTF-8"?>\n' + xml;
+          }
+          return xml;
+        }
+
+        function applyView() {
+          if (!currentSvg) return;
+          const size = getSize(currentSvg);
+          const rect = previewHost.getBoundingClientRect();
+          const s = previewScale;
+          const w = size.width * s;
+          const h = size.height * s;
+          const left = (rect.width - w) / 2 + previewTx;
+          const top = (rect.height - h) / 2 + previewTy;
+          canvasEl.style.transform = `translate(${left}px, ${top}px) scale(${s})`;
+          zoomLabel.textContent = Math.round(s * 100) + "%";
+        }
+
+        function fitToView() {
+          if (!currentSvg) return;
+          const size = getSize(currentSvg);
+          const rect = previewHost.getBoundingClientRect();
+          const pad = 40;
+          const s = Math.min(
+            (rect.width - pad) / size.width,
+            (rect.height - pad) / size.height,
+            1,
+          );
+          previewScale = clamp(s, 0.05, 20);
+          previewTx = 0;
+          previewTy = 0;
+          applyView();
+        }
+
+        function render() {
+          const code = codeEl.value;
+          if (!code.trim()) {
+            currentSvg = null;
+            lastGoodCode = null;
+            canvasEl.replaceChildren();
+            setError("");
+            hideWarning();
+            badge.hidden = true;
+            updateButtons();
+            return;
+          }
+          if (code === lastGoodCode) return;
+
+          let svg;
+          try {
+            svg = parseSVG(code);
+          } catch (err) {
+            setError(err.message || "SVG 解析失败");
+            return;
+          }
+
+          setError("");
+          currentSvg = svg;
+          lastGoodCode = code;
+
+          const refs = detectExternalRefs(svg);
+          if (refs.length > 0) {
+            const first = refs[0];
+            const shown = first.length > 50 ? first.slice(0, 50) + "…" : first;
+            const more = refs.length > 1 ? ` 等 ${refs.length} 处` : "";
+            showWarning(`检测到外部引用：${shown}${more}，导出 PNG 可能失败`);
+          } else {
+            hideWarning();
+          }
+
+          const node = document.importNode(svg, true);
+          const { width, height } = getSize(svg);
+          node.setAttribute("width", String(Math.round(width)));
+          node.setAttribute("height", String(Math.round(height)));
+          canvasEl.replaceChildren(node);
+
+          badge.textContent = `${Math.round(width)} × ${Math.round(height)}`;
+          badge.hidden = false;
+
+          fitToView();
+          updateButtons();
+        }
+
+        function scheduleRender() {
+          clearTimeout(renderTimer);
+          renderTimer = setTimeout(render, 250);
+        }
+
+        function exportSVG(width, height) {
+          if (!currentSvg) return;
+          try {
+            const markup = serializeSVG(currentSvg, width, height);
+            const blob = new Blob([markup], {
+              type: "image/svg+xml;charset=utf-8",
+            });
+            downloadBlob(blob, `svg-${stamp()}.svg`);
+            showToast(`SVG 已保存（${width} × ${height}）`);
+          } catch (err) {
+            console.error(err);
+            showToast("SVG 保存失败：" + (err.message || "未知错误"));
+          }
+        }
+
+        async function exportImage(width, height, format, whiteBg) {
+          if (!currentSvg) return;
+          const isJpg = format === "jpg";
+          const needWhite = isJpg || whiteBg;
+          const mime = isJpg ? "image/jpeg" : `image/${format}`;
+          const quality = format === "png" ? undefined : 0.92;
+
+          try {
+            const markup = serializeSVG(currentSvg, width, height);
+            const canvas = document.createElement("canvas");
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext("2d");
+            if (needWhite) {
+              ctx.fillStyle = "#ffffff";
+              ctx.fillRect(0, 0, width, height);
+            }
+            const dataUrl =
+              "data:image/svg+xml;charset=utf-8," + encodeURIComponent(markup);
+            const img = new Image();
+            await new Promise((resolve, reject) => {
+              img.onload = () => resolve();
+              img.onerror = () =>
+                reject(new Error("SVG 无法渲染为图像，可能引用了外部资源"));
+              img.src = dataUrl;
+            });
+            ctx.drawImage(img, 0, 0, width, height);
+            const blob = await new Promise((res) =>
+              canvas.toBlob(res, mime, quality),
+            );
+            if (!blob) throw new Error("图像生成失败");
+            const ext = isJpg ? "jpg" : format;
+            downloadBlob(blob, `svg-${stamp()}.${ext}`);
+            showToast(
+              `${ext.toUpperCase()} 已保存（${width} × ${height}，${needWhite ? "白底" : "透明"}）`,
+            );
+          } catch (err) {
+            console.error(err);
+            showToast("图像导出失败：" + (err.message || "未知错误"));
+          }
+        }
+
+        function openModal(format) {
+          if (!currentSvg) return;
+          const size = getSize(currentSvg);
+          const ow = Math.round(size.width);
+          const oh = Math.round(size.height);
+
+          exportState = {
+            mode: format,
+            originWidth: ow,
+            originHeight: oh,
+            lockRatio: true,
+            hasViewBox: !!currentSvg.getAttribute("viewBox"),
+          };
+
+          modalTitle.textContent = format === "svg" ? "导出 SVG" : "导出图片";
+          exportWInput.value = ow;
+          exportHInput.value = oh;
+
+          exportLock.textContent = "🔒";
+          exportLock.classList.add("is-locked");
+          exportLock.setAttribute("aria-pressed", "true");
+
+          if (!exportState.hasViewBox) {
+            exportHint.textContent =
+              "此 SVG 没有 viewBox，修改尺寸可能导致内容被裁切或留白。";
+            exportHint.hidden = false;
+          } else {
+            exportHint.hidden = true;
+          }
+
+          const isSvg = format === "svg";
+          formatRow.hidden = isSvg;
+          const isJpg = !isSvg && exportFormat.value === "jpg";
+          bgRow.hidden = isSvg || isJpg;
+          exportWhiteBg.checked = false;
+
+          modalSubtitle.textContent = isSvg
+            ? "设置输出尺寸，点击导出即可保存"
+            : "选择格式与尺寸，点击导出即可保存";
+
+          modalMask.hidden = false;
+
+          if (window.matchMedia("(hover: hover)").matches) {
+            exportWInput.focus();
+            exportWInput.select();
+          }
+        }
+
+        function closeModal() {
+          modalMask.hidden = true;
+          exportState = null;
+        }
+
+        function syncHeightFromWidth() {
+          if (!exportState || !exportState.lockRatio) return;
+          const w = parseInt(exportWInput.value, 10);
+          if (w > 0) {
+            const ratio = exportState.originWidth / exportState.originHeight;
+            exportHInput.value = Math.max(1, Math.round(w / ratio));
+          }
+        }
+
+        function syncWidthFromHeight() {
+          if (!exportState || !exportState.lockRatio) return;
+          const h = parseInt(exportHInput.value, 10);
+          if (h > 0) {
+            const ratio = exportState.originWidth / exportState.originHeight;
+            exportWInput.value = Math.max(1, Math.round(h * ratio));
+          }
+        }
+
+        function confirmExport() {
+          if (!exportState) return;
+          const w = parseInt(exportWInput.value, 10);
+          const h = parseInt(exportHInput.value, 10);
+          if (!w || !h || w <= 0 || h <= 0 || !isFinite(w) || !isFinite(h)) {
+            showToast("请输入有效的宽度和高度");
+            return;
+          }
+          if (w > MAX_SIDE || h > MAX_SIDE) {
+            showToast(`单边尺寸不能超过 ${MAX_SIDE}px`);
+            return;
+          }
+          const mode = exportState.mode;
+          const format = mode === "svg" ? "svg" : exportFormat.value;
+          const isJpg = format === "jpg";
+          const whiteBg = isJpg || exportWhiteBg.checked;
+          closeModal();
+          if (mode === "svg") exportSVG(w, h);
+          else exportImage(w, h, format, whiteBg);
+        }
+
+        function setFlex(el, grow, basis, minH) {
+          el.style.flexGrow = String(grow);
+          el.style.flexShrink = "1";
+          el.style.flexBasis = basis || "0";
+          el.style.minHeight = (minH || 0) + "px";
+        }
+
+        function applySplit() {
+          const isMobile = window.innerWidth <= 480;
+          const minEditor = isMobile ? 100 : 120;
+          const minPreview = 80;
+
+          if (splitState === "preview-max") {
+            setFlex(previewWrap, 100, "0", minPreview);
+            setFlex(editorEl, 0.001, minEditor + "px", minEditor);
+          } else if (splitState === "code-max") {
+            setFlex(previewWrap, 0.001, minPreview + "px", minPreview);
+            setFlex(editorEl, 100, "0", minEditor);
+          } else {
+            setFlex(previewWrap, splitRatio * 100, "0", minPreview);
+            setFlex(editorEl, (1 - splitRatio) * 100, "0", minEditor);
+          }
+
+          btnPreviewMax.classList.toggle(
+            "is-active",
+            splitState === "preview-max",
+          );
+          btnCodeMax.classList.toggle("is-active", splitState === "code-max");
+          btnPreviewMax.setAttribute(
+            "aria-pressed",
+            String(splitState === "preview-max"),
+          );
+          btnCodeMax.setAttribute(
+            "aria-pressed",
+            String(splitState === "code-max"),
+          );
+
+          requestAnimationFrame(() => {
+            if (currentSvg) applyView();
+          });
+        }
+
+        let isSplitting = false;
+        let splitStartY = 0;
+        let splitStartH = 0;
+
+        function getPreviewHeight() {
+          return previewWrap.getBoundingClientRect().height;
+        }
+
+        function onSplitDown(e) {
+          if (e.target.closest(".splitter__btn")) return;
+          if (e.pointerType === "mouse" && e.button !== 0) return;
+          isSplitting = true;
+          splitStartY = e.clientY;
+          splitStartH = getPreviewHeight();
+          splitState = "default";
+          try {
+            splitterEl.setPointerCapture(e.pointerId);
+          } catch (err) {}
+          document.body.style.cursor = "ns-resize";
+          document.body.style.userSelect = "none";
+        }
+
+        function onSplitMove(e) {
+          if (!isSplitting) return;
+          const delta = e.clientY - splitStartY;
+          const appRect = appEl.getBoundingClientRect();
+          const splitterH = splitterEl.getBoundingClientRect().height;
+          const totalH = appRect.height - splitterH;
+          if (totalH <= 0) return;
+          const newPreviewH = splitStartH + delta;
+          const ratio = clamp(newPreviewH / totalH, 0.1, 0.9);
+          splitRatio = ratio;
+          applySplit();
+        }
+
+        function onSplitUp(e) {
+          if (!isSplitting) return;
+          isSplitting = false;
+          try {
+            splitterEl.releasePointerCapture(e.pointerId);
+          } catch (err) {}
+          document.body.style.cursor = "";
+          document.body.style.userSelect = "";
+        }
+
+        splitterEl.addEventListener("pointerdown", onSplitDown);
+        splitterEl.addEventListener("pointermove", onSplitMove);
+        splitterEl.addEventListener("pointerup", onSplitUp);
+        splitterEl.addEventListener("pointercancel", onSplitUp);
+
+        splitterGrip.addEventListener("dblclick", () => {
+          splitState = "default";
+          splitRatio = 0.8;
+          applySplit();
+          showToast("已恢复默认 80/20 布局");
+        });
+
+        btnPreviewMax.addEventListener("click", () => {
+          splitState = splitState === "preview-max" ? "default" : "preview-max";
+          applySplit();
+          showToast(
+            splitState === "preview-max" ? "预览已最大化" : "恢复默认布局",
+          );
+        });
+
+        btnCodeMax.addEventListener("click", () => {
+          splitState = splitState === "code-max" ? "default" : "code-max";
+          applySplit();
+          showToast(
+            splitState === "code-max" ? "代码已最大化" : "恢复默认布局",
+          );
+        });
+
+        function syncScroll() {
+          const top = codeEl.scrollTop;
+          const left = codeEl.scrollLeft;
+          highlightEl.scrollTop = top;
+          highlightEl.scrollLeft = left;
+          gutterEl.scrollTop = top;
+        }
+
+        function renderGutter(lineCount) {
+          let html = "";
+          for (let i = 1; i <= lineCount; i++) {
+            html += '<div class="gutter-line">' + i + "</div>";
+          }
+          gutterEl.innerHTML = html;
+          const digits = String(lineCount).length;
+          gutterEl.style.minWidth = `calc(${digits}ch + 22px)`;
+        }
+
+        function scheduleGutterMeasure() {
+          const id = ++measureRafId;
+          requestAnimationFrame(() => {
+            if (id !== measureRafId) return;
+            if (!isWrapMode) return;
+            const lineEls = highlightCode.querySelectorAll(".line");
+            const gutterEls = gutterEl.querySelectorAll(".gutter-line");
+            if (!lineEls.length || lineEls.length !== gutterEls.length) return;
+            const heights = new Array(lineEls.length);
+            for (let i = 0; i < lineEls.length; i++)
+              heights[i] = lineEls[i].offsetHeight;
+            for (let i = 0; i < gutterEls.length; i++)
+              gutterEls[i].style.height = heights[i] + "px";
+          });
+        }
+
+        function splitHighlightByLines(html) {
+          const result = [];
+          let current = "";
+          const stack = [];
+          let i = 0;
+          while (i < html.length) {
+            const ch = html[i];
+            if (ch === "<") {
+              const end = html.indexOf(">", i);
+              if (end === -1) {
+                current += html.slice(i);
+                break;
+              }
+              const tag = html.slice(i, end + 1);
+              current += tag;
+              if (tag.startsWith("</")) stack.pop();
+              else stack.push(tag);
+              i = end + 1;
+            } else if (ch === "\n") {
+              let closing = "";
+              for (let k = stack.length - 1; k >= 0; k--) closing += "</span>";
+              result.push(current + closing);
+              current = stack.join("");
+              i++;
+            } else {
+              current += ch;
+              i++;
+            }
+          }
+          if (current || result.length === 0) {
+            let closing = "";
+            for (let k = stack.length - 1; k >= 0; k--) closing += "</span>";
+            result.push(current + closing);
+          }
+          return result;
+        }
+
+        function renderEditor() {
+          const code = codeEl.value;
+          const lineCount = code.split("\n").length;
+          renderGutter(lineCount);
+          if (isWrapMode) {
+            const html = highlightXML(code);
+            const lineHtmls = splitHighlightByLines(html);
+            highlightCode.innerHTML = lineHtmls
+              .map((h) => '<span class="line">' + h + "</span>")
+              .join("");
+            scheduleGutterMeasure();
+          } else {
+            highlightCode.innerHTML = highlightXML(code) + "\n";
+          }
+          syncScroll();
+        }
+
+        function esc(s) {
+          return s
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
+        }
+
+        function findTagEnd(code, start) {
+          let i = start;
+          let quote = null;
+          while (i < code.length) {
+            const c = code[i];
+            if (quote) {
+              if (c === quote) quote = null;
+            } else if (c === '"' || c === "'") {
+              quote = c;
+            } else if (c === ">") {
+              return i;
+            }
+            i++;
+          }
+          return code.length;
+        }
+
+        function highlightTag(tag) {
+          const m = tag.match(/^(<\/?)([A-Za-z_][\w\-:.]*)([\s\S]*?)(\/?>)$/);
+          if (!m) return esc(tag);
+          const [, open, name, attrs, close] = m;
+          return (
+            esc(open) +
+            '<span class="tok-tag">' +
+            esc(name) +
+            "</span>" +
+            highlightAttrs(attrs) +
+            esc(close)
+          );
+        }
+
+        function highlightAttrs(attrs) {
+          if (!attrs) return "";
+          let out = "";
+          let i = 0;
+          const len = attrs.length;
+          while (i < len) {
+            const c = attrs[i];
+            if (c === '"' || c === "'") {
+              const quote = c;
+              const end = attrs.indexOf(quote, i + 1);
+              const stop = end === -1 ? len : end + 1;
+              out +=
+                '<span class="tok-string">' +
+                esc(attrs.slice(i, stop)) +
+                "</span>";
+              i = stop;
+            } else if (/[A-Za-z_:]/.test(c)) {
+              let j = i;
+              while (j < len && /[\w\-:.]/.test(attrs[j])) j++;
+              out +=
+                '<span class="tok-attr">' + esc(attrs.slice(i, j)) + "</span>";
+              i = j;
+            } else {
+              out += esc(c);
+              i++;
+            }
+          }
+          return out;
+        }
+
+        function highlightXML(code) {
+          let out = "";
+          let i = 0;
+          const len = code.length;
+          while (i < len) {
+            if (code.startsWith("<!--", i)) {
+              const end = code.indexOf("-->", i + 4);
+              const stop = end === -1 ? len : end + 3;
+              out +=
+                '<span class="tok-comment">' +
+                esc(code.slice(i, stop)) +
+                "</span>";
+              i = stop;
+              continue;
+            }
+            if (code.startsWith("<![CDATA[", i)) {
+              const end = code.indexOf("]]>", i + 9);
+              const stop = end === -1 ? len : end + 3;
+              out +=
+                '<span class="tok-cdata">' +
+                esc(code.slice(i, stop)) +
+                "</span>";
+              i = stop;
+              continue;
+            }
+            if (code.startsWith("<?", i)) {
+              const end = code.indexOf("?>", i + 2);
+              const stop = end === -1 ? len : end + 2;
+              out +=
+                '<span class="tok-pi">' + esc(code.slice(i, stop)) + "</span>";
+              i = stop;
+              continue;
+            }
+            if (code.startsWith("<!", i)) {
+              const end = code.indexOf(">", i + 2);
+              const stop = end === -1 ? len : end + 1;
+              out +=
+                '<span class="tok-doctype">' +
+                esc(code.slice(i, stop)) +
+                "</span>";
+              i = stop;
+              continue;
+            }
+            if (code[i] === "<") {
+              const end = findTagEnd(code, i + 1);
+              const stop = end === -1 ? len : end + 1;
+              out += highlightTag(code.slice(i, stop));
+              i = stop;
+              continue;
+            }
+            let next = i;
+            while (next < len && code[next] !== "<") next++;
+            out += esc(code.slice(i, next));
+            i = next;
+          }
+          return out;
+        }
+
+        function formatXML(xml) {
+          const tokens = [];
+          let i = 0;
+          const len = xml.length;
+          while (i < len) {
+            if (xml.startsWith("<!--", i)) {
+              const end = xml.indexOf("-->", i + 4);
+              const stop = end === -1 ? len : end + 3;
+              tokens.push({ type: "meta", value: xml.slice(i, stop) });
+              i = stop;
+            } else if (xml.startsWith("<![CDATA[", i)) {
+              const end = xml.indexOf("]]>", i + 9);
+              const stop = end === -1 ? len : end + 3;
+              tokens.push({ type: "meta", value: xml.slice(i, stop) });
+              i = stop;
+            } else if (xml.startsWith("<?", i)) {
+              const end = xml.indexOf("?>", i + 2);
+              const stop = end === -1 ? len : end + 2;
+              tokens.push({ type: "meta", value: xml.slice(i, stop) });
+              i = stop;
+            } else if (xml.startsWith("<!", i)) {
+              const end = xml.indexOf(">", i + 2);
+              const stop = end === -1 ? len : end + 1;
+              tokens.push({ type: "meta", value: xml.slice(i, stop) });
+              i = stop;
+            } else if (xml[i] === "<") {
+              const end = findTagEnd(xml, i + 1);
+              const stop = end === -1 ? len : end + 1;
+              const tag = xml.slice(i, stop);
+              if (tag.startsWith("</"))
+                tokens.push({ type: "close", value: tag });
+              else if (tag.endsWith("/>"))
+                tokens.push({ type: "self", value: tag });
+              else tokens.push({ type: "open", value: tag });
+              i = stop;
+            } else {
+              let next = i;
+              while (next < len && xml[next] !== "<") next++;
+              const text = xml.slice(i, next).trim();
+              if (text) tokens.push({ type: "text", value: text });
+              i = next;
+            }
+          }
+
+          const INDENT = "  ";
+          let out = "";
+          let depth = 0;
+
+          for (let k = 0; k < tokens.length; k++) {
+            const tok = tokens[k];
+            if (tok.type === "open") {
+              const next = tokens[k + 1];
+              const after = tokens[k + 2];
+              if (
+                next &&
+                next.type === "text" &&
+                after &&
+                after.type === "close"
+              ) {
+                const openName = tok.value.match(/^<([^\s>\/]+)/)?.[1];
+                const closeName = after.value.match(/^<\/([^\s>]+)/)?.[1];
+                if (
+                  openName &&
+                  openName === closeName &&
+                  !/[\n<>]/.test(next.value)
+                ) {
+                  out +=
+                    INDENT.repeat(depth) +
+                    tok.value +
+                    next.value +
+                    after.value +
+                    "\n";
+                  k += 2;
+                  continue;
+                }
+              }
+              out += INDENT.repeat(depth) + tok.value + "\n";
+              depth++;
+            } else if (tok.type === "close") {
+              depth = Math.max(0, depth - 1);
+              out += INDENT.repeat(depth) + tok.value + "\n";
+            } else {
+              out += INDENT.repeat(depth) + tok.value + "\n";
+            }
+          }
+          return out.trimEnd();
+        }
+
+        function saveDraftDebounced() {
+          clearTimeout(draftTimer);
+          draftTimer = setTimeout(() => {
+            try {
+              localStorage.setItem(DRAFT_KEY, codeEl.value);
+            } catch (err) {}
+          }, 500);
+        }
+
+        function loadDraft() {
+          try {
+            const v = localStorage.getItem(DRAFT_KEY);
+            if (typeof v === "string" && v.trim()) return v;
+          } catch (err) {}
+          return null;
+        }
+
+        async function loadFile(file) {
+          if (!file) return;
+          const isSvg =
+            /\.svg$/i.test(file.name) || file.type === "image/svg+xml";
+          if (!isSvg) {
+            showToast("请选择 SVG 文件");
+            return;
+          }
+          try {
+            let text = await file.text();
+            text = text.replace(/^\uFEFF/, "");
+            if (!text.trim()) {
+              showToast("文件为空");
+              return;
+            }
+            const doc = new DOMParser().parseFromString(text, "image/svg+xml");
+            const hasParseError = !!doc.querySelector("parsererror");
+
+            codeEl.value = text;
+            renderEditor();
+            scheduleRender();
+            saveDraftDebounced();
+
+            const lineCount = text.split("\n").length;
+            const isSingleLine = lineCount === 1 && text.length > 80;
+
+            let msg;
+            if (hasParseError) {
+              msg = `已载入 ${file.name}，但 SVG 解析失败，请检查语法`;
+            } else if (isSingleLine) {
+              msg = `已载入 ${file.name}（单行文件，可用菜单中「格式化」整理）`;
+            } else {
+              msg = `已载入：${file.name}`;
+            }
+            showToast(msg);
+          } catch (err) {
+            showToast("读取失败：" + (err.message || "未知错误"));
+          }
+        }
+
+        async function copySVGCode() {
+          if (!currentSvg) return;
+          if (!navigator.clipboard || !navigator.clipboard.writeText) {
+            showToast("当前环境不支持剪贴板（需要 HTTPS）");
+            return;
+          }
+          try {
+            const markup = serializeSVG(currentSvg);
+            await navigator.clipboard.writeText(markup);
+            showToast("SVG 代码已复制");
+          } catch (err) {
+            showToast("复制失败：" + (err.message || "权限被拒绝"));
+          }
+        }
+
+        async function copyPNGImage() {
+          if (!currentSvg) return;
+          if (!navigator.clipboard || !window.ClipboardItem) {
+            showToast("当前浏览器不支持复制 PNG（请使用保存）");
+            return;
+          }
+          try {
+            const size = getSize(currentSvg);
+            let w = Math.round(size.width);
+            let h = Math.round(size.height);
+            const longest = Math.max(w, h);
+            if (longest > MAX_SIDE) {
+              const k = MAX_SIDE / longest;
+              w = Math.max(1, Math.round(w * k));
+              h = Math.max(1, Math.round(h * k));
+            }
+            const markup = serializeSVG(currentSvg, w, h);
+            const canvas = document.createElement("canvas");
+            canvas.width = w;
+            canvas.height = h;
+            const ctx = canvas.getContext("2d");
+            const dataUrl =
+              "data:image/svg+xml;charset=utf-8," + encodeURIComponent(markup);
+            const img = new Image();
+            await new Promise((resolve, reject) => {
+              img.onload = () => resolve();
+              img.onerror = () => reject(new Error("SVG 无法渲染"));
+              img.src = dataUrl;
+            });
+            ctx.drawImage(img, 0, 0, w, h);
+            const blob = await new Promise((r) =>
+              canvas.toBlob(r, "image/png"),
+            );
+            if (!blob) throw new Error("PNG 生成失败");
+            await navigator.clipboard.write([
+              new ClipboardItem({ "image/png": blob }),
+            ]);
+            showToast(`PNG 已复制（${w} × ${h}）`);
+          } catch (err) {
+            console.error(err);
+            showToast("复制失败：" + (err.message || "请使用保存功能"));
+          }
+        }
+
+        function setPreviewBg(bg) {
+          stageEl.className = "stage bg-" + bg;
+          bgBtns.forEach((b) =>
+            b.classList.toggle("is-active", b.dataset.bg === bg),
+          );
+        }
+
+        function zoomAt(factor, cx, cy) {
+          if (!currentSvg) return;
+          const rect = previewHost.getBoundingClientRect();
+          const size = getSize(currentSvg);
+          const curW = size.width * previewScale;
+          const curH = size.height * previewScale;
+          const curLeft = (rect.width - curW) / 2 + previewTx;
+          const curTop = (rect.height - curH) / 2 + previewTy;
+          const relX = cx - curLeft;
+          const relY = cy - curTop;
+
+          const newScale = clamp(previewScale * factor, 0.05, 20);
+          if (newScale === previewScale) return;
+
+          const newW = size.width * newScale;
+          const newH = size.height * newScale;
+          const targetLeft = cx - (relX / previewScale) * newScale;
+          const targetTop = cy - (relY / previewScale) * newScale;
+
+          previewTx = targetLeft - (rect.width - newW) / 2;
+          previewTy = targetTop - (rect.height - newH) / 2;
+          previewScale = newScale;
+          applyView();
+        }
+
+        function zoomByButton(factor) {
+          if (!currentSvg) return;
+          const rect = previewHost.getBoundingClientRect();
+          zoomAt(factor, rect.width / 2, rect.height / 2);
+        }
+
+        let lockedScrollTop = 0;
+
+        codeEl.addEventListener("focus", () => {
+          requestAnimationFrame(() => {
+            codeEl.scrollTop = lockedScrollTop;
+            syncScroll();
+          });
+        });
+
+        if (window.visualViewport) {
+          window.visualViewport.addEventListener("scroll", () => {
+            if (
+              window.visualViewport.offsetTop === 0 &&
+              Math.abs(window.scrollY) > 1
+            ) {
+              window.scrollTo(0, 0);
+            }
+          });
+        }
+
+        codeEl.addEventListener("input", () => {
+          lockedScrollTop = codeEl.scrollTop;
+          renderEditor();
+          scheduleRender();
+          saveDraftDebounced();
+        });
+
+        codeEl.addEventListener("scroll", syncScroll);
+
+        codeEl.addEventListener("keydown", (e) => {
+          if (e.key !== "Tab") return;
+          e.preventDefault();
+          const start = codeEl.selectionStart;
+          const end = codeEl.selectionEnd;
+          const value = codeEl.value;
+          codeEl.value = value.slice(0, start) + "  " + value.slice(end);
+          codeEl.selectionStart = codeEl.selectionEnd = start + 2;
+          renderEditor();
+          scheduleRender();
+          saveDraftDebounced();
+        });
+
+        function closeAllMenus() {
+          previewMenu.hidden = true;
+          btnPreviewMenu.setAttribute("aria-expanded", "false");
+          editorMenu.hidden = true;
+          btnEditorMenu.setAttribute("aria-expanded", "false");
+        }
+
+        function toggleMenu(btn, menu) {
+          const willOpen = menu.hidden;
+          closeAllMenus();
+          if (willOpen) {
+            menu.hidden = false;
+            btn.setAttribute("aria-expanded", "true");
+          }
+        }
+
+        btnPreviewMenu.addEventListener("click", (e) => {
+          e.stopPropagation();
+          toggleMenu(btnPreviewMenu, previewMenu);
+        });
+
+        btnEditorMenu.addEventListener("click", (e) => {
+          e.stopPropagation();
+          toggleMenu(btnEditorMenu, editorMenu);
+        });
+
+        menuCopyPng.addEventListener("click", () => {
+          closeAllMenus();
+          copyPNGImage();
+        });
+        menuCopySvg.addEventListener("click", () => {
+          closeAllMenus();
+          copySVGCode();
+        });
+        menuSavePng.addEventListener("click", () => {
+          closeAllMenus();
+          openModal("png");
+        });
+        menuSaveSvg.addEventListener("click", () => {
+          closeAllMenus();
+          openModal("svg");
+        });
+
+        menuOpen.addEventListener("click", () => {
+          closeAllMenus();
+          fileInput.click();
+        });
+
+        menuFormat.addEventListener("click", () => {
+          closeAllMenus();
+          const raw = codeEl.value;
+          if (!raw.trim()) return;
+          try {
+            const formatted = formatXML(raw);
+            if (formatted === raw) {
+              showToast("已是格式化状态");
+              return;
+            }
+            codeEl.value = formatted;
+            renderEditor();
+            scheduleRender();
+            saveDraftDebounced();
+            showToast("代码已格式化");
+          } catch (err) {
+            showToast("格式化失败：" + (err.message || "未知错误"));
+          }
+        });
+
+        menuWrap.addEventListener("click", (e) => {
+          e.stopPropagation();
+          isWrapMode = !isWrapMode;
+          editorEl.classList.toggle("is-wrap", isWrapMode);
+          codeEl.setAttribute("wrap", isWrapMode ? "soft" : "off");
+          menuWrap.setAttribute("aria-checked", String(isWrapMode));
+
+          const savedTop = codeEl.scrollTop;
+          renderEditor();
+          codeEl.scrollTop = savedTop;
+          syncScroll();
+
+          showToast(isWrapMode ? "已开启自动换行" : "已关闭自动换行");
+        });
+
+        document.addEventListener("click", (e) => {
+          if (!e.target.closest("#previewActions")) {
+            previewMenu.hidden = true;
+            btnPreviewMenu.setAttribute("aria-expanded", "false");
+          }
+          if (!e.target.closest("#editorActions")) {
+            editorMenu.hidden = true;
+            btnEditorMenu.setAttribute("aria-expanded", "false");
+          }
+        });
+
+        document.addEventListener("keydown", (e) => {
+          if (e.key !== "Escape") return;
+          if (!modalMask.hidden) closeModal();
+          else closeAllMenus();
+        });
+
+        exportWInput.addEventListener("input", syncHeightFromWidth);
+        exportHInput.addEventListener("input", syncWidthFromHeight);
+
+        exportLock.addEventListener("click", () => {
+          if (!exportState) return;
+          exportState.lockRatio = !exportState.lockRatio;
+          exportLock.textContent = exportState.lockRatio ? "🔒" : "🔓";
+          exportLock.classList.toggle("is-locked", exportState.lockRatio);
+          exportLock.setAttribute(
+            "aria-pressed",
+            String(exportState.lockRatio),
+          );
+          if (exportState.lockRatio) syncHeightFromWidth();
+        });
+
+        exportFormat.addEventListener("change", () => {
+          if (!exportState) return;
+          const isJpg = exportFormat.value === "jpg";
+          bgRow.hidden = isJpg;
+          if (isJpg) exportWhiteBg.checked = false;
+        });
+
+        exportOriginal.addEventListener("click", () => {
+          if (!exportState) return;
+          exportWInput.value = exportState.originWidth;
+          exportHInput.value = exportState.originHeight;
+        });
+
+        exportCancel.addEventListener("click", closeModal);
+        exportConfirm.addEventListener("click", confirmExport);
+
+        modalMask.addEventListener("click", (e) => {
+          if (e.target === modalMask) closeModal();
+        });
+
+        warningClose.addEventListener("click", hideWarning);
+
+        fileInput.addEventListener("change", (e) => {
+          const f = e.target.files?.[0];
+          if (f) loadFile(f);
+          e.target.value = "";
+        });
+
+        let dragCounter = 0;
+
+        window.addEventListener("dragenter", (e) => {
+          if (!e.dataTransfer) return;
+          const types = e.dataTransfer.types || [];
+          if (!Array.from(types).includes("Files")) return;
+          e.preventDefault();
+          dragCounter++;
+          dropOverlay.hidden = false;
+        });
+
+        window.addEventListener("dragover", (e) => {
+          if (!e.dataTransfer) return;
+          const types = e.dataTransfer.types || [];
+          if (!Array.from(types).includes("Files")) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "copy";
+        });
+
+        window.addEventListener("dragleave", (e) => {
+          e.preventDefault();
+          dragCounter--;
+          if (dragCounter <= 0) {
+            dragCounter = 0;
+            dropOverlay.hidden = true;
+          }
+        });
+
+        window.addEventListener("drop", (e) => {
+          e.preventDefault();
+          dragCounter = 0;
+          dropOverlay.hidden = true;
+          const file = e.dataTransfer?.files?.[0];
+          if (file) loadFile(file);
+        });
+
+        bgBtns.forEach((btn) => {
+          btn.addEventListener("click", () => setPreviewBg(btn.dataset.bg));
+        });
+
+        previewWrap.addEventListener(
+          "wheel",
+          (e) => {
+            if (!currentSvg || !modalMask.hidden) return;
+            if (
+              e.target.closest &&
+              e.target.closest(".preview-actions, .view-controls, .warning-bar")
+            )
+              return;
+            e.preventDefault();
+            const rect = previewHost.getBoundingClientRect();
+            const cx = e.clientX - rect.left;
+            const cy = e.clientY - rect.top;
+            const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
+            zoomAt(factor, cx, cy);
+          },
+          { passive: false },
+        );
+
+        zoomInBtn.addEventListener("click", () => zoomByButton(1.25));
+        zoomOutBtn.addEventListener("click", () => zoomByButton(1 / 1.25));
+
+        zoomResetBtn.addEventListener("click", () => {
+          if (!currentSvg) return;
+          fitToView();
+          showToast("视图已重置为适应窗口");
+        });
+
+        zoomActualBtn.addEventListener("click", () => {
+          if (!currentSvg) return;
+          previewScale = 1;
+          previewTx = 0;
+          previewTy = 0;
+          applyView();
+          showToast("已切换为 100% 实际大小");
+        });
+
+        let isDragging = false;
+        let hasMoved = false;
+        let dragStartX = 0,
+          dragStartY = 0;
+        let dragStartTx = 0,
+          dragStartTy = 0;
+
+        previewWrap.addEventListener("pointerdown", (e) => {
+          if (!currentSvg || !modalMask.hidden) return;
+          if (e.pointerType === "mouse" && e.button !== 0) return;
+          if (
+            e.target.closest &&
+            e.target.closest(".preview-actions, .view-controls, .warning-bar")
+          )
+            return;
+          isDragging = true;
+          hasMoved = false;
+          dragStartX = e.clientX;
+          dragStartY = e.clientY;
+          dragStartTx = previewTx;
+          dragStartTy = previewTy;
+          try {
+            previewWrap.setPointerCapture(e.pointerId);
+          } catch (err) {}
+        });
+
+        previewWrap.addEventListener("pointermove", (e) => {
+          if (!isDragging) return;
+          const dx = e.clientX - dragStartX;
+          const dy = e.clientY - dragStartY;
+          if (!hasMoved && (Math.abs(dx) > 2 || Math.abs(dy) > 2))
+            hasMoved = true;
+          if (hasMoved) {
+            previewTx = dragStartTx + dx;
+            previewTy = dragStartTy + dy;
+            applyView();
+          }
+        });
+
+        function endDrag(e) {
+          if (!isDragging) return;
+          isDragging = false;
+          try {
+            previewWrap.releasePointerCapture(e.pointerId);
+          } catch (err) {}
+        }
+
+        previewWrap.addEventListener("pointerup", endDrag);
+        previewWrap.addEventListener("pointercancel", endDrag);
+
+        window.addEventListener("resize", () => {
+          if (currentSvg) applyView();
+        });
+
+        const DEFAULT_CODE = `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="320" viewBox="0 0 480 320">
+  <!-- 渐变与发光滤镜 -->
+  <defs>
+    <linearGradient id="grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#a855f7"/>
+    </linearGradient>
+    <filter id="glow" x="-60%" y="-60%" width="220%" height="220%">
+      <feGaussianBlur stdDeviation="7" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="480" height="320" rx="16" fill="#0f172a"/>
+
+  <circle cx="240" cy="140" r="64" fill="url(#grad)" filter="url(#glow)">
+    <animate attributeName="r" values="58;70;58" dur="2.4s" repeatCount="indefinite"/>
+  </circle>
+
+  <text x="240" y="252" text-anchor="middle" fill="#94a3b8"
+        font-family="system-ui, sans-serif" font-size="15">
+    编辑下方代码，实时预览
+  </text>
+</svg>`;
+
+        const draft = loadDraft();
+        codeEl.value = draft || DEFAULT_CODE;
+
+        setPreviewBg("checker");
+
+        renderEditor();
+        render();
+        applySplit();
+      })();
+    </script>
+  </body>
+</html>
