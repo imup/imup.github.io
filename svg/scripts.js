@@ -2,7 +2,6 @@
 'use strict';
 
 const $ = id => document.getElementById(id);
-
 const appEl         = $('appRoot');
 const previewHost   = $('preview');
 const previewWrap   = $('previewWrap');
@@ -16,7 +15,6 @@ const toastEl       = $('toast');
 const fileInput     = $('fileInput');
 const dropOverlay   = $('dropOverlay');
 const dropOverlayText = dropOverlay.querySelector('.drop-overlay__text');
-
 const btnPreviewMenu = $('btnPreviewMenu');
 const previewMenu    = $('previewMenu');
 const menuOpenSvg    = $('menuOpenSvg');
@@ -27,10 +25,8 @@ const menuSavePng    = $('menuSavePng');
 const menuSaveSvg    = $('menuSaveSvg');
 const btnRotate90    = $('btnRotate90');
 const btnRotateReset = $('btnRotateReset');
-
 const btnUndo = $('btnUndo');
 const btnRedo = $('btnRedo');
-
 const btnFormat     = $('btnFormat');
 const btnFind       = $('btnFind');
 const btnEditorMenu = $('btnEditorMenu');
@@ -41,20 +37,16 @@ const menuAutoIndent = $('menuAutoIndent');
 const menuHistory    = $('menuHistory');
 const menuResetExample = $('menuResetExample');
 const menuClearDraft = $('menuClearDraft');
-
 const zoomInBtn     = $('zoomIn');
 const zoomOutBtn    = $('zoomOut');
 const zoomResetBtn  = $('zoomReset');
 const zoomLabel     = zoomResetBtn;
 const bgBtns        = Array.from(document.querySelectorAll('.bg-btn'));
-
 const splitterEl    = $('splitter');
 const splitterGrips = Array.from(document.querySelectorAll('.tool-grip'));
-
 const warningBar   = $('warningBar');
 const warningText  = $('warningText');
 const warningClose = $('warningClose');
-
 const findPanel      = $('findPanel');
 const findInput      = $('findInput');
 const replaceInput   = $('replaceInput');
@@ -63,7 +55,6 @@ const findNext       = $('findNext');
 const findReplace    = $('findReplace');
 const findReplaceAll = $('findReplaceAll');
 const findClose      = $('findClose');
-
 const modalMask      = $('modalMask');
 const modalTitle     = $('modalTitle');
 const modalSubtitle  = $('modalSubtitle');
@@ -80,12 +71,10 @@ const exportScaleViewBox = $('exportScaleViewBox');
 const exportOriginal = $('exportOriginal');
 const exportCancel   = $('exportCancel');
 const exportConfirm  = $('exportConfirm');
-
 const historyMask  = $('historyMask');
 const historyList  = $('historyList');
 const historyClear = $('historyClear');
 const historyClose = $('historyClose');
-
 const imageFileInput       = $('imageFileInput');
 const imageConfigMask      = $('imageConfigMask');
 const imageConfigPreview   = $('imageConfigPreview');
@@ -101,7 +90,6 @@ const imageConfigCancel    = $('imageConfigCancel');
 const imageConfigConfirm   = $('imageConfigConfirm');
 const imageConfigFillRadios   = Array.from(document.querySelectorAll('input[name="imageConfigFill"]'));
 const imageConfigInsertRadios = Array.from(document.querySelectorAll('input[name="imageConfigInsert"]'));
-
 const attrPanel            = $('attrPanel');
 const attrPanelTag         = $('attrPanelTag');
 const attrPanelId          = $('attrPanelId');
@@ -110,33 +98,26 @@ const attrPanelBody        = $('attrPanelBody');
 const attrPanelClose       = $('attrPanelClose');
 const attrPanelLocate      = $('attrPanelLocate');
 const attrPanelReconfigImg = $('attrPanelReconfigImg');
-
 const btnMobileViewMenu = $('btnMobileViewMenu');
 const mobileViewMenu    = $('mobileViewMenu');
 const menuViewCode      = $('menuViewCode');
 const menuViewAttr      = $('menuViewAttr');
-
 let currentSvg   = null;
 let lastGoodCode = null;
 let renderTimer  = null;
 let toastTimer   = null;
 let draftTimer   = null;
-
 let previewScale = 1;
 let previewPanX  = 0;
 let previewPanY  = 0;
 let previewRotation = 0;
-
 let exportState  = null;
 let isWrapMode   = false;
-
 let splitState = 'default';
 let splitRatio = 0.8;
-
 let highlightCurrentLineEnabled = true;
 let autoIndentEnabled = true;
 let isFitMode = true;
-
 const imageImportState = {
   file: null, dataUrl: '', originalW: 0, originalH: 0,
   ratio: 'original', customW: 100, customH: 100,
@@ -144,24 +125,19 @@ const imageImportState = {
   fillMode: 'slice', insertMode: 'replace',
   compress: true, busy: false
 };
-
 let selectedPath = null;
 let attrPanelOpen = false;
 let attrCommitTimer = 0;
 let suppressAttrRebuild = false;
-
 let mobileView = 'code'; 
-
 function isMobileViewport() {
   return window.innerWidth <= 480;
 }
-
 const MAX_SIDE      = 4096;
 const DRAFT_KEY     = 'svg-editor.draft.v1';
 const HISTORY_KEY   = 'svg-editor.history.v1';
 const HISTORY_MAX   = 20;
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
-
 const DEFAULT_CODE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%">
   <circle cx="50" cy="50" r="50" fill="#33FAFC" />
   <g stroke="#000000" stroke-width="2.0" stroke-linecap="round">
@@ -1699,6 +1675,7 @@ document.addEventListener('click', e => {
     mobileViewMenu.hidden = true; btnMobileViewMenu.setAttribute('aria-expanded', 'false');
   }
   if (!findPanel.hidden && !e.target.closest('#findPanel')) closeFindPanel();
+  closeAnimAddMenu();
 });
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
@@ -1824,7 +1801,7 @@ const activePointers = new Map();
 let pinchStartDist = 0, pinchStartScale = 1, pinchStartPanX = 0, pinchStartPanY = 0;
 let pinchCenterX = 0, pinchCenterY = 0;
 let downTargetEl = null;
-let didPinch = false;  
+let didPinch = false;
 
 previewWrap.addEventListener('pointerdown', e => {
   if (!currentSvg || !modalMask.hidden) return;
@@ -1928,7 +1905,6 @@ function handlePreviewClick(target) {
   if (!currentSvg) return;
   const svgRoot = canvasEl.firstElementChild;
   if (!svgRoot) return;
-  // 未命中任何 SVG 元素（点击 stage / canvas 空白 / previewWrap 空白）
   if (!target || target === svgRoot) {
     clearSelection(); return;
   }
@@ -2066,6 +2042,7 @@ if (window.visualViewport) {
   };
   window.visualViewport.addEventListener('resize', onVVResize);
 }
+
 const draft = loadDraft();
 codeEl.value = draft || DEFAULT_CODE;
 setPreviewBg('checker');
@@ -2313,6 +2290,124 @@ function appendImageToSource(defsStr, imageStr) {
   return formatXML(serializeSVG(clone));
 }
 
+const ANIM_TAGS = new Set(['animate', 'animatetransform', 'animatemotion', 'animatecolor', 'set']);
+
+let animAddMenuEl = null;
+
+const ANIM_TEMPLATES = [
+  {
+    id: 'fade',
+    label: '淡入淡出',
+    build: () => `<animate attributeName="opacity" values="1;0;1" dur="2s" repeatCount="indefinite"/>`
+  },
+  {
+    id: 'rotate',
+    label: '旋转',
+    build: (el) => {
+      const c = getElementCenter(el);
+      return `<animateTransform attributeName="transform" type="rotate" from="0 ${c.x} ${c.y}" to="360 ${c.x} ${c.y}" dur="4s" repeatCount="indefinite"/>`;
+    }
+  },
+  {
+    id: 'scale',
+    label: '缩放',
+    build: () => `<animateTransform attributeName="transform" type="scale" values="1;1.2;1" dur="2s" repeatCount="indefinite"/>`
+  },
+  {
+    id: 'translate',
+    label: '平移',
+    build: () => `<animateTransform attributeName="transform" type="translate" values="0,0;20,0;0,0" dur="2s" repeatCount="indefinite"/>`
+  },
+  {
+    id: 'color',
+    label: '颜色变化',
+    build: () => `<animate attributeName="fill" values="#ff0000;#00ff00;#ff0000" dur="3s" repeatCount="indefinite"/>`
+  },
+  {
+    id: 'stroke',
+    label: '描边绘制',
+    build: () => `<animate attributeName="stroke-dashoffset" from="100" to="0" dur="2s" fill="freeze"/>`
+  },
+  {
+    id: 'motion',
+    label: '沿路径运动',
+    build: () => `<animateMotion path="M0,0 C 20,-20 40,20 60,0" dur="4s" repeatCount="indefinite"/>`
+  },
+  {
+    id: 'pulse',
+    label: '透明度脉冲',
+    build: () => `<animate attributeName="opacity" values="1;0.4;1" dur="1s" repeatCount="indefinite"/>`
+  },
+  {
+    id: 'custom',
+    label: '自定义…',
+    isCustom: true,
+    build: () => `<animate attributeName="" dur="2s" repeatCount="indefinite"/>`
+  }
+];
+
+function getElementCenter(el) {
+  if (!el) return { x: 50, y: 50 };
+  const tag = el.localName;
+  const num = (a, d) => { const v = parseFloat(el.getAttribute(a)); return isFinite(v) ? v : d; };
+  if (tag === 'circle' || tag === 'ellipse') {
+    return { x: num('cx', 50), y: num('cy', 50) };
+  }
+  if (tag === 'rect' || tag === 'image' || tag === 'use') {
+    const x = num('x', 0), y = num('y', 0);
+    const w = num('width', 100), h = num('height', 100);
+    return { x: x + w / 2, y: y + h / 2 };
+  }
+  if (tag === 'line') {
+    return {
+      x: (num('x1', 0) + num('x2', 0)) / 2,
+      y: (num('y1', 0) + num('y2', 0)) / 2
+    };
+  }
+  return { x: 50, y: 50 };
+}
+
+function parseTransform(str) {
+  const result = { tx: 0, ty: 0, rot: 0, scale: 1, extra: '' };
+  if (!str) return result;
+  let remain = String(str);
+
+  remain = remain.replace(/translate\s*\(\s*([-\d.]+)(?:\s*[, ]\s*([-\d.]+))?\s*\)/gi,
+    (_, x, y) => {
+      result.tx += parseFloat(x) || 0;
+      result.ty += parseFloat(y) || 0;
+      return '';
+    });
+
+  remain = remain.replace(/rotate\s*\(\s*([-\d.]+)(?:\s*[, ]\s*([-\d.]+)\s*[, ]\s*([-\d.]+))?\s*\)/gi,
+    (_, a) => {
+      result.rot += parseFloat(a) || 0;
+      return '';
+    });
+
+  remain = remain.replace(/scale\s*\(\s*([-\d.]+)(?:\s*[, ]\s*([-\d.]+))?\s*\)/gi,
+    (match, sx, sy) => {
+      const vx = parseFloat(sx);
+      const vy = (sy != null) ? parseFloat(sy) : vx;
+      if (isFinite(vx) && isFinite(vy) && Math.abs(vx - vy) < 1e-6) {
+        result.scale *= vx;
+        return '';
+      }
+      return match; 
+    });
+
+  result.extra = remain.replace(/\s+/g, ' ').trim();
+  return result;
+}
+function buildTransform(v, cx, cy) {
+  const parts = [];
+  if (v.tx !== 0 || v.ty !== 0) parts.push(`translate(${v.tx}, ${v.ty})`);
+  if (v.rot !== 0) parts.push(`rotate(${v.rot}, ${cx}, ${cy})`);
+  if (v.scale !== 1) parts.push(`scale(${v.scale})`);
+  if (v.extra) parts.push(v.extra);
+  return parts.join(' ');
+}
+
 function getElementPath(el) {
   const svgRoot = canvasEl.firstElementChild;
   if (!svgRoot || el === svgRoot || !svgRoot.contains(el)) return null;
@@ -2339,6 +2434,7 @@ function resolvePath(root, path) {
   }
   return cur;
 }
+
 function findTagOffsetByPath(code, path) {
   if (!path || path.length === 0) return null;
   const len = code.length;
@@ -2429,6 +2525,7 @@ function skipElementContent(code, startPos, openTag) {
   }
   return depth === 0 ? i : -1;
 }
+
 function escapeReg(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 function escapeAttr(v) {
   return String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;')
@@ -2449,10 +2546,20 @@ function removeAttrInTag(tag, name) {
   const re = new RegExp('\\s' + escapeReg(lower) + '\\s*=\\s*("[^"]*"|\'[^\']*\')', 'i');
   return tag.replace(re, '');
 }
+
 function applySelectionOutline(el) {
   Array.from(canvasEl.querySelectorAll('.svg-selected'))
     .forEach(x => x.classList.remove('svg-selected'));
-  if (el && el !== canvasEl.firstElementChild) el.classList.add('svg-selected');
+
+  if (!el) return;
+  const svgRoot = canvasEl.firstElementChild;
+
+  if (ANIM_TAGS.has(el.localName.toLowerCase())) {
+    const parent = el.parentElement;
+    if (parent && parent !== svgRoot) parent.classList.add('svg-selected');
+  } else if (el !== svgRoot) {
+    el.classList.add('svg-selected');
+  }
 }
 function selectElement(el) {
   if (!el || el === canvasEl.firstElementChild) return;
@@ -2468,6 +2575,7 @@ function clearSelection() {
     .forEach(x => x.classList.remove('svg-selected'));
   closeAttrPanel();
 }
+
 function setMobileView(view) {
   if (!isMobileViewport()) return;
   if (view === 'attr' && !attrPanelOpen) return;
@@ -2487,9 +2595,11 @@ function updateMobileViewMenu() {
   menuViewAttr.setAttribute('aria-checked', mobileView === 'attr' ? 'true' : 'false');
   menuViewAttr.disabled = !attrPanelOpen;
 }
+
 function openAttrPanel() {
   closeFindPanel();
   closeAllMenus();
+  closeAnimAddMenu();
   attrPanelOpen = true;
   rebuildAttrPanel();
 
@@ -2501,6 +2611,7 @@ function openAttrPanel() {
   updateMobileViewMenu();
 }
 function closeAttrPanel() {
+  closeAnimAddMenu();
   if (!attrPanelOpen) return;
   attrPanelOpen = false;
   attrPanel.hidden = true;
@@ -2512,15 +2623,21 @@ function closeAttrPanel() {
   }
   updateMobileViewMenu();
 }
+
 function rebuildAttrPanel() {
   if (!attrPanelOpen || !selectedPath || !currentSvg) return;
+  closeAnimAddMenu();
+
   const el = resolvePath(currentSvg, selectedPath);
   if (!el) { clearSelection(); return; }
   const tagName = el.localName;
+  const isAnim = ANIM_TAGS.has(tagName.toLowerCase());
+
   attrPanelTag.textContent = '<' + tagName + '>';
   const idVal = el.getAttribute('id');
   if (idVal) { attrPanelId.textContent = '#' + idVal; attrPanelId.hidden = false; }
   else { attrPanelId.hidden = true; }
+
   const loc = findTagOffsetByPath(codeEl.value, selectedPath);
   const isReadOnly = !loc;
   attrPanelWarning.hidden = !isReadOnly;
@@ -2542,53 +2659,215 @@ function rebuildAttrPanel() {
     attrPanelReconfigImg.hidden = true;
   }
 
+  if (isAnim) {
+    attrPanelBody.appendChild(makeGroup('动画', getAnimSpecs().map(a => makeRow(el, a, isReadOnly))));
+    if (!isReadOnly) {
+      attrPanelBody.appendChild(makeStructureGroup());
+    }
+    attrPanel.dataset.readonly = isReadOnly ? '1' : '';
+    return;
+  }
+
   const posAttrs = getPosAttrs(tagName);
   if (posAttrs.length) {
     attrPanelBody.appendChild(makeGroup('位置尺寸', posAttrs.map(a => makeRow(el, a, isReadOnly))));
   }
+  attrPanelBody.appendChild(makeTransformGroup(el, isReadOnly));
+
   const fillSpecs = [
     { name: 'fill',              type: 'color' },
     { name: 'fill-opacity',      type: 'number', step: 0.1, min: 0, max: 1 },
+    { name: 'fill-rule',         type: 'select', options: ['', 'nonzero', 'evenodd'] },
     { name: 'stroke',            type: 'color' },
     { name: 'stroke-width',      type: 'number' },
     { name: 'stroke-opacity',    type: 'number', step: 0.1, min: 0, max: 1 },
     { name: 'stroke-linecap',    type: 'select', options: ['', 'butt', 'round', 'square'] },
     { name: 'stroke-linejoin',   type: 'select', options: ['', 'miter', 'round', 'bevel'] },
+    { name: 'stroke-miterlimit', type: 'number' },
     { name: 'stroke-dasharray',  type: 'text' },
+    { name: 'stroke-dashoffset', type: 'number' },
     { name: 'opacity',           type: 'number', step: 0.1, min: 0, max: 1 }
   ];
   attrPanelBody.appendChild(makeGroup('外观', fillSpecs.map(a => makeRow(el, a, isReadOnly))));
+
+  const interactSpecs = [
+    { name: 'class',          type: 'text' },
+    { name: 'pointer-events', type: 'select', options: ['', 'auto', 'none', 'visiblePainted', 'visibleFill', 'visibleStroke', 'visible', 'painted', 'fill', 'stroke', 'all'] },
+    { name: 'cursor',         type: 'select', options: ['', 'auto', 'default', 'pointer', 'move', 'crosshair', 'text', 'wait', 'help', 'grab', 'grabbing'] }
+  ];
+  attrPanelBody.appendChild(makeGroup('交互', interactSpecs.map(a => makeRow(el, a, isReadOnly))));
+
   if (tagName === 'text' || tagName === 'tspan') {
     const textSpecs = [
       { name: 'text-anchor', type: 'select', options: ['', 'start', 'middle', 'end'] },
       { name: 'font-family', type: 'text' },
       { name: 'font-size',   type: 'number' },
-      { name: 'font-weight', type: 'select', options: ['', 'normal', 'bold', '100','200','300','400','500','600','700','800','900'] }
+      { name: 'font-weight', type: 'select', options: ['', 'normal', 'bold', '100','200','300','400','500','600','700','800','900'] },
+      { name: 'font-style',  type: 'select', options: ['', 'normal', 'italic', 'oblique'] },
+      { name: 'letter-spacing', type: 'text' }
     ];
     attrPanelBody.appendChild(makeGroup('文本', textSpecs.map(a => makeRow(el, a, isReadOnly))));
   }
+
+  const animChildren = [];
+  Array.from(el.children || []).forEach((child, idx) => {
+    if (ANIM_TAGS.has(child.localName.toLowerCase())) animChildren.push({ child, idx });
+  });
+
+  const animGroup = document.createElement('div');
+  animGroup.className = 'attr-group';
+  const animTitle = document.createElement('div');
+  animTitle.className = 'attr-group__title';
+  animTitle.textContent = '动画';
+  const animItems = document.createElement('div');
+  animItems.className = 'attr-group__items';
+  animItems.style.gridTemplateColumns = '1fr';
+
+  animChildren.forEach(({ child, idx }) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'attr-anim-item';
+    const an = child.getAttribute('attributeName') || '';
+    btn.textContent = `<${child.localName}>${an ? ' ' + an : ''}`;
+    btn.addEventListener('click', () => {
+      const newPath = [...selectedPath, idx];
+      const target = resolvePath(currentSvg, newPath);
+      if (target) {
+        selectedPath = newPath;
+        applySelectionOutline(target);
+        rebuildAttrPanel();
+      }
+    });
+    animItems.appendChild(btn);
+  });
+
   if (!isReadOnly) {
-    const group = document.createElement('div');
-    group.className = 'attr-group';
-    const t = document.createElement('div');
-    t.className = 'attr-group__title'; t.textContent = '结构';
-    const items = document.createElement('div');
-    items.className = 'attr-group__items';
-    const actions = document.createElement('div');
-    actions.className = 'attr-actions';
-    const dupBtn = document.createElement('button');
-    dupBtn.type = 'button'; dupBtn.className = 'attr-action-btn'; dupBtn.textContent = '复制';
-    dupBtn.addEventListener('click', duplicateSelectedElement);
-    const delBtn = document.createElement('button');
-    delBtn.type = 'button'; delBtn.className = 'attr-action-btn attr-action-btn--danger'; delBtn.textContent = '删除';
-    delBtn.addEventListener('click', deleteSelectedElement);
-    actions.appendChild(dupBtn); actions.appendChild(delBtn);
-    items.appendChild(actions);
-    group.appendChild(t); group.appendChild(items);
-    attrPanelBody.appendChild(group);
+    const addWrap = document.createElement('div');
+    addWrap.className = 'attr-anim-add-wrap';
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'attr-anim-add-btn';
+    addBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg><span>添加动画</span>';
+    addBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (animAddMenuEl) closeAnimAddMenu();
+      else showAnimAddMenu(addWrap);
+    });
+    addWrap.appendChild(addBtn);
+    animItems.appendChild(addWrap);
+  }
+
+  animGroup.appendChild(animTitle);
+  animGroup.appendChild(animItems);
+  attrPanelBody.appendChild(animGroup);
+
+  if (!isReadOnly) {
+    attrPanelBody.appendChild(makeStructureGroup());
   }
   attrPanel.dataset.readonly = isReadOnly ? '1' : '';
 }
+
+function makeTransformGroup(el, isReadOnly) {
+  const g = document.createElement('div');
+  g.className = 'attr-group';
+  const t = document.createElement('div');
+  t.className = 'attr-group__title';
+  t.textContent = '变换';
+  const items = document.createElement('div');
+  items.className = 'attr-group__items';
+
+  const raw = el.getAttribute('transform') || '';
+  const parsed = parseTransform(raw);
+  const center = getElementCenter(el);
+
+  const values = { tx: parsed.tx, ty: parsed.ty, rot: parsed.rot, scale: parsed.scale, extra: parsed.extra };
+
+  const specs = [
+    { name: '平移 X', key: 'tx',    step: 1,   value: values.tx },
+    { name: '平移 Y', key: 'ty',    step: 1,   value: values.ty },
+    { name: '旋转',   key: 'rot',   step: 1,   value: values.rot },
+    { name: '缩放',   key: 'scale', step: 0.1, value: values.scale, min: 0 }
+  ];
+
+  specs.forEach(spec => {
+    const row = document.createElement('div');
+    row.className = 'attr-row';
+    const label = document.createElement('label');
+    label.className = 'attr-row__label';
+    label.textContent = spec.name;
+    row.appendChild(label);
+    const ctrl = document.createElement('div');
+    ctrl.className = 'attr-row__control';
+
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.className = 'attr-row__input';
+    input.value = String(spec.value);
+    if (spec.step != null) input.step = spec.step;
+    if (spec.min != null) input.min = spec.min;
+    if (isReadOnly) input.disabled = true;
+
+    input.addEventListener('input', () => {
+      const v = parseFloat(input.value);
+      values[spec.key] = isFinite(v) ? v : (spec.key === 'scale' ? 1 : 0);
+      scheduleTransformCommit(el, values, center);
+    });
+
+    ctrl.appendChild(input);
+    row.appendChild(ctrl);
+    items.appendChild(row);
+  });
+
+  if (parsed.extra) {
+    const notice = document.createElement('div');
+    notice.style.cssText = 'grid-column:1 / -1;font-size:11px;color:#b45309;padding:2px 0;';
+    notice.textContent = '额外变换（保留）：' + parsed.extra;
+    items.appendChild(notice);
+  }
+
+  if (!isReadOnly) {
+    const quickWrap = document.createElement('div');
+    quickWrap.style.cssText = 'grid-column:1 / -1;display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;';
+
+    const resetBtn = document.createElement('button');
+    resetBtn.type = 'button';
+    resetBtn.className = 'attr-action-btn';
+    resetBtn.style.cssText = 'flex:1;min-width:0;padding:5px 8px;font-size:11px;';
+    resetBtn.textContent = '复位变换';
+    resetBtn.addEventListener('click', () => {
+      commitTransform(el, { tx: 0, ty: 0, rot: 0, scale: 1, extra: '' }, center);
+      rebuildAttrPanel();
+    });
+
+    quickWrap.appendChild(resetBtn);
+    items.appendChild(quickWrap);
+  }
+
+  g.appendChild(t);
+  g.appendChild(items);
+  return g;
+}
+function scheduleTransformCommit(el, values, center) {
+  clearTimeout(attrCommitTimer);
+  attrCommitTimer = setTimeout(() => commitTransform(el, values, center), 300);
+}
+function commitTransform(el, values, center) {
+  if (!selectedPath) return;
+  const loc = findTagOffsetByPath(codeEl.value, selectedPath);
+  if (!loc) { showToast('无法定位到源码，已忽略本次修改'); return; }
+  const newValue = buildTransform(values, center.x, center.y);
+  const original = codeEl.value.slice(loc.start, loc.end);
+  const patched = patchAttrInTag(original, 'transform', newValue);
+  if (patched === original) return;
+  codeEl.value = codeEl.value.slice(0, loc.start) + patched + codeEl.value.slice(loc.end);
+  suppressAttrRebuild = true;
+  renderEditor();
+  schedulePreviewRender();
+  saveDraftDebounced();
+  recordSnapshot();
+  setTimeout(() => { suppressAttrRebuild = false; }, 400);
+}
+
 function getPosAttrs(tag) {
   switch (tag) {
     case 'rect':    return ['x','y','width','height','rx','ry'].map(n => ({ name: n, type: 'number' }));
@@ -2605,6 +2884,32 @@ function getPosAttrs(tag) {
     default: return [];
   }
 }
+function getAnimSpecs() {
+  return [
+    { name: 'attributeName',  type: 'text' },
+    { name: 'attributeType',  type: 'select', options: ['', 'auto', 'CSS', 'XML'] },
+    { name: 'type',           type: 'select', options: ['', 'translate', 'rotate', 'scale', 'skewX', 'skewY'] },
+    { name: 'from',           type: 'text' },
+    { name: 'to',             type: 'text' },
+    { name: 'by',             type: 'text' },
+    { name: 'values',         type: 'textarea' },
+    { name: 'path',           type: 'textarea' },
+    { name: 'dur',            type: 'text' },
+    { name: 'begin',          type: 'text' },
+    { name: 'end',            type: 'text' },
+    { name: 'repeatCount',    type: 'text' },
+    { name: 'repeatDur',      type: 'text' },
+    { name: 'calcMode',       type: 'select', options: ['', 'discrete', 'linear', 'paced', 'spline'] },
+    { name: 'keyTimes',       type: 'text' },
+    { name: 'keySplines',     type: 'text' },
+    { name: 'keyPoints',      type: 'text' },
+    { name: 'fill',           type: 'select', options: ['', 'remove', 'freeze'] },
+    { name: 'additive',       type: 'select', options: ['', 'replace', 'sum'] },
+    { name: 'accumulate',     type: 'select', options: ['', 'none', 'sum'] },
+    { name: 'rotate',         type: 'text' }
+  ];
+}
+
 function makeGroup(title, rows) {
   const g = document.createElement('div');
   g.className = 'attr-group';
@@ -2619,6 +2924,11 @@ function makeGroup(title, rows) {
 function makeRow(el, spec, isReadOnly) {
   const row = document.createElement('div');
   row.className = 'attr-row';
+
+  if (spec.type === 'textarea') {
+    row.classList.add('attr-row--full');
+  }
+
   const label = document.createElement('label');
   label.className = 'attr-row__label';
   label.textContent = spec.name;
@@ -2694,6 +3004,28 @@ function makeRow(el, spec, isReadOnly) {
   ctrl.appendChild(input);
   return row;
 }
+
+function makeStructureGroup() {
+  const group = document.createElement('div');
+  group.className = 'attr-group';
+  const t = document.createElement('div');
+  t.className = 'attr-group__title'; t.textContent = '结构';
+  const items = document.createElement('div');
+  items.className = 'attr-group__items';
+  items.style.gridTemplateColumns = '1fr 1fr';
+  const dupBtn = document.createElement('button');
+  dupBtn.type = 'button'; dupBtn.className = 'attr-action-btn'; dupBtn.textContent = '复制';
+  dupBtn.addEventListener('click', duplicateSelectedElement);
+  const delBtn = document.createElement('button');
+  delBtn.type = 'button'; delBtn.className = 'attr-action-btn attr-action-btn--danger'; delBtn.textContent = '删除';
+  delBtn.addEventListener('click', deleteSelectedElement);
+  items.appendChild(dupBtn);
+  items.appendChild(delBtn);
+  group.appendChild(t);
+  group.appendChild(items);
+  return group;
+}
+
 function scheduleAttrCommit(el, name, value) {
   clearTimeout(attrCommitTimer);
   attrCommitTimer = setTimeout(() => commitAttrChange(el, name, value), 300);
@@ -2714,6 +3046,7 @@ function commitAttrChange(el, name, value) {
   recordSnapshot();
   setTimeout(() => { suppressAttrRebuild = false; }, 400);
 }
+
 function deleteSelectedElement() {
   if (!selectedPath) return;
   const loc = findTagOffsetByPath(codeEl.value, selectedPath);
@@ -2778,6 +3111,119 @@ function locateSelectedInSource() {
   codeEl.scrollTop = Math.max(0, (lineNo - 2) * lineHeight - codeEl.clientHeight / 3 + padTop);
   syncScroll();
   updateCurrentLineHighlight();
+}
+
+function insertAnimChild(parentPath, animMarkup) {
+  const loc = findTagOffsetByPath(codeEl.value, parentPath);
+  if (!loc) return false;
+  const code = codeEl.value;
+  const animTag = animMarkup.trim();
+
+  if (loc.isSelfClosing) {
+    const m = loc.tag.match(/^<([^\s>\/]+)/);
+    const tagName = m ? m[1] : 'g';
+    const openTag = loc.tag.replace(/\/>\s*$/, '>');
+    const lineStart = code.lastIndexOf('\n', loc.start) + 1;
+    const parentIndent = (code.slice(lineStart, loc.start).match(/^[ \t]*/) || [''])[0];
+    const childIndent = parentIndent + '  ';
+    const indentAnim = animTag.split('\n').map(l => childIndent + l).join('\n');
+    const newBlock = `${openTag}\n${indentAnim}\n${parentIndent}</${tagName}>`;
+    codeEl.value = code.slice(0, loc.start) + newBlock + code.slice(loc.end);
+    return true;
+  }
+
+  const closeEnd = skipElementContent(code, loc.start, loc.tag);
+  if (closeEnd < 0) return false;
+  const closeStart = code.lastIndexOf('</', closeEnd - 1);
+  if (closeStart < 0) return false;
+
+  const lineStartBefore = code.lastIndexOf('\n', closeStart - 1) + 1;
+  const beforeClose = code.slice(lineStartBefore, closeStart);
+  const hasIndentBefore = /^[ \t]*$/.test(beforeClose);
+
+  let parentIndent;
+  if (hasIndentBefore) {
+    parentIndent = beforeClose;
+  } else {
+    const openLineStart = code.lastIndexOf('\n', loc.start) + 1;
+    parentIndent = (code.slice(openLineStart, loc.start).match(/^[ \t]*/) || [''])[0];
+  }
+  const childIndent = parentIndent + '  ';
+  const indentAnim = animTag.split('\n').map(l => childIndent + l).join('\n');
+
+  if (hasIndentBefore) {
+    codeEl.value = code.slice(0, lineStartBefore) + indentAnim + '\n' + code.slice(lineStartBefore);
+  } else {
+    codeEl.value = code.slice(0, closeStart) + '\n' + indentAnim + '\n' + parentIndent + code.slice(closeStart);
+  }
+  return true;
+}
+
+function addAnimTemplate(templateId) {
+  if (!selectedPath || !currentSvg) return;
+  const el = resolvePath(currentSvg, selectedPath);
+  if (!el) return;
+  const template = ANIM_TEMPLATES.find(t => t.id === templateId);
+  if (!template) return;
+
+  const parentPath = [...selectedPath];
+  const animMarkup = template.build(el);
+
+  if (!insertAnimChild(parentPath, animMarkup)) {
+    showToast('插入动画失败：无法定位源码');
+    return;
+  }
+
+  renderEditor();
+  saveDraftDebounced();
+  recordSnapshot(true);
+
+  let newSvg;
+  try { newSvg = parseSVG(codeEl.value); }
+  catch (err) {
+    showToast('插入后解析失败：' + (err.message || '未知错误'));
+    return;
+  }
+  const newParent = resolvePath(newSvg, parentPath);
+  if (!newParent || newParent.children.length === 0) {
+    showToast('插入后未找到新动画');
+    return;
+  }
+  const newIdx = newParent.children.length - 1;
+  const newPath = [...parentPath, newIdx];
+
+  currentSvg = newSvg;
+  lastGoodCode = codeEl.value;
+  selectedPath = newPath;
+
+  schedulePreviewRender();
+  rebuildAttrPanel();
+  showToast(template.isCustom ? '已添加空白动画，请填写参数' : `已添加：${template.label}`);
+  closeAnimAddMenu();
+}
+
+function showAnimAddMenu(anchorEl) {
+  closeAnimAddMenu();
+  const menu = document.createElement('div');
+  menu.className = 'attr-anim-menu';
+  ANIM_TEMPLATES.forEach(t => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = t.label;
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      addAnimTemplate(t.id);
+    });
+    menu.appendChild(btn);
+  });
+  anchorEl.appendChild(menu);
+  animAddMenuEl = menu;
+}
+function closeAnimAddMenu() {
+  if (animAddMenuEl && animAddMenuEl.parentNode) {
+    animAddMenuEl.parentNode.removeChild(animAddMenuEl);
+  }
+  animAddMenuEl = null;
 }
 
 })();
