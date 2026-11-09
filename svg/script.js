@@ -15,23 +15,17 @@ const toastEl       = $('toast');
 const fileInput     = $('fileInput');
 const dropOverlay   = $('dropOverlay');
 const dropOverlayText = dropOverlay.querySelector('.drop-overlay__text');
-
 const btnPreviewMenu = $('btnPreviewMenu');
 const previewMenu    = $('previewMenu');
+const menuOpenSvg    = $('menuOpenSvg');
 const menuCopyPng    = $('menuCopyPng');
 const menuCopySvg    = $('menuCopySvg');
 const menuSavePng    = $('menuSavePng');
 const menuSaveSvg    = $('menuSaveSvg');
-const menuRotate90   = $('menuRotate90');
-const menuRotateReset= $('menuRotateReset');
-
-const btnImportMenu  = $('btnImportMenu');
-const importMenu     = $('importMenu');
-const menuOpenSvg    = $('menuOpenSvg');
-
+const btnRotate90    = $('btnRotate90');
+const btnRotateReset = $('btnRotateReset');
 const btnUndo = $('btnUndo');
 const btnRedo = $('btnRedo');
-
 const btnFormat     = $('btnFormat');
 const btnFind       = $('btnFind');
 const btnEditorMenu = $('btnEditorMenu');
@@ -42,20 +36,16 @@ const menuAutoIndent = $('menuAutoIndent');
 const menuHistory    = $('menuHistory');
 const menuResetExample = $('menuResetExample');
 const menuClearDraft = $('menuClearDraft');
-
 const zoomInBtn     = $('zoomIn');
 const zoomOutBtn    = $('zoomOut');
 const zoomResetBtn  = $('zoomReset');
 const zoomLabel     = zoomResetBtn;
 const bgBtns        = Array.from(document.querySelectorAll('.bg-btn'));
-
-const splitterEl   = $('splitter');
+const splitterEl    = $('splitter');
 const splitterGrips = Array.from(document.querySelectorAll('.tool-grip'));
-
 const warningBar   = $('warningBar');
 const warningText  = $('warningText');
 const warningClose = $('warningClose');
-
 const findPanel      = $('findPanel');
 const findInput      = $('findInput');
 const replaceInput   = $('replaceInput');
@@ -64,7 +54,6 @@ const findNext       = $('findNext');
 const findReplace    = $('findReplace');
 const findReplaceAll = $('findReplaceAll');
 const findClose      = $('findClose');
-
 const modalMask      = $('modalMask');
 const modalTitle     = $('modalTitle');
 const modalSubtitle  = $('modalSubtitle');
@@ -81,11 +70,217 @@ const exportScaleViewBox = $('exportScaleViewBox');
 const exportOriginal = $('exportOriginal');
 const exportCancel   = $('exportCancel');
 const exportConfirm  = $('exportConfirm');
-
 const historyMask  = $('historyMask');
 const historyList  = $('historyList');
 const historyClear = $('historyClear');
 const historyClose = $('historyClose');
+let currentSvg   = null;
+let lastGoodCode = null;
+let renderTimer  = null;
+let toastTimer   = null;
+let draftTimer   = null;
+let previewScale = 1;
+let previewPanX  = 0;
+let previewPanY  = 0;
+let previewRotation = 0;
+let exportState  = null;
+let isWrapMode   = false;
+let splitState = 'default';
+let splitRatio = 0.8;
+let highlightCurrentLineEnabled = true;
+let autoIndentEnabled = true;
+let isFitMode = true;
+const MAX_SIDE      = 4096;
+const DRAFT_KEY     = 'svg-editor.draft.v1';
+const HISTORY_KEY   = 'svg-editor.history.v1';
+const HISTORY_MAX   = 20;
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
+const DEFAULT_CODE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%">
+  <circle cx="50" cy="50" r="50" fill="#33FAFC" />
+  <g stroke="#000000" stroke-width="2.0" stroke-linecap="round">
+    <line x1="34" y1="50" x2="50" y2="50" />
+    <line x1="66" y1="34" x2="66" y2="50" />
+    <line x1="50" y1="66" x2="66" y2="66" />
+  </g>
+  <g fill="#000000">
+    <circle cx="34" cy="34" r="3.0" />
+    <circle cx="50" cy="34" r="3.0" />
+    <circle cx="66" cy="34" r="3.0" />
+    <circle cx="34" cy="50" r="3.0" />
+    <circle cx="50" cy="50" r="3.0" />
+    <circle cx="66" cy="50" r="3.0" />
+    <circle cx="34" cy="66" r="3.0" />
+    <circle cx="50" cy="66" r="3.0" />
+    <circle cx="66" cy="66" r="3.0" />
+  </g>
+</svg>`;
+let cachedPreviewRect = null;
+function getPreviewRect() {
+  if (!cachedPreviewRect) cachedPreviewRect = previewHost.getBoundingClientRect();
+  return cachedPreviewRect;
+}
+function invalidatePreviewRect() { cachedPreviewRect = null; }
+
+function stamp() {
+  const d = new Date();
+  const p = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}`
+       + `-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+}
+function showToast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('is-show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove('is-show'), 2400);
+}
+const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+
+const errorEl = document.createElement('div');
+errorEl.className = 'error';
+errorEl.hidden = true;
+errorEl.setAttribute('role', 'alert');
+previewWrap.appendChild(errorEl);
+function showError(msg) {
+  if (msg) { errorEl.textContent = msg; errorEl.hidden = false; warningBar.hidden = true; }
+  else { errorEl.hidden = true; errorEl.textContent = ''; }
+}
+function showWarning(msg) {
+  if (!errorEl.hidden) return;
+  warningText.textContent = msg;
+  warningBar.hidden = false;
+}
+function hideWarning() { warningBar.hidden = true; }
+
+function updateButtons() {
+  const ok = !!currentSvg;
+  btnPreviewMenu.disabled = !ok;
+  [menuCopyPng, menuCopySvg, menuSavePng, menuSaveSvg, btnRotate90, btnRotateReset]
+    .forEach(b => b.disabled = !ok);
+}
+
+function parseSVG(code) {
+  const doc = new DOMParser().parseFromString(code, 'image/svg+xml');
+  const errNode = doc.querySelector('parsererror');
+  if (errNode) {
+    const detail = (errNode.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 180);
+    const lineInfo = extractErrorLine(errNode.textContent || '');
+    const suffix = lineInfo ? `（第 ${lineInfo.line} 行附近）` : '';
+    throw new Error('SVG 语法错误：' + detail + suffix);
+  }
+  const root = doc.documentElement;
+  if (!root || root.nodeName.toLowerCase() !== 'svg') throw new Error('根元素必须是 <svg>');
+  sanitize(root);
+  ensureNamespaces(root);
+  return root;
+}
+function extractErrorLine(text) {
+  let m = text.match(/line\s+(\d+)/i);
+  if (m) return { line: parseInt(m[1], 10) };
+  m = text.match(/Line Number[:\s]+(\d+)/i);
+  if (m) return { line: parseInt(m[1], 10) };
+  return null;
+}
+
+function sanitize(root) {
+  const DANGEROUS = new Set(['script', 'iframe', 'object', 'embed', 'meta', 'link']);
+  const nodes = [root, ...Array.from(root.querySelectorAll('*'))];
+  const toRemove = [];
+  nodes.forEach(el => {
+    const tag = (el.nodeName || '').toLowerCase();
+    if (DANGEROUS.has(tag)) { toRemove.push(el); return; }
+    if (!el.attributes) return;
+    Array.from(el.attributes).forEach(attr => {
+      const name = attr.name.toLowerCase();
+      const value = (attr.value || '').trim().toLowerCase();
+      if (name.startsWith('on')) el.removeAttribute(attr.name);
+      else if ((name === 'href' || name === 'xlink:href' || name === 'src') && value.startsWith('javascript:'))
+        el.removeAttribute(attr.name);
+    });
+  });
+  toRemove.forEach(el => { try { el.remove(); } catch(_) {} });
+}
+
+function ensureNamespaces(root) {
+  if (!root.getAttribute('xmlns')) root.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  let usesXlink = false;
+  const nodes = [root, ...Array.from(root.querySelectorAll('*'))];
+  for (const el of nodes) {
+    if (!el.attributes) continue;
+    for (const attr of Array.from(el.attributes)) {
+      if (attr.name.toLowerCase().startsWith('xlink:')) { usesXlink = true; break; }
+    }
+    if (usesXlink) break;
+  }
+  if (usesXlink && !root.getAttribute('xmlns:xlink'))
+    root.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+}
+
+const RESOURCE_TAGS = ['image', 'use', 'feimage'];
+function detectExternalRefs(root) {
+  const refs = [];
+  const nodes = [root, ...Array.from(root.querySelectorAll('*'))];
+  for (const el of nodes) {
+    const tag = el.nodeName.toLowerCase();
+    if (!RESOURCE_TAGS.includes(tag)) continue;
+    const href = el.getAttribute('href') || el.getAttribute('xlink:href');
+    if (!href) continue;
+    const v = href.trim();
+    if (!v || v.startsWith('data:') || v.startsWith('#')) continue;
+    refs.push(v);
+    if (refs.length >= 3) break;
+  }
+  return refs;
+}
+
+function parseLength(value) {
+  if (!value) return null;
+  const s = String(value).trim();
+  if (s.endsWith('%')) return null;
+  const n = parseFloat(s);
+  return isFinite(n) && n > 0 ? n : null;
+}
+function getSize(svg) {
+  let vbBox = null;
+  const vb = svg.getAttribute('viewBox');
+  if (vb) {
+    const p = vb.trim().split(/[\s,]+/).map(Number);
+    if (p.length === 4 && p[2] > 0 && p[3] > 0) vbBox = { w: p[2], h: p[3] };
+  }
+  const w = parseLength(svg.getAttribute('width'));
+  const h = parseLength(svg.getAttribute('height'));
+  if (w && h) return { width: w, height: h };
+  if (vbBox) {
+    if (w && !h) return { width: w, height: w * vbBox.h / vbBox.w };
+    if (h && !w) return { width: h * vbBox.w / vbBox.h, height: h };
+    return { width: vbBox.w, height: vbBox.h };
+  }
+  if (w && !h) return { width: w, height: w * 0.75 };
+  if (h && !w) return { width: h * 0.75, height: h };
+  return { width: 800, height: 600 };
+}
+
+function serializeSVG(svg, width, height, scaleViewBox) {
+  const clone = svg.cloneNode(true);
+  if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  if (width != null && height != null) {
+    clone.setAttribute('width',  String(width));
+    clone.setAttribute('height', String(height));
+  }
+  if (scaleViewBox) {
+    const vb = clone.getAttribute('viewBox');
+    if (vb) {
+      const p = vb.trim().split(/[\s,]+/).map(Number);
+      if (p.length === 4 && p[2] > 0 && p[3] > 0) {
+        const ratio = (width != null && height != null)
+          ? Math.min(width / p[2], height / p[3]) : 1;
+        clone.setAttribute('viewBox', [p[0], p[1], p[2] * ratio, p[3] * ratio].join(' '));
+      }
+    }
+  }
+  let xml = new XMLSerializer().serializeToString(clone);
+  if (!/^\s*<\?xml/.test(xml)) xml = '<?xml version="1.0" encoding="UTF-8"?>\n' + xml;
+  return xml;
+}
 
 const shadow = previewHost.attachShadow({ mode: 'open' });
 shadow.innerHTML = `
@@ -114,8 +309,11 @@ shadow.innerHTML = `
       left: 50%; top: 50%;
       transform-origin: center center;
       will-change: transform;
+      transition: opacity .2s;
     }
     .canvas > * { display: block; }
+    .canvas a, .canvas a * { pointer-events: none; cursor: default; }
+    .stage.is-stale .canvas { opacity: 0.35; }
   </style>
   <div class="stage bg-checker">
     <div class="canvas"></div>
@@ -123,194 +321,6 @@ shadow.innerHTML = `
 `;
 const stageEl  = shadow.querySelector('.stage');
 const canvasEl = shadow.querySelector('.canvas');
-
-let currentSvg   = null;
-let lastGoodCode = null;
-let renderTimer  = null;
-let toastTimer   = null;
-let draftTimer   = null;
-
-let previewScale = 1;
-let previewTx    = 0;
-let previewTy    = 0;
-let previewRotation = 0;
-
-let exportState  = null;
-let isWrapMode   = false;
-
-let splitState = 'default';
-let splitRatio = 0.8;
-
-let highlightCurrentLineEnabled = true;
-let autoIndentEnabled = true;
-
-const MAX_SIDE   = 4096;
-const DRAFT_KEY  = 'svg-editor.draft.v1';
-const HISTORY_KEY= 'svg-editor.history.v1';
-const HISTORY_MAX= 20;
-
-let cachedPreviewRect = null;
-function getPreviewRect() {
-  if (!cachedPreviewRect) cachedPreviewRect = previewHost.getBoundingClientRect();
-  return cachedPreviewRect;
-}
-function invalidatePreviewRect() { cachedPreviewRect = null; }
-
-function stamp() {
-  const d = new Date();
-  const p = n => String(n).padStart(2, '0');
-  return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}`
-       + `-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
-}
-function showToast(msg) {
-  toastEl.textContent = msg;
-  toastEl.classList.add('is-show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toastEl.classList.remove('is-show'), 2400);
-}
-const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
-
-const errorEl = document.createElement('div');
-errorEl.className = 'error';
-errorEl.hidden = true;
-errorEl.setAttribute('role', 'alert');
-previewWrap.appendChild(errorEl);
-function setError(msg) {
-  if (msg) { errorEl.textContent = msg; errorEl.hidden = false; warningBar.hidden = true; }
-  else { errorEl.hidden = true; errorEl.textContent = ''; }
-}
-function showWarning(msg) {
-  if (!errorEl.hidden) return;
-  warningText.textContent = msg;
-  warningBar.hidden = false;
-}
-function hideWarning() { warningBar.hidden = true; }
-
-function updateButtons() {
-  const ok = !!currentSvg;
-  btnPreviewMenu.disabled = !ok;
-  [menuCopyPng, menuCopySvg, menuSavePng, menuSaveSvg, menuRotate90, menuRotateReset]
-    .forEach(b => b.disabled = !ok);
-}
-
-function parseSVG(code) {
-  const doc = new DOMParser().parseFromString(code, 'image/svg+xml');
-  const errNode = doc.querySelector('parsererror');
-  if (errNode) {
-    const detail = (errNode.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 180);
-    const lineInfo = extractErrorLine(errNode.textContent || '');
-    const suffix = lineInfo ? `（第 ${lineInfo.line} 行附近）` : '';
-    throw new Error('SVG 语法错误：' + detail + suffix);
-  }
-  const root = doc.documentElement;
-  if (!root || root.nodeName.toLowerCase() !== 'svg') throw new Error('根元素必须是 <svg>');
-  sanitize(root);
-  ensureNamespaces(root);
-  return root;
-}
-function extractErrorLine(text) {
-  let m = text.match(/line\s+(\d+)/i);
-  if (m) return { line: parseInt(m[1], 10) };
-  m = text.match(/Line Number[:\s]+(\d+)/i);
-  if (m) return { line: parseInt(m[1], 10) };
-  return null;
-}
-function sanitize(root) {
-  const DANGEROUS = new Set(['script', 'iframe', 'object', 'embed', 'meta', 'link']);
-  const nodes = [root, ...Array.from(root.querySelectorAll('*'))];
-  const toRemove = [];
-  nodes.forEach(el => {
-    const tag = (el.nodeName || '').toLowerCase();
-    if (DANGEROUS.has(tag)) { toRemove.push(el); return; }
-    if (!el.attributes) return;
-    Array.from(el.attributes).forEach(attr => {
-      const name = attr.name.toLowerCase();
-      const value = (attr.value || '').trim().toLowerCase();
-      if (name.startsWith('on')) el.removeAttribute(attr.name);
-      else if ((name === 'href' || name === 'xlink:href' || name === 'src') && value.startsWith('javascript:'))
-        el.removeAttribute(attr.name);
-    });
-  });
-  toRemove.forEach(el => { try { el.remove(); } catch(_) {} });
-}
-function ensureNamespaces(root) {
-  if (!root.getAttribute('xmlns')) root.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-  let usesXlink = false;
-  const nodes = [root, ...Array.from(root.querySelectorAll('*'))];
-  for (const el of nodes) {
-    if (!el.attributes) continue;
-    for (const attr of Array.from(el.attributes)) {
-      if (attr.name.toLowerCase().startsWith('xlink:')) { usesXlink = true; break; }
-    }
-    if (usesXlink) break;
-  }
-  if (usesXlink && !root.getAttribute('xmlns:xlink'))
-    root.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
-}
-const RESOURCE_TAGS = ['image', 'use', 'feimage'];
-function detectExternalRefs(root) {
-  const refs = [];
-  const nodes = [root, ...Array.from(root.querySelectorAll('*'))];
-  for (const el of nodes) {
-    const tag = el.nodeName.toLowerCase();
-    if (!RESOURCE_TAGS.includes(tag)) continue;
-    const href = el.getAttribute('href') || el.getAttribute('xlink:href');
-    if (!href) continue;
-    const v = href.trim();
-    if (!v || v.startsWith('data:') || v.startsWith('#')) continue;
-    refs.push(v);
-    if (refs.length >= 3) break;
-  }
-  return refs;
-}
-function parseLength(value) {
-  if (!value) return null;
-  const s = String(value).trim();
-  if (s.endsWith('%')) return null;
-  const n = parseFloat(s);
-  return isFinite(n) && n > 0 ? n : null;
-}
-function getSize(svg) {
-  let vbBox = null;
-  const vb = svg.getAttribute('viewBox');
-  if (vb) {
-    const p = vb.trim().split(/[\s,]+/).map(Number);
-    if (p.length === 4 && p[2] > 0 && p[3] > 0) vbBox = { w: p[2], h: p[3] };
-  }
-  const w = parseLength(svg.getAttribute('width'));
-  const h = parseLength(svg.getAttribute('height'));
-  if (w && h) return { width: w, height: h };
-  if (vbBox) {
-    if (w && !h) return { width: w, height: w * vbBox.h / vbBox.w };
-    if (h && !w) return { width: h * vbBox.w / vbBox.h, height: h };
-    return { width: vbBox.w, height: vbBox.h };
-  }
-  if (w && !h) return { width: w, height: w * 0.75 };
-  if (h && !w) return { width: h * 0.75, height: h };
-  return { width: 800, height: 600 };
-}
-function serializeSVG(svg, width, height, scaleViewBox) {
-  const clone = svg.cloneNode(true);
-  if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-  if (width != null && height != null) {
-    clone.setAttribute('width',  String(width));
-    clone.setAttribute('height', String(height));
-  }
-  if (scaleViewBox) {
-    const vb = clone.getAttribute('viewBox');
-    if (vb) {
-      const p = vb.trim().split(/[\s,]+/).map(Number);
-      if (p.length === 4 && p[2] > 0 && p[3] > 0) {
-        const ratio = (width != null && height != null)
-          ? Math.min(width / p[2], height / p[3]) : 1;
-        clone.setAttribute('viewBox', [p[0], p[1], p[2] * ratio, p[3] * ratio].join(' '));
-      }
-    }
-  }
-  let xml = new XMLSerializer().serializeToString(clone);
-  if (!/^\s*<\?xml/.test(xml)) xml = '<?xml version="1.0" encoding="UTF-8"?>\n' + xml;
-  return xml;
-}
 
 class DomRenderer {
   constructor() { this.host = null; this.type = 'dom'; }
@@ -356,15 +366,16 @@ async function canvas2dExportBlob(markup, width, height, format, whiteBg) {
 
 const domRenderer = new DomRenderer();
 
-function applyView() {
+function applyPreviewTransform() {
   if (!currentSvg) return;
   const s = previewScale;
   canvasEl.style.transformOrigin = 'center center';
   canvasEl.style.transform =
-    `translate(calc(-50% + ${previewTx}px), calc(-50% + ${previewTy}px)) ` +
+    `translate(calc(-50% + ${previewPanX}px), calc(-50% + ${previewPanY}px)) ` +
     `rotate(${previewRotation}deg) scale(${s})`;
   zoomLabel.textContent = Math.round(s * 100) + '%';
 }
+
 function fitToView() {
   if (!currentSvg) return;
   const size = getSize(currentSvg);
@@ -375,33 +386,43 @@ function fitToView() {
   const dispH = rotated ? size.width  : size.height;
   const s = Math.min((rect.width - pad) / dispW, (rect.height - pad) / dispH, 1);
   previewScale = clamp(s, 0.05, 20);
-  previewTx = 0;
-  previewTy = 0;
-  applyView();
+  previewPanX = 0;
+  previewPanY = 0;
+  isFitMode = true;
+  applyPreviewTransform();
 }
+
 function updateBadge(width, height) {
   badge.textContent = `${Math.round(width)} × ${Math.round(height)}`;
   badge.hidden = false;
 }
-async function render() {
+
+async function renderPreview() {
   const code = codeEl.value;
   if (!code.trim()) {
     currentSvg = null; lastGoodCode = null;
     domRenderer.destroy();
-    setError(''); hideWarning();
+    showError(''); hideWarning();
     badge.hidden = true;
+    stageEl.classList.remove('is-stale');
     updateButtons();
     return;
   }
-  if (code === lastGoodCode) return;
+  if (code === lastGoodCode) {
+    showError('');
+    stageEl.classList.remove('is-stale');
+    return;
+  }
   let svg;
   try { svg = parseSVG(code); }
   catch (err) {
-    setError(err.message || 'SVG 解析失败');
+    showError(err.message || 'SVG 解析失败');
     locateErrorInEditor(err.message);
+    stageEl.classList.add('is-stale');
     return;
   }
-  setError('');
+  showError('');
+  stageEl.classList.remove('is-stale');
   currentSvg = svg;
   lastGoodCode = code;
   const refs = detectExternalRefs(svg);
@@ -423,6 +444,7 @@ async function render() {
   fitToView();
   updateButtons();
 }
+
 function locateErrorInEditor(msg) {
   const m = msg.match(/第\s*(\d+)\s*行/);
   if (!m) return;
@@ -437,9 +459,10 @@ function locateErrorInEditor(msg) {
   syncScroll();
   try { codeEl.setSelectionRange(offset, offset + (lines[lineNo - 1] || '').length); } catch(_) {}
 }
-function scheduleRender() {
+
+function schedulePreviewRender() {
   clearTimeout(renderTimer);
-  renderTimer = setTimeout(render, 250);
+  renderTimer = setTimeout(renderPreview, 250);
 }
 
 function isIOSLike() {
@@ -511,7 +534,8 @@ async function exportImage(width, height, format, whiteBg, scaleViewBox) {
     showToast('图像导出失败：' + (err.message || '未知错误'));
   }
 }
-function openModal(format) {
+
+function openExportModal(format) {
   if (!currentSvg) return;
   const size = getSize(currentSvg);
   const ow = Math.round(size.width), oh = Math.round(size.height);
@@ -526,11 +550,17 @@ function openModal(format) {
   exportLock.textContent = '🔒';
   exportLock.classList.add('is-locked');
   exportLock.setAttribute('aria-pressed', 'true');
-  if (!exportState.hasViewBox) {
+
+  const isSvg = format === 'svg';
+  const hasFO = !isSvg && !!currentSvg.querySelector('foreignObject');
+  if (hasFO) {
+    exportHint.textContent = '此 SVG 包含 <foreignObject>，部分浏览器/环境导出可能不完整。';
+    exportHint.hidden = false;
+  } else if (!exportState.hasViewBox) {
     exportHint.textContent = '此 SVG 没有 viewBox，修改尺寸可能导致内容被裁切或留白。';
     exportHint.hidden = false;
   } else exportHint.hidden = true;
-  const isSvg = format === 'svg';
+
   formatRow.hidden = isSvg;
   if (!isSvg && format === 'png') exportFormat.value = 'png';
   const isJpg = !isSvg && exportFormat.value === 'jpg';
@@ -548,7 +578,8 @@ function openModal(format) {
     exportWInput.select();
   }
 }
-function closeModal() { modalMask.hidden = true; exportState = null; }
+function closeExportModal() { modalMask.hidden = true; exportState = null; }
+
 function syncHeightFromWidth() {
   if (!exportState || !exportState.lockRatio) return;
   const w = parseInt(exportWInput.value, 10);
@@ -578,7 +609,7 @@ function confirmExport() {
   const isJpg = format === 'jpg';
   const whiteBg = isJpg || exportWhiteBg.checked;
   const scaleVB = !viewBoxRow.hidden && exportScaleViewBox.checked;
-  closeModal();
+  closeExportModal();
   if (mode === 'svg') exportSVG(w, h, scaleVB);
   else exportImage(w, h, format, whiteBg, scaleVB);
 }
@@ -595,7 +626,7 @@ function scheduleApplyViewAfterSplit() {
   splitViewRafId = requestAnimationFrame(() => {
     splitViewRafId = 0;
     invalidatePreviewRect();
-    if (currentSvg) applyView();
+    if (currentSvg) applyPreviewTransform();
   });
 }
 function applySplit() {
@@ -627,7 +658,7 @@ const DBLCLICK_DISTANCE = 10;
 
 function getPreviewHeight() { return previewWrap.getBoundingClientRect().height; }
 
-function onSplitDown(e) {
+function onSplitterPointerDown(e) {
   if (e.target.closest('.tool-btn') || e.target.closest('.dropdown')) return;
   if (e.pointerType === 'mouse' && e.button !== 0) return;
 
@@ -637,6 +668,10 @@ function onSplitDown(e) {
     lastSplitDownTime = 0;
     lastSplitDownY = 0;
     isSplitting = false;
+    if (pointerCaptured) {
+      try { splitterEl.releasePointerCapture(e.pointerId); } catch(_) {}
+      pointerCaptured = false;
+    }
     resetSplitToDefault();
     return;
   }
@@ -644,25 +679,19 @@ function onSplitDown(e) {
   lastSplitDownY = e.clientY;
 
   isSplitting = true;
-  pointerCaptured = false;
   splitHasMoved = false;
   splitStartY = e.clientY;
   splitStartH = getPreviewHeight();
+  try { splitterEl.setPointerCapture(e.pointerId); } catch(_) {}
+  pointerCaptured = true;
   document.body.style.cursor = 'ns-resize';
   document.body.style.userSelect = 'none';
 }
-
-function onSplitMove(e) {
+function onSplitterPointerMove(e) {
   if (!isSplitting) return;
   const delta = e.clientY - splitStartY;
-
   if (!splitHasMoved && Math.abs(delta) < 3) return;
   splitHasMoved = true;
-
-  if (!pointerCaptured) {
-    try { splitterEl.setPointerCapture(e.pointerId); } catch(_) {}
-    pointerCaptured = true;
-  }
 
   const appRect = appEl.getBoundingClientRect();
   const splitterH = splitterEl.getBoundingClientRect().height;
@@ -681,8 +710,7 @@ function onSplitMove(e) {
 
   applySplit();
 }
-
-function onSplitUp(e) {
+function onSplitterPointerUp(e) {
   if (!isSplitting) return;
   isSplitting = false;
 
@@ -714,18 +742,16 @@ function onSplitUp(e) {
   }
   splitHasMoved = false;
 }
-
-splitterEl.addEventListener('pointerdown', onSplitDown);
-splitterEl.addEventListener('pointermove', onSplitMove);
-splitterEl.addEventListener('pointerup', onSplitUp);
-splitterEl.addEventListener('pointercancel', onSplitUp);
-
 function resetSplitToDefault() {
   splitState = 'default';
   splitRatio = 0.8;
   applySplit();
   showToast('已恢复默认 80/20 布局');
 }
+splitterEl.addEventListener('pointerdown', onSplitterPointerDown);
+splitterEl.addEventListener('pointermove', onSplitterPointerMove);
+splitterEl.addEventListener('pointerup', onSplitterPointerUp);
+splitterEl.addEventListener('pointercancel', onSplitterPointerUp);
 
 function syncScroll() {
   const top = codeEl.scrollTop, left = codeEl.scrollLeft;
@@ -733,6 +759,7 @@ function syncScroll() {
   highlightEl.scrollLeft = left;
   gutterEl.scrollTop = top;
 }
+
 let lastGutterCount = 0;
 function renderGutter(lineCount) {
   if (lineCount === lastGutterCount) return;
@@ -751,20 +778,31 @@ function renderGutter(lineCount) {
   const digits = String(lineCount).length;
   gutterEl.style.minWidth = `calc(${digits}ch + 22px)`;
 }
-let measureRafId = 0;
-function scheduleGutterMeasure() {
-  const id = ++measureRafId;
-  requestAnimationFrame(() => {
-    if (id !== measureRafId) return;
-    if (!isWrapMode) return;
-    const lineEls = highlightCode.querySelectorAll('.line');
-    const gutterEls = gutterEl.querySelectorAll('.gutter-line');
-    if (!lineEls.length || lineEls.length !== gutterEls.length) return;
-    const heights = new Array(lineEls.length);
-    for (let i = 0; i < lineEls.length; i++) heights[i] = lineEls[i].offsetHeight;
-    for (let i = 0; i < gutterEls.length; i++) gutterEls[i].style.height = heights[i] + 'px';
+
+let lineResizeObserver = null;
+function observeLinesForWrap() {
+  if (!lineResizeObserver) {
+    lineResizeObserver = new ResizeObserver(entries => {
+      for (const entry of entries) {
+        const el = entry.target;
+        const idx = Number(el.dataset.idx);
+        const gl = gutterEl.children[idx];
+        if (gl && gl.classList.contains('gutter-line')) {
+          const h = Math.round(entry.contentRect.height);
+          if (gl.style.height !== h + 'px') gl.style.height = h + 'px';
+        }
+      }
+    });
+  }
+  lineResizeObserver.disconnect();
+  if (!isWrapMode) return;
+  const els = highlightCode.querySelectorAll('.line');
+  els.forEach((el, i) => {
+    el.dataset.idx = String(i);
+    lineResizeObserver.observe(el);
   });
 }
+
 function splitHighlightByLines(html) {
   const result = []; let current = ''; const stack = []; let i = 0;
   while (i < html.length) {
@@ -791,27 +829,62 @@ function splitHighlightByLines(html) {
   }
   return result;
 }
+
+let lineNodes = [];
+let lastLineHtmls = [];
+let currentLineEl = null;
+
 function updateCurrentLineHighlight() {
   if (!highlightCurrentLineEnabled) {
+    if (currentLineEl) currentLineEl.classList.remove('current');
+    currentLineEl = null;
     highlightCode.querySelectorAll('.line.current').forEach(el => el.classList.remove('current'));
     return;
   }
   const text = codeEl.value;
   const pos = codeEl.selectionStart;
   const lineNo = text.slice(0, pos).split('\n').length;
-  const lines = highlightCode.querySelectorAll('.line');
-  for (let i = 0; i < lines.length; i++) lines[i].classList.toggle('current', i + 1 === lineNo);
+  const target = lineNodes[lineNo - 1] || null;
+  if (target === currentLineEl) return;
+  if (currentLineEl) currentLineEl.classList.remove('current');
+  if (target) target.classList.add('current');
+  currentLineEl = target;
 }
+
 function renderEditor() {
   const code = codeEl.value;
   const lineCount = code.split('\n').length;
   renderGutter(lineCount);
+
   const html = highlightXML(code);
   const lineHtmls = splitHighlightByLines(html);
   while (lineHtmls.length < lineCount) lineHtmls.push('');
-  highlightCode.innerHTML = lineHtmls.map(h => '<span class="line">' + (h || '') + '</span>').join('');
+
+  const container = highlightCode;
+  const newLen = lineHtmls.length;
+  const oldLen = lineNodes.length;
+  const minLen = Math.min(newLen, oldLen);
+
+  for (let i = 0; i < minLen; i++) {
+    if (lastLineHtmls[i] !== lineHtmls[i]) {
+      lineNodes[i].innerHTML = lineHtmls[i] || '';
+    }
+  }
+  for (let i = oldLen; i < newLen; i++) {
+    const sp = document.createElement('span');
+    sp.className = 'line';
+    sp.innerHTML = lineHtmls[i] || '';
+    container.appendChild(sp);
+    lineNodes.push(sp);
+  }
+  for (let i = newLen; i < oldLen; i++) {
+    container.removeChild(lineNodes[i]);
+  }
+  lineNodes.length = newLen;
+  lastLineHtmls = lineHtmls;
+
   updateCurrentLineHighlight();
-  if (isWrapMode) scheduleGutterMeasure();
+  observeLinesForWrap();
   syncScroll();
 }
 let renderEditorRafId = 0;
@@ -822,6 +895,7 @@ function scheduleRenderEditor() {
     renderEditor();
   });
 }
+
 function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function findTagEnd(code, start) {
   let i = start, quote = null;
@@ -902,6 +976,48 @@ function highlightXML(code) {
   }
   return out;
 }
+
+function findMatchingClose(xml, startTagIndex, name) {
+  const openEnd = findTagEnd(xml, startTagIndex + 1);
+  if (openEnd === -1) return -1;
+  let i = openEnd + 1;
+  let nest = 0;
+  const lower = name.toLowerCase();
+  while (i < xml.length) {
+    const lt = xml.indexOf('<', i);
+    if (lt === -1) return -1;
+    if (xml.startsWith('<!--', lt)) {
+      const c = xml.indexOf('-->', lt + 4);
+      if (c === -1) return -1;
+      i = c + 3; continue;
+    }
+    if (xml.startsWith('<![CDATA[', lt)) {
+      const c = xml.indexOf(']]>', lt + 9);
+      if (c === -1) return -1;
+      i = c + 3; continue;
+    }
+    if (xml.startsWith('<?', lt)) {
+      const c = xml.indexOf('?>', lt + 2);
+      if (c === -1) return -1;
+      i = c + 2; continue;
+    }
+    const end = findTagEnd(xml, lt + 1);
+    if (end === -1) return -1;
+    const t = xml.slice(lt, end + 1);
+    if (t.startsWith('</')) {
+      const cn = t.slice(2, -1).trim().toLowerCase();
+      if (cn === lower) {
+        if (nest === 0) return end + 1;
+        nest--;
+      }
+    } else if (!t.endsWith('/>')) {
+      const m = t.match(/^<([^\s>\/]+)/);
+      if (m && m[1].toLowerCase() === lower) nest++;
+    }
+    i = end + 1;
+  }
+  return -1;
+}
 function formatXML(xml) {
   const tokens = []; let i = 0;
   const len = xml.length; const stack = [];
@@ -927,11 +1043,20 @@ function formatXML(xml) {
       const end = findTagEnd(xml, i + 1);
       const stop = end === -1 ? len : end + 1;
       const tag = xml.slice(i, stop);
+      const m = tag.match(/^<([^\s>\/]+)/);
+      const name = m ? m[1] : '';
+      if (!tag.startsWith('</') && !tag.endsWith('/>') && SENSITIVE.has(name.toLowerCase())) {
+        const closeEnd = findMatchingClose(xml, i, name);
+        if (closeEnd > 0) {
+          tokens.push({ type: 'block', value: xml.slice(i, closeEnd) });
+          i = closeEnd;
+          continue;
+        }
+      }
       if (tag.startsWith('</')) { stack.pop(); tokens.push({ type: 'close', value: tag }); }
       else if (tag.endsWith('/>')) tokens.push({ type: 'self', value: tag });
       else {
-        const m = tag.match(/^<([^\s>\/]+)/);
-        if (m) stack.push(m[1]);
+        if (name) stack.push(name);
         tokens.push({ type: 'open', value: tag });
       }
       i = stop;
@@ -940,10 +1065,6 @@ function formatXML(xml) {
       while (next < len && xml[next] !== '<') next++;
       const text = xml.slice(i, next);
       if (text.trim()) tokens.push({ type: 'text', value: text });
-      else if (text && stack.length > 0) {
-        const parent = stack[stack.length - 1].toLowerCase();
-        if (SENSITIVE.has(parent)) tokens.push({ type: 'text', value: text });
-      }
       i = next;
     }
   }
@@ -951,6 +1072,10 @@ function formatXML(xml) {
   let out = ''; let depth = 0;
   for (let k = 0; k < tokens.length; k++) {
     const tok = tokens[k];
+    if (tok.type === 'block') {
+      out += INDENT.repeat(depth) + tok.value + '\n';
+      continue;
+    }
     if (tok.type === 'open') {
       const next = tokens[k + 1], after = tokens[k + 2];
       if (next && next.type === 'text' && after && after.type === 'close') {
@@ -986,6 +1111,7 @@ function loadDraft() {
   } catch(_) {}
   return null;
 }
+
 function getHistoryList() {
   try {
     const s = localStorage.getItem(HISTORY_KEY);
@@ -993,9 +1119,25 @@ function getHistoryList() {
     return Array.isArray(arr) ? arr : [];
   } catch(_) { return []; }
 }
-function saveHistoryList(list) {
-  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(list)); } catch(_) {}
+function safeSetItem(key, value) {
+  try { localStorage.setItem(key, value); return true; }
+  catch (_) { return false; }
 }
+function saveHistoryList(list) {
+  let cur = list.slice();
+  while (cur.length > 0) {
+    if (safeSetItem(HISTORY_KEY, JSON.stringify(cur))) {
+      if (cur.length < list.length) {
+        showToast(`本地存储空间不足，历史缩减至 ${cur.length} 条`);
+      }
+      return;
+    }
+    cur = cur.slice(0, Math.max(0, Math.floor(cur.length / 2)));
+  }
+  safeSetItem(HISTORY_KEY, '[]');
+  showToast('本地存储空间不足，历史无法保存');
+}
+
 function guessTitle(code) {
   const m = code.match(/<title[^>]*>([^<]+)<\/title>/i);
   if (m && m[1].trim()) return m[1].trim().slice(0, 30);
@@ -1015,6 +1157,7 @@ function formatTime(ts) {
   const p = n => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
+
 function openHistory() {
   const list = getHistoryList();
   historyList.innerHTML = '';
@@ -1037,7 +1180,7 @@ function openHistory() {
       btn.appendChild(t); btn.appendChild(time);
       btn.addEventListener('click', () => {
         codeEl.value = item.code;
-        renderEditor(); scheduleRender(); saveDraftDebounced(); snapshot(true);
+        renderEditor(); schedulePreviewRender(); saveDraftDebounced(); recordSnapshot(true);
         closeHistory();
         showToast('已载入历史版本');
       });
@@ -1052,7 +1195,7 @@ let undoStack = [];
 let undoIndex = -1;
 let lastSnapshotTime = 0;
 
-function snapshot(force) {
+function recordSnapshot(force) {
   const text = codeEl.value;
   if (!force && undoIndex >= 0 && undoStack[undoIndex].text === text) return;
   const now = Date.now();
@@ -1069,17 +1212,26 @@ function snapshot(force) {
   lastSnapshotTime = now;
   updateUndoRedoMenu();
 }
+
 function applySnapshot(s) {
   codeEl.value = s.text;
   try { codeEl.selectionStart = s.selStart; codeEl.selectionEnd = s.selEnd; } catch(_) {}
-  renderEditor(); scheduleRender(); saveDraftDebounced(); updateUndoRedoMenu();
+  renderEditor(); schedulePreviewRender(); saveDraftDebounced(); updateUndoRedoMenu();
 }
 function undo() {
+  const cur = codeEl.value;
+  if (undoIndex >= 0 && undoStack[undoIndex].text !== cur) {
+    recordSnapshot(true);
+  }
   if (undoIndex <= 0) { showToast('没有可撤销的操作'); return; }
   undoIndex--; applySnapshot(undoStack[undoIndex]);
   showToast('已撤销');
 }
 function redo() {
+  const cur = codeEl.value;
+  if (undoIndex >= 0 && undoIndex < undoStack.length - 1 && undoStack[undoIndex].text !== cur) {
+    recordSnapshot(true);
+  }
   if (undoIndex >= undoStack.length - 1) { showToast('没有可重做的操作'); return; }
   undoIndex++; applySnapshot(undoStack[undoIndex]);
   showToast('已重做');
@@ -1089,8 +1241,14 @@ function updateUndoRedoMenu() {
   btnRedo.disabled = undoIndex >= undoStack.length - 1;
 }
 
-function openFindPanel() { findPanel.hidden = false; findInput.focus(); findInput.select(); }
+function openFindPanel() {
+  findPanel.hidden = false;
+  positionFindPanel();
+  findInput.focus();
+  findInput.select();
+}
 function closeFindPanel() { findPanel.hidden = true; codeEl.focus(); }
+
 function scrollToSelection() {
   const idx = codeEl.selectionStart;
   const text = codeEl.value;
@@ -1118,6 +1276,7 @@ function findNextMatch(backwards) {
   scrollToSelection();
   updateCurrentLineHighlight();
 }
+
 function replaceOne() {
   const query = findInput.value;
   const replacement = replaceInput.value;
@@ -1129,7 +1288,7 @@ function replaceOne() {
     const after = codeEl.value.slice(codeEl.selectionEnd);
     codeEl.value = before + replacement + after;
     codeEl.selectionStart = codeEl.selectionEnd = start + replacement.length;
-    renderEditor(); scheduleRender(); saveDraftDebounced(); snapshot();
+    renderEditor(); schedulePreviewRender(); saveDraftDebounced(); recordSnapshot();
   }
   findNextMatch(false);
 }
@@ -1148,14 +1307,43 @@ function replaceAll() {
     i = idx + query.length; count++;
   }
   codeEl.value = parts.join('');
-  renderEditor(); scheduleRender(); saveDraftDebounced(); snapshot();
+  renderEditor(); schedulePreviewRender(); saveDraftDebounced(); recordSnapshot();
   showToast(`已替换 ${count} 处`);
+}
+
+function positionFindPanel() {
+  if (findPanel.hidden) return;
+  const btnRect = btnFind.getBoundingClientRect();
+  const gap = 6;
+  const vh = window.innerHeight;
+  const vw = window.innerWidth;
+  const panelW = findPanel.offsetWidth || 300;
+  const panelH = findPanel.offsetHeight || 120;
+
+  let top;
+  if (btnRect.top - gap - panelH >= 8) {
+    top = btnRect.top - gap - panelH;
+  } else if (btnRect.bottom + gap + panelH <= vh - 8) {
+    top = btnRect.bottom + gap;
+  } else {
+    top = Math.max(8, vh - panelH - 8);
+  }
+
+  let right = vw - btnRect.right;
+  right = Math.min(Math.max(right, 8), vw - panelW - 8);
+
+  findPanel.style.top = top + 'px';
+  findPanel.style.right = right + 'px';
 }
 
 async function loadFile(file) {
   if (!file) return;
   const isSvg = /\.svg$/i.test(file.name) || file.type === 'image/svg+xml';
   if (!isSvg) { showToast('请选择 SVG 文件'); return; }
+  if (file.size > MAX_FILE_SIZE) {
+    showToast(`文件过大（${(file.size / 1024 / 1024).toFixed(1)}MB），上限 ${MAX_FILE_SIZE / 1024 / 1024}MB`);
+    return;
+  }
   try {
     let text = await file.text();
     text = text.replace(/^\uFEFF/, '');
@@ -1163,7 +1351,7 @@ async function loadFile(file) {
     const doc = new DOMParser().parseFromString(text, 'image/svg+xml');
     const hasParseError = !!doc.querySelector('parsererror');
     codeEl.value = text;
-    renderEditor(); scheduleRender(); saveDraftDebounced(); snapshot(true);
+    renderEditor(); schedulePreviewRender(); saveDraftDebounced(); recordSnapshot(true);
     if (!hasParseError) saveToHistory(text);
     const lineCount = text.split('\n').length;
     const isSingleLine = (lineCount === 1 && text.length > 80);
@@ -1176,13 +1364,16 @@ async function loadFile(file) {
     showToast('读取失败：' + (err.message || '未知错误'));
   }
 }
+
 async function copySVGCode() {
   if (!currentSvg) return;
+  const raw = codeEl.value.trim();
+  const markup = raw || serializeSVG(currentSvg);
+  if (!markup) return;
   if (!navigator.clipboard || !navigator.clipboard.writeText) {
     showToast('当前环境不支持剪贴板（需要 HTTPS）'); return;
   }
   try {
-    const markup = serializeSVG(currentSvg);
     await navigator.clipboard.writeText(markup);
     showToast('SVG 代码已复制');
   } catch (err) { showToast('复制失败：' + (err.message || '权限被拒绝')); }
@@ -1244,18 +1435,19 @@ function setPreviewBg(bg) {
   stageEl.className = 'stage bg-' + bg;
   bgBtns.forEach(b => b.classList.toggle('is-active', b.dataset.bg === bg));
 }
-function zoomAt(factor, cx, cy) {
+function zoomAt(factor, localX, localY) {
   if (!currentSvg) return;
   const rect = getPreviewRect();
   const newScale = clamp(previewScale * factor, 0.05, 20);
   if (newScale === previewScale) return;
   const ratio = newScale / previewScale;
-  const relX = cx - rect.width / 2 - previewTx;
-  const relY = cy - rect.height / 2 - previewTy;
-  previewTx = cx - rect.width / 2 - relX * ratio;
-  previewTy = cy - rect.height / 2 - relY * ratio;
+  const relX = localX - rect.width / 2 - previewPanX;
+  const relY = localY - rect.height / 2 - previewPanY;
+  previewPanX = localX - rect.width / 2 - relX * ratio;
+  previewPanY = localY - rect.height / 2 - relY * ratio;
   previewScale = newScale;
-  applyView();
+  isFitMode = false;
+  applyPreviewTransform();
 }
 function zoomByButton(factor) {
   if (!currentSvg) return;
@@ -1280,13 +1472,13 @@ if (window.visualViewport) {
 codeEl.addEventListener('input', () => {
   lockedScrollTop = codeEl.scrollTop;
   scheduleRenderEditor();
-  scheduleRender();
+  schedulePreviewRender();
   saveDraftDebounced();
 });
 let snapshotTimer = 0;
 codeEl.addEventListener('input', () => {
   clearTimeout(snapshotTimer);
-  snapshotTimer = setTimeout(() => snapshot(false), 500);
+  snapshotTimer = setTimeout(() => recordSnapshot(false), 500);
 });
 codeEl.addEventListener('scroll', syncScroll);
 
@@ -1329,7 +1521,7 @@ function handleTab(e) {
       codeEl.selectionEnd = linesStart + newBlock.length;
     }
   }
-  renderEditor(); scheduleRender(); saveDraftDebounced(); snapshot();
+  renderEditor(); schedulePreviewRender(); saveDraftDebounced(); recordSnapshot();
 }
 function handleEnterIndent() {
   const start = codeEl.selectionStart, end = codeEl.selectionEnd;
@@ -1343,7 +1535,7 @@ function handleEnterIndent() {
   const insert = '\n' + indent;
   codeEl.value = value.slice(0, start) + insert + value.slice(end);
   codeEl.selectionStart = codeEl.selectionEnd = start + insert.length;
-  renderEditor(); scheduleRender(); saveDraftDebounced(); snapshot();
+  renderEditor(); schedulePreviewRender(); saveDraftDebounced(); recordSnapshot();
 }
 codeEl.addEventListener('keydown', e => {
   const mod = e.ctrlKey || e.metaKey;
@@ -1355,7 +1547,7 @@ codeEl.addEventListener('keydown', e => {
     if (k === 's') {
       e.preventDefault();
       if (e.shiftKey) fileInput.click();
-      else if (currentSvg) openModal('svg');
+      else if (currentSvg) openExportModal('svg');
       return;
     }
     if (e.code === 'Digit0' || k === '0') {
@@ -1374,10 +1566,8 @@ document.addEventListener('selectionchange', () => {
 
 function closeAllMenus() {
   previewMenu.hidden = true;   btnPreviewMenu.setAttribute('aria-expanded', 'false');
-  importMenu.hidden  = true;   btnImportMenu.setAttribute('aria-expanded',  'false');
   editorMenu.hidden  = true;   btnEditorMenu.setAttribute('aria-expanded',  'false');
 }
-
 function positionDropdown(btn, menu) {
   menu.classList.remove('dropdown--up');
   void menu.offsetHeight;
@@ -1390,7 +1580,6 @@ function positionDropdown(btn, menu) {
     menu.classList.add('dropdown--up');
   }
 }
-
 function toggleMenu(btn, menu) {
   const willOpen = menu.hidden;
   closeAllMenus();
@@ -1403,7 +1592,6 @@ function toggleMenu(btn, menu) {
   }
 }
 btnPreviewMenu.addEventListener('click', e => { e.stopPropagation(); toggleMenu(btnPreviewMenu, previewMenu); });
-btnImportMenu.addEventListener('click',  e => { e.stopPropagation(); toggleMenu(btnImportMenu,  importMenu); });
 btnEditorMenu.addEventListener('click',  e => { e.stopPropagation(); toggleMenu(btnEditorMenu,  editorMenu); });
 
 function handleMenuKeydown(e, menu) {
@@ -1418,10 +1606,7 @@ function handleMenuKeydown(e, menu) {
   next.focus();
 }
 previewMenu.addEventListener('keydown', e => handleMenuKeydown(e, previewMenu));
-importMenu.addEventListener('keydown',  e => handleMenuKeydown(e, importMenu));
 editorMenu.addEventListener('keydown',  e => handleMenuKeydown(e, editorMenu));
-
-menuOpenSvg.addEventListener('click', () => { closeAllMenus(); fileInput.click(); });
 
 btnUndo.addEventListener('click', undo);
 btnRedo.addEventListener('click', redo);
@@ -1433,18 +1618,22 @@ btnFormat.addEventListener('click', () => {
     const formatted = formatXML(raw);
     if (formatted === raw) { showToast('已是格式化状态'); return; }
     codeEl.value = formatted;
-    renderEditor(); scheduleRender(); saveDraftDebounced(); snapshot(true);
+    renderEditor(); schedulePreviewRender(); saveDraftDebounced(); recordSnapshot(true);
     showToast('代码已格式化');
   } catch (err) { showToast('格式化失败：' + (err.message || '未知错误')); }
 });
-btnFind.addEventListener('click', openFindPanel);
 
+btnFind.addEventListener('click', e => {
+  e.stopPropagation();
+  if (findPanel.hidden) openFindPanel();
+  else closeFindPanel();
+});
+
+menuOpenSvg.addEventListener('click', () => { closeAllMenus(); fileInput.click(); });
 menuCopyPng.addEventListener('click', () => { closeAllMenus(); copyPNGImage(); });
 menuCopySvg.addEventListener('click', () => { closeAllMenus(); copySVGCode(); });
-menuSavePng.addEventListener('click', () => { closeAllMenus(); openModal('png'); });
-menuSaveSvg.addEventListener('click', () => { closeAllMenus(); openModal('svg'); });
-menuRotate90.addEventListener('click', () => { closeAllMenus(); setPreviewRotation(previewRotation + 90); });
-menuRotateReset.addEventListener('click', () => { closeAllMenus(); setPreviewRotation(0); });
+menuSavePng.addEventListener('click', () => { closeAllMenus(); openExportModal('png'); });
+menuSaveSvg.addEventListener('click', () => { closeAllMenus(); openExportModal('svg'); });
 
 menuWrap.addEventListener('click', e => {
   e.stopPropagation();
@@ -1475,7 +1664,7 @@ menuHistory.addEventListener('click', () => { closeAllMenus(); openHistory(); })
 menuResetExample.addEventListener('click', () => {
   closeAllMenus();
   codeEl.value = DEFAULT_CODE;
-  renderEditor(); render(); saveDraftDebounced(); snapshot(true);
+  renderEditor(); renderPreview(); saveDraftDebounced(); recordSnapshot(true);
   showToast('已恢复示例代码');
 });
 menuClearDraft.addEventListener('click', () => {
@@ -1488,17 +1677,17 @@ document.addEventListener('click', e => {
   if (!e.target.closest('#previewActions')) {
     previewMenu.hidden = true; btnPreviewMenu.setAttribute('aria-expanded', 'false');
   }
-  if (!e.target.closest('#importActions')) {
-    importMenu.hidden = true; btnImportMenu.setAttribute('aria-expanded', 'false');
-  }
   if (!e.target.closest('#editorActions')) {
     editorMenu.hidden = true; btnEditorMenu.setAttribute('aria-expanded', 'false');
+  }
+  if (!findPanel.hidden && !e.target.closest('#findPanel')) {
+    closeFindPanel();
   }
 });
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   if (!historyMask.hidden) { closeHistory(); return; }
-  if (!modalMask.hidden) { closeModal(); return; }
+  if (!modalMask.hidden) { closeExportModal(); return; }
   if (!findPanel.hidden) { closeFindPanel(); return; }
   closeAllMenus();
 });
@@ -1536,9 +1725,9 @@ exportOriginal.addEventListener('click', () => {
   exportWInput.value = exportState.originWidth;
   exportHInput.value = exportState.originHeight;
 });
-exportCancel.addEventListener('click', closeModal);
+exportCancel.addEventListener('click', closeExportModal);
 exportConfirm.addEventListener('click', confirmExport);
-modalMask.addEventListener('click', e => { if (e.target === modalMask) closeModal(); });
+modalMask.addEventListener('click', e => { if (e.target === modalMask) closeExportModal(); });
 
 historyClose.addEventListener('click', closeHistory);
 historyMask.addEventListener('click', e => { if (e.target === historyMask) closeHistory(); });
@@ -1615,10 +1804,19 @@ zoomResetBtn.addEventListener('click', () => {
   showToast('视图已重置为适应窗口');
 });
 
-let isDragging = false, hasMoved = false;
-let dragStartX = 0, dragStartY = 0, dragStartTx = 0, dragStartTy = 0;
+btnRotate90.addEventListener('click', () => {
+  if (!currentSvg) return;
+  setPreviewRotation(previewRotation + 90);
+});
+btnRotateReset.addEventListener('click', () => {
+  if (!currentSvg) return;
+  setPreviewRotation(0);
+});
+
+let isPanning = false, panHasMoved = false;
+let panStartX = 0, panStartY = 0, panStartTx = 0, panStartTy = 0;
 const activePointers = new Map();
-let pinchStartDist = 0, pinchStartScale = 1, pinchStartTx = 0, pinchStartTy = 0;
+let pinchStartDist = 0, pinchStartScale = 1, pinchStartPanX = 0, pinchStartPanY = 0;
 let pinchCenterX = 0, pinchCenterY = 0;
 
 previewWrap.addEventListener('pointerdown', e => {
@@ -1630,18 +1828,18 @@ previewWrap.addEventListener('pointerdown', e => {
     const pts = Array.from(activePointers.values());
     pinchStartDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
     pinchStartScale = previewScale;
-    pinchStartTx = previewTx;
-    pinchStartTy = previewTy;
+    pinchStartPanX = previewPanX;
+    pinchStartPanY = previewPanY;
     const rect = getPreviewRect();
     pinchCenterX = (pts[0].x + pts[1].x) / 2 - rect.left;
     pinchCenterY = (pts[0].y + pts[1].y) / 2 - rect.top;
-    isDragging = false; hasMoved = true;
+    isPanning = false; panHasMoved = true;
     try { previewWrap.setPointerCapture(e.pointerId); } catch(_) {}
     return;
   }
-  isDragging = true; hasMoved = false;
-  dragStartX = e.clientX; dragStartY = e.clientY;
-  dragStartTx = previewTx; dragStartTy = previewTy;
+  isPanning = true; panHasMoved = false;
+  panStartX = e.clientX; panStartY = e.clientY;
+  panStartTx = previewPanX; panStartTy = previewPanY;
   try { previewWrap.setPointerCapture(e.pointerId); } catch(_) {}
 });
 previewWrap.addEventListener('pointermove', e => {
@@ -1656,35 +1854,47 @@ previewWrap.addEventListener('pointermove', e => {
       const size = getSize(currentSvg);
       const rect = getPreviewRect();
       const s0 = pinchStartScale, s1 = newScale;
-      const offsetX0 = (rect.width - size.width * s0) / 2 + pinchStartTx;
-      const offsetY0 = (rect.height - size.height * s0) / 2 + pinchStartTy;
+      const offsetX0 = (rect.width - size.width * s0) / 2 + pinchStartPanX;
+      const offsetY0 = (rect.height - size.height * s0) / 2 + pinchStartPanY;
       const px = (pinchCenterX - offsetX0) / s0;
       const py = (pinchCenterY - offsetY0) / s0;
-      previewTx = pinchCenterX - px * s1 - (rect.width - size.width * s1) / 2;
-      previewTy = pinchCenterY - py * s1 - (rect.height - size.height * s1) / 2;
+      previewPanX = pinchCenterX - px * s1 - (rect.width - size.width * s1) / 2;
+      previewPanY = pinchCenterY - py * s1 - (rect.height - size.height * s1) / 2;
       previewScale = s1;
-      applyView();
+      isFitMode = false;
+      applyPreviewTransform();
     }
     return;
   }
-  if (!isDragging) return;
-  const dx = e.clientX - dragStartX, dy = e.clientY - dragStartY;
-  if (!hasMoved && (Math.abs(dx) > 2 || Math.abs(dy) > 2)) hasMoved = true;
-  if (hasMoved) {
-    previewTx = dragStartTx + dx;
-    previewTy = dragStartTy + dy;
-    applyView();
+  if (!isPanning) return;
+  const dx = e.clientX - panStartX, dy = e.clientY - panStartY;
+  if (!panHasMoved && (Math.abs(dx) > 2 || Math.abs(dy) > 2)) panHasMoved = true;
+  if (panHasMoved) {
+    previewPanX = panStartTx + dx;
+    previewPanY = panStartTy + dy;
+    isFitMode = false;
+    applyPreviewTransform();
   }
 });
-function endDrag(e) {
+function endPan(e) {
   if (activePointers.has(e.pointerId)) activePointers.delete(e.pointerId);
   if (activePointers.size < 2) pinchStartDist = 0;
-  if (!isDragging) return;
-  isDragging = false;
+  if (activePointers.size === 1) {
+    const p = activePointers.values().next().value;
+    isPanning = true;
+    panHasMoved = false;
+    panStartX = p.x;
+    panStartY = p.y;
+    panStartTx = previewPanX;
+    panStartTy = previewPanY;
+    return;
+  }
+  if (!isPanning) return;
+  isPanning = false;
   try { previewWrap.releasePointerCapture(e.pointerId); } catch(_) {}
 }
-previewWrap.addEventListener('pointerup', endDrag);
-previewWrap.addEventListener('pointercancel', endDrag);
+previewWrap.addEventListener('pointerup', endPan);
+previewWrap.addEventListener('pointercancel', endPan);
 previewWrap.addEventListener('dblclick', e => {
   if (!currentSvg || !modalMask.hidden) return;
   if (e.target.closest && e.target.closest('.preview-actions, .view-controls, .warning-bar')) return;
@@ -1694,38 +1904,52 @@ previewWrap.addEventListener('dblclick', e => {
 
 window.addEventListener('resize', () => {
   invalidatePreviewRect();
-  if (currentSvg) applyView();
+  if (appEl.style.height && window.visualViewport &&
+      window.visualViewport.height >= window.innerHeight - 100) {
+    appEl.style.height = '';
+  }
+  if (currentSvg) {
+    if (isFitMode) fitToView();
+    else applyPreviewTransform();
+  }
   if (!previewMenu.hidden) positionDropdown(btnPreviewMenu, previewMenu);
-  if (!importMenu.hidden)  positionDropdown(btnImportMenu,  importMenu);
   if (!editorMenu.hidden)  positionDropdown(btnEditorMenu,  editorMenu);
+  if (!findPanel.hidden)   positionFindPanel();
 });
 
-const DEFAULT_CODE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%">
-  <circle cx="50" cy="50" r="50" fill="#33FAFC" />
-  <g stroke="#000000" stroke-width="2.0" stroke-linecap="round">
-    <line x1="34" y1="50" x2="50" y2="50" />
-    <line x1="66" y1="34" x2="66" y2="50" />
-    <line x1="50" y1="66" x2="66" y2="66" />
-  </g>
-  <g fill="#000000">
-    <circle cx="34" cy="34" r="3.0" />
-    <circle cx="50" cy="34" r="3.0" />
-    <circle cx="66" cy="34" r="3.0" />
-    <circle cx="34" cy="50" r="3.0" />
-    <circle cx="50" cy="50" r="3.0" />
-    <circle cx="66" cy="50" r="3.0" />
-    <circle cx="34" cy="66" r="3.0" />
-    <circle cx="50" cy="66" r="3.0" />
-    <circle cx="66" cy="66" r="3.0" />
-  </g>
-</svg>`;
+(function detectScrollbarWidth() {
+  const div = document.createElement('div');
+  div.style.cssText = 'width:100px;height:100px;overflow:scroll;position:absolute;top:-9999px;left:0;';
+  document.body.appendChild(div);
+  const w = div.offsetWidth - div.clientWidth;
+  div.remove();
+  document.documentElement.style.setProperty('--ed-sbw', w + 'px');
+})();
+
+if (window.visualViewport) {
+  let vvRaf = 0;
+  const onVVResize = () => {
+    if (vvRaf) return;
+    vvRaf = requestAnimationFrame(() => {
+      vvRaf = 0;
+      const vv = window.visualViewport;
+      appEl.style.height = (vv.height < window.innerHeight - 100) ? (vv.height + 'px') : '';
+      invalidatePreviewRect();
+      if (currentSvg) {
+        if (isFitMode) fitToView();
+        else applyPreviewTransform();
+      }
+    });
+  };
+  window.visualViewport.addEventListener('resize', onVVResize);
+}
 
 const draft = loadDraft();
 codeEl.value = draft || DEFAULT_CODE;
 setPreviewBg('checker');
-snapshot(true);
+recordSnapshot(true);
 renderEditor();
-render();
+renderPreview();
 applySplit();
 updateUndoRedoMenu();
 
