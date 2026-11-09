@@ -26,18 +26,24 @@
 
     <div class="preview-actions" id="previewActions">
       <button id="btnPreviewMenu" class="fab fab--ghost" type="button"
-              aria-label="更多操作" aria-haspopup="menu" aria-expanded="false"
-              title="更多操作">⋯</button>
+              aria-label="文件操作" aria-haspopup="menu" aria-expanded="false"
+              title="文件操作">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"
+             fill="currentColor" stroke="none">
+          <circle cx="5" cy="12" r="1.8"/>
+          <circle cx="12" cy="12" r="1.8"/>
+          <circle cx="19" cy="12" r="1.8"/>
+        </svg>
+      </button>
 
       <div id="previewMenu" class="dropdown" hidden role="menu">
+        <button id="menuOpenSvg" type="button" role="menuitem">打开 SVG…</button>
+        <div class="dropdown__sep"></div>
         <button id="menuCopyPng" type="button" role="menuitem">复制 PNG 到剪贴板</button>
         <button id="menuCopySvg" type="button" role="menuitem">复制 SVG 源码</button>
         <div class="dropdown__sep"></div>
         <button id="menuSavePng" type="button" role="menuitem">导出图片…</button>
         <button id="menuSaveSvg" type="button" role="menuitem">导出 SVG…</button>
-        <div class="dropdown__sep"></div>
-        <button id="menuRotate90" type="button" role="menuitem">旋转 90°</button>
-        <button id="menuRotateReset" type="button" role="menuitem">复位旋转</button>
       </div>
     </div>
 
@@ -53,31 +59,69 @@
       <span class="view-controls__sep"></span>
       <div class="zoom-controls">
         <button id="zoomOut" class="zoom-btn" type="button"
-                aria-label="缩小" title="缩小">−</button>
+                aria-label="缩小" title="缩小">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"
+               fill="none" stroke="currentColor" stroke-width="2.5"
+               stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </button>
         <button id="zoomReset" class="zoom-label" type="button"
                 aria-label="重置视图" title="点击重置为适应窗口">100%</button>
         <button id="zoomIn" class="zoom-btn" type="button"
-                aria-label="放大" title="放大">+</button>
+                aria-label="放大" title="放大">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"
+               fill="none" stroke="currentColor" stroke-width="2.5"
+               stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"/>
+            <line x1="12" y1="5" x2="12" y2="19"/>
+          </svg>
+        </button>
+      </div>
+      <span class="view-controls__sep"></span>
+      <div class="rotate-controls">
+        <button id="btnRotate90" class="zoom-btn" type="button"
+                aria-label="顺时针旋转 90°" title="顺时针旋转 90°">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"
+               fill="none" stroke="currentColor" stroke-width="2.4"
+               stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20.5 12a8.5 8.5 0 1 1-2.8-6.3"/>
+            <polyline points="20.5 3.5 20.5 9 15 9"/>
+          </svg>
+        </button>
+        <button id="btnRotateReset" class="zoom-btn" type="button"
+                aria-label="复位旋转" title="复位旋转">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"
+               fill="none" stroke="currentColor" stroke-width="2.4"
+               stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3.5 12a8.5 8.5 0 1 0 2.8-6.3"/>
+            <polyline points="3.5 3.5 3.5 9 9 9"/>
+          </svg>
+        </button>
       </div>
     </div>
   </section>
 
   <div class="splitter" id="splitter">
-
     <div class="tool-group">
-      <div class="dropdown-container" id="importActions">
-        <button id="btnImportMenu" class="tool-btn" type="button"
-                aria-label="导入" aria-haspopup="menu" aria-expanded="false"
-                title="导入">📂</button>
-        <div id="importMenu" class="dropdown dropdown--dark dropdown--left" hidden role="menu">
-          <button id="menuOpenSvg" type="button" role="menuitem">打开 SVG…</button>
-        </div>
-      </div>
-
       <button id="btnUndo" class="tool-btn" type="button"
-              title="撤销 (Ctrl+Z)" aria-label="撤销">↶</button>
+              title="撤销 (Ctrl+Z)" aria-label="撤销">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"
+             fill="none" stroke="currentColor" stroke-width="2.5"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 14L4 9l5-5"/>
+          <path d="M4 9h10a6 6 0 0 1 0 12h-3"/>
+        </svg>
+      </button>
       <button id="btnRedo" class="tool-btn" type="button"
-              title="重做 (Ctrl+Shift+Z)" aria-label="重做">↷</button>
+              title="重做 (Ctrl+Shift+Z)" aria-label="重做">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"
+             fill="none" stroke="currentColor" stroke-width="2.5"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 14l5-5-5-5"/>
+          <path d="M20 9H10a6 6 0 0 0 0 12h3"/>
+        </svg>
+      </button>
     </div>
 
     <div class="tool-center">
@@ -87,14 +131,37 @@
 
     <div class="tool-group">
       <button id="btnFormat" class="tool-btn" type="button"
-              title="格式化" aria-label="格式化代码">≡</button>
+              title="格式化" aria-label="格式化代码">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"
+             fill="none" stroke="currentColor" stroke-width="2.4"
+             stroke-linecap="round" stroke-linejoin="round">
+          <line x1="11" y1="6"  x2="21" y2="6"/>
+          <line x1="11" y1="12" x2="21" y2="12"/>
+          <line x1="11" y1="18" x2="21" y2="18"/>
+          <polyline points="3 9 6 12 3 15"/>
+        </svg>
+      </button>
       <button id="btnFind" class="tool-btn" type="button"
-              title="查找替换 (Ctrl+F)" aria-label="查找替换">🔍</button>
+              title="查找替换 (Ctrl+F)" aria-label="查找替换">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"
+             fill="none" stroke="currentColor" stroke-width="2.4"
+             stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="7"/>
+          <line x1="16" y1="16" x2="21" y2="21"/>
+        </svg>
+      </button>
 
       <div class="dropdown-container" id="editorActions">
         <button id="btnEditorMenu" class="tool-btn" type="button"
                 aria-label="更多操作" aria-haspopup="menu" aria-expanded="false"
-                title="更多操作">⋯</button>
+                title="更多操作">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"
+               fill="currentColor" stroke="none">
+            <circle cx="5" cy="12" r="1.8"/>
+            <circle cx="12" cy="12" r="1.8"/>
+            <circle cx="19" cy="12" r="1.8"/>
+          </svg>
+        </button>
         <div id="editorMenu" class="dropdown dropdown--dark" hidden role="menu">
           <button id="menuWrap" type="button" role="menuitemcheckbox" aria-checked="false">
             <span class="dropdown__check">✓</span>自动换行
@@ -112,7 +179,6 @@
         </div>
       </div>
     </div>
-
   </div>
 
   <section class="editor" id="editorSection">
@@ -121,25 +187,47 @@
     <div class="code-area">
       <pre id="highlight" class="highlight" aria-hidden="true"><code id="highlightCode"></code></pre>
 
-      <div id="findPanel" class="find-panel" hidden>
-        <input id="findInput" class="find-input" type="text" placeholder="查找内容" />
-        <input id="replaceInput" class="find-input" type="text" placeholder="替换为" />
-        <div class="find-actions">
-          <button id="findPrev" class="find-btn" type="button" title="上一个">↑</button>
-          <button id="findNext" class="find-btn" type="button" title="下一个">↓</button>
-          <button id="findReplace" class="find-btn" type="button">替换</button>
-          <button id="findReplaceAll" class="find-btn" type="button">全部</button>
-          <button id="findClose" class="find-btn" type="button" aria-label="关闭">✕</button>
-        </div>
-      </div>
-
       <textarea id="code" class="code-input" wrap="off" spellcheck="false"
                 autocomplete="off" autocapitalize="off" autocorrect="off"
                 aria-label="SVG 源码输入"
                 placeholder="在此粘贴或输入 SVG 代码…"></textarea>
     </div>
   </section>
+</div>
 
+<div id="findPanel" class="find-panel" hidden>
+  <input id="findInput" class="find-input" type="text" placeholder="查找内容" />
+  <input id="replaceInput" class="find-input" type="text" placeholder="替换为" />
+  <div class="find-actions">
+    <button id="findPrev" class="find-btn find-btn--icon" type="button"
+            title="上一个" aria-label="上一个">
+      <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"
+           fill="none" stroke="currentColor" stroke-width="2.5"
+           stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="19" x2="12" y2="5"/>
+        <polyline points="5 12 12 5 19 12"/>
+      </svg>
+    </button>
+    <button id="findNext" class="find-btn find-btn--icon" type="button"
+            title="下一个" aria-label="下一个">
+      <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"
+           fill="none" stroke="currentColor" stroke-width="2.5"
+           stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"/>
+        <polyline points="5 12 12 19 19 12"/>
+      </svg>
+    </button>
+    <button id="findReplace" class="find-btn" type="button">替换</button>
+    <button id="findReplaceAll" class="find-btn" type="button">全部</button>
+    <button id="findClose" class="find-btn find-btn--icon" type="button" aria-label="关闭">
+      <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"
+           fill="none" stroke="currentColor" stroke-width="2.5"
+           stroke-linecap="round" stroke-linejoin="round">
+        <line x1="6" y1="6" x2="18" y2="18"/>
+        <line x1="18" y1="6" x2="6" y2="18"/>
+      </svg>
+    </button>
+  </div>
 </div>
 
 <input id="fileInput" type="file" accept=".svg,image/svg+xml" hidden />
@@ -191,7 +279,7 @@
 
     <label id="viewBoxRow" class="modal__check" hidden>
       <input id="exportScaleViewBox" type="checkbox" />
-      <span class="modal__check-desc">同时按新尺寸等比缩放 viewBox</span>
+      <span class="modal__check-desc">保持内容尺寸不变（画布四周留白）</span>
     </label>
 
     <div class="modal__actions">
@@ -205,7 +293,7 @@
 <div id="historyMask" class="modal-mask" hidden>
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="historyTitle">
     <h3 id="historyTitle" class="modal__title">历史版本</h3>
-    <p class="modal__subtitle">点击载入某个版本（最多保留20 条）</p>
+    <p class="modal__subtitle">点击载入某个版本（最多保留 20 条）</p>
     <div id="historyList" class="history-list"></div>
     <div class="modal__actions">
       <button id="historyClear" class="btn btn--ghost" type="button">清空历史</button>
@@ -217,5 +305,6 @@
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script src="script.js"></script>
+
 </body>
 </html>
