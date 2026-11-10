@@ -4487,16 +4487,29 @@ function showAnimAddMenu(anchorEl) {
     });
     menu.appendChild(btn);
   });
-  anchorEl.appendChild(menu);
+  document.body.appendChild(menu);
+  const rect = anchorEl.getBoundingClientRect();
+  const menuRect = menu.getBoundingClientRect();
+  const vh = window.innerHeight;
+  const vw = window.innerWidth;
+  const gap = 4;
+  let left = rect.left;
+  if (left + menuRect.width > vw - 8) left = vw - menuRect.width - 8;
+  if (left < 8) left = 8;
+  let top = rect.bottom + gap;
+  if (top + menuRect.height > vh - 8) {
+    top = rect.top - menuRect.height - gap;
+    if (top < 8) top = 8;
+  }
+  menu.style.position = 'fixed';
+  menu.style.top = top + 'px';
+  menu.style.left = left + 'px';
+  menu.style.right = 'auto';
+  menu.style.bottom = 'auto';
+  menu.style.zIndex = '200';
+  menu.style.maxHeight = Math.min(280, vh - 16) + 'px';
   animAddMenuEl = menu;
 }
-function closeAnimAddMenu() {
-  if (animAddMenuEl && animAddMenuEl.parentNode) {
-    animAddMenuEl.parentNode.removeChild(animAddMenuEl);
-  }
-  animAddMenuEl = null;
-}
-
 attrPanelLocate.addEventListener('click', locateSelectedInSource);
 attrPanelClose.addEventListener('click', clearSelection);
 
