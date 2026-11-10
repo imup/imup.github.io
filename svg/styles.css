@@ -864,3 +864,72 @@ body{
 @media (max-height: 480px){
   .editor{min-height:80px;}
 }
+.attr-sliders-wrap{
+  display:flex;flex-direction:column;gap:4px;
+  margin-top:6px;
+  padding:6px;
+  background:#f8fafc;
+  border:1px solid #e2e8f0;
+  border-radius:6px;
+}
+.attr-sliders-wrap--fromto{
+  margin-top:4px;
+}
+.attr-sliders-notice{
+  font-size:10.5px;color:#b45309;line-height:1.4;
+}
+.attr-slider-row{
+  display:flex;align-items:center;gap:6px;
+  min-width:0;
+}
+.attr-slider-row__idx{
+  flex:0 0 auto;
+  width:14px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:10.5px;color:#94a3b8;text-align:right;
+}
+.attr-slider-row__range{
+  flex:1;min-width:0;
+  height:16px;
+  accent-color:#2563eb;
+  cursor:pointer;
+}
+.attr-slider-row__num{
+  flex:0 0 64px;
+  height:22px;padding:0 4px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:11px;color:#0f172a;
+  background:#fff;border:1px solid #e2e8f0;border-radius:4px;
+  outline:none;
+}
+.attr-slider-row__num:focus{border-color:#2563eb;}
+.attr-slider-row__color{
+  flex:0 0 auto;
+  width:28px;height:22px;padding:0;
+  border:1px solid #e2e8f0;border-radius:4px;
+  cursor:pointer;background:transparent;
+  -webkit-appearance:none;appearance:none;
+}
+.attr-slider-row__color::-webkit-color-swatch-wrapper{padding:2px;}
+.attr-slider-row__color::-webkit-color-swatch{border-radius:3px;border:0;}
+.attr-slider-row__color::-moz-color-swatch{border-radius:3px;border:0;}
+.attr-slider-row__text{
+  flex:1;min-width:0;
+  height:22px;padding:0 6px;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  font-size:11px;color:#0f172a;
+  background:#fff;border:1px solid #e2e8f0;border-radius:4px;
+  outline:none;
+}
+.attr-slider-row__text:focus{border-color:#2563eb;}
+.attr-slider-row--single{
+  padding-left:0;
+}
+.attr-slider-row--single .attr-slider-row__range{
+  flex:1;
+}
+
+@media (max-width: 480px){
+  .attr-slider-row__num{flex:0 0 56px;font-size:10px;}
+  .attr-slider-row__text{font-size:10.5px;}
+}
