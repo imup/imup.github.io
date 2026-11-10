@@ -2093,6 +2093,7 @@ async function loadImageForConfig(file) {
   imageImportState.compress = true;
   openImageConfigModal();
 }
+/*
 function computeImageBox() {
   const { originalW, originalH, ratio, customW, customH, shape, insertMode } = imageImportState;
   let L = 0;
@@ -2132,6 +2133,91 @@ function computeImageBox() {
   }
   return { x, y, width: Math.round(width*100)/100, height: Math.round(height*100)/100 };
 }
+*/
+
+function computeImageBox() {
+  const { originalW, originalH, ratio, customW, customH, shape, insertMode } = imageImportState;
+  let L = 0;
+  let explicitW = 0, explicitH = 0;
+  if (insertMode === 'replace') {
+    L = Math.max(originalW, originalH);
+    if (ratio === 'custom' && customW > 0 && customH > 0) {
+      explicitW = customW;
+      explicitH = customH;
+    }
+  } else {
+    if (currentSvg) {
+      const vb = currentSvg.getAttribute('viewBox');
+      if (vb) {
+        const p = vb.trim().split(/[\s,]+/).map(Number);
+        if (p.length === 4 && p[2] > 0 && p[3] > 0) {
+          L = Math.min(p[2], p[3]) * 0.6;
+        }
+      }
+    }
+    if (!L) L = Math.max(originalW, originalH);
+    if (ratio === 'custom' && customW > 0 && customH > 0) {
+      explicitW = customW;
+      explicitH = customH;
+    }
+  }
+  if (explicitW > 0 && explicitH > 0) {
+    let width = explicitW, height = explicitH;
+    if (shape === 'circle') {
+      const D = Math.min(width, height);
+      width = D; height = D;
+    }
+    let x = 0, y = 0;
+    if (insertMode === 'append' && currentSvg) {
+      const vb = currentSvg.getAttribute('viewBox');
+      if (vb) {
+        const p = vb.trim().split(/[\s,]+/).map(Number);
+        if (p.length === 4) { x = p[0]; y = p[1]; }
+      }
+    }
+    return {
+      x, y,
+      width: Math.round(width * 100) / 100,
+      height: Math.round(height * 100) / 100
+    };
+  }
+  let R;
+  if (shape === 'circle') {
+    R = 1;
+  } else {
+    switch (ratio) {
+      case 'original': R = originalW / originalH; break;
+      case '1:1':      R = 1; break;
+      case '4:3':      R = 4 / 3; break;
+      case '16:9':     R = 16 / 9; break;
+      case '3:4':      R = 3 / 4; break;
+      case '9:16':     R = 9 / 16; break;
+      case 'custom':   R = (customW > 0 && customH > 0) ? customW / customH : originalW / originalH; break;
+      default:         R = originalW / originalH;
+    }
+  }
+  let width, height;
+  if (R >= 1) { width = L; height = L / R; }
+  else        { height = L; width = L * R; }
+  if (shape === 'circle') {
+    const D = Math.min(width, height);
+    width = D; height = D;
+  }
+  let x = 0, y = 0;
+  if (insertMode === 'append' && currentSvg) {
+    const vb = currentSvg.getAttribute('viewBox');
+    if (vb) {
+      const p = vb.trim().split(/[\s,]+/).map(Number);
+      if (p.length === 4) { x = p[0]; y = p[1]; }
+    }
+  }
+  return {
+    x, y,
+    width: Math.round(width * 100) / 100,
+    height: Math.round(height * 100) / 100
+  };
+}
+
 function renderImageConfigPreview() {
   if (!imageImportState.dataUrl) { imageConfigPreview.innerHTML = ''; return; }
   const box = computeImageBox();
