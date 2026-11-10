@@ -4510,6 +4510,12 @@ function showAnimAddMenu(anchorEl) {
   menu.style.maxHeight = Math.min(280, vh - 16) + 'px';
   animAddMenuEl = menu;
 }
+function closeAnimAddMenu() {
+  if (animAddMenuEl && animAddMenuEl.parentNode) {
+    animAddMenuEl.parentNode.removeChild(animAddMenuEl);
+  }
+  animAddMenuEl = null;
+}
 attrPanelLocate.addEventListener('click', locateSelectedInSource);
 attrPanelClose.addEventListener('click', clearSelection);
 
