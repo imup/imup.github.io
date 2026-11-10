@@ -225,7 +225,8 @@
         <span id="attrPanelId" class="attr-panel__id" hidden></span>
       </div>
       <div class="attr-panel__actions">
-        <button id="attrPanelCanvasBtn" class="attr-panel__canvas-btn" type="button" title="编辑画布属性">画布</button>
+        <button id="attrPanelLocate" class="attr-panel__tool-btn" type="button" title="定位到源码">定位</button>
+        <button id="attrPanelCanvasBtn" class="attr-panel__tool-btn attr-panel__canvas-btn" type="button" title="编辑画布属性">画布</button>
         <button id="attrPanelClose" class="attr-panel__close" type="button" aria-label="关闭">✕</button>
       </div>
     </div>
@@ -233,14 +234,9 @@
     <div id="attrPanelWarning" class="attr-panel__warning" hidden>
       ⚠️ 源码结构无法定位，属性面板为只读
     </div>
-
     <div id="attrPanelBody" class="attr-panel__body"></div>
-
-    <div class="attr-panel__footer">
-      <button id="attrPanelLocate" class="btn btn--ghost attr-panel__btn" type="button">定位到源码</button>
-      <button id="attrPanelReconfigImg" class="btn btn--ghost attr-panel__btn" type="button" hidden>重新配置图片</button>
-    </div>
   </aside>
+
 </div>
 
 <div id="findPanel" class="find-panel" hidden>
