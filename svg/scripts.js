@@ -618,12 +618,40 @@ async function drawDataImagesToCanvas(ctx, markup, canvasW, canvasH) {
 }
 
 // —— [J5-7a] 从 DOM 绘制图片（含 getCTM 变换，支持 transform/rotate） ——
+
 async function drawDataImagesFromDom(ctx, svgRoot, canvasW, canvasH) {
-  const domRect = svgRoot.getBoundingClientRect();
-  const domW = domRect.width  || parseFloat(svgRoot.getAttribute('width'))  || canvasW;
-  const domH = domRect.height || parseFloat(svgRoot.getAttribute('height')) || canvasH;
-  const scaleX = canvasW / domW;
-  const scaleY = canvasH / domH;
+  // 用 SVG 元素的布局尺寸（width/height 属性解析值）作为基准
+  // 不能用 getBoundingClientRect，因为外层 .canvas 有 previewScale/previewRotation transform
+  let svgW = 0, svgH = 0;
+  try {
+    svgW = svgRoot.width.baseVal.value;
+    svgH = svgRoot.height.baseVal.value;
+  } catch (_) {}
+
+  // 兜底：从 viewBox + 首个子元素 getCTM 反推
+  if (!svgW || svgW <= 0 || !svgH || svgH <= 0) {
+    const vb = svgRoot.getAttribute('viewBox');
+    if (vb) {
+      const p = vb.trim().split(/[\s,]+/).map(Number);
+      if (p.length === 4 && p[2] > 0 && p[3] > 0) {
+        const firstEl = svgRoot.querySelector('image, rect, circle, path, g');
+        if (firstEl) {
+          try {
+            const c = firstEl.getCTM();
+            if (c && c.a > 0 && c.d > 0) {
+              svgW = p[2] * c.a;
+              svgH = p[3] * c.d;
+            }
+          } catch (_) {}
+        }
+      }
+    }
+  }
+  if (!svgW || svgW <= 0) svgW = svgRoot.clientWidth || canvasW;
+  if (!svgH || svgH <= 0) svgH = svgRoot.clientHeight || canvasH;
+
+  const scaleX = canvasW / svgW;
+  const scaleY = canvasH / svgH;
 
   const clipMap = {};
   svgRoot.querySelectorAll('clipPath').forEach(cp => {
@@ -650,8 +678,25 @@ async function drawDataImagesFromDom(ctx, svgRoot, canvasW, canvasH) {
     const drawRect = computeParDrawRectLocal(im, x, y, w, h, par);
     if (!drawRect) continue;
 
+    // getCTM: 元素用户坐标 → SVG viewport CSS 像素（不含外部 transform）
     let ctm = null;
     try { ctm = imgEl.getCTM(); } catch (_) {}
+
+    if (!ctm) {
+      // 无 CTM 时用 viewBox 直接映射
+      const vb = svgRoot.getAttribute('viewBox');
+      if (vb) {
+        const p = vb.trim().split(/[\s,]+/).map(Number);
+        if (p.length === 4 && p[2] > 0 && p[3] > 0) {
+          const s = Math.min(canvasW / p[2], canvasH / p[3]);
+          ctm = {
+            a: s, b: 0, c: 0, d: s,
+            e: -p[0] * s, f: -p[1] * s
+          };
+        }
+      }
+      if (!ctm) continue;
+    }
 
     const clipAttr = imgEl.getAttribute('clip-path') || '';
     const cidMatch = clipAttr.match(/url\(#([^)]+)\)/);
@@ -659,18 +704,15 @@ async function drawDataImagesFromDom(ctx, svgRoot, canvasW, canvasH) {
 
     ctx.save();
 
-    if (ctm) {
-      ctx.setTransform(
-        ctm.a * scaleX,
-        ctm.b * scaleY,
-        ctm.c * scaleX,
-        ctm.d * scaleY,
-        ctm.e * scaleX,
-        ctm.f * scaleY
-      );
-    } else {
-      ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
-    }
+    // 合并变换：元素用户坐标 → CSS 像素 (ctm) × CSS 像素 → canvas 像素 (scaleX/scaleY)
+    ctx.setTransform(
+      ctm.a * scaleX,
+      ctm.b * scaleY,
+      ctm.c * scaleX,
+      ctm.d * scaleY,
+      ctm.e * scaleX,
+      ctm.f * scaleY
+    );
 
     if (clipEl) {
       applyClipShapeToCtx(ctx, clipEl, 1, 1, 0, 0);
