@@ -357,7 +357,6 @@ shadow.innerHTML = `
 `;
 const stageEl  = shadow.querySelector('.stage');
 const canvasEl = shadow.querySelector('.canvas');
-
 class DomRenderer {
   constructor() { this.host = null; this.type = 'dom'; }
   getType() { return this.type; }
@@ -387,16 +386,158 @@ async function canvas2dExportBlob(markup, width, height, format, whiteBg) {
   const blobUrl = URL.createObjectURL(new Blob([markup], { type: 'image/svg+xml' }));
   const img = new Image();
   try {
-    await new Promise((res, rej) => {
-      img.onload = () => res();
-      img.onerror = () => rej(new Error('SVG 无法渲染为图像，可能引用了外部资源'));
+    await new Promise((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error('SVG 无法渲染为图像，可能引用了外部资源'));
       img.src = blobUrl;
     });
     ctx.drawImage(img, 0, 0, width, height);
   } finally { URL.revokeObjectURL(blobUrl); }
+  const hasDataImage = /<image\b[^>]*(?:href|xlink:href)\s*=\s*["']data:/i.test(markup);
+  if (hasDataImage) {
+    try {
+      await drawDataImagesToCanvas(ctx, markup, width, height);
+    } catch (err) {
+      console.warn('[export] 手动绘制图片失败：', err);
+    }
+  }
   const blob = await new Promise(res => canvas.toBlob(res, mime, quality));
   if (!blob) throw new Error('图像生成失败');
   return blob;
+}
+function loadImageFromUrl(url) {
+  return new Promise((res, rej) => {
+    const im = new Image();
+    im.onload = () => res(im);
+    im.onerror = () => rej(new Error('图片加载失败'));
+    im.src = url;
+  });
+}
+function applyClipShapeToCtx(ctx, shapeEl, sx, sy, offsetX, offsetY) {
+  const tag = shapeEl.localName.toLowerCase();
+  const num = (a, d) => { const v = parseFloat(shapeEl.getAttribute(a)); return isFinite(v) ? v : d; };
+  ctx.beginPath();
+  if (tag === 'rect') {
+    const x = num('x', 0), y = num('y', 0);
+    const w = num('width', 0), h = num('height', 0);
+    const rx = num('rx', 0), ry = num('ry', 0);
+    const px = x * sx + offsetX, py = y * sy + offsetY;
+    const pw = w * sx, ph = h * sy;
+    const r = Math.min(rx * sx, ry * sy, pw / 2, ph / 2);
+    if (r > 0) {
+      ctx.moveTo(px + r, py);
+      ctx.arcTo(px + pw, py, px + pw, py + ph, r);
+      ctx.arcTo(px + pw, py + ph, px, py + ph, r);
+      ctx.arcTo(px, py + ph, px, py, r);
+      ctx.arcTo(px, py, px + pw, py, r);
+      ctx.closePath();
+    } else {
+      ctx.rect(px, py, pw, ph);
+    }
+  } else if (tag === 'circle') {
+    const cx = num('cx', 0), cy = num('cy', 0), r = num('r', 0);
+    ctx.arc(cx * sx + offsetX, cy * sy + offsetY, r * Math.min(Math.abs(sx), Math.abs(sy)), 0, Math.PI * 2);
+  } else if (tag === 'ellipse') {
+    const cx = num('cx', 0), cy = num('cy', 0);
+    const rx = num('rx', 0), ry = num('ry', 0);
+    ctx.ellipse(cx * sx + offsetX, cy * sy + offsetY, Math.abs(rx * sx), Math.abs(ry * sy), 0, 0, Math.PI * 2);
+  }
+}
+function computeParDrawRect(img, boxX, boxY, boxW, boxH, par) {
+  const iw = img.naturalWidth, ih = img.naturalHeight;
+  if (!iw || !ih) return null;
+  const meet = par.includes('meet');
+  const isSlice = !meet;
+
+  let dw, dh, dx, dy;
+  const sx = 0, sy = 0, sw = iw, sh = ih;
+
+  if (isSlice) {
+    const k = Math.max(boxW / iw, boxH / ih);
+    dw = iw * k; dh = ih * k;
+    dx = boxX + (boxW - dw) / 2;
+    dy = boxY + (boxH - dh) / 2;
+  } else {
+    const k = Math.min(boxW / iw, boxH / ih);
+    dw = iw * k; dh = ih * k;
+    dx = boxX + (boxW - dw) / 2;
+    dy = boxY + (boxH - dh) / 2;
+  }
+  return { sx, sy, sw, sh, dx, dy, dw, dh, needClip: isSlice };
+}
+async function drawDataImagesToCanvas(ctx, markup, canvasW, canvasH) {
+  const doc = new DOMParser().parseFromString(markup, 'image/svg+xml');
+  const root = doc.documentElement;
+  if (!root) return;
+
+  let vb = { x: 0, y: 0, w: canvasW, h: canvasH };
+  const vbAttr = root.getAttribute('viewBox');
+  if (vbAttr) {
+    const p = vbAttr.trim().split(/[\s,]+/).map(Number);
+    if (p.length === 4 && p[2] > 0 && p[3] > 0) {
+      vb = { x: p[0], y: p[1], w: p[2], h: p[3] };
+    }
+  }
+  const sx = canvasW / vb.w;
+  const sy = canvasH / vb.h;
+  const offsetX = -vb.x * sx;
+  const offsetY = -vb.y * sy;
+  const clipMap = {};
+  root.querySelectorAll('clipPath').forEach(cp => {
+    const id = cp.getAttribute('id');
+    if (!id) return;
+    const shape = cp.firstElementChild;
+    if (shape) clipMap[id] = shape;
+  });
+  const images = [];
+  root.querySelectorAll('image').forEach(img => {
+    const href = img.getAttribute('href') || img.getAttribute('xlink:href');
+    if (!href || !href.startsWith('data:')) return;
+    const x = parseFloat(img.getAttribute('x'));
+    const y = parseFloat(img.getAttribute('y'));
+    const w = parseFloat(img.getAttribute('width'));
+    const h = parseFloat(img.getAttribute('height'));
+    if (!isFinite(w) || !isFinite(h) || w <= 0 || h <= 0) return;
+    const par = img.getAttribute('preserveAspectRatio') || 'xMidYMid meet';
+    const clipAttr = img.getAttribute('clip-path') || '';
+    const cidMatch = clipAttr.match(/url\(#([^)]+)\)/);
+    const clipEl = cidMatch ? clipMap[cidMatch[1]] : null;
+    images.push({
+      href,
+      x: isFinite(x) ? x : 0,
+      y: isFinite(y) ? y : 0,
+      w, h, par, clipEl
+    });
+  });
+  for (const t of images) {
+    let im;
+    try { im = await loadImageFromUrl(t.href); } catch (_) { continue; }
+
+    const drawRect = computeParDrawRect(
+      im,
+      t.x * sx + offsetX,
+      t.y * sy + offsetY,
+      t.w * sx,
+      t.h * sy,
+      t.par
+    );
+    if (!drawRect) continue;
+    ctx.save();
+    if (t.clipEl) {
+      applyClipShapeToCtx(ctx, t.clipEl, sx, sy, offsetX, offsetY);
+      ctx.clip();
+    } else if (drawRect.needClip) {
+      ctx.beginPath();
+      ctx.rect(t.x * sx + offsetX, t.y * sy + offsetY, t.w * sx, t.h * sy);
+      ctx.clip();
+    }
+    ctx.drawImage(
+      im,
+      drawRect.sx, drawRect.sy, drawRect.sw, drawRect.sh,
+      drawRect.dx, drawRect.dy, drawRect.dw, drawRect.dh
+    );
+    ctx.restore();
+  }
 }
 const domRenderer = new DomRenderer();
 
