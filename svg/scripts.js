@@ -348,7 +348,7 @@ shadow.innerHTML = `
       position: absolute; left: 50%; top: 50%;
       transform-origin: center center;
       will-change: transform; transition: opacity .2s;
-      outline: 0.5px dashed rgba(37, 99, 235, 0.55);
+      outline: 1px solid rgba(200, 200, 200, 0.5);
       outline-offset: -1px;
     }
     .canvas > * { display: block; }
