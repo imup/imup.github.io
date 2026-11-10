@@ -224,7 +224,10 @@
         <span id="attrPanelTag" class="attr-panel__tag">—</span>
         <span id="attrPanelId" class="attr-panel__id" hidden></span>
       </div>
-      <button id="attrPanelClose" class="attr-panel__close" type="button" aria-label="关闭">✕</button>
+      <div class="attr-panel__actions">
+        <button id="attrPanelCanvasBtn" class="attr-panel__canvas-btn" type="button" title="编辑画布属性">画布</button>
+        <button id="attrPanelClose" class="attr-panel__close" type="button" aria-label="关闭">✕</button>
+      </div>
     </div>
 
     <div id="attrPanelWarning" class="attr-panel__warning" hidden>
@@ -433,5 +436,6 @@
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script src="scripts.js"></script>
+
 </body>
 </html>
