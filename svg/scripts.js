@@ -2,6 +2,7 @@
 'use strict';
 
 const $ = id => document.getElementById(id);
+
 const appEl         = $('appRoot');
 const previewHost   = $('preview');
 const previewWrap   = $('previewWrap');
@@ -90,6 +91,7 @@ const imageConfigCancel    = $('imageConfigCancel');
 const imageConfigConfirm   = $('imageConfigConfirm');
 const imageConfigFillRadios   = Array.from(document.querySelectorAll('input[name="imageConfigFill"]'));
 const imageConfigInsertRadios = Array.from(document.querySelectorAll('input[name="imageConfigInsert"]'));
+
 const attrPanel            = $('attrPanel');
 const attrPanelTag         = $('attrPanelTag');
 const attrPanelId          = $('attrPanelId');
@@ -98,6 +100,7 @@ const attrPanelBody        = $('attrPanelBody');
 const attrPanelClose       = $('attrPanelClose');
 const attrPanelLocate      = $('attrPanelLocate');
 const attrPanelReconfigImg = $('attrPanelReconfigImg');
+
 const btnMobileViewMenu = $('btnMobileViewMenu');
 const mobileViewMenu    = $('mobileViewMenu');
 const menuViewCode      = $('menuViewCode');
@@ -130,10 +133,11 @@ let selectedPath = null;
 let attrPanelOpen = false;
 let attrCommitTimer = 0;
 let suppressAttrRebuild = false;
-let mobileView = 'code';
+let mobileView = 'code'; 
 function isMobileViewport() {
   return window.innerWidth <= 480;
 }
+
 const MAX_SIDE      = 4096;
 const DRAFT_KEY     = 'svg-editor.draft.v1';
 const HISTORY_KEY   = 'svg-editor.history.v1';
@@ -159,6 +163,7 @@ const DEFAULT_CODE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 1
     <circle cx="66" cy="66" r="3.0" />
   </g>
 </svg>`;
+
 let cachedPreviewRect = null;
 function getPreviewRect() {
   if (!cachedPreviewRect) cachedPreviewRect = previewHost.getBoundingClientRect();
@@ -443,6 +448,7 @@ async function canvas2dExportBlob(markup, width, height, format, whiteBg) {
       console.warn('[export] 手动绘制图片失败：', err);
     }
   }
+
   const blob = await new Promise(res => canvas.toBlob(res, mime, quality));
   if (!blob) throw new Error('图像生成失败');
   return blob;
@@ -529,6 +535,7 @@ async function drawDataImagesToCanvas(ctx, markup, canvasW, canvasH) {
   const sy = canvasH / vb.h;
   const offsetX = -vb.x * sx;
   const offsetY = -vb.y * sy;
+
   const clipMap = {};
   root.querySelectorAll('clipPath').forEach(cp => {
     const id = cp.getAttribute('id');
@@ -536,6 +543,7 @@ async function drawDataImagesToCanvas(ctx, markup, canvasW, canvasH) {
     const shape = cp.firstElementChild;
     if (shape) clipMap[id] = shape;
   });
+
   const images = [];
   root.querySelectorAll('image').forEach(img => {
     const href = img.getAttribute('href') || img.getAttribute('xlink:href');
@@ -556,9 +564,11 @@ async function drawDataImagesToCanvas(ctx, markup, canvasW, canvasH) {
       w, h, par, clipEl
     });
   });
+
   for (const t of images) {
     let im;
     try { im = await loadImageFromUrl(t.href); } catch (_) { continue; }
+
     const drawRect = computeParDrawRect(
       im,
       t.x * sx + offsetX,
@@ -568,7 +578,9 @@ async function drawDataImagesToCanvas(ctx, markup, canvasW, canvasH) {
       t.par
     );
     if (!drawRect) continue;
+
     ctx.save();
+
     if (t.clipEl) {
       applyClipShapeToCtx(ctx, t.clipEl, sx, sy, offsetX, offsetY);
       ctx.clip();
@@ -577,6 +589,7 @@ async function drawDataImagesToCanvas(ctx, markup, canvasW, canvasH) {
       ctx.rect(t.x * sx + offsetX, t.y * sy + offsetY, t.w * sx, t.h * sy);
       ctx.clip();
     }
+
     ctx.drawImage(
       im,
       drawRect.sx, drawRect.sy, drawRect.sw, drawRect.sh,
@@ -598,6 +611,7 @@ function applyPreviewTransform() {
   zoomLabel.textContent = Math.round(s * 100) + '%';
   scheduleRefreshSelectionOverlay();
 }
+
 function fitToView() {
   if (!currentSvg) return;
   const size = getSize(currentSvg);
@@ -613,10 +627,12 @@ function fitToView() {
   isFitMode = true;
   applyPreviewTransform();
 }
+
 function updateBadge(width, height) {
   badge.textContent = `${Math.round(width)} × ${Math.round(height)}`;
   badge.hidden = false;
 }
+
 async function renderPreview() {
   const code = codeEl.value;
   if (!code.trim()) {
@@ -2332,6 +2348,7 @@ function computeImageBox() {
       height: Math.round(height * 100) / 100
     };
   }
+
   let R;
   if (shape === 'circle') {
     R = 1;
@@ -2372,6 +2389,7 @@ function computeImageBox() {
     height: Math.round(height * 100) / 100
   };
 }
+
 
 function renderImageConfigPreview() {
   if (!imageImportState.dataUrl) { imageConfigPreview.innerHTML = ''; return; }
@@ -2532,11 +2550,11 @@ function appendImageToSource(defsStr, imageStr) {
 }
 
 const ANIM_TAGS = new Set(['animate', 'animatetransform', 'animatemotion', 'animatecolor', 'set']);
-
 let animAddMenuEl = null;
 let canvasAttrTimer = 0;
 let canvasViewBoxTimer = 0;
 let overlayRafId = 0;
+let sliderSuppressTimer = 0;
 
 const ANIM_TEMPLATES = [
   {
@@ -3029,6 +3047,7 @@ function rebuildAttrPanel() {
   if (posAttrs.length) {
     attrPanelBody.appendChild(makeGroup('位置尺寸', posAttrs.map(a => makeRow(el, a, isReadOnly, false))));
   }
+
   attrPanelBody.appendChild(makeTransformGroup(el, isReadOnly));
 
   const fillSpecs = [
@@ -3063,6 +3082,7 @@ function rebuildAttrPanel() {
   ];
   attrPanelBody.appendChild(makeGroup('引用', refSpecs.map(a => makeRefRow(el, a, isReadOnly, false))));
 
+  // 渲染
   const renderSpecs = [
     { name: 'shape-rendering',      type: 'select', options: ['', 'auto', 'optimizeSpeed', 'crispEdges', 'geometricPrecision'] },
     { name: 'text-rendering',       type: 'select', options: ['', 'auto', 'optimizeSpeed', 'optimizeLegibility', 'geometricPrecision'] },
@@ -3079,7 +3099,6 @@ function rebuildAttrPanel() {
     { name: 'cursor',         type: 'select', options: ['', 'auto', 'default', 'pointer', 'move', 'crosshair', 'text', 'wait', 'help', 'grab', 'grabbing'] }
   ];
   attrPanelBody.appendChild(makeGroup('交互', interactSpecs.map(a => makeRow(el, a, isReadOnly, false))));
-
   if (tagName === 'text' || tagName === 'tspan') {
     const textBaseSpecs = [
       { name: 'text-anchor', type: 'select', options: ['', 'start', 'middle', 'end'] },
@@ -3380,11 +3399,14 @@ function commitCanvasSize(minX, minY, newW, newH) {
   if (newOpenTag === oldOpenTag) return;
 
   codeEl.value = codeEl.value.slice(0, loc.openStart) + newOpenTag + codeEl.value.slice(loc.openEnd);
+
   isFitMode = false;
+
   renderEditor();
   renderPreview();
   saveDraftDebounced();
   recordSnapshot();
+
   showToast(`画布已设置为 ${newW} × ${newH}（内容保持居中）`);
   setTimeout(() => { if (canvasRootMode) rebuildCanvasAttrPanel(); }, 300);
 }
@@ -3653,6 +3675,271 @@ function getAnimSpecs() {
     { name: 'rotate',         type: 'text' }
   ];
 }
+function parseAnimValueList(str) {
+  if (!str) return [];
+  return str.split(';').map(s => s.trim()).filter(Boolean);
+}
+function parseAnimValueSingle(str) {
+  if (!str) return [];
+  const t = String(str).trim();
+  if (!t) return [];
+  return t.split(/[\s,]+/).map(s => s.trim()).filter(Boolean);
+}
+function isNumericComponent(s) {
+  if (s == null) return false;
+  const t = String(s).trim();
+  if (t === '') return false;
+  return /^-?\d+(\.\d+)?([eE][-+]?\d+)?$/.test(t);
+}
+function isColorComponent(s) {
+  if (s == null) return false;
+  const t = String(s).trim().toLowerCase();
+  if (!t) return false;
+  if (/^#[0-9a-f]{3}$/i.test(t) || /^#[0-9a-f]{6}$/i.test(t) || /^#[0-9a-f]{8}$/i.test(t)) return true;
+  if (/^rgb(a)?\(/.test(t)) return true;
+  if (/^hsl(a)?\(/.test(t)) return true;
+  return false;
+}
+function detectValuesType(items) {
+  if (!items || items.length === 0) return 'mixed';
+  if (items.every(isNumericComponent)) return 'number';
+  if (items.every(isColorComponent)) return 'color';
+  return 'mixed';
+}
+function computeRangeForNums(nums) {
+  const finites = nums.filter(n => isFinite(n));
+  if (finites.length === 0) return { min: 0, max: 1, step: 0.01 };
+  const lo = Math.min(...finites);
+  const hi = Math.max(...finites);
+  if (lo >= 0 && hi <= 1) {
+    return { min: 0, max: 1, step: 0.01 };
+  }
+  const span = hi - lo || 1;
+  const pad = Math.max(span * 0.2, 1);
+  return {
+    min: Math.floor(lo - pad),
+    max: Math.ceil(hi + pad),
+    step: span <= 10 ? 0.1 : 1
+  };
+}
+function hexToColorPickerVal(v) {
+  const t = String(v || '').trim();
+  if (/^#[0-9a-f]{6}$/i.test(t)) return t;
+  if (/^#[0-9a-f]{3}$/i.test(t)) {
+    return '#' + t[1]+t[1]+t[2]+t[2]+t[3]+t[3];
+  }
+  return '#000000';
+}
+function suppressRebuildForSliders() {
+  suppressAttrRebuild = true;
+  clearTimeout(sliderSuppressTimer);
+  sliderSuppressTimer = setTimeout(() => { suppressAttrRebuild = false; }, 1500);
+}
+
+function makeValuesSliders(valuesStr, onCommit) {
+  const wrap = document.createElement('div');
+  wrap.className = 'attr-sliders-wrap';
+
+  const items = parseAnimValueList(valuesStr);
+  if (items.length === 0) return wrap;
+
+  const type = detectValuesType(items);
+  if (type === 'mixed') {
+    const notice = document.createElement('div');
+    notice.className = 'attr-sliders-notice';
+    notice.textContent = '含坐标对/单位等复合值，不支持拉杆，请编辑上方文本';
+    wrap.appendChild(notice);
+    return wrap;
+  }
+
+  const limit = Math.min(items.length, 10);
+  if (items.length > 10) {
+    const notice = document.createElement('div');
+    notice.className = 'attr-sliders-notice';
+    notice.textContent = `值数量 ${items.length}，仅前 10 个可拉杆`;
+    wrap.appendChild(notice);
+  }
+
+  if (type === 'number') {
+    const nums = items.slice(0, limit).map(Number);
+    const range = computeRangeForNums(nums);
+
+    for (let i = 0; i < limit; i++) {
+      const row = document.createElement('div');
+      row.className = 'attr-slider-row';
+      const idx = document.createElement('span');
+      idx.className = 'attr-slider-row__idx';
+      idx.textContent = String(i + 1);
+      const slider = document.createElement('input');
+      slider.type = 'range';
+      slider.className = 'attr-slider-row__range';
+      slider.min = String(range.min);
+      slider.max = String(range.max);
+      slider.step = String(range.step);
+      slider.value = String(nums[i]);
+      const numInput = document.createElement('input');
+      numInput.type = 'number';
+      numInput.className = 'attr-slider-row__num';
+      numInput.step = String(range.step);
+      numInput.value = String(nums[i]);
+
+      const commit = () => {
+        suppressRebuildForSliders();
+        const cur = items.slice();
+        cur[i] = String(slider.value);
+        items[i] = cur[i];
+        onCommit(cur.join(';'));
+      };
+
+      slider.addEventListener('input', () => {
+        numInput.value = slider.value;
+        commit();
+      });
+      numInput.addEventListener('input', () => {
+        const v = parseFloat(numInput.value);
+        if (isFinite(v)) {
+          if (v < parseFloat(slider.min)) slider.min = String(v);
+          if (v > parseFloat(slider.max)) slider.max = String(v);
+          slider.value = String(v);
+          commit();
+        }
+      });
+
+      row.appendChild(idx);
+      row.appendChild(slider);
+      row.appendChild(numInput);
+      wrap.appendChild(row);
+    }
+  } else if (type === 'color') {
+    for (let i = 0; i < limit; i++) {
+      const row = document.createElement('div');
+      row.className = 'attr-slider-row';
+      const idx = document.createElement('span');
+      idx.className = 'attr-slider-row__idx';
+      idx.textContent = String(i + 1);
+      const picker = document.createElement('input');
+      picker.type = 'color';
+      picker.className = 'attr-slider-row__color';
+      picker.value = hexToColorPickerVal(items[i]);
+      const text = document.createElement('input');
+      text.type = 'text';
+      text.className = 'attr-slider-row__text';
+      text.value = items[i];
+
+      const commit = (val) => {
+        suppressRebuildForSliders();
+        items[i] = val;
+        onCommit(items.join(';'));
+      };
+
+      picker.addEventListener('input', () => {
+        text.value = picker.value;
+        commit(picker.value);
+      });
+      text.addEventListener('input', () => {
+        if (/^#[0-9a-f]{6}$/i.test(text.value)) picker.value = text.value;
+        commit(text.value);
+      });
+
+      row.appendChild(idx);
+      row.appendChild(picker);
+      row.appendChild(text);
+      wrap.appendChild(row);
+    }
+  }
+
+  return wrap;
+}
+
+function makeFromToSliders(el, fieldName, onCommit) {
+  const wrap = document.createElement('div');
+  wrap.className = 'attr-sliders-wrap attr-sliders-wrap--fromto';
+
+  const ownItems = parseAnimValueSingle(el.getAttribute(fieldName) || '');
+  const otherName = fieldName === 'from' ? 'to' : 'from';
+  const otherItems = parseAnimValueSingle(el.getAttribute(otherName) || '');
+
+  if (ownItems.length !== 1 || otherItems.length !== 1) return null;
+
+  if (isNumericComponent(ownItems[0]) && isNumericComponent(otherItems[0])) {
+    const nums = [parseFloat(ownItems[0]), parseFloat(otherItems[0])].filter(isFinite);
+    const range = computeRangeForNums(nums);
+    const ownNum = parseFloat(ownItems[0]);
+
+    const row = document.createElement('div');
+    row.className = 'attr-slider-row attr-slider-row--single';
+    const slider = document.createElement('input');
+    slider.type = 'range';
+    slider.className = 'attr-slider-row__range';
+    slider.min = String(range.min);
+    slider.max = String(range.max);
+    slider.step = String(range.step);
+    slider.value = String(isFinite(ownNum) ? ownNum : 0);
+    const numInput = document.createElement('input');
+    numInput.type = 'number';
+    numInput.className = 'attr-slider-row__num';
+    numInput.step = String(range.step);
+    numInput.value = String(isFinite(ownNum) ? ownNum : 0);
+
+    const commit = () => {
+      suppressRebuildForSliders();
+      onCommit(String(slider.value));
+    };
+
+    slider.addEventListener('input', () => {
+      numInput.value = slider.value;
+      commit();
+    });
+    numInput.addEventListener('input', () => {
+      const v = parseFloat(numInput.value);
+      if (isFinite(v)) {
+        if (v < parseFloat(slider.min)) slider.min = String(v);
+        if (v > parseFloat(slider.max)) slider.max = String(v);
+        slider.value = String(v);
+        commit();
+      }
+    });
+
+    row.appendChild(slider);
+    row.appendChild(numInput);
+    wrap.appendChild(row);
+    return wrap;
+  }
+
+  if (isColorComponent(ownItems[0]) && isColorComponent(otherItems[0])) {
+    const row = document.createElement('div');
+    row.className = 'attr-slider-row attr-slider-row--single';
+    const picker = document.createElement('input');
+    picker.type = 'color';
+    picker.className = 'attr-slider-row__color';
+    picker.value = hexToColorPickerVal(ownItems[0]);
+    const text = document.createElement('input');
+    text.type = 'text';
+    text.className = 'attr-slider-row__text';
+    text.value = ownItems[0];
+
+    const commit = (val) => {
+      suppressRebuildForSliders();
+      onCommit(val);
+    };
+
+    picker.addEventListener('input', () => {
+      text.value = picker.value;
+      commit(picker.value);
+    });
+    text.addEventListener('input', () => {
+      if (/^#[0-9a-f]{6}$/i.test(text.value)) picker.value = text.value;
+      commit(text.value);
+    });
+
+    row.appendChild(picker);
+    row.appendChild(text);
+    wrap.appendChild(row);
+    return wrap;
+  }
+
+  return null;
+}
 
 function makeGroup(title, rows) {
   const g = document.createElement('div');
@@ -3670,6 +3957,20 @@ function makeRow(el, spec, isReadOnly, isCanvas) {
   row.className = 'attr-row';
 
   if (spec.type === 'textarea') row.classList.add('attr-row--full');
+
+  let hasFromToSliders = false;
+  if ((spec.name === 'from' || spec.name === 'to') && spec.type === 'text') {
+    const ownItems = parseAnimValueSingle(el.getAttribute(spec.name) || '');
+    const otherName = spec.name === 'from' ? 'to' : 'from';
+    const otherItems = parseAnimValueSingle(el.getAttribute(otherName) || '');
+    if (ownItems.length === 1 && otherItems.length === 1) {
+      if ((isNumericComponent(ownItems[0]) && isNumericComponent(otherItems[0])) ||
+          (isColorComponent(ownItems[0]) && isColorComponent(otherItems[0]))) {
+        row.classList.add('attr-row--full');
+        hasFromToSliders = true;
+      }
+    }
+  }
 
   const label = document.createElement('label');
   label.className = 'attr-row__label';
@@ -3771,6 +4072,21 @@ function makeRow(el, spec, isReadOnly, isCanvas) {
   }
   if (isReadOnly) input.disabled = true;
   ctrl.appendChild(input);
+
+  if (!isReadOnly && !isCanvas && spec.name === 'values' && spec.type === 'textarea') {
+    const sliders = makeValuesSliders(el.getAttribute('values') || '', (newVal) => {
+      commitAttrChange(el, 'values', newVal);
+    });
+    if (sliders.childElementCount > 0) ctrl.appendChild(sliders);
+  }
+
+  if (!isReadOnly && !isCanvas && hasFromToSliders) {
+    const sliders = makeFromToSliders(el, spec.name, (newVal) => {
+      commitAttrChange(el, spec.name, newVal);
+    });
+    if (sliders && sliders.childElementCount > 0) ctrl.appendChild(sliders);
+  }
+
   return row;
 }
 
@@ -3864,12 +4180,13 @@ function commitAttrChange(el, name, value) {
   if (patched === original) return;
   const newCode = codeEl.value.slice(0, loc.start) + patched + codeEl.value.slice(loc.end);
   codeEl.value = newCode;
+  const wasSuppressed = suppressAttrRebuild;
   suppressAttrRebuild = true;
   renderEditor();
   schedulePreviewRender();
   saveDraftDebounced();
   recordSnapshot();
-  setTimeout(() => { suppressAttrRebuild = false; }, 400);
+  setTimeout(() => { if (!wasSuppressed) suppressAttrRebuild = false; }, 400);
 }
 
 function deleteSelectedElement() {
@@ -3930,6 +4247,7 @@ function locateSelectedInSource() {
     updateCurrentLineHighlight();
     return;
   }
+
   if (!selectedPath) return;
   const loc = findTagOffsetByPath(codeEl.value, selectedPath);
   if (!loc) { showToast('无法定位到源码'); return; }
@@ -3938,7 +4256,9 @@ function locateSelectedInSource() {
     const e = skipElementContent(codeEl.value, loc.start, loc.tag);
     if (e > 0) end = e;
   }
+
   if (isMobileViewport() && mobileView === 'attr') setMobileView('code');
+
   try { codeEl.focus(); codeEl.setSelectionRange(loc.start, end); } catch(_) {}
   const lineNo = codeEl.value.slice(0, loc.start).split('\n').length;
   const lineHeight = parseFloat(getComputedStyle(codeEl).lineHeight) || 21;
@@ -3953,6 +4273,7 @@ function insertAnimChild(parentPath, animMarkup) {
   if (!loc) return false;
   const code = codeEl.value;
   const animTag = animMarkup.trim();
+
   if (loc.isSelfClosing) {
     const m = loc.tag.match(/^<([^\s>\/]+)/);
     const tagName = m ? m[1] : 'g';
@@ -3965,13 +4286,16 @@ function insertAnimChild(parentPath, animMarkup) {
     codeEl.value = code.slice(0, loc.start) + newBlock + code.slice(loc.end);
     return true;
   }
+
   const closeEnd = skipElementContent(code, loc.start, loc.tag);
   if (closeEnd < 0) return false;
   const closeStart = code.lastIndexOf('</', closeEnd - 1);
   if (closeStart < 0) return false;
+
   const lineStartBefore = code.lastIndexOf('\n', closeStart - 1) + 1;
   const beforeClose = code.slice(lineStartBefore, closeStart);
   const hasIndentBefore = /^[ \t]*$/.test(beforeClose);
+
   let parentIndent;
   if (hasIndentBefore) {
     parentIndent = beforeClose;
@@ -3981,6 +4305,7 @@ function insertAnimChild(parentPath, animMarkup) {
   }
   const childIndent = parentIndent + '  ';
   const indentAnim = animTag.split('\n').map(l => childIndent + l).join('\n');
+
   if (hasIndentBefore) {
     codeEl.value = code.slice(0, lineStartBefore) + indentAnim + '\n' + code.slice(lineStartBefore);
   } else {
@@ -3995,6 +4320,7 @@ function addAnimTemplate(templateId) {
   if (!el) return;
   const template = ANIM_TEMPLATES.find(t => t.id === templateId);
   if (!template) return;
+
   const parentPath = [...selectedPath];
   const animMarkup = template.build(el);
 
@@ -4017,6 +4343,7 @@ function addAnimTemplate(templateId) {
     return;
   }
   const newIdx = newParent.children.length - 1;
+
   currentSvg = newSvg;
   selectedPath = [...parentPath, newIdx];
 
@@ -4025,7 +4352,6 @@ function addAnimTemplate(templateId) {
   showToast(template.isCustom ? '已添加空白动画，请填写参数' : `已添加：${template.label}`);
   closeAnimAddMenu();
 }
-
 function addFieldAnim(el, fieldName, animBuilder) {
   if (!selectedPath || !currentSvg) return;
   if (!el) return;
@@ -4042,7 +4368,6 @@ function addFieldAnim(el, fieldName, animBuilder) {
   renderEditor();
   saveDraftDebounced();
   recordSnapshot(true);
-
   let newSvg;
   try { newSvg = parseSVG(codeEl.value); }
   catch (err) {
@@ -4063,7 +4388,6 @@ function addFieldAnim(el, fieldName, animBuilder) {
   rebuildAttrPanel();
   showToast(`已为 ${fieldName} 添加动画`);
 }
-
 function showAnimAddMenu(anchorEl) {
   closeAnimAddMenu();
   const menu = document.createElement('div');
@@ -4087,7 +4411,6 @@ function closeAnimAddMenu() {
   }
   animAddMenuEl = null;
 }
-
 attrPanelCanvasBtn.addEventListener('click', () => {
   if (canvasRootMode) {
     if (canvasBackPath) {
