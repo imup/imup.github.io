@@ -102,6 +102,7 @@ const btnMobileViewMenu = $('btnMobileViewMenu');
 const mobileViewMenu    = $('mobileViewMenu');
 const menuViewCode      = $('menuViewCode');
 const menuViewAttr      = $('menuViewAttr');
+
 let currentSvg   = null;
 let lastGoodCode = null;
 let renderTimer  = null;
@@ -129,7 +130,7 @@ let selectedPath = null;
 let attrPanelOpen = false;
 let attrCommitTimer = 0;
 let suppressAttrRebuild = false;
-let mobileView = 'code'; 
+let mobileView = 'code';
 function isMobileViewport() {
   return window.innerWidth <= 480;
 }
@@ -138,6 +139,7 @@ const DRAFT_KEY     = 'svg-editor.draft.v1';
 const HISTORY_KEY   = 'svg-editor.history.v1';
 const HISTORY_MAX   = 20;
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
+
 const DEFAULT_CODE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%">
   <circle cx="50" cy="50" r="50" fill="#33FAFC" />
   <g stroke="#000000" stroke-width="2.0" stroke-linecap="round">
@@ -164,6 +166,8 @@ function getPreviewRect() {
   return cachedPreviewRect;
 }
 function invalidatePreviewRect() { cachedPreviewRect = null; }
+let canvasRootMode = false;
+let canvasBackPath = null;  
 
 function stamp() {
   const d = new Date();
@@ -345,18 +349,46 @@ shadow.innerHTML = `
       position: absolute; left: 50%; top: 50%;
       transform-origin: center center;
       will-change: transform; transition: opacity .2s;
+      outline: 1px solid rgba(200, 200, 200, 0.5);
+      outline-offset: -1px;
     }
     .canvas > * { display: block; }
     .canvas a, .canvas a * { pointer-events: none; cursor: default; }
     .stage.is-stale .canvas { opacity: 0.35; }
-    .svg-selected { outline: 1.5px dashed #2563eb; outline-offset: 2px; }
+
+    /* 选中高亮叠加层 */
+    .selection-overlay {
+      position: absolute; inset: 0;
+      pointer-events: none;
+      z-index: 10;
+    }
+    /* 四边用 repeating-linear-gradient 绘制虚线：跨浏览器一致，不受元素宽高比影响 */
+    .selection-box {
+      position: absolute;
+      pointer-events: none;
+      box-sizing: border-box;
+      background:
+        /* 上边 */
+        repeating-linear-gradient(to right, #2563eb 0 5px, transparent 5px 9px) 0 0 / 100% 1.5px no-repeat,
+        /* 下边 */
+        repeating-linear-gradient(to right, #2563eb 0 5px, transparent 5px 9px) 0 100% / 100% 1.5px no-repeat,
+        /* 左边 */
+        repeating-linear-gradient(to bottom, #2563eb 0 5px, transparent 5px 9px) 0 0 / 1.5px 100% no-repeat,
+        /* 右边 */
+        repeating-linear-gradient(to bottom, #2563eb 0 5px, transparent 5px 9px) 100% 0 / 1.5px 100% no-repeat,
+        /* 浅蓝填充 */
+        rgba(37, 99, 235, 0.04);
+    }
   </style>
   <div class="stage bg-checker">
     <div class="canvas"></div>
+    <div class="selection-overlay"></div>
   </div>
 `;
 const stageEl  = shadow.querySelector('.stage');
 const canvasEl = shadow.querySelector('.canvas');
+const selectionOverlayEl = shadow.querySelector('.selection-overlay');
+
 class DomRenderer {
   constructor() { this.host = null; this.type = 'dom'; }
   getType() { return this.type; }
@@ -373,6 +405,7 @@ class DomRenderer {
     return canvas2dExportBlob(markup, width, height, format, whiteBg);
   }
 }
+
 async function canvas2dExportBlob(markup, width, height, format, whiteBg) {
   const isJpg = format === 'jpg';
   const needWhite = isJpg || whiteBg;
@@ -383,6 +416,7 @@ async function canvas2dExportBlob(markup, width, height, format, whiteBg) {
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('无法创建 canvas 上下文');
   if (needWhite) { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, width, height); }
+
   const blobUrl = URL.createObjectURL(new Blob([markup], { type: 'image/svg+xml' }));
   const img = new Image();
   try {
@@ -393,6 +427,7 @@ async function canvas2dExportBlob(markup, width, height, format, whiteBg) {
     });
     ctx.drawImage(img, 0, 0, width, height);
   } finally { URL.revokeObjectURL(blobUrl); }
+
   const hasDataImage = /<image\b[^>]*(?:href|xlink:href)\s*=\s*["']data:/i.test(markup);
   if (hasDataImage) {
     try {
@@ -401,10 +436,12 @@ async function canvas2dExportBlob(markup, width, height, format, whiteBg) {
       console.warn('[export] 手动绘制图片失败：', err);
     }
   }
+
   const blob = await new Promise(res => canvas.toBlob(res, mime, quality));
   if (!blob) throw new Error('图像生成失败');
   return blob;
 }
+
 function loadImageFromUrl(url) {
   return new Promise((res, rej) => {
     const im = new Image();
@@ -413,10 +450,12 @@ function loadImageFromUrl(url) {
     im.src = url;
   });
 }
+
 function applyClipShapeToCtx(ctx, shapeEl, sx, sy, offsetX, offsetY) {
   const tag = shapeEl.localName.toLowerCase();
   const num = (a, d) => { const v = parseFloat(shapeEl.getAttribute(a)); return isFinite(v) ? v : d; };
   ctx.beginPath();
+
   if (tag === 'rect') {
     const x = num('x', 0), y = num('y', 0);
     const w = num('width', 0), h = num('height', 0);
@@ -443,6 +482,7 @@ function applyClipShapeToCtx(ctx, shapeEl, sx, sy, offsetX, offsetY) {
     ctx.ellipse(cx * sx + offsetX, cy * sy + offsetY, Math.abs(rx * sx), Math.abs(ry * sy), 0, 0, Math.PI * 2);
   }
 }
+
 function computeParDrawRect(img, boxX, boxY, boxW, boxH, par) {
   const iw = img.naturalWidth, ih = img.naturalHeight;
   if (!iw || !ih) return null;
@@ -465,6 +505,7 @@ function computeParDrawRect(img, boxX, boxY, boxW, boxH, par) {
   }
   return { sx, sy, sw, sh, dx, dy, dw, dh, needClip: isSlice };
 }
+
 async function drawDataImagesToCanvas(ctx, markup, canvasW, canvasH) {
   const doc = new DOMParser().parseFromString(markup, 'image/svg+xml');
   const root = doc.documentElement;
@@ -482,6 +523,7 @@ async function drawDataImagesToCanvas(ctx, markup, canvasW, canvasH) {
   const sy = canvasH / vb.h;
   const offsetX = -vb.x * sx;
   const offsetY = -vb.y * sy;
+
   const clipMap = {};
   root.querySelectorAll('clipPath').forEach(cp => {
     const id = cp.getAttribute('id');
@@ -489,6 +531,7 @@ async function drawDataImagesToCanvas(ctx, markup, canvasW, canvasH) {
     const shape = cp.firstElementChild;
     if (shape) clipMap[id] = shape;
   });
+
   const images = [];
   root.querySelectorAll('image').forEach(img => {
     const href = img.getAttribute('href') || img.getAttribute('xlink:href');
@@ -509,6 +552,7 @@ async function drawDataImagesToCanvas(ctx, markup, canvasW, canvasH) {
       w, h, par, clipEl
     });
   });
+
   for (const t of images) {
     let im;
     try { im = await loadImageFromUrl(t.href); } catch (_) { continue; }
@@ -522,7 +566,9 @@ async function drawDataImagesToCanvas(ctx, markup, canvasW, canvasH) {
       t.par
     );
     if (!drawRect) continue;
+
     ctx.save();
+
     if (t.clipEl) {
       applyClipShapeToCtx(ctx, t.clipEl, sx, sy, offsetX, offsetY);
       ctx.clip();
@@ -531,15 +577,19 @@ async function drawDataImagesToCanvas(ctx, markup, canvasW, canvasH) {
       ctx.rect(t.x * sx + offsetX, t.y * sy + offsetY, t.w * sx, t.h * sy);
       ctx.clip();
     }
+
     ctx.drawImage(
       im,
       drawRect.sx, drawRect.sy, drawRect.sw, drawRect.sh,
       drawRect.dx, drawRect.dy, drawRect.dw, drawRect.dh
     );
+
     ctx.restore();
   }
 }
+
 const domRenderer = new DomRenderer();
+
 
 function applyPreviewTransform() {
   if (!currentSvg) return;
@@ -549,7 +599,9 @@ function applyPreviewTransform() {
     `translate(calc(-50% + ${previewPanX}px), calc(-50% + ${previewPanY}px)) ` +
     `rotate(${previewRotation}deg) scale(${s})`;
   zoomLabel.textContent = Math.round(s * 100) + '%';
+  scheduleRefreshSelectionOverlay();
 }
+
 function fitToView() {
   if (!currentSvg) return;
   const size = getSize(currentSvg);
@@ -565,10 +617,12 @@ function fitToView() {
   isFitMode = true;
   applyPreviewTransform();
 }
+
 function updateBadge(width, height) {
   badge.textContent = `${Math.round(width)} × ${Math.round(height)}`;
   badge.hidden = false;
 }
+
 async function renderPreview() {
   const code = codeEl.value;
   if (!code.trim()) {
@@ -627,6 +681,7 @@ async function renderPreview() {
     }
   }
 }
+
 function locateErrorInEditor(msg) {
   const m = msg.match(/第\s*(\d+)\s*行/);
   if (!m) return;
@@ -641,6 +696,7 @@ function locateErrorInEditor(msg) {
   syncScroll();
   try { codeEl.setSelectionRange(offset, offset + (lines[lineNo - 1] || '').length); } catch(_) {}
 }
+
 function schedulePreviewRender() {
   clearTimeout(renderTimer);
   renderTimer = setTimeout(renderPreview, 250);
@@ -2234,52 +2290,12 @@ async function loadImageForConfig(file) {
   imageImportState.compress = true;
   openImageConfigModal();
 }
-/*
 function computeImageBox() {
   const { originalW, originalH, ratio, customW, customH, shape, insertMode } = imageImportState;
-  let L = 0;
-  if (currentSvg) {
-    const vb = currentSvg.getAttribute('viewBox');
-    if (vb) {
-      const p = vb.trim().split(/[\s,]+/).map(Number);
-      if (p.length === 4 && p[2] > 0 && p[3] > 0) L = Math.min(p[2], p[3]) * 0.6;
-    }
-  }
-  if (!L) L = Math.max(originalW, originalH);
-  let R;
-  if (shape === 'circle') R = 1;
-  else {
-    switch (ratio) {
-      case 'original': R = originalW / originalH; break;
-      case '1:1': R = 1; break;
-      case '4:3': R = 4/3; break;
-      case '16:9': R = 16/9; break;
-      case '3:4': R = 3/4; break;
-      case '9:16': R = 9/16; break;
-      case 'custom': R = (customW > 0 && customH > 0) ? customW/customH : originalW/originalH; break;
-      default: R = originalW / originalH;
-    }
-  }
-  let width, height;
-  if (R >= 1) { width = L; height = L / R; }
-  else        { height = L; width = L * R; }
-  if (shape === 'circle') { const D = Math.min(width, height); width = D; height = D; }
-  let x = 0, y = 0;
-  if (insertMode === 'append' && currentSvg) {
-    const vb = currentSvg.getAttribute('viewBox');
-    if (vb) {
-      const p = vb.trim().split(/[\s,]+/).map(Number);
-      if (p.length === 4) { x = p[0]; y = p[1]; }
-    }
-  }
-  return { x, y, width: Math.round(width*100)/100, height: Math.round(height*100)/100 };
-}
-*/
 
-function computeImageBox() {
-  const { originalW, originalH, ratio, customW, customH, shape, insertMode } = imageImportState;
   let L = 0;
   let explicitW = 0, explicitH = 0;
+
   if (insertMode === 'replace') {
     L = Math.max(originalW, originalH);
     if (ratio === 'custom' && customW > 0 && customH > 0) {
@@ -2337,13 +2353,16 @@ function computeImageBox() {
       default:         R = originalW / originalH;
     }
   }
+
   let width, height;
   if (R >= 1) { width = L; height = L / R; }
   else        { height = L; width = L * R; }
+
   if (shape === 'circle') {
     const D = Math.min(width, height);
     width = D; height = D;
   }
+
   let x = 0, y = 0;
   if (insertMode === 'append' && currentSvg) {
     const vb = currentSvg.getAttribute('viewBox');
@@ -2352,6 +2371,7 @@ function computeImageBox() {
       if (p.length === 4) { x = p[0]; y = p[1]; }
     }
   }
+
   return {
     x, y,
     width: Math.round(width * 100) / 100,
@@ -2520,6 +2540,9 @@ function appendImageToSource(defsStr, imageStr) {
 const ANIM_TAGS = new Set(['animate', 'animatetransform', 'animatemotion', 'animatecolor', 'set']);
 
 let animAddMenuEl = null;
+let canvasAttrTimer = 0;
+let canvasViewBoxTimer = 0;
+let overlayRafId = 0;
 
 const ANIM_TEMPLATES = [
   {
@@ -2573,6 +2596,51 @@ const ANIM_TEMPLATES = [
   }
 ];
 
+function buildValuePulseAnim(attrName, currentVal, delta) {
+  const v = parseFloat(currentVal);
+  const base = isFinite(v) ? v : 0;
+  const to = base + delta;
+  return `<animate attributeName="${attrName}" values="${base};${to};${base}" dur="2s" repeatCount="indefinite"/>`;
+}
+function buildScalePulseAnim(attrName, currentVal, factor) {
+  const v = parseFloat(currentVal);
+  const base = isFinite(v) ? v : 1;
+  const to = base * factor;
+  return `<animate attributeName="${attrName}" values="${base};${to};${base}" dur="2s" repeatCount="indefinite"/>`;
+}
+function buildColorLoopAnim(attrName) {
+  return `<animate attributeName="${attrName}" values="#ff0000;#00ff00;#0000ff;#ff0000" dur="3s" repeatCount="indefinite"/>`;
+}
+function buildOpacityPulseAnim(attrName) {
+  return `<animate attributeName="${attrName}" values="1;0.3;1" dur="2s" repeatCount="indefinite"/>`;
+}
+
+const FIELD_ANIM_MAP = {
+  'x':                 (el) => buildValuePulseAnim('x', el.getAttribute('x') || 0, 20),
+  'y':                 (el) => buildValuePulseAnim('y', el.getAttribute('y') || 0, 20),
+  'cx':                (el) => buildValuePulseAnim('cx', el.getAttribute('cx') || 0, 20),
+  'cy':                (el) => buildValuePulseAnim('cy', el.getAttribute('cy') || 0, 20),
+  'x1':                (el) => buildValuePulseAnim('x1', el.getAttribute('x1') || 0, 20),
+  'y1':                (el) => buildValuePulseAnim('y1', el.getAttribute('y1') || 0, 20),
+  'x2':                (el) => buildValuePulseAnim('x2', el.getAttribute('x2') || 0, 20),
+  'y2':                (el) => buildValuePulseAnim('y2', el.getAttribute('y2') || 0, 20),
+  'dx':                (el) => buildValuePulseAnim('dx', el.getAttribute('dx') || 0, 10),
+  'dy':                (el) => buildValuePulseAnim('dy', el.getAttribute('dy') || 0, 10),
+  'width':             (el) => buildScalePulseAnim('width', el.getAttribute('width') || 100, 1.3),
+  'height':            (el) => buildScalePulseAnim('height', el.getAttribute('height') || 100, 1.3),
+  'r':                 (el) => buildScalePulseAnim('r', el.getAttribute('r') || 50, 1.3),
+  'rx':                (el) => buildScalePulseAnim('rx', el.getAttribute('rx') || 10, 1.3),
+  'ry':                (el) => buildScalePulseAnim('ry', el.getAttribute('ry') || 10, 1.3),
+  'fill':              (el) => buildColorLoopAnim('fill'),
+  'stroke':            (el) => buildColorLoopAnim('stroke'),
+  'opacity':           (el) => buildOpacityPulseAnim('opacity'),
+  'fill-opacity':      (el) => buildOpacityPulseAnim('fill-opacity'),
+  'stroke-opacity':    (el) => buildOpacityPulseAnim('stroke-opacity'),
+  'stroke-width':      (el) => buildScalePulseAnim('stroke-width', el.getAttribute('stroke-width') || 2, 2),
+  'stroke-dashoffset': () => `<animate attributeName="stroke-dashoffset" from="100" to="0" dur="2s" repeatCount="indefinite"/>`,
+  'font-size':         (el) => buildScalePulseAnim('font-size', el.getAttribute('font-size') || 16, 1.3)
+};
+
 function getElementCenter(el) {
   if (!el) return { x: 50, y: 50 };
   const tag = el.localName;
@@ -2607,10 +2675,7 @@ function parseTransform(str) {
     });
 
   remain = remain.replace(/rotate\s*\(\s*([-\d.]+)(?:\s*[, ]\s*([-\d.]+)\s*[, ]\s*([-\d.]+))?\s*\)/gi,
-    (_, a) => {
-      result.rot += parseFloat(a) || 0;
-      return '';
-    });
+    (_, a) => { result.rot += parseFloat(a) || 0; return ''; });
 
   remain = remain.replace(/scale\s*\(\s*([-\d.]+)(?:\s*[, ]\s*([-\d.]+))?\s*\)/gi,
     (match, sx, sy) => {
@@ -2620,7 +2685,7 @@ function parseTransform(str) {
         result.scale *= vx;
         return '';
       }
-      return match; 
+      return match;
     });
 
   result.extra = remain.replace(/\s+/g, ' ').trim();
@@ -2752,6 +2817,31 @@ function skipElementContent(code, startPos, openTag) {
   }
   return depth === 0 ? i : -1;
 }
+function findRootSvgTag(code) {
+  const len = code.length;
+  let i = 0;
+  while (i < len) {
+    if (code[i] !== '<') { i++; continue; }
+    if (code.startsWith('<!--', i)) { const e = code.indexOf('-->', i + 4); if (e < 0) return null; i = e + 3; continue; }
+    if (code.startsWith('<![CDATA[', i)) { const e = code.indexOf(']]>', i + 9); if (e < 0) return null; i = e + 3; continue; }
+    if (code.startsWith('<?', i)) { const e = code.indexOf('?>', i + 2); if (e < 0) return null; i = e + 2; continue; }
+    if (code[i + 1] === '!') { const e = code.indexOf('>', i + 2); if (e < 0) return null; i = e + 1; continue; }
+    const e = findTagEnd(code, i + 1);
+    if (e < 0) return null;
+    const t = code.slice(i, e + 1);
+    if (/^<svg[\s>\/]/i.test(t)) {
+      const isSelf = /\/>\s*$/.test(t);
+      let end = e + 1;
+      if (!isSelf) {
+        const closeEnd = skipElementContent(code, i, t);
+        if (closeEnd > 0) end = closeEnd;
+      }
+      return { start: i, end, openStart: i, openEnd: e + 1, isSelfClosing: isSelf, tag: t };
+    }
+    i = e + 1;
+  }
+  return null;
+}
 
 function escapeReg(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 function escapeAttr(v) {
@@ -2773,33 +2863,67 @@ function removeAttrInTag(tag, name) {
   const re = new RegExp('\\s' + escapeReg(lower) + '\\s*=\\s*("[^"]*"|\'[^\']*\')', 'i');
   return tag.replace(re, '');
 }
-
 function applySelectionOutline(el) {
-  Array.from(canvasEl.querySelectorAll('.svg-selected'))
-    .forEach(x => x.classList.remove('svg-selected'));
-
+  if (!selectionOverlayEl) return;
+  selectionOverlayEl.innerHTML = '';
   if (!el) return;
-  const svgRoot = canvasEl.firstElementChild;
 
+  let targetEl = el;
   if (ANIM_TAGS.has(el.localName.toLowerCase())) {
-    const parent = el.parentElement;
-    if (parent && parent !== svgRoot) parent.classList.add('svg-selected');
-  } else if (el !== svgRoot) {
-    el.classList.add('svg-selected');
+    targetEl = el.parentElement;
+    if (!targetEl || targetEl === canvasEl.firstElementChild) return;
+  } else if (el === canvasEl.firstElementChild) {
+    return;
   }
+
+  let bbox;
+  try { bbox = targetEl.getBoundingClientRect(); } catch (_) { return; }
+  if (!bbox || bbox.width === 0 || bbox.height === 0) return;
+
+  const stageRect = stageEl.getBoundingClientRect();
+  const pad = 3;
+
+  const box = document.createElement('div');
+  box.className = 'selection-box';
+  box.style.left   = (bbox.left - stageRect.left - pad) + 'px';
+  box.style.top    = (bbox.top  - stageRect.top  - pad) + 'px';
+  box.style.width  = (bbox.width  + pad * 2) + 'px';
+  box.style.height = (bbox.height + pad * 2) + 'px';
+  selectionOverlayEl.appendChild(box);
 }
+
+function refreshSelectionOverlay() {
+  if (!selectionOverlayEl) return;
+  if (!selectedPath || !currentSvg) { selectionOverlayEl.innerHTML = ''; return; }
+  const el = resolvePath(currentSvg, selectedPath);
+  if (el) applySelectionOutline(el);
+  else selectionOverlayEl.innerHTML = '';
+}
+
+function scheduleRefreshSelectionOverlay() {
+  if (!selectionOverlayEl) return;
+  if (overlayRafId) return;
+  overlayRafId = requestAnimationFrame(() => {
+    overlayRafId = 0;
+    refreshSelectionOverlay();
+  });
+}
+
 function selectElement(el) {
   if (!el || el === canvasEl.firstElementChild) return;
   const path = getElementPath(el);
   if (!path) return;
   selectedPath = path;
+  canvasRootMode = false;
+  canvasBackPath = null;
   applySelectionOutline(el);
   openAttrPanel();
 }
 function clearSelection() {
   selectedPath = null;
-  Array.from(canvasEl.querySelectorAll('.svg-selected'))
-    .forEach(x => x.classList.remove('svg-selected'));
+  canvasRootMode = false;
+  canvasBackPath = null;
+  if (selectionOverlayEl) selectionOverlayEl.innerHTML = '';
   closeAttrPanel();
 }
 
@@ -2820,7 +2944,7 @@ function updateMobileViewMenu() {
   if (!mobileViewMenu) return;
   menuViewCode.setAttribute('aria-checked', mobileView === 'code' ? 'true' : 'false');
   menuViewAttr.setAttribute('aria-checked', mobileView === 'attr' ? 'true' : 'false');
-  menuViewAttr.disabled = !attrPanelOpen;
+  menuViewAttr.disabled = !attrPanelOpen && !canvasRootMode;
 }
 
 function openAttrPanel() {
@@ -2829,7 +2953,6 @@ function openAttrPanel() {
   closeAnimAddMenu();
   attrPanelOpen = true;
   rebuildAttrPanel();
-
   if (isMobileViewport()) {
     setMobileView('attr');
   } else {
@@ -2843,7 +2966,9 @@ function closeAttrPanel() {
   attrPanelOpen = false;
   attrPanel.hidden = true;
   attrPanelBody.innerHTML = '';
-
+  canvasRootMode = false;
+  canvasBackPath = null;
+  if (selectionOverlayEl) selectionOverlayEl.innerHTML = '';
   if (isMobileViewport()) {
     editorEl.hidden = false;
     mobileView = 'code';
@@ -2852,8 +2977,18 @@ function closeAttrPanel() {
 }
 
 function rebuildAttrPanel() {
-  if (!attrPanelOpen || !selectedPath || !currentSvg) return;
+  if (!attrPanelOpen) return;
+
+  if (canvasRootMode) {
+    rebuildCanvasAttrPanel();
+    return;
+  }
+
+  if (!selectedPath || !currentSvg) return;
   closeAnimAddMenu();
+
+  attrPanelCanvasBtn.classList.remove('is-active');
+  attrPanelCanvasBtn.textContent = '画布';
 
   const el = resolvePath(currentSvg, selectedPath);
   if (!el) { clearSelection(); return; }
@@ -2864,6 +2999,8 @@ function rebuildAttrPanel() {
   const idVal = el.getAttribute('id');
   if (idVal) { attrPanelId.textContent = '#' + idVal; attrPanelId.hidden = false; }
   else { attrPanelId.hidden = true; }
+
+  ensureHeaderAddBtn(isAnim);
 
   const loc = findTagOffsetByPath(codeEl.value, selectedPath);
   const isReadOnly = !loc;
@@ -2887,19 +3024,17 @@ function rebuildAttrPanel() {
   }
 
   if (isAnim) {
-    attrPanelBody.appendChild(makeGroup('动画', getAnimSpecs().map(a => makeRow(el, a, isReadOnly))));
-    if (!isReadOnly) {
-      attrPanelBody.appendChild(makeStructureGroup());
-    }
+    attrPanelBody.appendChild(makeGroup('动画', getAnimSpecs().map(a => makeRow(el, a, isReadOnly, false))));
+    if (!isReadOnly) attrPanelBody.appendChild(makeStructureGroup());
     attrPanel.dataset.readonly = isReadOnly ? '1' : '';
     return;
   }
 
   const posAttrs = getPosAttrs(tagName);
   if (posAttrs.length) {
-    attrPanelBody.appendChild(makeGroup('位置尺寸', posAttrs.map(a => makeRow(el, a, isReadOnly))));
+    attrPanelBody.appendChild(makeGroup('位置尺寸', posAttrs.map(a => makeRow(el, a, isReadOnly, false))));
   }
-  attrPanelBody.appendChild(makeTransformGroup(el, isReadOnly));
+attrPanelBody.appendChild(makeTransformGroup(el, isReadOnly));
 
   const fillSpecs = [
     { name: 'fill',              type: 'color' },
@@ -2915,17 +3050,43 @@ function rebuildAttrPanel() {
     { name: 'stroke-dashoffset', type: 'number' },
     { name: 'opacity',           type: 'number', step: 0.1, min: 0, max: 1 }
   ];
-  attrPanelBody.appendChild(makeGroup('外观', fillSpecs.map(a => makeRow(el, a, isReadOnly))));
+  attrPanelBody.appendChild(makeGroup('外观', fillSpecs.map(a => makeRow(el, a, isReadOnly, false))));
+
+  const strokeAdvSpecs = [
+    { name: 'vector-effect', type: 'select', options: ['', 'none', 'non-scaling-stroke'] },
+    { name: 'paint-order',   type: 'select', options: ['', 'normal', 'stroke', 'markers', 'fill', 'stroke markers', 'fill markers', 'fill stroke'] }
+  ];
+  attrPanelBody.appendChild(makeGroup('描边增强', strokeAdvSpecs.map(a => makeRow(el, a, isReadOnly, false))));
+
+  const refSpecs = [
+    { name: 'filter',       defTag: 'filter' },
+    { name: 'clip-path',    defTag: 'clipPath' },
+    { name: 'mask',         defTag: 'mask' },
+    { name: 'marker-start', defTag: 'marker' },
+    { name: 'marker-mid',   defTag: 'marker' },
+    { name: 'marker-end',   defTag: 'marker' }
+  ];
+  attrPanelBody.appendChild(makeGroup('引用', refSpecs.map(a => makeRefRow(el, a, isReadOnly, false))));
+
+  const renderSpecs = [
+    { name: 'shape-rendering',      type: 'select', options: ['', 'auto', 'optimizeSpeed', 'crispEdges', 'geometricPrecision'] },
+    { name: 'text-rendering',       type: 'select', options: ['', 'auto', 'optimizeSpeed', 'optimizeLegibility', 'geometricPrecision'] },
+    { name: 'image-rendering',      type: 'select', options: ['', 'auto', 'optimizeQuality', 'optimizeSpeed', 'pixelated', 'smooth', 'high-quality', 'crisp-edges'] },
+    { name: 'color-interpolation',  type: 'select', options: ['', 'auto', 'sRGB', 'linearRGB'] },
+    { name: 'mix-blend-mode',       type: 'select', options: ['', 'normal', 'multiply', 'screen', 'overlay', 'darken', 'lighten', 'color-dodge', 'color-burn', 'hard-light', 'soft-light', 'difference', 'exclusion', 'hue', 'saturation', 'color', 'luminosity'] },
+    { name: 'isolation',            type: 'select', options: ['', 'auto', 'isolate'] }
+  ];
+  attrPanelBody.appendChild(makeGroup('渲染', renderSpecs.map(a => makeRow(el, a, isReadOnly, false))));
 
   const interactSpecs = [
     { name: 'class',          type: 'text' },
     { name: 'pointer-events', type: 'select', options: ['', 'auto', 'none', 'visiblePainted', 'visibleFill', 'visibleStroke', 'visible', 'painted', 'fill', 'stroke', 'all'] },
     { name: 'cursor',         type: 'select', options: ['', 'auto', 'default', 'pointer', 'move', 'crosshair', 'text', 'wait', 'help', 'grab', 'grabbing'] }
   ];
-  attrPanelBody.appendChild(makeGroup('交互', interactSpecs.map(a => makeRow(el, a, isReadOnly))));
+  attrPanelBody.appendChild(makeGroup('交互', interactSpecs.map(a => makeRow(el, a, isReadOnly, false))));
 
   if (tagName === 'text' || tagName === 'tspan') {
-    const textSpecs = [
+    const textBaseSpecs = [
       { name: 'text-anchor', type: 'select', options: ['', 'start', 'middle', 'end'] },
       { name: 'font-family', type: 'text' },
       { name: 'font-size',   type: 'number' },
@@ -2933,8 +3094,29 @@ function rebuildAttrPanel() {
       { name: 'font-style',  type: 'select', options: ['', 'normal', 'italic', 'oblique'] },
       { name: 'letter-spacing', type: 'text' }
     ];
-    attrPanelBody.appendChild(makeGroup('文本', textSpecs.map(a => makeRow(el, a, isReadOnly))));
+    attrPanelBody.appendChild(makeGroup('文本', textBaseSpecs.map(a => makeRow(el, a, isReadOnly, false))));
+
+    const textAdvSpecs = [
+      { name: 'dominant-baseline',  type: 'select', options: ['', 'auto', 'text-before-edge', 'text-after-edge', 'middle', 'central', 'hanging', 'alphabetic', 'ideographic', 'mathematical', 'inherit'] },
+      { name: 'alignment-baseline', type: 'select', options: ['', 'auto', 'baseline', 'before-edge', 'text-before-edge', 'middle', 'central', 'after-edge', 'text-after-edge', 'ideographic', 'alphabetic', 'hanging', 'mathematical', 'inherit'] },
+      { name: 'text-decoration',    type: 'select', options: ['', 'none', 'underline', 'overline', 'line-through'] },
+      { name: 'textLength',         type: 'number' },
+      { name: 'lengthAdjust',       type: 'select', options: ['', 'spacing', 'spacingAndGlyphs'] },
+      { name: 'word-spacing',       type: 'text' },
+      { name: 'writing-mode',       type: 'select', options: ['', 'horizontal-tb', 'vertical-rl', 'vertical-lr'] },
+      { name: 'font-stretch',       type: 'select', options: ['', 'normal', 'ultra-condensed', 'extra-condensed', 'condensed', 'semi-condensed', 'semi-expanded', 'expanded', 'extra-expanded', 'ultra-expanded'] },
+      { name: 'xml:space',          type: 'select', options: ['', 'default', 'preserve'] }
+    ];
+    attrPanelBody.appendChild(makeGroup('文本高级', textAdvSpecs.map(a => makeRow(el, a, isReadOnly, false))));
   }
+
+  const a11ySpecs = [
+    { name: 'role',       type: 'text' },
+    { name: 'aria-label', type: 'text' },
+    { name: 'tabindex',   type: 'number' },
+    { name: 'focusable',  type: 'select', options: ['', 'true', 'false'] }
+  ];
+  attrPanelBody.appendChild(makeGroup('无障碍', a11ySpecs.map(a => makeRow(el, a, isReadOnly, false))));
 
   const animChildren = [];
   Array.from(el.children || []).forEach((child, idx) => {
@@ -2988,10 +3170,213 @@ function rebuildAttrPanel() {
   animGroup.appendChild(animItems);
   attrPanelBody.appendChild(animGroup);
 
-  if (!isReadOnly) {
-    attrPanelBody.appendChild(makeStructureGroup());
-  }
+  if (!isReadOnly) attrPanelBody.appendChild(makeStructureGroup());
   attrPanel.dataset.readonly = isReadOnly ? '1' : '';
+}
+
+function rebuildCanvasAttrPanel() {
+  if (!currentSvg) { clearSelection(); return; }
+  closeAnimAddMenu();
+
+  attrPanelTag.textContent = '<svg>';
+  attrPanelId.hidden = true;
+
+  attrPanelCanvasBtn.classList.add('is-active');
+  attrPanelCanvasBtn.textContent = canvasBackPath ? '返回' : '画布';
+
+  const loc = findRootSvgTag(codeEl.value);
+  const isReadOnly = !loc;
+  attrPanelWarning.hidden = !isReadOnly;
+  attrPanelBody.innerHTML = '';
+
+  attrPanelBody.appendChild(makeViewBoxGroup(isReadOnly));
+
+  const a11ySpecs = [
+    { name: 'role',       type: 'text' },
+    { name: 'aria-label', type: 'text' },
+    { name: 'tabindex',   type: 'number' },
+    { name: 'focusable',  type: 'select', options: ['', 'true', 'false'] }
+  ];
+  attrPanelBody.appendChild(makeGroup('无障碍', a11ySpecs.map(a => makeRow(currentSvg, a, isReadOnly, true))));
+
+  attrPanel.dataset.readonly = isReadOnly ? '1' : '';
+}
+
+function makeViewBoxGroup(isReadOnly) {
+  const g = document.createElement('div');
+  g.className = 'attr-group';
+  const t = document.createElement('div');
+  t.className = 'attr-group__title';
+  t.textContent = '画布';
+  const items = document.createElement('div');
+  items.className = 'attr-group__items';
+
+  const vbAttr = currentSvg.getAttribute('viewBox') || '';
+  const p = vbAttr.trim().split(/[\s,]+/).map(Number);
+  const vbv = (p.length === 4 && p.every(n => isFinite(n))) ? p : [0, 0, 100, 100];
+
+  const vbWrap = document.createElement('div');
+  vbWrap.className = 'attr-viewbox';
+  const vbLabels = ['minX', 'minY', 'width', 'height'];
+  const vbInputs = [];
+  vbLabels.forEach((lbl, i) => {
+    const row = document.createElement('div');
+    row.className = 'attr-row';
+    const label = document.createElement('label');
+    label.className = 'attr-row__label';
+    label.textContent = lbl;
+    row.appendChild(label);
+    const ctrl = document.createElement('div');
+    ctrl.className = 'attr-row__control';
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.className = 'attr-row__input';
+    input.value = String(vbv[i]);
+    input.step = 1;
+    if (isReadOnly) input.disabled = true;
+    input.addEventListener('input', () => {
+      const vals = vbInputs.map(el => {
+        const v = parseFloat(el.value);
+        return isFinite(v) ? v : 0;
+      });
+      scheduleCanvasViewBoxCommit(vals);
+    });
+    vbInputs.push(input);
+    ctrl.appendChild(input);
+    row.appendChild(ctrl);
+    vbWrap.appendChild(row);
+  });
+  items.appendChild(vbWrap);
+
+  items.appendChild(makeRow(currentSvg, { name: 'width', type: 'text' }, isReadOnly, true));
+  items.appendChild(makeRow(currentSvg, { name: 'height', type: 'text' }, isReadOnly, true));
+
+  const parOptions = [
+    '', 'xMidYMid meet', 'xMidYMid slice', 'none',
+    'xMinYMin meet', 'xMinYMin slice',
+    'xMidYMin meet', 'xMidYMin slice',
+    'xMaxYMin meet', 'xMaxYMin slice',
+    'xMinYMid meet', 'xMinYMid slice',
+    'xMaxYMid meet', 'xMaxYMid slice',
+    'xMinYMax meet', 'xMinYMax slice',
+    'xMidYMax meet', 'xMidYMax slice',
+    'xMaxYMax meet', 'xMaxYMax slice'
+  ];
+  items.appendChild(makeRow(currentSvg, {
+    name: 'preserveAspectRatio', type: 'select', options: parOptions
+  }, isReadOnly, true));
+
+  if (!isReadOnly) {
+    const fitBtn = document.createElement('button');
+    fitBtn.type = 'button';
+    fitBtn.className = 'attr-fit-btn';
+    fitBtn.textContent = '自动适配内容';
+    fitBtn.addEventListener('click', autoFitViewBox);
+    items.appendChild(fitBtn);
+  }
+
+  g.appendChild(t);
+  g.appendChild(items);
+  return g;
+}
+
+function autoFitViewBox() {
+  const svgRoot = canvasEl.firstElementChild;
+  if (!svgRoot) { showToast('预览未就绪'); return; }
+
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  let hasAny = false;
+
+  const skipTags = new Set([
+    'defs', 'clippath', 'mask', 'filter', 'lineargradient', 'radialgradient',
+    'pattern', 'symbol', 'marker', 'title', 'desc', 'metadata',
+    'animate', 'animatetransform', 'animatemotion', 'animatecolor', 'set'
+  ]);
+
+  const walk = (el) => {
+    const tag = (el.localName || '').toLowerCase();
+    if (skipTags.has(tag)) return;
+    try {
+      if (typeof el.getBBox === 'function') {
+        const b = el.getBBox();
+        if (b && (b.width > 0 || b.height > 0) &&
+            isFinite(b.x) && isFinite(b.y) && isFinite(b.width) && isFinite(b.height)) {
+          if (b.x < minX) minX = b.x;
+          if (b.y < minY) minY = b.y;
+          if (b.x + b.width > maxX) maxX = b.x + b.width;
+          if (b.y + b.height > maxY) maxY = b.y + b.height;
+          hasAny = true;
+        }
+      }
+    } catch (_) {}
+    Array.from(el.children || []).forEach(walk);
+  };
+
+  Array.from(svgRoot.children).forEach(walk);
+
+  if (!hasAny || !isFinite(minX) || !isFinite(maxX)) {
+    showToast('未找到可适配的内容');
+    return;
+  }
+
+  const w = maxX - minX;
+  const h = maxY - minY;
+  if (w <= 0 || h <= 0) { showToast('内容尺寸异常'); return; }
+
+  const pad = Math.max(w, h) * 0.05;
+  const vx = Math.round((minX - pad) * 100) / 100;
+  const vy = Math.round((minY - pad) * 100) / 100;
+  const vw = Math.round((w + pad * 2) * 100) / 100;
+  const vh = Math.round((h + pad * 2) * 100) / 100;
+
+  commitCanvasAttr('viewBox', `${vx} ${vy} ${vw} ${vh}`);
+  showToast(`viewBox 已适配：${vx} ${vy} ${vw} ${vh}`);
+  setTimeout(() => { if (canvasRootMode) rebuildCanvasAttrPanel(); }, 300);
+}
+
+function scheduleCanvasAttrCommit(name, value) {
+  clearTimeout(canvasAttrTimer);
+  canvasAttrTimer = setTimeout(() => commitCanvasAttr(name, value), 300);
+}
+function scheduleCanvasViewBoxCommit(vals) {
+  clearTimeout(canvasViewBoxTimer);
+  canvasViewBoxTimer = setTimeout(() => {
+    commitCanvasAttr('viewBox', vals.join(' '));
+  }, 300);
+}
+function commitCanvasAttr(name, value) {
+  const loc = findRootSvgTag(codeEl.value);
+  if (!loc) { showToast('无法定位到根 <svg>，已忽略本次修改'); return; }
+  const openTag = codeEl.value.slice(loc.openStart, loc.openEnd);
+  const patched = patchAttrInTag(openTag, name, value);
+  if (patched === openTag) return;
+  codeEl.value = codeEl.value.slice(0, loc.openStart) + patched + codeEl.value.slice(loc.openEnd);
+  renderEditor();
+  schedulePreviewRender();
+  saveDraftDebounced();
+  recordSnapshot();
+}
+
+function ensureHeaderAddBtn(isAnim) {
+  const titleNode = attrPanelTag.parentNode;
+  let wrap = titleNode.querySelector('.attr-panel__add-anim-wrap');
+  if (!wrap) {
+    wrap = document.createElement('div');
+    wrap.className = 'attr-panel__add-anim-wrap';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'attr-panel__add-anim';
+    btn.textContent = '+';
+    btn.title = '为当前元素添加动画';
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (animAddMenuEl) closeAnimAddMenu();
+      else showAnimAddMenu(wrap);
+    });
+    wrap.appendChild(btn);
+    titleNode.insertBefore(wrap, attrPanelTag.nextSibling);
+  }
+  wrap.style.display = (isAnim || canvasRootMode) ? 'none' : '';
 }
 
 function makeTransformGroup(el, isReadOnly) {
@@ -3006,14 +3391,20 @@ function makeTransformGroup(el, isReadOnly) {
   const raw = el.getAttribute('transform') || '';
   const parsed = parseTransform(raw);
   const center = getElementCenter(el);
-
   const values = { tx: parsed.tx, ty: parsed.ty, rot: parsed.rot, scale: parsed.scale, extra: parsed.extra };
 
   const specs = [
-    { name: '平移 X', key: 'tx',    step: 1,   value: values.tx },
-    { name: '平移 Y', key: 'ty',    step: 1,   value: values.ty },
-    { name: '旋转',   key: 'rot',   step: 1,   value: values.rot },
-    { name: '缩放',   key: 'scale', step: 0.1, value: values.scale, min: 0 }
+    { name: '平移 X', key: 'tx', step: 1, value: values.tx,
+      animBuilder: () => `<animateTransform attributeName="transform" type="translate" values="0,0;20,0;0,0" dur="2s" repeatCount="indefinite"/>` },
+    { name: '平移 Y', key: 'ty', step: 1, value: values.ty,
+      animBuilder: () => `<animateTransform attributeName="transform" type="translate" values="0,0;0,20;0,0" dur="2s" repeatCount="indefinite"/>` },
+    { name: '旋转', key: 'rot', step: 1, value: values.rot,
+      animBuilder: (elInner) => {
+        const c = getElementCenter(elInner);
+        return `<animateTransform attributeName="transform" type="rotate" from="0 ${c.x} ${c.y}" to="360 ${c.x} ${c.y}" dur="4s" repeatCount="indefinite"/>`;
+      } },
+    { name: '缩放', key: 'scale', step: 0.1, value: values.scale, min: 0,
+      animBuilder: () => `<animateTransform attributeName="transform" type="scale" values="1;1.2;1" dur="2s" repeatCount="indefinite"/>` }
   ];
 
   specs.forEach(spec => {
@@ -3022,6 +3413,20 @@ function makeTransformGroup(el, isReadOnly) {
     const label = document.createElement('label');
     label.className = 'attr-row__label';
     label.textContent = spec.name;
+
+    if (!isReadOnly) {
+      const addBtn = document.createElement('button');
+      addBtn.type = 'button';
+      addBtn.className = 'attr-row__anim-add';
+      addBtn.title = `为 ${spec.name} 添加动画`;
+      addBtn.textContent = '+';
+      addBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        addFieldAnim(el, spec.name, () => spec.animBuilder(el));
+      });
+      label.appendChild(addBtn);
+    }
+
     row.appendChild(label);
     const ctrl = document.createElement('div');
     ctrl.className = 'attr-row__control';
@@ -3055,7 +3460,6 @@ function makeTransformGroup(el, isReadOnly) {
   if (!isReadOnly) {
     const quickWrap = document.createElement('div');
     quickWrap.style.cssText = 'grid-column:1 / -1;display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;';
-
     const resetBtn = document.createElement('button');
     resetBtn.type = 'button';
     resetBtn.className = 'attr-action-btn';
@@ -3065,7 +3469,6 @@ function makeTransformGroup(el, isReadOnly) {
       commitTransform(el, { tx: 0, ty: 0, rot: 0, scale: 1, extra: '' }, center);
       rebuildAttrPanel();
     });
-
     quickWrap.appendChild(resetBtn);
     items.appendChild(quickWrap);
   }
@@ -3148,17 +3551,30 @@ function makeGroup(title, rows) {
   g.appendChild(t); g.appendChild(items);
   return g;
 }
-function makeRow(el, spec, isReadOnly) {
+function makeRow(el, spec, isReadOnly, isCanvas) {
   const row = document.createElement('div');
   row.className = 'attr-row';
 
-  if (spec.type === 'textarea') {
-    row.classList.add('attr-row--full');
-  }
+  if (spec.type === 'textarea') row.classList.add('attr-row--full');
 
   const label = document.createElement('label');
   label.className = 'attr-row__label';
   label.textContent = spec.name;
+
+  const animBuilder = FIELD_ANIM_MAP[spec.name];
+  if (animBuilder && !isReadOnly && !isCanvas && spec.type !== 'textarea') {
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'attr-row__anim-add';
+    addBtn.title = `为 ${spec.name} 添加动画`;
+    addBtn.textContent = '+';
+    addBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      addFieldAnim(el, spec.name, animBuilder);
+    });
+    label.appendChild(addBtn);
+  }
+
   row.appendChild(label);
   const ctrl = document.createElement('div');
   ctrl.className = 'attr-row__control';
@@ -3199,11 +3615,13 @@ function makeRow(el, spec, isReadOnly) {
     text.placeholder = '#000000 / none / url(#id)';
     picker.addEventListener('input', () => {
       text.value = picker.value;
-      commitAttrChange(el, spec.name, picker.value);
+      if (isCanvas) commitCanvasAttr(spec.name, picker.value);
+      else commitAttrChange(el, spec.name, picker.value);
     });
     text.addEventListener('input', () => {
       if (/^#[0-9a-f]{6}$/i.test(text.value)) picker.value = text.value;
-      scheduleAttrCommit(el, spec.name, text.value);
+      if (isCanvas) scheduleCanvasAttrCommit(spec.name, text.value);
+      else scheduleAttrCommit(el, spec.name, text.value);
     });
     wrap.appendChild(picker); wrap.appendChild(text);
     ctrl.appendChild(wrap);
@@ -3223,12 +3641,78 @@ function makeRow(el, spec, isReadOnly) {
       input.placeholder = spec.name === 'd' ? 'M 0 0 L 100 0' : '0,0 100,0 100,100';
     }
   }
-  input.addEventListener('input', () => scheduleAttrCommit(el, spec.name, input.value));
+  input.addEventListener('input', () => {
+    if (isCanvas) scheduleCanvasAttrCommit(spec.name, input.value);
+    else scheduleAttrCommit(el, spec.name, input.value);
+  });
   if (spec.type === 'select') {
-    input.addEventListener('change', () => commitAttrChange(el, spec.name, input.value));
+    input.addEventListener('change', () => {
+      if (isCanvas) {
+        clearTimeout(canvasAttrTimer);
+        commitCanvasAttr(spec.name, input.value);
+      } else {
+        commitAttrChange(el, spec.name, input.value);
+      }
+    });
   }
   if (isReadOnly) input.disabled = true;
   ctrl.appendChild(input);
+  return row;
+}
+
+function collectDefsIds(tagName) {
+  if (!currentSvg) return [];
+  const ids = [];
+  currentSvg.querySelectorAll(tagName).forEach(el => {
+    const id = el.getAttribute('id');
+    if (id) ids.push(id);
+  });
+  return ids;
+}
+function makeRefRow(el, spec, isReadOnly, isCanvas) {
+  const row = document.createElement('div');
+  row.className = 'attr-row';
+  const label = document.createElement('label');
+  label.className = 'attr-row__label';
+  label.textContent = spec.name;
+  row.appendChild(label);
+  const ctrl = document.createElement('div');
+  ctrl.className = 'attr-row__control';
+
+  const targetEl = isCanvas ? currentSvg : el;
+  const value = targetEl.getAttribute(spec.name) || '';
+  const m = value.match(/url\(#([^)]+)\)/);
+  const currentId = m ? m[1] : '';
+
+  const ids = collectDefsIds(spec.defTag);
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'attr-row__input';
+  input.value = currentId;
+  input.placeholder = ids.length ? ids.slice(0, 2).map(i => '#' + i).join(' / ') : '输入 id';
+  if (isReadOnly) input.disabled = true;
+
+  const listId = 'ref-list-' + Math.random().toString(36).slice(2, 8);
+  const datalist = document.createElement('datalist');
+  datalist.id = listId;
+  ids.forEach(id => {
+    const opt = document.createElement('option');
+    opt.value = id;
+    datalist.appendChild(opt);
+  });
+  input.setAttribute('list', listId);
+
+  const commit = () => {
+    const v = input.value.trim().replace(/^#/, '');
+    const finalVal = v ? `url(#${v})` : '';
+    if (isCanvas) commitCanvasAttr(spec.name, finalVal);
+    else commitAttrChange(el, spec.name, finalVal);
+  };
+  input.addEventListener('change', commit);
+
+  ctrl.appendChild(input);
+  ctrl.appendChild(datalist);
+  row.appendChild(ctrl);
   return row;
 }
 
@@ -3293,6 +3777,7 @@ function deleteSelectedElement() {
   }
   codeEl.value = codeEl.value.slice(0, start) + codeEl.value.slice(endOffset);
   selectedPath = null;
+  if (selectionOverlayEl) selectionOverlayEl.innerHTML = '';
   renderEditor(); schedulePreviewRender(); saveDraftDebounced(); recordSnapshot(true);
   closeAttrPanel();
   showToast('已删除');
@@ -3318,6 +3803,20 @@ function duplicateSelectedElement() {
   showToast('已复制');
 }
 function locateSelectedInSource() {
+  if (canvasRootMode) {
+    const rootLoc = findRootSvgTag(codeEl.value);
+    if (!rootLoc) { showToast('无法定位到根 <svg>'); return; }
+    if (isMobileViewport() && mobileView === 'attr') setMobileView('code');
+    try { codeEl.focus(); codeEl.setSelectionRange(rootLoc.start, rootLoc.end); } catch(_) {}
+    const lineNo = codeEl.value.slice(0, rootLoc.start).split('\n').length;
+    const lineHeight = parseFloat(getComputedStyle(codeEl).lineHeight) || 21;
+    const padTop = parseFloat(getComputedStyle(codeEl).paddingTop) || 0;
+    codeEl.scrollTop = Math.max(0, (lineNo - 2) * lineHeight - codeEl.clientHeight / 3 + padTop);
+    syncScroll();
+    updateCurrentLineHighlight();
+    return;
+  }
+
   if (!selectedPath) return;
   const loc = findTagOffsetByPath(codeEl.value, selectedPath);
   if (!loc) { showToast('无法定位到源码'); return; }
@@ -3327,9 +3826,7 @@ function locateSelectedInSource() {
     if (e > 0) end = e;
   }
 
-  if (isMobileViewport() && mobileView === 'attr') {
-    setMobileView('code');
-  }
+  if (isMobileViewport() && mobileView === 'attr') setMobileView('code');
 
   try { codeEl.focus(); codeEl.setSelectionRange(loc.start, end); } catch(_) {}
   const lineNo = codeEl.value.slice(0, loc.start).split('\n').length;
@@ -3339,7 +3836,6 @@ function locateSelectedInSource() {
   syncScroll();
   updateCurrentLineHighlight();
 }
-
 function insertAnimChild(parentPath, animMarkup) {
   const loc = findTagOffsetByPath(codeEl.value, parentPath);
   if (!loc) return false;
@@ -3385,7 +3881,6 @@ function insertAnimChild(parentPath, animMarkup) {
   }
   return true;
 }
-
 function addAnimTemplate(templateId) {
   if (!selectedPath || !currentSvg) return;
   const el = resolvePath(currentSvg, selectedPath);
@@ -3397,6 +3892,44 @@ function addAnimTemplate(templateId) {
   const animMarkup = template.build(el);
 
   if (!insertAnimChild(parentPath, animMarkup)) {
+    showToast('插入动画失败：无法定位源码');
+    return;
+  }
+  renderEditor();
+  saveDraftDebounced();
+  recordSnapshot(true);
+
+  let newSvg;
+  try { newSvg = parseSVG(codeEl.value); }
+  catch (err) {
+    showToast('插入后解析失败：' + (err.message || '未知错误'));
+    return;
+  }
+  const newParent = resolvePath(newSvg, parentPath);
+  if (!newParent || newParent.children.length === 0) {
+    showToast('插入后未找到新动画');
+    return;
+  }
+  const newIdx = newParent.children.length - 1;
+  currentSvg = newSvg;
+  lastGoodCode = codeEl.value;
+  selectedPath = [...parentPath, newIdx];
+
+  schedulePreviewRender();
+  rebuildAttrPanel();
+  showToast(template.isCustom ? '已添加空白动画，请填写参数' : `已添加：${template.label}`);
+  closeAnimAddMenu();
+}
+function addFieldAnim(el, fieldName, animBuilder) {
+  if (!selectedPath || !currentSvg) return;
+  if (!el) return;
+
+  const markup = animBuilder(el);
+  if (!markup) { showToast('无法为 ' + fieldName + ' 生成动画'); return; }
+
+  const parentPath = [...selectedPath];
+
+  if (!insertAnimChild(parentPath, markup)) {
     showToast('插入动画失败：无法定位源码');
     return;
   }
@@ -3417,18 +3950,14 @@ function addAnimTemplate(templateId) {
     return;
   }
   const newIdx = newParent.children.length - 1;
-  const newPath = [...parentPath, newIdx];
-
   currentSvg = newSvg;
   lastGoodCode = codeEl.value;
-  selectedPath = newPath;
+  selectedPath = [...parentPath, newIdx];
 
   schedulePreviewRender();
   rebuildAttrPanel();
-  showToast(template.isCustom ? '已添加空白动画，请填写参数' : `已添加：${template.label}`);
-  closeAnimAddMenu();
+  showToast(`已为 ${fieldName} 添加动画`);
 }
-
 function showAnimAddMenu(anchorEl) {
   closeAnimAddMenu();
   const menu = document.createElement('div');
@@ -3452,5 +3981,30 @@ function closeAnimAddMenu() {
   }
   animAddMenuEl = null;
 }
+attrPanelCanvasBtn.addEventListener('click', () => {
+  if (canvasRootMode) {
+    if (canvasBackPath) {
+      const path = canvasBackPath;
+      canvasBackPath = null;
+      canvasRootMode = false;
+      selectedPath = path;
+      const el = resolvePath(currentSvg, path);
+      if (el) applySelectionOutline(el);
+      rebuildAttrPanel();
+    } else {
+      clearSelection();
+    }
+  } else {
+    canvasBackPath = selectedPath;
+    selectedPath = null;
+    canvasRootMode = true;
+    attrPanelOpen = true;
+    attrPanel.hidden = false;
+    if (selectionOverlayEl) selectionOverlayEl.innerHTML = '';
+    rebuildAttrPanel();
+    if (isMobileViewport()) setMobileView('attr');
+    updateMobileViewMenu();
+  }
+});
 
 })();
