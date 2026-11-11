@@ -2,11 +2,12 @@
 'use strict';
 
 const $ = id => document.getElementById(id);
-
 const appEl         = $('appRoot');
 const previewHost   = $('preview');
 const previewWrap   = $('previewWrap');
+const bottomArea    = $('bottomArea');
 const editorEl      = $('editorSection');
+const toolPanel     = $('toolPanel');
 const codeEl        = $('code');
 const highlightEl   = $('highlight');
 const highlightCode = $('highlightCode');
@@ -16,7 +17,6 @@ const toastEl       = $('toast');
 const fileInput     = $('fileInput');
 const dropOverlay   = $('dropOverlay');
 const dropOverlayText = dropOverlay.querySelector('.drop-overlay__text');
-
 const btnPreviewMenu = $('btnPreviewMenu');
 const previewMenu    = $('previewMenu');
 const menuOpenSvg    = $('menuOpenSvg');
@@ -27,10 +27,8 @@ const menuSavePng    = $('menuSavePng');
 const menuSaveSvg    = $('menuSaveSvg');
 const btnRotate90    = $('btnRotate90');
 const btnRotateReset = $('btnRotateReset');
-
 const btnUndo = $('btnUndo');
 const btnRedo = $('btnRedo');
-
 const btnFormat     = $('btnFormat');
 const btnFind       = $('btnFind');
 const btnEditorMenu = $('btnEditorMenu');
@@ -41,20 +39,16 @@ const menuAutoIndent = $('menuAutoIndent');
 const menuHistory    = $('menuHistory');
 const menuResetExample = $('menuResetExample');
 const menuClearDraft = $('menuClearDraft');
-
 const zoomInBtn     = $('zoomIn');
 const zoomOutBtn    = $('zoomOut');
 const zoomResetBtn  = $('zoomReset');
 const zoomLabel     = zoomResetBtn;
 const bgBtns        = Array.from(document.querySelectorAll('.bg-btn'));
-
 const splitterEl    = $('splitter');
 const splitterGrips = Array.from(document.querySelectorAll('.tool-grip'));
-
 const warningBar   = $('warningBar');
 const warningText  = $('warningText');
 const warningClose = $('warningClose');
-
 const findPanel      = $('findPanel');
 const findInput      = $('findInput');
 const replaceInput   = $('replaceInput');
@@ -63,7 +57,6 @@ const findNext       = $('findNext');
 const findReplace    = $('findReplace');
 const findReplaceAll = $('findReplaceAll');
 const findClose      = $('findClose');
-
 const modalMask      = $('modalMask');
 const modalTitle     = $('modalTitle');
 const modalSubtitle  = $('modalSubtitle');
@@ -80,12 +73,10 @@ const exportScaleViewBox = $('exportScaleViewBox');
 const exportOriginal = $('exportOriginal');
 const exportCancel   = $('exportCancel');
 const exportConfirm  = $('exportConfirm');
-
 const historyMask  = $('historyMask');
 const historyList  = $('historyList');
 const historyClear = $('historyClear');
 const historyClose = $('historyClose');
-
 const imageFileInput       = $('imageFileInput');
 const imageConfigMask      = $('imageConfigMask');
 const imageConfigPreview   = $('imageConfigPreview');
@@ -101,7 +92,6 @@ const imageConfigCancel    = $('imageConfigCancel');
 const imageConfigConfirm   = $('imageConfigConfirm');
 const imageConfigFillRadios   = Array.from(document.querySelectorAll('input[name="imageConfigFill"]'));
 const imageConfigInsertRadios = Array.from(document.querySelectorAll('input[name="imageConfigInsert"]'));
-
 const attrPanel            = $('attrPanel');
 const attrPanelTag         = $('attrPanelTag');
 const attrPanelId          = $('attrPanelId');
@@ -109,10 +99,11 @@ const attrPanelWarning     = $('attrPanelWarning');
 const attrPanelBody        = $('attrPanelBody');
 const attrPanelClose       = $('attrPanelClose');
 const attrPanelLocate      = $('attrPanelLocate');
-const btnMobileViewMenu = $('btnMobileViewMenu');
-const mobileViewMenu    = $('mobileViewMenu');
+const attrPanelCanvasBtn   = $('attrPanelCanvasBtn');
+const btnBottomViewMenu = $('btnBottomViewMenu');
+const bottomViewMenu    = $('bottomViewMenu');
 const menuViewCode      = $('menuViewCode');
-const menuViewAttr      = $('menuViewAttr');
+const menuViewTool      = $('menuViewTool');
 let currentSvg   = null;
 let lastGoodCode = null;
 let renderTimer  = null;
@@ -140,10 +131,19 @@ let selectedPath = null;
 let attrPanelOpen = false;
 let attrCommitTimer = 0;
 let suppressAttrRebuild = false;
-let mobileView = 'code'; 
+let canvasRootMode = false;
+let canvasBackPath = null;
+let bottomView = 'code';
+let mobileView = 'code';
 function isMobileViewport() {
   return window.innerWidth <= 480;
 }
+let overlayRafId = 0;
+let sliderSuppressTimer = 0;
+let animAddMenuEl = null;
+let effectMenuEl = null;
+let canvasAttrTimer = 0;
+let canvasViewBoxTimer = 0;
 const MAX_SIDE      = 4096;
 const DRAFT_KEY     = 'svg-editor.draft.v1';
 const HISTORY_KEY   = 'svg-editor.history.v1';
@@ -174,9 +174,7 @@ function getPreviewRect() {
   return cachedPreviewRect;
 }
 function invalidatePreviewRect() { cachedPreviewRect = null; }
-let canvasRootMode = false;
-let canvasBackPath = null;  
-
+ 
 function stamp() {
   const d = new Date();
   const p = n => String(n).padStart(2, '0');
@@ -190,7 +188,6 @@ function showToast(msg) {
   toastTimer = setTimeout(() => toastEl.classList.remove('is-show'), 2400);
 }
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
-
 const errorEl = document.createElement('div');
 errorEl.className = 'error';
 errorEl.hidden = true;
@@ -206,7 +203,6 @@ function showWarning(msg) {
   warningBar.hidden = false;
 }
 function hideWarning() { warningBar.hidden = true; }
-
 function updateButtons() {
   const ok = !!currentSvg;
   btnPreviewMenu.disabled = !ok;
@@ -310,6 +306,7 @@ function getSize(svg) {
   if (h && !w) return { width: h * 0.75, height: h };
   return { width: 800, height: 600 };
 }
+
 function serializeSVG(svg, width, height, scaleViewBox) {
   const clone = svg.cloneNode(true);
   if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
@@ -324,7 +321,14 @@ function serializeSVG(svg, width, height, scaleViewBox) {
       if (p.length === 4 && p[2] > 0 && p[3] > 0) {
         const ratio = (width != null && height != null)
           ? Math.min(width / p[2], height / p[3]) : 1;
-        clone.setAttribute('viewBox', [p[0], p[1], p[2] * ratio, p[3] * ratio].join(' '));
+        if (ratio !== 1) {
+          const cx = p[0] + p[2] / 2;
+          const cy = p[1] + p[3] / 2;
+          const nw = p[2] * ratio;
+          const nh = p[3] * ratio;
+          clone.setAttribute('viewBox',
+            [cx - nw / 2, cy - nh / 2, nw, nh].join(' '));
+        }
       }
     }
   }
@@ -357,7 +361,7 @@ shadow.innerHTML = `
       position: absolute; left: 50%; top: 50%;
       transform-origin: center center;
       will-change: transform; transition: opacity .2s;
-      outline: 0.5px solid rgba(200, 200, 200, 0.5);
+      outline: 1px solid rgba(200, 200, 200, 0.8);
       outline-offset: -1px;
     }
     .canvas > * { display: block; }
@@ -389,7 +393,6 @@ shadow.innerHTML = `
 const stageEl  = shadow.querySelector('.stage');
 const canvasEl = shadow.querySelector('.canvas');
 const selectionOverlayEl = shadow.querySelector('.selection-overlay');
-
 class DomRenderer {
   constructor() { this.host = null; this.type = 'dom'; }
   getType() { return this.type; }
@@ -499,10 +502,8 @@ function computeParDrawRect(img, boxX, boxY, boxW, boxH, par) {
   if (!iw || !ih) return null;
   const meet = par.includes('meet');
   const isSlice = !meet;
-
   let dw, dh, dx, dy;
   const sx = 0, sy = 0, sw = iw, sh = ih;
-
   if (isSlice) {
     const k = Math.max(boxW / iw, boxH / ih);
     dw = iw * k; dh = ih * k;
@@ -540,7 +541,6 @@ async function drawDataImagesToCanvas(ctx, markup, canvasW, canvasH) {
   const domHasImages = domRoot
     && domRoot.localName && domRoot.localName.toLowerCase() === 'svg'
     && domRoot.querySelector('image');
-
   if (domHasImages) {
     try {
       await drawDataImagesFromDom(ctx, domRoot, canvasW, canvasH);
@@ -549,7 +549,6 @@ async function drawDataImagesToCanvas(ctx, markup, canvasW, canvasH) {
       console.warn('[export] DOM 方式绘制图片失败，降级到 markup 方式：', err);
     }
   }
-
   await drawDataImagesFromMarkup(ctx, markup, canvasW, canvasH);
 }
 async function drawDataImagesFromDom(ctx, svgRoot, canvasW, canvasH) {
@@ -627,6 +626,7 @@ async function drawDataImagesFromDom(ctx, svgRoot, canvasW, canvasH) {
       ctm.e * scaleX,
       ctm.f * scaleY
     );
+
     if (clipEl) {
       applyClipShapeToCtx(ctx, clipEl, 1, 1, 0, 0);
       ctx.clip();
@@ -789,17 +789,18 @@ async function renderPreview() {
   updateBadge(size.width, size.height);
   if (isFitMode) fitToView();
   updateButtons();
-
   if (selectedPath) {
     const newEl = resolvePath(currentSvg, selectedPath);
-    if (newEl && newEl !== canvasEl.firstElementChild) {
-      applySelectionOutline(newEl);
+    const domEl = getDomElementByPath(selectedPath);
+    if (newEl && newEl !== canvasEl.firstElementChild && domEl) {
+      applySelectionOutline(domEl);
       if (!suppressAttrRebuild && attrPanelOpen) rebuildAttrPanel();
     } else {
       clearSelection();
     }
   }
 }
+
 function locateErrorInEditor(msg) {
   const m = msg.match(/第\s*(\d+)\s*行/);
   if (!m) return;
@@ -983,13 +984,13 @@ function applySplit() {
   const minPreview = 80;
   if (splitState === 'preview-max') {
     setFlex(previewWrap, 100, '0', minPreview);
-    setFlex(editorEl, 0.001, minEditor + 'px', minEditor);
+    setFlex(bottomArea, 0.001, minEditor + 'px', minEditor);
   } else if (splitState === 'code-max') {
     setFlex(previewWrap, 0.001, minPreview + 'px', minPreview);
-    setFlex(editorEl, 100, '0', minEditor);
+    setFlex(bottomArea, 100, '0', minEditor);
   } else {
     setFlex(previewWrap, splitRatio * 100, '0', minPreview);
-    setFlex(editorEl, (1 - splitRatio) * 100, '0', minEditor);
+    setFlex(bottomArea, (1 - splitRatio) * 100, '0', minEditor);
   }
   scheduleApplyViewAfterSplit();
 }
@@ -1389,6 +1390,7 @@ function formatXML(xml) {
   }
   return out.trimEnd();
 }
+
 function saveDraftDebounced() {
   clearTimeout(draftTimer);
   draftTimer = setTimeout(() => {
@@ -1479,6 +1481,7 @@ function openHistory() {
   historyMask.hidden = false;
 }
 function closeHistory() { historyMask.hidden = true; }
+
 let undoStack = [];
 let undoIndex = -1;
 let lastSnapshotTime = 0;
@@ -1601,20 +1604,20 @@ function replaceAll() {
   renderEditor(); schedulePreviewRender(); saveDraftDebounced(); recordSnapshot();
   showToast(`已替换 ${count} 处`);
 }
+
 function positionFindPanel() {
   if (findPanel.hidden) return;
-
   if (isMobileViewport()) {
     const splitterRect = splitterEl.getBoundingClientRect();
     findPanel.style.top = splitterRect.bottom + 'px';
     findPanel.style.left = '';
     findPanel.style.right = '';
+    findPanel.style.width = '';
     return;
   }
-
   const btnRect = btnFind.getBoundingClientRect();
   const gap = 6, vh = window.innerHeight, vw = window.innerWidth;
-  const panelW = findPanel.offsetWidth || 300;
+  const panelW = findPanel.offsetWidth || 320;
   const panelH = findPanel.offsetHeight || 120;
   let top;
   if (btnRect.top - gap - panelH >= 8) top = btnRect.top - gap - panelH;
@@ -1623,8 +1626,9 @@ function positionFindPanel() {
   let right = vw - btnRect.right;
   right = Math.min(Math.max(right, 8), vw - panelW - 8);
   findPanel.style.top = top + 'px';
+  findPanel.style.left = 'auto';
   findPanel.style.right = right + 'px';
-  findPanel.style.left = '';
+  findPanel.style.width = '';
 }
 
 async function loadFile(file) {
@@ -1750,7 +1754,6 @@ function setPreviewRotation(deg) {
   fitToView();
   showToast(`预览旋转 ${previewRotation}°`);
 }
-
 let lockedScrollTop = 0;
 codeEl.addEventListener('focus', () => {
   requestAnimationFrame(() => { codeEl.scrollTop = lockedScrollTop; syncScroll(); });
@@ -1772,7 +1775,6 @@ codeEl.addEventListener('input', () => {
   snapshotTimer = setTimeout(() => recordSnapshot(false), 500);
 });
 codeEl.addEventListener('scroll', syncScroll);
-
 function handleTab(e) {
   const start = codeEl.selectionStart, end = codeEl.selectionEnd;
   const value = codeEl.value;
@@ -1854,11 +1856,12 @@ codeEl.addEventListener('keydown', e => {
 document.addEventListener('selectionchange', () => {
   if (document.activeElement === codeEl) updateCurrentLineHighlight();
 });
-
 function closeAllMenus() {
-  previewMenu.hidden = true;   btnPreviewMenu.setAttribute('aria-expanded', 'false');
-  editorMenu.hidden  = true;   btnEditorMenu.setAttribute('aria-expanded',  'false');
-  mobileViewMenu.hidden = true; btnMobileViewMenu.setAttribute('aria-expanded', 'false');
+  previewMenu.hidden = true;    btnPreviewMenu.setAttribute('aria-expanded', 'false');
+  editorMenu.hidden  = true;    btnEditorMenu.setAttribute('aria-expanded',  'false');
+  bottomViewMenu.hidden = true; btnBottomViewMenu.setAttribute('aria-expanded', 'false');
+  closeAnimAddMenu();
+  closeEffectMenu();
 }
 function positionDropdown(btn, menu) {
   menu.classList.remove('dropdown--up');
@@ -1881,14 +1884,26 @@ function toggleMenu(btn, menu) {
     if (first) first.focus();
   }
 }
-btnPreviewMenu.addEventListener('click', e => { e.stopPropagation(); toggleMenu(btnPreviewMenu, previewMenu); });
-btnEditorMenu.addEventListener('click',  e => { e.stopPropagation(); toggleMenu(btnEditorMenu,  editorMenu); });
-btnMobileViewMenu.addEventListener('click', e => {
-  e.stopPropagation();
-  updateMobileViewMenu();
-  toggleMenu(btnMobileViewMenu, mobileViewMenu);
-});
 
+btnPreviewMenu.addEventListener('click', e => {
+  e.stopPropagation();
+  const willOpen = previewMenu.hidden;
+  closeAllMenus();
+  if (willOpen) {
+    previewMenu.hidden = false;
+    btnPreviewMenu.setAttribute('aria-expanded', 'true');
+    positionFloatingMenu(previewMenu, btnPreviewMenu);
+    const first = previewMenu.querySelector('button:not(:disabled)');
+    if (first) first.focus();
+  }
+});
+btnEditorMenu.addEventListener('click',  e => { e.stopPropagation(); toggleMenu(btnEditorMenu,  editorMenu); });
+
+btnBottomViewMenu.addEventListener('click', e => {
+  e.stopPropagation();
+  updateBottomViewMenu();
+  toggleMenu(btnBottomViewMenu, bottomViewMenu);
+});
 function handleMenuKeydown(e, menu) {
   if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
   e.preventDefault();
@@ -1902,18 +1917,15 @@ function handleMenuKeydown(e, menu) {
 }
 previewMenu.addEventListener('keydown', e => handleMenuKeydown(e, previewMenu));
 editorMenu.addEventListener('keydown',  e => handleMenuKeydown(e, editorMenu));
-mobileViewMenu.addEventListener('keydown', e => handleMenuKeydown(e, mobileViewMenu));
-
+bottomViewMenu.addEventListener('keydown', e => handleMenuKeydown(e, bottomViewMenu));
 menuViewCode.addEventListener('click', () => {
   closeAllMenus();
-  setMobileView('code');
+  setBottomView('code');
 });
-menuViewAttr.addEventListener('click', () => {
-  if (menuViewAttr.disabled) return;
+menuViewTool.addEventListener('click', () => {
   closeAllMenus();
-  setMobileView('attr');
+  setBottomView('tool');
 });
-
 btnUndo.addEventListener('click', undo);
 btnRedo.addEventListener('click', redo);
 
@@ -1928,20 +1940,17 @@ btnFormat.addEventListener('click', () => {
     showToast('代码已格式化');
   } catch (err) { showToast('格式化失败：' + (err.message || '未知错误')); }
 });
-
 btnFind.addEventListener('click', e => {
   e.stopPropagation();
   if (findPanel.hidden) openFindPanel();
   else closeFindPanel();
 });
-
 menuOpenSvg.addEventListener('click', () => { closeAllMenus(); fileInput.click(); });
 menuInsertImage.addEventListener('click', () => { closeAllMenus(); imageFileInput.click(); });
 menuCopyPng.addEventListener('click', () => { closeAllMenus(); copyPNGImage(); });
 menuCopySvg.addEventListener('click', () => { closeAllMenus(); copySVGCode(); });
 menuSavePng.addEventListener('click', () => { closeAllMenus(); openExportModal('png'); });
 menuSaveSvg.addEventListener('click', () => { closeAllMenus(); openExportModal('svg'); });
-
 menuWrap.addEventListener('click', e => {
   e.stopPropagation();
   isWrapMode = !isWrapMode;
@@ -1980,7 +1989,6 @@ menuClearDraft.addEventListener('click', () => {
   try { localStorage.removeItem(DRAFT_KEY); } catch(_) {}
   showToast('草稿已清空（当前编辑内容保留）');
 });
-
 document.addEventListener('click', e => {
   if (!e.target.closest('#previewActions')) {
     previewMenu.hidden = true; btnPreviewMenu.setAttribute('aria-expanded', 'false');
@@ -1988,12 +1996,14 @@ document.addEventListener('click', e => {
   if (!e.target.closest('#editorActions')) {
     editorMenu.hidden = true; btnEditorMenu.setAttribute('aria-expanded', 'false');
   }
-  if (!e.target.closest('.mobile-view-switch')) {
-    mobileViewMenu.hidden = true; btnMobileViewMenu.setAttribute('aria-expanded', 'false');
+  if (!e.target.closest('.bottom-view-switch')) {
+    bottomViewMenu.hidden = true; btnBottomViewMenu.setAttribute('aria-expanded', 'false');
   }
   if (!findPanel.hidden && !e.target.closest('#findPanel')) closeFindPanel();
   closeAnimAddMenu();
+  closeEffectMenu();
 });
+
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   if (!imageConfigMask.hidden) { closeImageConfigModal(); return; }
@@ -2001,6 +2011,11 @@ document.addEventListener('keydown', e => {
   if (!modalMask.hidden) { closeExportModal(); return; }
   if (!findPanel.hidden) { closeFindPanel(); return; }
   if (attrPanelOpen) { clearSelection(); return; }
+  if (animAddMenuEl || effectMenuEl) {
+    closeAnimAddMenu();
+    closeEffectMenu();
+    return;
+  }
   closeAllMenus();
 });
 findPrev.addEventListener('click', () => findNextMatch(true));
@@ -2014,7 +2029,6 @@ findInput.addEventListener('keydown', e => {
 replaceInput.addEventListener('keydown', e => {
   if (e.key === 'Enter') { e.preventDefault(); replaceOne(); }
 });
-
 exportWInput.addEventListener('input', syncHeightFromWidth);
 exportHInput.addEventListener('input', syncWidthFromHeight);
 exportLock.addEventListener('click', () => {
@@ -2039,7 +2053,6 @@ exportOriginal.addEventListener('click', () => {
 exportCancel.addEventListener('click', closeExportModal);
 exportConfirm.addEventListener('click', confirmExport);
 modalMask.addEventListener('click', e => { if (e.target === modalMask) closeExportModal(); });
-
 historyClose.addEventListener('click', closeHistory);
 historyMask.addEventListener('click', e => { if (e.target === historyMask) closeHistory(); });
 historyClear.addEventListener('click', () => {
@@ -2081,7 +2094,6 @@ window.addEventListener('drop', e => {
   const file = e.dataTransfer?.files?.[0];
   if (file) loadFile(file);
 });
-
 bgBtns.forEach(btn => btn.addEventListener('click', () => setPreviewBg(btn.dataset.bg)));
 
 previewWrap.addEventListener('wheel', e => {
@@ -2098,7 +2110,6 @@ zoomResetBtn.addEventListener('click', () => {
   fitToView();
   showToast('视图已重置为适应窗口');
 });
-
 btnRotate90.addEventListener('click', () => {
   if (!currentSvg) return;
   setPreviewRotation(previewRotation + 90);
@@ -2224,8 +2235,33 @@ function handlePreviewClick(target) {
   }
   selectElement(cur);
 }
-attrPanelClose.addEventListener('click', clearSelection);
 attrPanelLocate.addEventListener('click', locateSelectedInSource);
+attrPanelClose.addEventListener('click', clearSelection);
+attrPanelCanvasBtn.addEventListener('click', () => {
+  if (canvasRootMode) {
+    if (canvasBackPath) {
+      const path = canvasBackPath;
+      canvasBackPath = null;
+      canvasRootMode = false;
+      selectedPath = path;
+      const domEl = getDomElementByPath(path);
+      if (domEl) applySelectionOutline(domEl);
+      rebuildAttrPanel();
+    } else {
+      clearSelection();
+    }
+  } else {
+    canvasBackPath = selectedPath;
+    selectedPath = null;
+    canvasRootMode = true;
+    attrPanelOpen = true;
+    attrPanel.hidden = false;
+    if (selectionOverlayEl) selectionOverlayEl.innerHTML = '';
+    rebuildAttrPanel();
+    if (isMobileViewport()) setMobileView('attr');
+    updateBottomViewMenu();
+  }
+});
 imageFileInput.addEventListener('change', e => {
   const f = e.target.files?.[0];
   e.target.value = '';
@@ -2271,7 +2307,6 @@ imageConfigConfirm.addEventListener('click', confirmImageInsert);
 imageConfigMask.addEventListener('click', e => {
   if (e.target === imageConfigMask) closeImageConfigModal();
 });
-
 window.addEventListener('resize', () => {
   invalidatePreviewRect();
   if (appEl.style.height && window.visualViewport &&
@@ -2284,22 +2319,21 @@ window.addEventListener('resize', () => {
   }
   if (!previewMenu.hidden) positionDropdown(btnPreviewMenu, previewMenu);
   if (!editorMenu.hidden)  positionDropdown(btnEditorMenu,  editorMenu);
-  if (!mobileViewMenu.hidden) positionDropdown(btnMobileViewMenu, mobileViewMenu);
+  if (!bottomViewMenu.hidden) positionDropdown(btnBottomViewMenu, bottomViewMenu);
   if (!findPanel.hidden)   positionFindPanel();
-
   if (!isMobileViewport()) {
-    if (editorEl.hidden) editorEl.hidden = false;
+    if (bottomArea.hidden) bottomArea.hidden = false;
   } else {
     if (mobileView === 'attr' && attrPanelOpen) {
-      editorEl.hidden = true;
+      bottomArea.hidden = true;
       attrPanel.hidden = false;
     } else {
-      editorEl.hidden = false;
+      bottomArea.hidden = false;
       attrPanel.hidden = true;
       mobileView = 'code';
     }
   }
-  updateMobileViewMenu();
+  updateBottomViewMenu();
 });
 
 (function detectScrollbarWidth() {
@@ -2310,7 +2344,6 @@ window.addEventListener('resize', () => {
   div.remove();
   document.documentElement.style.setProperty('--ed-sbw', w + 'px');
 })();
-
 if (window.visualViewport) {
   let vvRaf = 0;
   const onVVResize = () => {
@@ -2329,7 +2362,7 @@ if (window.visualViewport) {
   };
   window.visualViewport.addEventListener('resize', onVVResize);
 }
-
+/*
 const draft = loadDraft();
 codeEl.value = draft || DEFAULT_CODE;
 setPreviewBg('checker');
@@ -2338,7 +2371,29 @@ renderEditor();
 renderPreview();
 applySplit();
 updateUndoRedoMenu();
-updateMobileViewMenu();
+setBottomView('code');
+updateBottomViewMenu();
+*/
+const draft = loadDraft();
+codeEl.value = draft || DEFAULT_CODE;
+setPreviewBg('checker');
+recordSnapshot(true);
+renderEditor();
+renderPreview();
+applySplit();
+updateUndoRedoMenu();
+setBottomView('code');
+updateBottomViewMenu();
+const previewResizeObserver = new ResizeObserver(() => {
+  invalidatePreviewRect();
+  if (!currentSvg) return;
+  if (isFitMode) {
+    fitToView();                       
+  } else {
+    scheduleRefreshSelectionOverlay();
+  }
+});
+previewResizeObserver.observe(previewWrap);
 
 async function loadImageForConfig(file) {
   if (!file) return;
@@ -2385,6 +2440,7 @@ function computeImageBox() {
 
   let L = 0;
   let explicitW = 0, explicitH = 0;
+
   if (insertMode === 'replace') {
     L = Math.max(originalW, originalH);
     if (ratio === 'custom' && customW > 0 && customH > 0) {
@@ -2445,7 +2501,6 @@ function computeImageBox() {
   let width, height;
   if (R >= 1) { width = L; height = L / R; }
   else        { height = L; width = L * R; }
-
   if (shape === 'circle') {
     const D = Math.min(width, height);
     width = D; height = D;
@@ -2622,78 +2677,139 @@ function appendImageToSource(defsStr, imageStr) {
   return formatXML(serializeSVG(clone));
 }
 
-const ANIM_TAGS = new Set(['animate', 'animatetransform', 'animatemotion', 'animatecolor', 'set']);
-let animAddMenuEl = null;
-let canvasAttrTimer = 0;
-let canvasViewBoxTimer = 0;
-let overlayRafId = 0;
-let sliderSuppressTimer = 0;
-const ANIM_TEMPLATES = [
-  { id: 'fade', label: '淡入淡出',
-    build: () => `<animate attributeName="opacity" values="1;0;1" dur="2s" repeatCount="indefinite"/>` },
-  { id: 'rotate', label: '旋转',
-    build: (el) => {
-      const c = getElementCenter(el);
-      return `<animateTransform attributeName="transform" type="rotate" from="0 ${c.x} ${c.y}" to="360 ${c.x} ${c.y}" dur="4s" repeatCount="indefinite"/>`;
-    } },
-  { id: 'scale', label: '缩放',
-    build: () => `<animateTransform attributeName="transform" type="scale" values="1;1.2;1" dur="2s" repeatCount="indefinite"/>` },
-  { id: 'translate', label: '平移',
-    build: () => `<animateTransform attributeName="transform" type="translate" values="0,0;20,0;0,0" dur="2s" repeatCount="indefinite"/>` },
-  { id: 'color', label: '颜色变化',
-    build: () => `<animate attributeName="fill" values="#ff0000;#00ff00;#ff0000" dur="3s" repeatCount="indefinite"/>` },
-  { id: 'stroke', label: '描边绘制',
-    build: () => `<animate attributeName="stroke-dashoffset" from="100" to="0" dur="2s" fill="freeze"/>` },
-  { id: 'motion', label: '沿路径运动',
-    build: () => `<animateMotion path="M0,0 C 20,-20 40,20 60,0" dur="4s" repeatCount="indefinite"/>` },
-  { id: 'pulse', label: '透明度脉冲',
-    build: () => `<animate attributeName="opacity" values="1;0.4;1" dur="1s" repeatCount="indefinite"/>` },
-  { id: 'custom', label: '自定义…', isCustom: true,
-    build: () => `<animate attributeName="" dur="2s" repeatCount="indefinite"/>` }
-];
-function buildValuePulseAnim(attrName, currentVal, delta) {
-  const v = parseFloat(currentVal);
-  const base = isFinite(v) ? v : 0;
-  const to = base + delta;
-  return `<animate attributeName="${attrName}" values="${base};${to};${base}" dur="2s" repeatCount="indefinite"/>`;
+function genId(prefix) {
+  return prefix + '-' + Math.random().toString(36).slice(2, 10);
 }
-function buildScalePulseAnim(attrName, currentVal, factor) {
-  const v = parseFloat(currentVal);
-  const base = isFinite(v) ? v : 1;
-  const to = base * factor;
-  return `<animate attributeName="${attrName}" values="${base};${to};${base}" dur="2s" repeatCount="indefinite"/>`;
+function getShapeCenterAndSize(svgRoot) {
+  let vb = null;
+  const vbAttr = svgRoot.getAttribute('viewBox');
+  if (vbAttr) {
+    const p = vbAttr.trim().split(/[\s,]+/).map(Number);
+    if (p.length === 4 && p[2] > 0 && p[3] > 0) {
+      vb = { x: p[0], y: p[1], w: p[2], h: p[3] };
+    }
+  }
+  if (!vb) {
+    const w = parseFloat(svgRoot.getAttribute('width')) || 100;
+    const h = parseFloat(svgRoot.getAttribute('height')) || 100;
+    vb = { x: 0, y: 0, w, h };
+  }
+  const cx = vb.x + vb.w / 2;
+  const cy = vb.y + vb.h / 2;
+  const baseSize = Math.min(vb.w, vb.h) * 0.3;
+  return { cx, cy, baseSize, vb };
 }
-function buildColorLoopAnim(attrName) {
-  return `<animate attributeName="${attrName}" values="#ff0000;#00ff00;#0000ff;#ff0000" dur="3s" repeatCount="indefinite"/>`;
+function buildShapeMarkup(toolId, cx, cy, size) {
+  const r2 = (n) => Math.round(n * 100) / 100;
+  const half = size / 2;
+  const fill = '#3b82f6';
+
+  switch (toolId) {
+    case 'circle':
+      return `<circle cx="${r2(cx)}" cy="${r2(cy)}" r="${r2(half)}" fill="${fill}"/>`;
+    case 'rect':
+      return `<rect x="${r2(cx - half)}" y="${r2(cy - half)}" width="${r2(size)}" height="${r2(size)}" rx="4" fill="${fill}"/>`;
+    case 'triangle':
+      return `<polygon points="${r2(cx)},${r2(cy - half)} ${r2(cx + half)},${r2(cy + half)} ${r2(cx - half)},${r2(cy + half)}" fill="${fill}"/>`;
+    case 'diamond':
+      return `<polygon points="${r2(cx)},${r2(cy - half)} ${r2(cx + half)},${r2(cy)} ${r2(cx)},${r2(cy + half)} ${r2(cx - half)},${r2(cy)}" fill="${fill}"/>`;
+    case 'line':
+      return `<line x1="${r2(cx - half)}" y1="${r2(cy)}" x2="${r2(cx + half)}" y2="${r2(cy)}" stroke="${fill}" stroke-width="3" stroke-linecap="round"/>`;
+    case 'text':
+      return `<text x="${r2(cx)}" y="${r2(cy)}" text-anchor="middle" dominant-baseline="middle" font-family="system-ui,sans-serif" font-size="${r2(Math.max(14, size * 0.6))}" fill="${fill}">文本</text>`;
+    default:
+      return '';
+  }
 }
-function buildOpacityPulseAnim(attrName) {
-  return `<animate attributeName="${attrName}" values="1;0.3;1" dur="2s" repeatCount="indefinite"/>`;
+function ensureDefsAppend(svgRoot) {
+  for (let i = 0; i < svgRoot.children.length; i++) {
+    if (svgRoot.children[i].localName === 'defs') return svgRoot.children[i];
+  }
+  const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+  svgRoot.appendChild(defs);
+  return defs;
 }
-const FIELD_ANIM_MAP = {
-  'x':                 (el) => buildValuePulseAnim('x', el.getAttribute('x') || 0, 20),
-  'y':                 (el) => buildValuePulseAnim('y', el.getAttribute('y') || 0, 20),
-  'cx':                (el) => buildValuePulseAnim('cx', el.getAttribute('cx') || 0, 20),
-  'cy':                (el) => buildValuePulseAnim('cy', el.getAttribute('cy') || 0, 20),
-  'x1':                (el) => buildValuePulseAnim('x1', el.getAttribute('x1') || 0, 20),
-  'y1':                (el) => buildValuePulseAnim('y1', el.getAttribute('y1') || 0, 20),
-  'x2':                (el) => buildValuePulseAnim('x2', el.getAttribute('x2') || 0, 20),
-  'y2':                (el) => buildValuePulseAnim('y2', el.getAttribute('y2') || 0, 20),
-  'dx':                (el) => buildValuePulseAnim('dx', el.getAttribute('dx') || 0, 10),
-  'dy':                (el) => buildValuePulseAnim('dy', el.getAttribute('dy') || 0, 10),
-  'width':             (el) => buildScalePulseAnim('width', el.getAttribute('width') || 100, 1.3),
-  'height':            (el) => buildScalePulseAnim('height', el.getAttribute('height') || 100, 1.3),
-  'r':                 (el) => buildScalePulseAnim('r', el.getAttribute('r') || 50, 1.3),
-  'rx':                (el) => buildScalePulseAnim('rx', el.getAttribute('rx') || 10, 1.3),
-  'ry':                (el) => buildScalePulseAnim('ry', el.getAttribute('ry') || 10, 1.3),
-  'fill':              (el) => buildColorLoopAnim('fill'),
-  'stroke':            (el) => buildColorLoopAnim('stroke'),
-  'opacity':           (el) => buildOpacityPulseAnim('opacity'),
-  'fill-opacity':      (el) => buildOpacityPulseAnim('fill-opacity'),
-  'stroke-opacity':    (el) => buildOpacityPulseAnim('stroke-opacity'),
-  'stroke-width':      (el) => buildScalePulseAnim('stroke-width', el.getAttribute('stroke-width') || 2, 2),
-  'stroke-dashoffset': () => `<animate attributeName="stroke-dashoffset" from="100" to="0" dur="2s" repeatCount="indefinite"/>`,
-  'font-size':         (el) => buildScalePulseAnim('font-size', el.getAttribute('font-size') || 16, 1.3)
-};
+async function insertShapeTool(toolId) {
+  const code = codeEl.value;
+  if (!code.trim()) { showToast('请先输入 SVG 基础结构'); return; }
+  let vb = null;
+  const vbMatch = code.match(/viewBox\s*=\s*["']([^"']+)["']/i);
+  if (vbMatch) {
+    const p = vbMatch[1].trim().split(/[\s,]+/).map(Number);
+    if (p.length === 4 && p[2] > 0 && p[3] > 0) {
+      vb = { x: p[0], y: p[1], w: p[2], h: p[3] };
+    }
+  }
+  if (!vb) {
+    const wm = code.match(/\swidth\s*=\s*["']([^"']+)["']/i);
+    const hm = code.match(/\sheight\s*=\s*["']([^"']+)["']/i);
+    const w = wm ? (parseFloat(wm[1]) || 100) : 100;
+    const h = hm ? (parseFloat(hm[1]) || 100) : 100;
+    vb = { x: 0, y: 0, w, h };
+  }
+  const cx = vb.x + vb.w / 2;
+  const cy = vb.y + vb.h / 2;
+  const baseSize = Math.min(vb.w, vb.h) * 0.3;
+  const markup = buildShapeMarkup(toolId, cx, cy, baseSize);
+  if (!markup) return;
+  const elId = genId('el');
+  const markupWithId = markup.replace(/^<([a-zA-Z][\w-]*)/, `<$1 id="${elId}"`);
+  const closingIdx = code.lastIndexOf('</svg>');
+  if (closingIdx < 0) { showToast('当前 SVG 缺少闭合标签 </svg>'); return; }
+  const indent = '  ';
+  const newCode = code.slice(0, closingIdx) + indent + markupWithId + '\n' + code.slice(closingIdx);
+  codeEl.value = newCode;
+  renderEditor();
+  await renderPreview();
+  saveDraftDebounced();
+  recordSnapshot(true);
+  const domSvg = canvasEl.firstElementChild;
+  const domEl = domSvg && domSvg.querySelector(`[id="${elId}"]`);
+  if (domEl) selectElement(domEl);
+
+  const labels = { circle:'圆形', rect:'矩形', triangle:'三角形', diamond:'菱形', line:'线条', text:'文本' };
+  showToast(`已插入：${labels[toolId] || toolId}`);
+}
+if (toolPanel) {
+  toolPanel.addEventListener('click', (e) => {
+    const shapeBtn = e.target.closest('[data-tool]');
+    if (shapeBtn && !shapeBtn.disabled) {
+      insertShapeTool(shapeBtn.dataset.tool);
+    }
+  });
+}
+
+function positionFloatingMenu(menu, anchorEl) {
+  if (!menu || !anchorEl) return;
+  menu.style.position = 'fixed';
+  menu.style.top = '0px';
+  menu.style.left = '0px';
+  menu.style.right = 'auto';
+  menu.style.bottom = 'auto';
+  menu.style.zIndex = '200';
+  const rect = anchorEl.getBoundingClientRect();
+  const menuRect = menu.getBoundingClientRect();
+  const menuH = menuRect.height;
+  const menuW = menuRect.width;
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  const gap = 4;
+
+  let left = rect.left;
+  if (left + menuW > vw - 8) left = vw - menuW - 8;
+  if (left < 8) left = 8;
+
+  let top = rect.bottom + gap;
+  if (top + menuH > vh - 8) {
+    const topAbove = rect.top - menuH - gap;
+    if (topAbove >= 8) top = topAbove;
+    else top = Math.max(8, vh - menuH - 8);
+  }
+  menu.style.top = top + 'px';
+  menu.style.left = left + 'px';
+  menu.style.maxHeight = Math.min(320, vh - 16) + 'px';
+  menu.style.overflowY = 'auto';
+}
 function getElementCenter(el) {
   if (!el) return { x: 50, y: 50 };
   const tag = el.localName;
@@ -2704,106 +2820,8 @@ function getElementCenter(el) {
     const w = num('width', 100), h = num('height', 100);
     return { x: x + w / 2, y: y + h / 2 };
   }
-  if (tag === 'line') {
-    return { x: (num('x1', 0) + num('x2', 0)) / 2, y: (num('y1', 0) + num('y2', 0)) / 2 };
-  }
+  if (tag === 'line') return { x: (num('x1', 0) + num('x2', 0)) / 2, y: (num('y1', 0) + num('y2', 0)) / 2 };
   return { x: 50, y: 50 };
-}
-function hasFieldAnim(el, fieldName) {
-  if (!el || !fieldName) return false;
-  const anims = el.querySelectorAll('animate, animateTransform, animateColor, set');
-  for (const a of anims) {
-    if (a.getAttribute('attributeName') === fieldName) return true;
-  }
-  return false;
-}
-function hasTransformAnim(el, type) {
-  if (!el) return false;
-  const anims = el.querySelectorAll('animateTransform');
-  for (const a of anims) {
-    if (a.getAttribute('attributeName') === 'transform' && a.getAttribute('type') === type) return true;
-  }
-  return false;
-}
-function hasAnyAnim(el) {
-  if (!el) return false;
-  return el.querySelector('animate, animateTransform, animateMotion, animateColor, set') !== null;
-}
-function removeFieldAnims(el, fieldName) {
-  if (!selectedPath || !el) return;
-  const loc = findTagOffsetByPath(codeEl.value, selectedPath);
-  if (!loc) { showToast('无法定位到源码'); return; }
-  const parentCloseStart = loc.isSelfClosing ? -1 : skipElementContent(codeEl.value, loc.start, loc.tag);
-  if (loc.isSelfClosing || parentCloseStart < 0) { showToast('该元素无动画'); return; }
-  const svgRoot = parseSVG(codeEl.value);
-  const target = resolvePath(svgRoot, selectedPath);
-  if (!target) return;
-  const toRemove = [];
-  Array.from(target.children).forEach(child => {
-    if (!ANIM_TAGS.has(child.localName.toLowerCase())) return;
-    if (child.getAttribute('attributeName') === fieldName) toRemove.push(child);
-  });
-  if (toRemove.length === 0) return;
-  toRemove.forEach(c => c.remove());
-  const newCode = formatXML(serializeSVG(svgRoot));
-  codeEl.value = newCode;
-  currentSvg = svgRoot;
-  renderEditor();
-  renderPreview();
-  saveDraftDebounced();
-  recordSnapshot(true);
-  rebuildAttrPanel();
-  showToast(`已删除 ${fieldName} 的动画`);
-}
-function removeTransformAnims(el, type) {
-  if (!selectedPath || !el) return;
-  const svgRoot = parseSVG(codeEl.value);
-  const target = resolvePath(svgRoot, selectedPath);
-  if (!target) return;
-  const toRemove = [];
-  Array.from(target.children).forEach(child => {
-    if (child.localName.toLowerCase() !== 'animatetransform') return;
-    if (child.getAttribute('attributeName') === 'transform' &&
-        child.getAttribute('type') === type) {
-      toRemove.push(child);
-    }
-  });
-
-  if (toRemove.length === 0) return;
-  toRemove.forEach(c => c.remove());
-
-  const newCode = formatXML(serializeSVG(svgRoot));
-  codeEl.value = newCode;
-  currentSvg = svgRoot;
-  renderEditor();
-  renderPreview();
-  saveDraftDebounced();
-  recordSnapshot(true);
-  rebuildAttrPanel();
-  showToast(`已删除 ${type} 动画`);
-}
-function removeAllAnimsOfElement(el) {
-  if (!selectedPath || !el) return;
-  if (!confirm('删除该元素的所有动画？')) return;
-
-  const svgRoot = parseSVG(codeEl.value);
-  const target = resolvePath(svgRoot, selectedPath);
-  if (!target) return;
-  const toRemove = [];
-  Array.from(target.children).forEach(child => {
-    if (ANIM_TAGS.has(child.localName.toLowerCase())) toRemove.push(child);
-  });
-  if (toRemove.length === 0) return;
-  toRemove.forEach(c => c.remove());
-  const newCode = formatXML(serializeSVG(svgRoot));
-  codeEl.value = newCode;
-  currentSvg = svgRoot;
-  renderEditor();
-  renderPreview();
-  saveDraftDebounced();
-  recordSnapshot(true);
-  rebuildAttrPanel();
-  showToast('已删除所有动画');
 }
 function parseTransform(str) {
   const result = { tx: 0, ty: 0, rot: 0, scale: 1, extra: '' };
@@ -2818,8 +2836,7 @@ function parseTransform(str) {
       const vx = parseFloat(sx);
       const vy = (sy != null) ? parseFloat(sy) : vx;
       if (isFinite(vx) && isFinite(vy) && Math.abs(vx - vy) < 1e-6) {
-        result.scale *= vx;
-        return '';
+        result.scale *= vx; return '';
       }
       return match;
     });
@@ -2852,6 +2869,7 @@ function getElementPath(el) {
   }
   return cur === svgRoot ? path : null;
 }
+
 function resolvePath(root, path) {
   let cur = root;
   for (const idx of path) {
@@ -2860,11 +2878,21 @@ function resolvePath(root, path) {
   }
   return cur;
 }
+function getDomElementByPath(path) {
+  if (!path || !path.length) return null;
+  let cur = canvasEl.firstElementChild;
+  if (!cur) return null;
+  for (const idx of path) {
+    if (!cur.children || idx >= cur.children.length) return null;
+    cur = cur.children[idx];
+  }
+  return cur;
+}
+
 function findTagOffsetByPath(code, path) {
   if (!path || path.length === 0) return null;
   const len = code.length;
-  let i = 0;
-  let svgEnd = -1;
+  let i = 0, svgEnd = -1;
   while (i < len) {
     if (code[i] !== '<') { i++; continue; }
     if (code.startsWith('<!--', i)) { const e = code.indexOf('-->', i + 4); if (e < 0) return null; i = e + 3; continue; }
@@ -2900,22 +2928,17 @@ function findTagOffsetByPath(code, path) {
     const isSelf = /\/>\s*$/.test(tag);
     const myDepth = stack.length;
     const parent = stack[myDepth - 1];
-    const idx = parent.count;
-    parent.count++;
+    const idx = parent.count; parent.count++;
     if (myDepth <= path.length && path[myDepth - 1] === idx) {
-      if (myDepth === path.length) {
-        return { start: pos, end: e + 1, isSelfClosing: isSelf, tag };
-      }
+      if (myDepth === path.length) return { start: pos, end: e + 1, isSelfClosing: isSelf, tag };
       if (isSelf) return null;
       stack.push({ count: 0 });
-      pos = e + 1;
-      continue;
+      pos = e + 1; continue;
     } else {
       if (isSelf) { pos = e + 1; continue; }
       const skipEnd = skipElementContent(code, pos, tag);
       if (skipEnd < 0) return null;
-      pos = skipEnd;
-      continue;
+      pos = skipEnd; continue;
     }
   }
   return null;
@@ -2940,9 +2963,8 @@ function skipElementContent(code, startPos, openTag) {
       const cm = t.match(/^<\/\s*([^\s>]+)/);
       if (cm && cm[1].toLowerCase() === name) depth--;
       i = e + 1;
-    } else if (/\/>\s*$/.test(t)) {
-      i = e + 1;
-    } else {
+    } else if (/\/>\s*$/.test(t)) { i = e + 1; }
+    else {
       const om = t.match(/^<([^\s>\/]+)/);
       if (om && om[1].toLowerCase() === name) depth++;
       i = e + 1;
@@ -2965,10 +2987,7 @@ function findRootSvgTag(code) {
     if (/^<svg[\s>\/]/i.test(t)) {
       const isSelf = /\/>\s*$/.test(t);
       let end = e + 1;
-      if (!isSelf) {
-        const closeEnd = skipElementContent(code, i, t);
-        if (closeEnd > 0) end = closeEnd;
-      }
+      if (!isSelf) { const closeEnd = skipElementContent(code, i, t); if (closeEnd > 0) end = closeEnd; }
       return { start: i, end, openStart: i, openEnd: e + 1, isSelfClosing: isSelf, tag: t };
     }
     i = e + 1;
@@ -3003,9 +3022,7 @@ function applySelectionOutline(el) {
   if (ANIM_TAGS.has(el.localName.toLowerCase())) {
     targetEl = el.parentElement;
     if (!targetEl || targetEl === canvasEl.firstElementChild) return;
-  } else if (el === canvasEl.firstElementChild) {
-    return;
-  }
+  } else if (el === canvasEl.firstElementChild) { return; }
   let bbox;
   try { bbox = targetEl.getBoundingClientRect(); } catch (_) { return; }
   if (!bbox || bbox.width === 0 || bbox.height === 0) return;
@@ -3013,26 +3030,25 @@ function applySelectionOutline(el) {
   const pad = 3;
   const box = document.createElement('div');
   box.className = 'selection-box';
-  box.style.left   = (bbox.left - stageRect.left - pad) + 'px';
-  box.style.top    = (bbox.top  - stageRect.top  - pad) + 'px';
-  box.style.width  = (bbox.width  + pad * 2) + 'px';
+  box.style.left = (bbox.left - stageRect.left - pad) + 'px';
+  box.style.top = (bbox.top - stageRect.top - pad) + 'px';
+  box.style.width = (bbox.width + pad * 2) + 'px';
   box.style.height = (bbox.height + pad * 2) + 'px';
   selectionOverlayEl.appendChild(box);
 }
+
 function refreshSelectionOverlay() {
   if (!selectionOverlayEl) return;
   if (!selectedPath || !currentSvg) { selectionOverlayEl.innerHTML = ''; return; }
-  const el = resolvePath(currentSvg, selectedPath);
-  if (el) applySelectionOutline(el);
+  const domEl = getDomElementByPath(selectedPath);
+  if (domEl) applySelectionOutline(domEl);
   else selectionOverlayEl.innerHTML = '';
 }
+
 function scheduleRefreshSelectionOverlay() {
   if (!selectionOverlayEl) return;
   if (overlayRafId) return;
-  overlayRafId = requestAnimationFrame(() => {
-    overlayRafId = 0;
-    refreshSelectionOverlay();
-  });
+  overlayRafId = requestAnimationFrame(() => { overlayRafId = 0; refreshSelectionOverlay(); });
 }
 function selectElement(el) {
   if (!el || el === canvasEl.firstElementChild) return;
@@ -3051,37 +3067,61 @@ function clearSelection() {
   if (selectionOverlayEl) selectionOverlayEl.innerHTML = '';
   closeAttrPanel();
 }
+function updateBottomViewMenu() {
+  if (!bottomViewMenu) return;
+  menuViewCode.setAttribute('aria-checked', bottomView === 'code' ? 'true' : 'false');
+  menuViewTool.setAttribute('aria-checked', bottomView === 'tool' ? 'true' : 'false');
+}
+
+function setBottomView(view) {
+  if (view !== 'code' && view !== 'tool') return;
+  bottomView = view;
+  if (isMobileViewport() && mobileView === 'attr') {
+    mobileView = 'code';
+    bottomArea.hidden = false;
+    attrPanel.hidden = true;
+  }
+  if (view === 'code') {
+    editorEl.hidden = false;
+    toolPanel.hidden = true;
+  } else {
+    editorEl.hidden = true;
+    toolPanel.hidden = false;
+  }
+  updateBottomViewMenu();
+  invalidatePreviewRect();
+}
+
 function setMobileView(view) {
   if (!isMobileViewport()) return;
   if (view === 'attr' && !attrPanelOpen) return;
   mobileView = view;
   if (view === 'attr') {
-    editorEl.hidden = true;
+    bottomArea.hidden = true;
     attrPanel.hidden = false;
   } else {
-    editorEl.hidden = false;
+    bottomArea.hidden = false;
     attrPanel.hidden = true;
   }
-  updateMobileViewMenu();
-}
-function updateMobileViewMenu() {
-  if (!mobileViewMenu) return;
-  menuViewCode.setAttribute('aria-checked', mobileView === 'code' ? 'true' : 'false');
-  menuViewAttr.setAttribute('aria-checked', mobileView === 'attr' ? 'true' : 'false');
-  menuViewAttr.disabled = !attrPanelOpen && !canvasRootMode;
+  updateBottomViewMenu();
+  invalidatePreviewRect();
 }
 function openAttrPanel() {
   closeFindPanel();
   closeAllMenus();
   closeAnimAddMenu();
+  closeEffectMenu();
   attrPanelOpen = true;
   rebuildAttrPanel();
   if (isMobileViewport()) setMobileView('attr');
   else attrPanel.hidden = false;
-  updateMobileViewMenu();
+  updateBottomViewMenu();
+  invalidatePreviewRect();
 }
+
 function closeAttrPanel() {
   closeAnimAddMenu();
+  closeEffectMenu();
   if (!attrPanelOpen) return;
   attrPanelOpen = false;
   attrPanel.hidden = true;
@@ -3090,19 +3130,19 @@ function closeAttrPanel() {
   canvasBackPath = null;
   if (selectionOverlayEl) selectionOverlayEl.innerHTML = '';
   if (isMobileViewport()) {
-    editorEl.hidden = false;
+    bottomArea.hidden = false;
     mobileView = 'code';
   }
-  updateMobileViewMenu();
+  updateBottomViewMenu();
+  invalidatePreviewRect();
 }
+
 function rebuildAttrPanel() {
   if (!attrPanelOpen) return;
-  if (canvasRootMode) {
-    rebuildCanvasAttrPanel();
-    return;
-  }
+  if (canvasRootMode) { rebuildCanvasAttrPanel(); return; }
   if (!selectedPath || !currentSvg) return;
   closeAnimAddMenu();
+  closeEffectMenu();
   attrPanelCanvasBtn.classList.remove('is-active');
   attrPanelCanvasBtn.textContent = '画布';
   const el = resolvePath(currentSvg, selectedPath);
@@ -3147,16 +3187,13 @@ function rebuildAttrPanel() {
           const blob = new Blob([u8], { type: mime });
           const file = new File([blob], 'reconfig.' + (mime === 'image/png' ? 'png' : 'jpg'), { type: mime });
           loadImageForConfig(file);
-        } catch (err) {
-          showToast('无法重新配置：' + (err.message || '未知错误'));
-        }
+        } catch (err) { showToast('无法重新配置：' + (err.message || '未知错误')); }
       });
       attrPanelBody.appendChild(reconfigBtn);
     }
   }
   if (isAnim) {
     attrPanelBody.appendChild(makeGroup('动画', getAnimSpecs().map(a => makeRow(el, a, isReadOnly, false))));
-    if (!isReadOnly) attrPanelBody.appendChild(makeStructureGroup());
     attrPanel.dataset.readonly = isReadOnly ? '1' : '';
     return;
   }
@@ -3165,6 +3202,7 @@ function rebuildAttrPanel() {
     attrPanelBody.appendChild(makeGroup('位置尺寸', posAttrs.map(a => makeRow(el, a, isReadOnly, false))));
   }
   attrPanelBody.appendChild(makeTransformGroup(el, isReadOnly));
+
   const fillSpecs = [
     { name: 'fill',              type: 'color' },
     { name: 'fill-opacity',      type: 'number', step: 0.1, min: 0, max: 1 },
@@ -3180,11 +3218,13 @@ function rebuildAttrPanel() {
     { name: 'opacity',           type: 'number', step: 0.1, min: 0, max: 1 }
   ];
   attrPanelBody.appendChild(makeGroup('外观', fillSpecs.map(a => makeRow(el, a, isReadOnly, false))));
+
   const strokeAdvSpecs = [
     { name: 'vector-effect', type: 'select', options: ['', 'none', 'non-scaling-stroke'] },
     { name: 'paint-order',   type: 'select', options: ['', 'normal', 'stroke', 'markers', 'fill', 'stroke markers', 'fill markers', 'fill stroke'] }
   ];
   attrPanelBody.appendChild(makeGroup('描边增强', strokeAdvSpecs.map(a => makeRow(el, a, isReadOnly, false))));
+
   const refSpecs = [
     { name: 'filter',       defTag: 'filter' },
     { name: 'clip-path',    defTag: 'clipPath' },
@@ -3194,6 +3234,7 @@ function rebuildAttrPanel() {
     { name: 'marker-end',   defTag: 'marker' }
   ];
   attrPanelBody.appendChild(makeGroup('引用', refSpecs.map(a => makeRefRow(el, a, isReadOnly, false))));
+
   const renderSpecs = [
     { name: 'shape-rendering',      type: 'select', options: ['', 'auto', 'optimizeSpeed', 'crispEdges', 'geometricPrecision'] },
     { name: 'text-rendering',       type: 'select', options: ['', 'auto', 'optimizeSpeed', 'optimizeLegibility', 'geometricPrecision'] },
@@ -3209,6 +3250,7 @@ function rebuildAttrPanel() {
     { name: 'cursor',         type: 'select', options: ['', 'auto', 'default', 'pointer', 'move', 'crosshair', 'text', 'wait', 'help', 'grab', 'grabbing'] }
   ];
   attrPanelBody.appendChild(makeGroup('交互', interactSpecs.map(a => makeRow(el, a, isReadOnly, false))));
+
   if (tagName === 'text' || tagName === 'tspan') {
     const textBaseSpecs = [
       { name: 'text-anchor', type: 'select', options: ['', 'start', 'middle', 'end'] },
@@ -3219,7 +3261,6 @@ function rebuildAttrPanel() {
       { name: 'letter-spacing', type: 'text' }
     ];
     attrPanelBody.appendChild(makeGroup('文本', textBaseSpecs.map(a => makeRow(el, a, isReadOnly, false))));
-
     const textAdvSpecs = [
       { name: 'dominant-baseline',  type: 'select', options: ['', 'auto', 'text-before-edge', 'text-after-edge', 'middle', 'central', 'hanging', 'alphabetic', 'ideographic', 'mathematical', 'inherit'] },
       { name: 'alignment-baseline', type: 'select', options: ['', 'auto', 'baseline', 'before-edge', 'text-before-edge', 'middle', 'central', 'after-edge', 'text-after-edge', 'ideographic', 'alphabetic', 'hanging', 'mathematical', 'inherit'] },
@@ -3256,23 +3297,21 @@ function rebuildAttrPanel() {
     animChildren.forEach(({ child, idx }) => {
       const row = document.createElement('div');
       row.className = 'attr-anim-row';
-
       const btn = document.createElement('button');
       btn.type = 'button';
       btn.className = 'attr-anim-item';
       const an = child.getAttribute('attributeName') || '';
       btn.textContent = `<${child.localName}>${an ? ' ' + an : ''}`;
       btn.addEventListener('click', () => {
-        const newPath = [...selectedPath, idx];
-        const target = resolvePath(currentSvg, newPath);
-        if (target) {
-          selectedPath = newPath;
-          applySelectionOutline(target);
-          rebuildAttrPanel();
-        }
-      });
+  const newPath = [...selectedPath, idx];
+  const domEl = getDomElementByPath(newPath);
+  if (domEl) {
+    selectedPath = newPath;
+    applySelectionOutline(domEl);
+    rebuildAttrPanel();
+  }
+});
       row.appendChild(btn);
-
       if (!isReadOnly) {
         const rmBtn = document.createElement('button');
         rmBtn.type = 'button';
@@ -3285,7 +3324,6 @@ function rebuildAttrPanel() {
         });
         row.appendChild(rmBtn);
       }
-
       animItems.appendChild(row);
     });
     animGroup.appendChild(animTitle);
@@ -3295,23 +3333,24 @@ function rebuildAttrPanel() {
   if (!isReadOnly) {
     attrPanelBody.appendChild(makeStructureGroup());
   }
-
   attrPanel.dataset.readonly = isReadOnly ? '1' : '';
 }
 function rebuildCanvasAttrPanel() {
   if (!currentSvg) { clearSelection(); return; }
   closeAnimAddMenu();
-
+  closeEffectMenu();
   attrPanelTag.textContent = '<svg>';
   attrPanelId.hidden = true;
   attrPanelCanvasBtn.classList.add('is-active');
   attrPanelCanvasBtn.textContent = canvasBackPath ? '返回' : '画布';
+  const wrap = attrPanelTag.parentNode.querySelector('.attr-panel__add-anim-wrap');
+  if (wrap) wrap.style.display = 'none';
   const loc = findRootSvgTag(codeEl.value);
   const isReadOnly = !loc;
   attrPanelWarning.hidden = !isReadOnly;
   attrPanelBody.innerHTML = '';
   attrPanelBody.appendChild(makeViewBoxGroup(isReadOnly));
-attrPanelBody.appendChild(makeCanvasSizeGroup(isReadOnly));
+  attrPanelBody.appendChild(makeCanvasSizeGroup(isReadOnly));
   const a11ySpecs = [
     { name: 'role',       type: 'text' },
     { name: 'aria-label', type: 'text' },
@@ -3319,293 +3358,7 @@ attrPanelBody.appendChild(makeCanvasSizeGroup(isReadOnly));
     { name: 'focusable',  type: 'select', options: ['', 'true', 'false'] }
   ];
   attrPanelBody.appendChild(makeGroup('无障碍', a11ySpecs.map(a => makeRow(currentSvg, a, isReadOnly, true))));
-
   attrPanel.dataset.readonly = isReadOnly ? '1' : '';
-}
-function makeViewBoxGroup(isReadOnly) {
-  const g = document.createElement('div');
-  g.className = 'attr-group';
-  const t = document.createElement('div');
-  t.className = 'attr-group__title';
-  t.textContent = '画布';
-  const items = document.createElement('div');
-  items.className = 'attr-group__items';
-  const vbAttr = currentSvg.getAttribute('viewBox') || '';
-  const p = vbAttr.trim().split(/[\s,]+/).map(Number);
-  const vbv = (p.length === 4 && p.every(n => isFinite(n))) ? p : [0, 0, 100, 100];
-  const vbWrap = document.createElement('div');
-  vbWrap.className = 'attr-viewbox';
-  const vbLabels = ['minX', 'minY', 'width', 'height'];
-  const vbInputs = [];
-  vbLabels.forEach((lbl, i) => {
-    const row = document.createElement('div');
-    row.className = 'attr-row';
-    const label = document.createElement('label');
-    label.className = 'attr-row__label';
-    label.textContent = lbl;
-    row.appendChild(label);
-    const ctrl = document.createElement('div');
-    ctrl.className = 'attr-row__control';
-    const input = document.createElement('input');
-    input.type = 'number';
-    input.className = 'attr-row__input';
-    input.value = String(vbv[i]);
-    input.step = 1;
-    if (isReadOnly) input.disabled = true;
-    input.addEventListener('input', () => {
-      const vals = vbInputs.map(el => {
-        const v = parseFloat(el.value);
-        return isFinite(v) ? v : 0;
-      });
-      scheduleCanvasViewBoxCommit(vals);
-    });
-    vbInputs.push(input);
-    ctrl.appendChild(input);
-    row.appendChild(ctrl);
-    vbWrap.appendChild(row);
-  });
-  items.appendChild(vbWrap);
-  items.appendChild(makeRow(currentSvg, { name: 'width', type: 'text' }, isReadOnly, true));
-  items.appendChild(makeRow(currentSvg, { name: 'height', type: 'text' }, isReadOnly, true));
-  const parOptions = [
-    '', 'xMidYMid meet', 'xMidYMid slice', 'none',
-    'xMinYMin meet', 'xMinYMin slice',
-    'xMidYMin meet', 'xMidYMin slice',
-    'xMaxYMin meet', 'xMaxYMin slice',
-    'xMinYMid meet', 'xMinYMid slice',
-    'xMaxYMid meet', 'xMaxYMid slice',
-    'xMinYMax meet', 'xMinYMax slice',
-    'xMidYMax meet', 'xMidYMax slice',
-    'xMaxYMax meet', 'xMaxYMax slice'
-  ];
-  items.appendChild(makeRow(currentSvg, {
-    name: 'preserveAspectRatio', type: 'select', options: parOptions
-  }, isReadOnly, true));
-
-  if (!isReadOnly) {
-    const fitBtn = document.createElement('button');
-    fitBtn.type = 'button';
-    fitBtn.className = 'attr-fit-btn';
-    fitBtn.textContent = '自动适配内容';
-    fitBtn.addEventListener('click', autoFitViewBox);
-    items.appendChild(fitBtn);
-  }
-  g.appendChild(t);
-  g.appendChild(items);
-  return g;
-}
-function makeCanvasSizeGroup(isReadOnly) {
-  const g = document.createElement('div');
-  g.className = 'attr-group';
-  const t = document.createElement('div');
-  t.className = 'attr-group__title';
-  t.textContent = '画布大小';
-  const items = document.createElement('div');
-  items.className = 'attr-group__items';
-  const vbAttr = currentSvg.getAttribute('viewBox') || '';
-  const p = vbAttr.trim().split(/[\s,]+/).map(Number);
-  const vbv = (p.length === 4 && p.every(n => isFinite(n))) ? p : [0, 0, 100, 100];
-  const wRow = document.createElement('div');
-  wRow.className = 'attr-row';
-  const wLabel = document.createElement('label');
-  wLabel.className = 'attr-row__label';
-  wLabel.textContent = '宽';
-  wRow.appendChild(wLabel);
-  const wCtrl = document.createElement('div');
-  wCtrl.className = 'attr-row__control';
-  const wInput = document.createElement('input');
-  wInput.type = 'number';
-  wInput.className = 'attr-row__input';
-  wInput.value = String(vbv[2]);
-  wInput.min = '1';
-  wInput.step = '1';
-  wInput.inputMode = 'numeric';
-  if (isReadOnly) wInput.disabled = true;
-  wCtrl.appendChild(wInput);
-  wRow.appendChild(wCtrl);
-  items.appendChild(wRow);
-  const hRow = document.createElement('div');
-  hRow.className = 'attr-row';
-  const hLabel = document.createElement('label');
-  hLabel.className = 'attr-row__label';
-  hLabel.textContent = '高';
-  hRow.appendChild(hLabel);
-  const hCtrl = document.createElement('div');
-  hCtrl.className = 'attr-row__control';
-  const hInput = document.createElement('input');
-  hInput.type = 'number';
-  hInput.className = 'attr-row__input';
-  hInput.value = String(vbv[3]);
-  hInput.min = '1';
-  hInput.step = '1';
-  hInput.inputMode = 'numeric';
-  if (isReadOnly) hInput.disabled = true;
-  hCtrl.appendChild(hInput);
-  hRow.appendChild(hCtrl);
-  items.appendChild(hRow);
-  if (!isReadOnly) {
-    const applyBtn = document.createElement('button');
-    applyBtn.type = 'button';
-    applyBtn.className = 'attr-fit-btn';
-    applyBtn.textContent = '应用画布大小';
-    applyBtn.addEventListener('click', () => {
-      const newW = parseFloat(wInput.value);
-      const newH = parseFloat(hInput.value);
-      if (!isFinite(newW) || newW <= 0 || !isFinite(newH) || newH <= 0) {
-        showToast('请输入有效的宽和高（> 0）');
-        return;
-      }
-      if (newW > 10000 || newH > 10000) {
-        showToast('画布尺寸过大（上限 10000）');
-        return;
-      }
-      commitCanvasSize(vbv[0], vbv[1], newW, newH);
-    });
-    items.appendChild(applyBtn);
-  }
-  g.appendChild(t);
-  g.appendChild(items);
-  return g;
-}
-function commitCanvasSize(minX, minY, newW, newH) {
-  const loc = findRootSvgTag(codeEl.value);
-  if (!loc) { showToast('无法定位到根 <svg>'); return; }
-  const vbAttr = currentSvg.getAttribute('viewBox') || '';
-  const p = vbAttr.trim().split(/[\s,]+/).map(Number);
-  const oldW = (p.length === 4 && isFinite(p[2]) && p[2] > 0) ? p[2] : newW;
-  const oldH = (p.length === 4 && isFinite(p[3]) && p[3] > 0) ? p[3] : newH;
-  const centerX = minX + oldW / 2;
-  const centerY = minY + oldH / 2;
-  const newMinX = centerX - newW / 2;
-  const newMinY = centerY - newH / 2;
-  const fmt = (n) => String(Math.round(n * 100) / 100);
-  const oldOpenTag = codeEl.value.slice(loc.openStart, loc.openEnd);
-  let newOpenTag = oldOpenTag;
-  newOpenTag = patchAttrInTag(newOpenTag, 'viewBox', `${fmt(newMinX)} ${fmt(newMinY)} ${fmt(newW)} ${fmt(newH)}`);
-  newOpenTag = patchAttrInTag(newOpenTag, 'width', String(newW));
-  newOpenTag = patchAttrInTag(newOpenTag, 'height', String(newH));
-  if (newOpenTag === oldOpenTag) return;
-  codeEl.value = codeEl.value.slice(0, loc.openStart) + newOpenTag + codeEl.value.slice(loc.openEnd);
-  isFitMode = false;
-  renderEditor();
-  renderPreview();
-  saveDraftDebounced();
-  recordSnapshot();
-  showToast(`画布已设置为 ${newW} × ${newH}（内容保持居中）`);
-  setTimeout(() => { if (canvasRootMode) rebuildCanvasAttrPanel(); }, 300);
-}
-function autoFitViewBox() {
-  const svgRoot = canvasEl.firstElementChild;
-  if (!svgRoot) { showToast('预览未就绪'); return; }
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  let hasAny = false;
-  const skipTags = new Set([
-    'defs', 'clippath', 'mask', 'filter', 'lineargradient', 'radialgradient',
-    'pattern', 'symbol', 'marker', 'title', 'desc', 'metadata',
-    'animate', 'animatetransform', 'animatemotion', 'animatecolor', 'set'
-  ]);
-  const walk = (el) => {
-    const tag = (el.localName || '').toLowerCase();
-    if (skipTags.has(tag)) return;
-    try {
-      if (typeof el.getBBox === 'function') {
-        const b = el.getBBox();
-        if (b && (b.width > 0 || b.height > 0) &&
-            isFinite(b.x) && isFinite(b.y) && isFinite(b.width) && isFinite(b.height)) {
-          if (b.x < minX) minX = b.x;
-          if (b.y < minY) minY = b.y;
-          if (b.x + b.width > maxX) maxX = b.x + b.width;
-          if (b.y + b.height > maxY) maxY = b.y + b.height;
-          hasAny = true;
-        }
-      }
-    } catch (_) {}
-    Array.from(el.children || []).forEach(walk);
-  };
-Array.from(svgRoot.children).forEach(walk);
-  if (!hasAny || !isFinite(minX) || !isFinite(maxX)) {
-    showToast('未找到可适配的内容');
-    return;
-  }
-  const w = maxX - minX;
-  const h = maxY - minY;
-  if (w <= 0 || h <= 0) { showToast('内容尺寸异常'); return; }
-  const pad = Math.max(w, h) * 0.05;
-  const vx = Math.round((minX - pad) * 100) / 100;
-  const vy = Math.round((minY - pad) * 100) / 100;
-  const vw = Math.round((w + pad * 2) * 100) / 100;
-  const vh = Math.round((h + pad * 2) * 100) / 100;
-  commitCanvasAttr('viewBox', `${vx} ${vy} ${vw} ${vh}`);
-  showToast(`viewBox 已适配：${vx} ${vy} ${vw} ${vh}`);
-  setTimeout(() => { if (canvasRootMode) rebuildCanvasAttrPanel(); }, 300);
-}
-function scheduleCanvasAttrCommit(name, value) {
-  clearTimeout(canvasAttrTimer);
-  canvasAttrTimer = setTimeout(() => commitCanvasAttr(name, value), 300);
-}
-function scheduleCanvasViewBoxCommit(vals) {
-  clearTimeout(canvasViewBoxTimer);
-  canvasViewBoxTimer = setTimeout(() => {
-    commitCanvasAttr('viewBox', vals.join(' '));
-  }, 120);
-}
-function commitCanvasAttr(name, value) {
-  const loc = findRootSvgTag(codeEl.value);
-  if (!loc) { showToast('无法定位到根 <svg>，已忽略本次修改'); return; }
-  const openTag = codeEl.value.slice(loc.openStart, loc.openEnd);
-  const patched = patchAttrInTag(openTag, name, value);
-  if (patched === openTag) return;
-  codeEl.value = codeEl.value.slice(0, loc.openStart) + patched + codeEl.value.slice(loc.openEnd);
-  if (name === 'viewBox' || name === 'width' || name === 'height') {
-    isFitMode = false;
-  }
-  renderEditor();
-  schedulePreviewRender();
-  saveDraftDebounced();
-  recordSnapshot();
-}
-function ensureHeaderAddBtn(isAnim) {
-  const titleNode = attrPanelTag.parentNode;
-  let wrap = titleNode.querySelector('.attr-panel__add-anim-wrap');
-  if (!wrap) {
-    wrap = document.createElement('div');
-    wrap.className = 'attr-panel__add-anim-wrap';
-
-    const addBtn = document.createElement('button');
-    addBtn.type = 'button';
-    addBtn.className = 'attr-panel__add-anim';
-    addBtn.textContent = '+';
-    addBtn.title = '为当前元素添加动画';
-    addBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (animAddMenuEl) closeAnimAddMenu();
-      else showAnimAddMenu(wrap);
-    });
-    wrap.appendChild(addBtn);
-    const rmBtn = document.createElement('button');
-    rmBtn.type = 'button';
-    rmBtn.className = 'attr-panel__remove-anim';
-    rmBtn.textContent = '−';
-    rmBtn.title = '删除元素所有动画';
-    rmBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (!selectedPath || !currentSvg) return;
-      const el = resolvePath(currentSvg, selectedPath);
-      if (el) removeAllAnimsOfElement(el);
-    });
-    wrap.appendChild(rmBtn);
-    titleNode.insertBefore(wrap, attrPanelTag.nextSibling);
-  }
-  const addBtn = wrap.querySelector('.attr-panel__add-anim');
-  const rmBtn = wrap.querySelector('.attr-panel__remove-anim');
-  const el = selectedPath && currentSvg ? resolvePath(currentSvg, selectedPath) : null;
-  if (isAnim || canvasRootMode) {
-    wrap.style.display = 'none';
-    return;
-  }
-  wrap.style.display = '';
-  if (addBtn) addBtn.style.display = '';
-  if (rmBtn) rmBtn.style.display = (el && hasAnyAnim(el)) ? '' : 'none';
 }
 function makeTransformGroup(el, isReadOnly) {
   const g = document.createElement('div');
@@ -3673,11 +3426,13 @@ function makeTransformGroup(el, isReadOnly) {
     if (spec.step != null) input.step = spec.step;
     if (spec.min != null) input.min = spec.min;
     if (isReadOnly) input.disabled = true;
+
     input.addEventListener('input', () => {
       const v = parseFloat(input.value);
       values[spec.key] = isFinite(v) ? v : (spec.key === 'scale' ? 1 : 0);
       scheduleTransformCommit(el, values, center);
     });
+
     ctrl.appendChild(input);
     row.appendChild(ctrl);
     items.appendChild(row);
@@ -3703,6 +3458,7 @@ function makeTransformGroup(el, isReadOnly) {
     quickWrap.appendChild(resetBtn);
     items.appendChild(quickWrap);
   }
+
   g.appendChild(t);
   g.appendChild(items);
   return g;
@@ -3825,7 +3581,6 @@ function makeValuesSliders(valuesStr, onCommit) {
   wrap.className = 'attr-sliders-wrap';
   const items = parseAnimValueList(valuesStr);
   if (items.length === 0) return wrap;
-
   const type = detectValuesType(items);
   if (type === 'mixed') {
     const notice = document.createElement('div');
@@ -3862,16 +3617,12 @@ function makeValuesSliders(valuesStr, onCommit) {
       numInput.className = 'attr-slider-row__num';
       numInput.step = String(range.step);
       numInput.value = String(nums[i]);
-
       const commit = () => {
         suppressRebuildForSliders();
         items[i] = String(slider.value);
         onCommit(items.join(';'));
       };
-      slider.addEventListener('input', () => {
-        numInput.value = slider.value;
-        commit();
-      });
+      slider.addEventListener('input', () => { numInput.value = slider.value; commit(); });
       numInput.addEventListener('input', () => {
         const v = parseFloat(numInput.value);
         if (isFinite(v)) {
@@ -3926,7 +3677,6 @@ function makeFromToSliders(el, fieldName, onCommit) {
   const otherName = fieldName === 'from' ? 'to' : 'from';
   const otherItems = parseAnimValueSingle(el.getAttribute(otherName) || '');
   if (ownItems.length !== 1 || otherItems.length !== 1) return null;
-
   if (isNumericComponent(ownItems[0]) && isNumericComponent(otherItems[0])) {
     const nums = [parseFloat(ownItems[0]), parseFloat(otherItems[0])].filter(isFinite);
     const range = computeRangeForNums(nums);
@@ -4000,6 +3750,7 @@ function makeRow(el, spec, isReadOnly, isCanvas) {
   const row = document.createElement('div');
   row.className = 'attr-row';
   if (spec.type === 'textarea') row.classList.add('attr-row--full');
+  if (spec.name === 'fill' || spec.name === 'stroke') row.classList.add('attr-row--full');
   let hasFromToSliders = false;
   if ((spec.name === 'from' || spec.name === 'to') && spec.type === 'text') {
     const ownItems = parseAnimValueSingle(el.getAttribute(spec.name) || '');
@@ -4016,20 +3767,27 @@ function makeRow(el, spec, isReadOnly, isCanvas) {
   const label = document.createElement('label');
   label.className = 'attr-row__label';
   label.textContent = spec.name;
-
   const animBuilder = FIELD_ANIM_MAP[spec.name];
   if (animBuilder && !isReadOnly && !isCanvas && spec.type !== 'textarea') {
     const addBtn = document.createElement('button');
     addBtn.type = 'button';
     addBtn.className = 'attr-row__anim-add';
-    addBtn.title = `为 ${spec.name} 添加动画`;
+    const animTooltipMap = {
+      'fill': '添加颜色循环动画',
+      'stroke': '添加描边颜色动画',
+      'opacity': '添加透明度脉冲动画',
+      'fill-opacity': '添加填充透明度动画',
+      'stroke-opacity': '添加描边透明度动画',
+      'stroke-width': '添加描边粗细脉冲动画',
+      'font-size': '添加字号脉冲动画'
+    };
+    addBtn.title = animTooltipMap[spec.name] || `为 ${spec.name} 添加动画`;
     addBtn.textContent = '+';
     addBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       addFieldAnim(el, spec.name, animBuilder);
     });
     label.appendChild(addBtn);
-
     if (hasFieldAnim(el, spec.name)) {
       const rmBtn = document.createElement('button');
       rmBtn.type = 'button';
@@ -4042,6 +3800,25 @@ function makeRow(el, spec, isReadOnly, isCanvas) {
       });
       label.appendChild(rmBtn);
     }
+  }
+  const fxIds = FIELD_EFFECT_MAP[spec.name];
+  if (fxIds && !isReadOnly && !isCanvas && spec.type !== 'textarea') {
+    const fxBtn = document.createElement('button');
+    fxBtn.type = 'button';
+    fxBtn.className = 'attr-row__fx-add';
+    const fxTooltipMap = {
+      'fill': '添加渐变填充',
+      'stroke': '添加描边渐变 / 描边动画',
+      'filter': '添加阴影 / 模糊效果'
+    };
+    fxBtn.title = fxTooltipMap[spec.name] || `为 ${spec.name} 添加效果`;
+    fxBtn.textContent = '✨';
+    fxBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (effectMenuEl) closeEffectMenu();
+      else showEffectMenu(fxBtn, fxIds, spec.name);
+    });
+    label.appendChild(fxBtn);
   }
   row.appendChild(label);
   const ctrl = document.createElement('div');
@@ -4115,12 +3892,8 @@ function makeRow(el, spec, isReadOnly, isCanvas) {
   });
   if (spec.type === 'select') {
     input.addEventListener('change', () => {
-      if (isCanvas) {
-        clearTimeout(canvasAttrTimer);
-        commitCanvasAttr(spec.name, input.value);
-      } else {
-        commitAttrChange(el, spec.name, input.value);
-      }
+      if (isCanvas) { clearTimeout(canvasAttrTimer); commitCanvasAttr(spec.name, input.value); }
+      else commitAttrChange(el, spec.name, input.value);
     });
   }
   if (isReadOnly) input.disabled = true;
@@ -4152,9 +3925,24 @@ function collectDefsIds(tagName) {
 function makeRefRow(el, spec, isReadOnly, isCanvas) {
   const row = document.createElement('div');
   row.className = 'attr-row';
+  if (spec.name === 'filter') row.classList.add('attr-row--full');
   const label = document.createElement('label');
   label.className = 'attr-row__label';
   label.textContent = spec.name;
+  const fxIds = FIELD_EFFECT_MAP[spec.name];
+  if (fxIds && !isReadOnly && !isCanvas) {
+    const fxBtn = document.createElement('button');
+    fxBtn.type = 'button';
+    fxBtn.className = 'attr-row__fx-add';
+    fxBtn.title = spec.name === 'filter' ? '添加阴影 / 模糊效果' : `为 ${spec.name} 添加效果`;
+    fxBtn.textContent = '✨';
+    fxBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (effectMenuEl) closeEffectMenu();
+      else showEffectMenu(fxBtn, fxIds, spec.name);
+    });
+    label.appendChild(fxBtn);
+  }
   row.appendChild(label);
   const ctrl = document.createElement('div');
   ctrl.className = 'attr-row__control';
@@ -4171,7 +3959,6 @@ function makeRefRow(el, spec, isReadOnly, isCanvas) {
   input.value = currentId;
   input.placeholder = ids.length ? ids.slice(0, 2).map(i => '#' + i).join(' / ') : '输入 id';
   if (isReadOnly) input.disabled = true;
-
   const listId = 'ref-list-' + Math.random().toString(36).slice(2, 8);
   const datalist = document.createElement('datalist');
   datalist.id = listId;
@@ -4181,7 +3968,6 @@ function makeRefRow(el, spec, isReadOnly, isCanvas) {
     datalist.appendChild(opt);
   });
   input.setAttribute('list', listId);
-
   const commit = () => {
     const v = input.value.trim().replace(/^#/, '');
     const finalVal = v ? `url(#${v})` : '';
@@ -4189,7 +3975,6 @@ function makeRefRow(el, spec, isReadOnly, isCanvas) {
     else commitAttrChange(el, spec.name, finalVal);
   };
   input.addEventListener('change', commit);
-
   ctrl.appendChild(input);
   ctrl.appendChild(datalist);
   row.appendChild(ctrl);
@@ -4307,14 +4092,108 @@ function locateSelectedInSource() {
     if (e > 0) end = e;
   }
   if (isMobileViewport() && mobileView === 'attr') setMobileView('code');
-
   try { codeEl.focus(); codeEl.setSelectionRange(loc.start, end); } catch(_) {}
   const lineNo = codeEl.value.slice(0, loc.start).split('\n').length;
   const lineHeight = parseFloat(getComputedStyle(codeEl).lineHeight) || 21;
   const padTop = parseFloat(getComputedStyle(codeEl).paddingTop) || 0;
   codeEl.scrollTop = Math.max(0, (lineNo - 2) * lineHeight - codeEl.clientHeight / 3 + padTop);
-  syncScroll();
+syncScroll();
   updateCurrentLineHighlight();
+}
+const ANIM_TAGS = new Set(['animate','animatetransform','animatemotion','animatecolor','set']);
+
+const ANIM_TEMPLATES = [
+  { id: 'fade', label: '淡入淡出',
+    build: () => `<animate attributeName="opacity" values="1;0;1" dur="2s" repeatCount="indefinite"/>` },
+  { id: 'rotate', label: '旋转',
+    build: (el) => {
+      const c = getElementCenter(el);
+      return `<animateTransform attributeName="transform" type="rotate" from="0 ${c.x} ${c.y}" to="360 ${c.x} ${c.y}" dur="4s" repeatCount="indefinite"/>`;
+    } },
+  { id: 'scale', label: '缩放',
+    build: () => `<animateTransform attributeName="transform" type="scale" values="1;1.2;1" dur="2s" repeatCount="indefinite"/>` },
+  { id: 'translate', label: '平移',
+    build: () => `<animateTransform attributeName="transform" type="translate" values="0,0;20,0;0,0" dur="2s" repeatCount="indefinite"/>` },
+  { id: 'color', label: '颜色变化',
+    build: () => `<animate attributeName="fill" values="#ff0000;#00ff00;#ff0000" dur="3s" repeatCount="indefinite"/>` },
+  { id: 'stroke', label: '描边绘制',
+    build: () => `<animate attributeName="stroke-dashoffset" from="100" to="0" dur="2s" fill="freeze"/>` },
+  { id: 'motion', label: '沿路径运动',
+    build: () => `<animateMotion path="M0,0 C 20,-20 40,20 60,0" dur="4s" repeatCount="indefinite"/>` },
+  { id: 'pulse', label: '透明度脉冲',
+    build: () => `<animate attributeName="opacity" values="1;0.4;1" dur="1s" repeatCount="indefinite"/>` },
+  { id: 'custom', label: '自定义…', isCustom: true,
+    build: () => `<animate attributeName="" dur="2s" repeatCount="indefinite"/>` }
+];
+const FIELD_ANIM_MAP = {
+  'x':                 (el) => buildValuePulseAnim('x', el.getAttribute('x') || 0, 20),
+  'y':                 (el) => buildValuePulseAnim('y', el.getAttribute('y') || 0, 20),
+  'cx':                (el) => buildValuePulseAnim('cx', el.getAttribute('cx') || 0, 20),
+  'cy':                (el) => buildValuePulseAnim('cy', el.getAttribute('cy') || 0, 20),
+  'x1':                (el) => buildValuePulseAnim('x1', el.getAttribute('x1') || 0, 20),
+  'y1':                (el) => buildValuePulseAnim('y1', el.getAttribute('y1') || 0, 20),
+  'x2':                (el) => buildValuePulseAnim('x2', el.getAttribute('x2') || 0, 20),
+  'y2':                (el) => buildValuePulseAnim('y2', el.getAttribute('y2') || 0, 20),
+  'dx':                (el) => buildValuePulseAnim('dx', el.getAttribute('dx') || 0, 10),
+  'dy':                (el) => buildValuePulseAnim('dy', el.getAttribute('dy') || 0, 10),
+  'width':             (el) => buildScalePulseAnim('width', el.getAttribute('width') || 100, 1.3),
+  'height':            (el) => buildScalePulseAnim('height', el.getAttribute('height') || 100, 1.3),
+  'r':                 (el) => buildScalePulseAnim('r', el.getAttribute('r') || 50, 1.3),
+  'rx':                (el) => buildScalePulseAnim('rx', el.getAttribute('rx') || 10, 1.3),
+  'ry':                (el) => buildScalePulseAnim('ry', el.getAttribute('ry') || 10, 1.3),
+  'fill':              (el) => buildColorLoopAnim('fill'),
+  'stroke':            (el) => buildColorLoopAnim('stroke'),
+  'opacity':           (el) => buildOpacityPulseAnim('opacity'),
+  'fill-opacity':      (el) => buildOpacityPulseAnim('fill-opacity'),
+  'stroke-opacity':    (el) => buildOpacityPulseAnim('stroke-opacity'),
+  'stroke-width':      (el) => buildScalePulseAnim('stroke-width', el.getAttribute('stroke-width') || 2, 2),
+  'stroke-dashoffset': () => `<animate attributeName="stroke-dashoffset" from="100" to="0" dur="2s" repeatCount="indefinite"/>`,
+  'font-size':         (el) => buildScalePulseAnim('font-size', el.getAttribute('font-size') || 16, 1.3)
+};
+function buildValuePulseAnim(attrName, currentVal, delta) {
+  const v = parseFloat(currentVal);
+  const base = isFinite(v) ? v : 0;
+  const to = base + delta;
+  return `<animate attributeName="${attrName}" values="${base};${to};${base}" dur="2s" repeatCount="indefinite"/>`;
+}
+function buildScalePulseAnim(attrName, currentVal, factor) {
+  const v = parseFloat(currentVal);
+  const base = isFinite(v) ? v : 1;
+  const to = base * factor;
+  return `<animate attributeName="${attrName}" values="${base};${to};${base}" dur="2s" repeatCount="indefinite"/>`;
+}
+function buildColorLoopAnim(attrName) {
+  return `<animate attributeName="${attrName}" values="#ff0000;#00ff00;#0000ff;#ff0000" dur="3s" repeatCount="indefinite"/>`;
+}
+function buildOpacityPulseAnim(attrName) {
+  return `<animate attributeName="${attrName}" values="1;0.3;1" dur="2s" repeatCount="indefinite"/>`;
+}
+function hasFieldAnim(el, fieldName) {
+  if (!el || !fieldName) return false;
+  const anims = el.querySelectorAll('animate, animateTransform, animateColor, set');
+  for (const a of anims) {
+    if (isFxId(a.getAttribute('id'))) continue;
+    if (a.getAttribute('attributeName') === fieldName) return true;
+  }
+  return false;
+}
+function hasTransformAnim(el, type) {
+  if (!el) return false;
+  const anims = el.querySelectorAll('animateTransform');
+  for (const a of anims) {
+    if (isFxId(a.getAttribute('id'))) continue;
+    if (a.getAttribute('attributeName') === 'transform' &&
+        a.getAttribute('type') === type) return true;
+  }
+  return false;
+}
+function hasAnyAnim(el) {
+  if (!el) return false;
+  const anims = el.querySelectorAll('animate, animateTransform, animateMotion, animateColor, set');
+  for (const a of anims) {
+    if (!isFxId(a.getAttribute('id'))) return true;
+  }
+  return false;
 }
 function insertAnimChild(parentPath, animMarkup) {
   const loc = findTagOffsetByPath(codeEl.value, parentPath);
@@ -4337,21 +4216,17 @@ function insertAnimChild(parentPath, animMarkup) {
   if (closeEnd < 0) return false;
   const closeStart = code.lastIndexOf('</', closeEnd - 1);
   if (closeStart < 0) return false;
-
   const lineStartBefore = code.lastIndexOf('\n', closeStart - 1) + 1;
   const beforeClose = code.slice(lineStartBefore, closeStart);
   const hasIndentBefore = /^[ \t]*$/.test(beforeClose);
-
   let parentIndent;
-  if (hasIndentBefore) {
-    parentIndent = beforeClose;
-  } else {
+  if (hasIndentBefore) parentIndent = beforeClose;
+  else {
     const openLineStart = code.lastIndexOf('\n', loc.start) + 1;
     parentIndent = (code.slice(openLineStart, loc.start).match(/^[ \t]*/) || [''])[0];
   }
   const childIndent = parentIndent + '  ';
   const indentAnim = animTag.split('\n').map(l => childIndent + l).join('\n');
-
   if (hasIndentBefore) {
     codeEl.value = code.slice(0, lineStartBefore) + indentAnim + '\n' + code.slice(lineStartBefore);
   } else {
@@ -4368,22 +4243,17 @@ function addAnimTemplate(templateId) {
   const parentPath = [...selectedPath];
   const animMarkup = template.build(el);
   if (!insertAnimChild(parentPath, animMarkup)) {
-    showToast('插入动画失败：无法定位源码');
-    return;
+    showToast('插入动画失败：无法定位源码'); return;
   }
   renderEditor();
   saveDraftDebounced();
   recordSnapshot(true);
   let newSvg;
   try { newSvg = parseSVG(codeEl.value); }
-  catch (err) {
-    showToast('插入后解析失败：' + (err.message || '未知错误'));
-    return;
-  }
+  catch (err) { showToast('插入后解析失败：' + (err.message || '未知错误')); return; }
   const newParent = resolvePath(newSvg, parentPath);
   if (!newParent || newParent.children.length === 0) {
-    showToast('插入后未找到新动画');
-    return;
+    showToast('插入后未找到新动画'); return;
   }
   const newIdx = newParent.children.length - 1;
   currentSvg = newSvg;
@@ -4400,33 +4270,107 @@ function addFieldAnim(el, fieldName, animBuilder) {
   if (!markup) { showToast('无法为 ' + fieldName + ' 生成动画'); return; }
   const parentPath = [...selectedPath];
   if (!insertAnimChild(parentPath, markup)) {
-    showToast('插入动画失败：无法定位源码');
-    return;
+    showToast('插入动画失败：无法定位源码'); return;
   }
   renderEditor();
   saveDraftDebounced();
   recordSnapshot(true);
   let newSvg;
   try { newSvg = parseSVG(codeEl.value); }
-  catch (err) {
-    showToast('插入后解析失败：' + (err.message || '未知错误'));
-    return;
-  }
+  catch (err) { showToast('插入后解析失败：' + (err.message || '未知错误')); return; }
   const newParent = resolvePath(newSvg, parentPath);
   if (!newParent || newParent.children.length === 0) {
-    showToast('插入后未找到新动画');
-    return;
+    showToast('插入后未找到新动画'); return;
   }
   const newIdx = newParent.children.length - 1;
   currentSvg = newSvg;
   selectedPath = [...parentPath, newIdx];
-
   renderPreview();
   rebuildAttrPanel();
   showToast(`已为 ${fieldName} 添加动画`);
 }
+function removeFieldAnims(el, fieldName) {
+  if (!selectedPath || !el) return;
+  let svgRoot;
+  try { svgRoot = parseSVG(codeEl.value); }
+  catch (err) { showToast('当前代码无法解析'); return; }
+  const target = resolvePath(svgRoot, selectedPath);
+  if (!target) return;
+  const toRemove = [];
+  Array.from(target.children).forEach(child => {
+    if (!ANIM_TAGS.has(child.localName.toLowerCase())) return;
+    if (isFxId(child.getAttribute('id'))) return;
+    if (child.getAttribute('attributeName') === fieldName) toRemove.push(child);
+  });
+  if (toRemove.length === 0) return;
+  toRemove.forEach(c => c.remove());
+  const newCode = formatXML(serializeSVG(svgRoot));
+  codeEl.value = newCode;
+  currentSvg = svgRoot;
+  renderEditor();
+  renderPreview();
+  saveDraftDebounced();
+  recordSnapshot(true);
+  rebuildAttrPanel();
+  showToast(`已删除 ${fieldName} 的动画`);
+}
+function removeTransformAnims(el, type) {
+  if (!selectedPath || !el) return;
+  let svgRoot;
+  try { svgRoot = parseSVG(codeEl.value); }
+  catch (err) { showToast('当前代码无法解析'); return; }
+  const target = resolvePath(svgRoot, selectedPath);
+  if (!target) return;
+  const toRemove = [];
+  Array.from(target.children).forEach(child => {
+    if (child.localName.toLowerCase() !== 'animatetransform') return;
+    if (isFxId(child.getAttribute('id'))) return;
+    if (child.getAttribute('attributeName') === 'transform' &&
+        child.getAttribute('type') === type) {
+      toRemove.push(child);
+    }
+  });
+  if (toRemove.length === 0) return;
+  toRemove.forEach(c => c.remove());
+  const newCode = formatXML(serializeSVG(svgRoot));
+  codeEl.value = newCode;
+  currentSvg = svgRoot;
+  renderEditor();
+  renderPreview();
+  saveDraftDebounced();
+  recordSnapshot(true);
+  rebuildAttrPanel();
+  showToast(`已删除 ${type} 动画`);
+}
+function removeAllAnimsOfElement(el) {
+  if (!selectedPath || !el) return;
+  if (!confirm('删除该元素的所有动画？（不含效果）')) return;
+  let svgRoot;
+  try { svgRoot = parseSVG(codeEl.value); }
+  catch (err) { showToast('当前代码无法解析'); return; }
+  const target = resolvePath(svgRoot, selectedPath);
+  if (!target) return;
+  const toRemove = [];
+  Array.from(target.children).forEach(child => {
+    if (!ANIM_TAGS.has(child.localName.toLowerCase())) return;
+    if (isFxId(child.getAttribute('id'))) return;
+    toRemove.push(child);
+  });
+  if (toRemove.length === 0) { showToast('该元素没有动画'); return; }
+  toRemove.forEach(c => c.remove());
+  const newCode = formatXML(serializeSVG(svgRoot));
+  codeEl.value = newCode;
+  currentSvg = svgRoot;
+  renderEditor();
+  renderPreview();
+  saveDraftDebounced();
+  recordSnapshot(true);
+  rebuildAttrPanel();
+  showToast('已删除所有动画');
+}
 function showAnimAddMenu(anchorEl) {
   closeAnimAddMenu();
+  if (!anchorEl) return;
   const menu = document.createElement('div');
   menu.className = 'attr-anim-menu';
   ANIM_TEMPLATES.forEach(t => {
@@ -4440,28 +4384,7 @@ function showAnimAddMenu(anchorEl) {
     menu.appendChild(btn);
   });
   document.body.appendChild(menu);
-  const rect = anchorEl.getBoundingClientRect();
-  const menuRect = menu.getBoundingClientRect();
-  const vh = window.innerHeight;
-  const vw = window.innerWidth;
-  const gap = 4;
-  let left = rect.left;
-  if (left + menuRect.width > vw - 8) left = vw - menuRect.width - 8;
-  if (left < 8) left = 8;
-
-  let top = rect.bottom + gap;
-  if (top + menuRect.height > vh - 8) {
-    top = rect.top - menuRect.height - gap;
-    if (top < 8) top = 8;
-  }
-  menu.style.position = 'fixed';
-  menu.style.top = top + 'px';
-  menu.style.left = left + 'px';
-  menu.style.right = 'auto';
-  menu.style.bottom = 'auto';
-  menu.style.zIndex = '200';
-  menu.style.maxHeight = Math.min(280, vh - 16) + 'px';
-
+  positionFloatingMenu(menu, anchorEl);
   animAddMenuEl = menu;
 }
 function closeAnimAddMenu() {
@@ -4470,33 +4393,558 @@ function closeAnimAddMenu() {
   }
   animAddMenuEl = null;
 }
-attrPanelLocate.addEventListener('click', locateSelectedInSource);
-attrPanelClose.addEventListener('click', clearSelection);
+function ensureHeaderAddBtn(isAnim) {
+  const titleNode = attrPanelTag.parentNode;
+  let wrap = titleNode.querySelector('.attr-panel__add-anim-wrap');
+  if (!wrap) {
+    wrap = document.createElement('div');
+    wrap.className = 'attr-panel__add-anim-wrap';
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'attr-panel__add-anim';
+    addBtn.textContent = '+';
+    addBtn.title = '添加动画';
+    addBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (animAddMenuEl) closeAnimAddMenu();
+      else showAnimAddMenu(addBtn);
+    });
+    wrap.appendChild(addBtn);
+    const rmBtn = document.createElement('button');
+    rmBtn.type = 'button';
+    rmBtn.className = 'attr-panel__remove-anim';
+    rmBtn.textContent = '−';
+    rmBtn.title = '删除该元素所有动画';
+    rmBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!selectedPath || !currentSvg) return;
+      const el = resolvePath(currentSvg, selectedPath);
+      if (el) removeAllAnimsOfElement(el);
+    });
+    wrap.appendChild(rmBtn);
+    const fxBtn = document.createElement('button');
+    fxBtn.type = 'button';
+    fxBtn.className = 'attr-panel__add-fx';
+    fxBtn.textContent = '✨';
+    fxBtn.title = '添加效果';
+    fxBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (effectMenuEl) closeEffectMenu();
+      else showEffectMenu(fxBtn, null, null);
+    });
+    wrap.appendChild(fxBtn);
 
-attrPanelCanvasBtn.addEventListener('click', () => {
-  if (canvasRootMode) {
-    if (canvasBackPath) {
-      const path = canvasBackPath;
-      canvasBackPath = null;
-      canvasRootMode = false;
-      selectedPath = path;
-      const el = resolvePath(currentSvg, path);
-      if (el) applySelectionOutline(el);
-      rebuildAttrPanel();
-    } else {
-      clearSelection();
-    }
-  } else {
-    canvasBackPath = selectedPath;
-    selectedPath = null;
-    canvasRootMode = true;
-    attrPanelOpen = true;
-    attrPanel.hidden = false;
-    if (selectionOverlayEl) selectionOverlayEl.innerHTML = '';
-    rebuildAttrPanel();
-    if (isMobileViewport()) setMobileView('attr');
-    updateMobileViewMenu();
+    titleNode.insertBefore(wrap, attrPanelTag.nextSibling);
   }
-});
+  const addBtn = wrap.querySelector('.attr-panel__add-anim');
+  const rmBtn = wrap.querySelector('.attr-panel__remove-anim');
+  const fxBtn = wrap.querySelector('.attr-panel__add-fx');
+  const el = selectedPath && currentSvg ? resolvePath(currentSvg, selectedPath) : null;
+  if (isAnim || canvasRootMode) {
+    wrap.style.display = 'none';
+    return;
+  }
+  wrap.style.display = '';
+  if (addBtn) addBtn.style.display = '';
+  if (rmBtn) rmBtn.style.display = (el && hasAnyAnim(el)) ? '' : 'none';
+  if (fxBtn) fxBtn.style.display = '';
+}
+
+const EFFECT_TEMPLATES = [
+  { id: 'gradient-linear', label: '线性渐变', icon: '◐' },
+  { id: 'gradient-radial', label: '径向渐变', icon: '◎' },
+  { id: 'shadow',          label: '阴影',     icon: '💧' },
+  { id: 'blur',            label: '模糊',     icon: '🌫' },
+  { id: 'stroke-anim',     label: '描边动画', icon: '✏' },
+  { id: 'pulse',           label: '脉冲动画', icon: '♡' }
+];
+const FIELD_EFFECT_MAP = {
+  'fill':   ['gradient-linear', 'gradient-radial'],
+  'stroke': ['gradient-linear', 'gradient-radial', 'stroke-anim'],
+  'filter': ['shadow', 'blur']
+};
+function isFxUrl(v) {
+  if (!v) return false;
+  return /^url\(\s*#fx-/.test(String(v).trim());
+}
+function isFxId(id) {
+  return typeof id === 'string' && id.startsWith('fx-');
+}
+function collectFxIdsFromValue(v) {
+  if (!v) return null;
+  const m = String(v).match(/^url\(\s*#(fx-[^)]+)\s*\)$/);
+  return m ? m[1] : null;
+}
+function hasFieldEffect(el, fieldName) {
+  if (!el || !fieldName) return false;
+  return isFxUrl(el.getAttribute(fieldName));
+}
+function hasAnyEffect(el) {
+  if (!el) return false;
+  if (isFxUrl(el.getAttribute('fill'))) return true;
+  if (isFxUrl(el.getAttribute('stroke'))) return true;
+  if (isFxUrl(el.getAttribute('filter'))) return true;
+  const anims = el.querySelectorAll('animate, animateTransform');
+  for (const a of anims) {
+    if (isFxId(a.getAttribute('id'))) return true;
+  }
+  return false;
+}
+function cleanupOrphanFxDefs(svgRoot) {
+  if (!svgRoot) return;
+  const defsList = svgRoot.querySelectorAll('defs');
+  defsList.forEach(defs => {
+    Array.from(defs.children).forEach(def => {
+      const id = def.getAttribute('id');
+      if (!isFxId(id)) return;
+      const used = svgRoot.querySelector(
+        `[fill="url(#${id})"],[stroke="url(#${id})"],[filter="url(#${id})"]`
+      );
+      if (!used) def.remove();
+    });
+  });
+}
+async function applyEffectToElement(effectId, targetField) {
+  if (!selectedPath || !selectedPath.length) {
+    showToast('请先选中一个元素'); return;
+  }
+  let svgRoot;
+  try { svgRoot = parseSVG(codeEl.value); }
+  catch (err) { showToast('当前代码无法解析'); return; }
+  const target = resolvePath(svgRoot, selectedPath);
+  if (!target) { showToast('无法定位选中元素'); return; }
+  let elId = target.getAttribute('id');
+  if (!elId) { elId = genId('el'); target.setAttribute('id', elId); }
+  const SVG_NS = 'http://www.w3.org/2000/svg';
+  const fxRand = Math.random().toString(36).slice(2, 10);
+  const labelMap = {};
+  EFFECT_TEMPLATES.forEach(t => labelMap[t.id] = t.label);
+  cleanupOrphanFxDefs(svgRoot);
+
+  try {
+    if (effectId === 'gradient-linear' || effectId === 'gradient-radial') {
+      const gradId = 'fx-grad-' + fxRand;
+      const tagName = effectId === 'gradient-linear' ? 'linearGradient' : 'radialGradient';
+      const g = document.createElementNS(SVG_NS, tagName);
+      g.setAttribute('id', gradId);
+      if (tagName === 'linearGradient') {
+        g.setAttribute('x1', '0'); g.setAttribute('y1', '0');
+        g.setAttribute('x2', '1'); g.setAttribute('y2', '0');
+      } else {
+        g.setAttribute('cx', '50%'); g.setAttribute('cy', '50%'); g.setAttribute('r', '50%');
+      }
+      const s1 = document.createElementNS(SVG_NS, 'stop');
+      s1.setAttribute('offset', '0'); s1.setAttribute('stop-color', '#3b82f6');
+      const s2 = document.createElementNS(SVG_NS, 'stop');
+      s2.setAttribute('offset', '1'); s2.setAttribute('stop-color', '#1e293b');
+      g.appendChild(s1); g.appendChild(s2);
+      ensureDefsAppend(svgRoot).appendChild(g);
+      const field = targetField || 'fill';
+      target.setAttribute(field, `url(#${gradId})`);
+
+    } else if (effectId === 'shadow' || effectId === 'blur') {
+      const filterId = 'fx-filter-' + fxRand;
+      const filter = document.createElementNS(SVG_NS, 'filter');
+      filter.setAttribute('id', filterId);
+      filter.setAttribute('x', '-20%');
+      filter.setAttribute('y', '-20%');
+      filter.setAttribute('width', '140%');
+      filter.setAttribute('height', '140%');
+      if (effectId === 'shadow') {
+        const drop = document.createElementNS(SVG_NS, 'feDropShadow');
+        drop.setAttribute('dx', '3'); drop.setAttribute('dy', '3');
+        drop.setAttribute('stdDeviation', '3'); drop.setAttribute('flood-opacity', '0.5');
+        filter.appendChild(drop);
+      } else {
+        const blur = document.createElementNS(SVG_NS, 'feGaussianBlur');
+        blur.setAttribute('stdDeviation', '3');
+        filter.appendChild(blur);
+      }
+      ensureDefsAppend(svgRoot).appendChild(filter);
+      target.setAttribute('filter', `url(#${filterId})`);
+    } else if (effectId === 'stroke-anim') {
+      const animId = 'fx-anim-' + fxRand;
+      if (!target.getAttribute('stroke')) target.setAttribute('stroke', '#3b82f6');
+      if (!target.getAttribute('stroke-width')) target.setAttribute('stroke-width', '2');
+      target.setAttribute('stroke-dasharray', '500');
+      target.setAttribute('stroke-dashoffset', '500');
+      const anim = document.createElementNS(SVG_NS, 'animate');
+      anim.setAttribute('id', animId);
+      anim.setAttribute('attributeName', 'stroke-dashoffset');
+      anim.setAttribute('from', '500'); anim.setAttribute('to', '0');
+      anim.setAttribute('dur', '2s'); anim.setAttribute('fill', 'freeze');
+      target.appendChild(anim);
+    } else if (effectId === 'pulse') {
+      const animId = 'fx-anim-' + fxRand;
+      const anim = document.createElementNS(SVG_NS, 'animate');
+      anim.setAttribute('id', animId);
+      anim.setAttribute('attributeName', 'opacity');
+      anim.setAttribute('values', '1;0.4;1');
+      anim.setAttribute('dur', '2s');
+      anim.setAttribute('repeatCount', 'indefinite');
+      target.appendChild(anim);
+    } else { return; }
+  } catch (err) {
+    console.error('[applyEffectToElement]', err);
+    showToast('应用效果失败：' + (err.message || '未知错误')); return;
+  }
+  const newCode = formatXML(serializeSVG(svgRoot));
+  codeEl.value = newCode;
+  renderEditor();
+  const savedScale = previewScale;
+  const savedX = previewPanX;
+  const savedY = previewPanY;
+  const savedRot = previewRotation;
+  const savedFit = isFitMode;
+  isFitMode = false;
+  await renderPreview();
+  previewScale = savedScale;
+  previewPanX = savedX;
+  previewPanY = savedY;
+  previewRotation = savedRot;
+  isFitMode = savedFit;
+  applyPreviewTransform();
+  saveDraftDebounced();
+  recordSnapshot(true);
+  const domSvg = canvasEl.firstElementChild;
+  const domEl = domSvg && domSvg.querySelector(`[id="${elId}"]`);
+  if (domEl) {
+    const newPath = getElementPath(domEl);
+    if (newPath) {
+      selectedPath = newPath;
+      applySelectionOutline(domEl);
+      const savedScroll = attrPanelBody ? attrPanelBody.scrollTop : 0;
+      rebuildAttrPanel();
+      if (attrPanelBody) attrPanelBody.scrollTop = savedScroll;
+    }
+  }
+  showToast(`已应用：${labelMap[effectId] || effectId}`);
+}
+async function removeAllEffectsOfElement(el) {
+  if (!el) return;
+  if (!hasAnyEffect(el)) { showToast('该元素没有效果'); return; }
+  let svgRoot;
+  try { svgRoot = parseSVG(codeEl.value); }
+  catch (err) { showToast('当前代码无法解析'); return; }
+  const target = resolvePath(svgRoot, selectedPath);
+  if (!target) { showToast('无法定位选中元素'); return; }
+  const elId = target.getAttribute('id') || genId('el');
+  if (!target.getAttribute('id')) target.setAttribute('id', elId);
+  ['fill', 'stroke', 'filter'].forEach(attr => {
+    if (isFxUrl(target.getAttribute(attr))) target.removeAttribute(attr);
+  });
+  const childToRemove = [];
+  Array.from(target.children).forEach(c => {
+    if (isFxId(c.getAttribute('id'))) childToRemove.push(c);
+  });
+  childToRemove.forEach(c => c.remove());
+  cleanupOrphanFxDefs(svgRoot);
+  const newCode = formatXML(serializeSVG(svgRoot));
+  codeEl.value = newCode;
+  renderEditor();
+  await renderPreview();
+  saveDraftDebounced();
+  recordSnapshot(true);
+  const domSvg = canvasEl.firstElementChild;
+  const domEl = domSvg && domSvg.querySelector(`[id="${elId}"]`);
+  if (domEl) {
+    const newPath = getElementPath(domEl);
+    if (newPath) {
+      selectedPath = newPath;
+      applySelectionOutline(domEl);
+      const savedScroll = attrPanelBody ? attrPanelBody.scrollTop : 0;
+      rebuildAttrPanel();
+      if (attrPanelBody) attrPanelBody.scrollTop = savedScroll;
+    }
+  }
+  showToast('已移除所有效果');
+}
+function showEffectMenu(anchorEl, effectIds, defaultField) {
+  closeEffectMenu();
+  if (!anchorEl) return;
+  const menu = document.createElement('div');
+  menu.className = 'attr-anim-menu';
+  const list = Array.isArray(effectIds) && effectIds.length > 0
+    ? EFFECT_TEMPLATES.filter(t => effectIds.includes(t.id))
+    : EFFECT_TEMPLATES;
+  list.forEach(t => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.innerHTML = `<span class="attr-anim-menu__icon">${t.icon}</span><span>${t.label}</span>`;
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      closeEffectMenu();
+      applyEffectToElement(t.id, defaultField || null);
+    });
+    menu.appendChild(btn);
+  });
+  if (!effectIds && selectedPath && currentSvg) {
+    const el = resolvePath(currentSvg, selectedPath);
+    if (el && hasAnyEffect(el)) {
+      const sep = document.createElement('div');
+      sep.className = 'attr-anim-menu__sep';
+      menu.appendChild(sep);
+      const rmBtn = document.createElement('button');
+      rmBtn.type = 'button';
+      rmBtn.className = 'attr-anim-menu__remove';
+      rmBtn.innerHTML = `<span class="attr-anim-menu__icon">✕</span><span>移除所有效果</span>`;
+      rmBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        closeEffectMenu();
+        if (el) removeAllEffectsOfElement(el);
+      });
+      menu.appendChild(rmBtn);
+    }
+  }
+  document.body.appendChild(menu);
+  positionFloatingMenu(menu, anchorEl);
+  effectMenuEl = menu;
+}
+function closeEffectMenu() {
+  if (effectMenuEl && effectMenuEl.parentNode) {
+    effectMenuEl.parentNode.removeChild(effectMenuEl);
+  }
+  effectMenuEl = null;
+}
+
+function makeViewBoxGroup(isReadOnly) {
+  const g = document.createElement('div');
+  g.className = 'attr-group';
+  const t = document.createElement('div');
+  t.className = 'attr-group__title';
+  t.textContent = '画布';
+  const items = document.createElement('div');
+  items.className = 'attr-group__items';
+  const vbAttr = currentSvg.getAttribute('viewBox') || '';
+  const p = vbAttr.trim().split(/[\s,]+/).map(Number);
+  const vbv = (p.length === 4 && p.every(n => isFinite(n))) ? p : [0, 0, 100, 100];
+  const vbWrap = document.createElement('div');
+  vbWrap.className = 'attr-viewbox';
+  const vbLabels = ['minX', 'minY', 'width', 'height'];
+  const vbInputs = [];
+  vbLabels.forEach((lbl, i) => {
+    const row = document.createElement('div');
+    row.className = 'attr-row';
+    const label = document.createElement('label');
+    label.className = 'attr-row__label';
+    label.textContent = lbl;
+    row.appendChild(label);
+    const ctrl = document.createElement('div');
+    ctrl.className = 'attr-row__control';
+    const input = document.createElement('input');
+    input.type = 'number';
+    input.className = 'attr-row__input';
+    input.value = String(vbv[i]);
+    input.step = 1;
+    if (isReadOnly) input.disabled = true;
+    input.addEventListener('input', () => {
+      const vals = vbInputs.map(el => {
+        const v = parseFloat(el.value);
+        return isFinite(v) ? v : 0;
+      });
+      scheduleCanvasViewBoxCommit(vals);
+    });
+    vbInputs.push(input);
+    ctrl.appendChild(input);
+    row.appendChild(ctrl);
+    vbWrap.appendChild(row);
+  });
+  items.appendChild(vbWrap);
+  items.appendChild(makeRow(currentSvg, { name: 'width', type: 'text' }, isReadOnly, true));
+  items.appendChild(makeRow(currentSvg, { name: 'height', type: 'text' }, isReadOnly, true));
+  const parOptions = [
+    '', 'xMidYMid meet', 'xMidYMid slice', 'none',
+    'xMinYMin meet', 'xMinYMin slice',
+    'xMidYMin meet', 'xMidYMin slice',
+    'xMaxYMin meet', 'xMaxYMin slice',
+    'xMinYMid meet', 'xMinYMid slice',
+    'xMaxYMid meet', 'xMaxYMid slice',
+    'xMinYMax meet', 'xMinYMax slice',
+    'xMidYMax meet', 'xMidYMax slice',
+    'xMaxYMax meet', 'xMaxYMax slice'
+  ];
+  items.appendChild(makeRow(currentSvg, {
+    name: 'preserveAspectRatio', type: 'select', options: parOptions
+  }, isReadOnly, true));
+  if (!isReadOnly) {
+    const fitBtn = document.createElement('button');
+    fitBtn.type = 'button';
+    fitBtn.className = 'attr-fit-btn';
+    fitBtn.textContent = '自动适配内容';
+    fitBtn.addEventListener('click', autoFitViewBox);
+    items.appendChild(fitBtn);
+  }
+  g.appendChild(t);
+  g.appendChild(items);
+  return g;
+}
+function makeCanvasSizeGroup(isReadOnly) {
+  const g = document.createElement('div');
+  g.className = 'attr-group';
+  const t = document.createElement('div');
+  t.className = 'attr-group__title';
+  t.textContent = '画布大小';
+  const items = document.createElement('div');
+  items.className = 'attr-group__items';
+  const vbAttr = currentSvg.getAttribute('viewBox') || '';
+  const p = vbAttr.trim().split(/[\s,]+/).map(Number);
+  const vbv = (p.length === 4 && p.every(n => isFinite(n))) ? p : [0, 0, 100, 100];
+  const wRow = document.createElement('div');
+  wRow.className = 'attr-row';
+  const wLabel = document.createElement('label');
+  wLabel.className = 'attr-row__label';
+  wLabel.textContent = '宽';
+  wRow.appendChild(wLabel);
+  const wCtrl = document.createElement('div');
+  wCtrl.className = 'attr-row__control';
+  const wInput = document.createElement('input');
+  wInput.type = 'number';
+  wInput.className = 'attr-row__input';
+  wInput.value = String(vbv[2]);
+  wInput.min = '1';
+  wInput.step = '1';
+  wInput.inputMode = 'numeric';
+  if (isReadOnly) wInput.disabled = true;
+  wCtrl.appendChild(wInput);
+  wRow.appendChild(wCtrl);
+  items.appendChild(wRow);
+  const hRow = document.createElement('div');
+  hRow.className = 'attr-row';
+  const hLabel = document.createElement('label');
+  hLabel.className = 'attr-row__label';
+  hLabel.textContent = '高';
+  hRow.appendChild(hLabel);
+  const hCtrl = document.createElement('div');
+  hCtrl.className = 'attr-row__control';
+  const hInput = document.createElement('input');
+  hInput.type = 'number';
+  hInput.className = 'attr-row__input';
+  hInput.value = String(vbv[3]);
+  hInput.min = '1';
+  hInput.step = '1';
+  hInput.inputMode = 'numeric';
+  if (isReadOnly) hInput.disabled = true;
+  hCtrl.appendChild(hInput);
+  hRow.appendChild(hCtrl);
+  items.appendChild(hRow);
+  if (!isReadOnly) {
+    const applyBtn = document.createElement('button');
+    applyBtn.type = 'button';
+    applyBtn.className = 'attr-fit-btn';
+    applyBtn.textContent = '应用画布大小';
+    applyBtn.addEventListener('click', () => {
+      const newW = parseFloat(wInput.value);
+      const newH = parseFloat(hInput.value);
+      if (!isFinite(newW) || newW <= 0 || !isFinite(newH) || newH <= 0) {
+        showToast('请输入有效的宽和高（> 0）'); return;
+      }
+      if (newW > 10000 || newH > 10000) {
+        showToast('画布尺寸过大（上限 10000）'); return;
+      }
+      commitCanvasSize(vbv[0], vbv[1], newW, newH);
+    });
+    items.appendChild(applyBtn);
+  }
+  g.appendChild(t);
+  g.appendChild(items);
+  return g;
+}
+function commitCanvasSize(minX, minY, newW, newH) {
+  const loc = findRootSvgTag(codeEl.value);
+  if (!loc) { showToast('无法定位到根 <svg>'); return; }
+  const vbAttr = currentSvg.getAttribute('viewBox') || '';
+  const p = vbAttr.trim().split(/[\s,]+/).map(Number);
+  const oldW = (p.length === 4 && isFinite(p[2]) && p[2] > 0) ? p[2] : newW;
+  const oldH = (p.length === 4 && isFinite(p[3]) && p[3] > 0) ? p[3] : newH;
+  const centerX = minX + oldW / 2;
+  const centerY = minY + oldH / 2;
+  const newMinX = centerX - newW / 2;
+  const newMinY = centerY - newH / 2;
+  const fmt = (n) => String(Math.round(n * 100) / 100);
+  const oldOpenTag = codeEl.value.slice(loc.openStart, loc.openEnd);
+  let newOpenTag = oldOpenTag;
+  newOpenTag = patchAttrInTag(newOpenTag, 'viewBox', `${fmt(newMinX)} ${fmt(newMinY)} ${fmt(newW)} ${fmt(newH)}`);
+  newOpenTag = patchAttrInTag(newOpenTag, 'width', String(newW));
+  newOpenTag = patchAttrInTag(newOpenTag, 'height', String(newH));
+  if (newOpenTag === oldOpenTag) return;
+  codeEl.value = codeEl.value.slice(0, loc.openStart) + newOpenTag + codeEl.value.slice(loc.openEnd);
+  isFitMode = false;
+  renderEditor();
+  renderPreview();
+  saveDraftDebounced();
+  recordSnapshot();
+  showToast(`画布已设置为 ${newW} × ${newH}（内容保持居中）`);
+  setTimeout(() => { if (canvasRootMode) rebuildCanvasAttrPanel(); }, 300);
+}
+function autoFitViewBox() {
+  const svgRoot = canvasEl.firstElementChild;
+  if (!svgRoot) { showToast('预览未就绪'); return; }
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  let hasAny = false;
+  const skipTags = new Set([
+    'defs', 'clippath', 'mask', 'filter', 'lineargradient', 'radialgradient',
+    'pattern', 'symbol', 'marker', 'title', 'desc', 'metadata',
+    'animate', 'animatetransform', 'animatemotion', 'animatecolor', 'set'
+  ]);
+  const walk = (el) => {
+    const tag = (el.localName || '').toLowerCase();
+    if (skipTags.has(tag)) return;
+    try {
+      if (typeof el.getBBox === 'function') {
+        const b = el.getBBox();
+        if (b && (b.width > 0 || b.height > 0) &&
+            isFinite(b.x) && isFinite(b.y) && isFinite(b.width) && isFinite(b.height)) {
+          if (b.x < minX) minX = b.x;
+          if (b.y < minY) minY = b.y;
+          if (b.x + b.width > maxX) maxX = b.x + b.width;
+          if (b.y + b.height > maxY) maxY = b.y + b.height;
+          hasAny = true;
+        }
+      }
+    } catch (_) {}
+    Array.from(el.children || []).forEach(walk);
+  };
+  Array.from(svgRoot.children).forEach(walk);
+  if (!hasAny || !isFinite(minX) || !isFinite(maxX)) {
+    showToast('未找到可适配的内容');
+    return;
+  }
+  const w = maxX - minX;
+  const h = maxY - minY;
+  if (w <= 0 || h <= 0) { showToast('内容尺寸异常'); return; }
+  const pad = Math.max(w, h) * 0.05;
+  const vx = Math.round((minX - pad) * 100) / 100;
+  const vy = Math.round((minY - pad) * 100) / 100;
+  const vw = Math.round((w + pad * 2) * 100) / 100;
+  const vh = Math.round((h + pad * 2) * 100) / 100;
+  commitCanvasAttr('viewBox', `${vx} ${vy} ${vw} ${vh}`);
+  showToast(`viewBox 已适配：${vx} ${vy} ${vw} ${vh}`);
+  setTimeout(() => { if (canvasRootMode) rebuildCanvasAttrPanel(); }, 300);
+}
+function scheduleCanvasAttrCommit(name, value) {
+  clearTimeout(canvasAttrTimer);
+  canvasAttrTimer = setTimeout(() => commitCanvasAttr(name, value), 300);
+}
+function scheduleCanvasViewBoxCommit(vals) {
+  clearTimeout(canvasViewBoxTimer);
+  canvasViewBoxTimer = setTimeout(() => {
+    commitCanvasAttr('viewBox', vals.join(' '));
+  }, 120);
+}
+function commitCanvasAttr(name, value) {
+  const loc = findRootSvgTag(codeEl.value);
+  if (!loc) { showToast('无法定位到根 <svg>，已忽略本次修改'); return; }
+  const openTag = codeEl.value.slice(loc.openStart, loc.openEnd);
+  const patched = patchAttrInTag(openTag, name, value);
+  if (patched === openTag) return;
+  codeEl.value = codeEl.value.slice(0, loc.openStart) + patched + codeEl.value.slice(loc.openEnd);
+  if (name === 'viewBox' || name === 'width' || name === 'height') {
+    isFitMode = false;
+  }
+  renderEditor();
+  schedulePreviewRender();
+  saveDraftDebounced();
+  recordSnapshot();
+}
 
 })();
