@@ -74,6 +74,7 @@ const historyMask  = $('historyMask');
 const historyList  = $('historyList');
 const historyClear = $('historyClear');
 const historyClose = $('historyClose');
+
 let currentSvg   = null;
 let lastGoodCode = null;
 let renderTimer  = null;
@@ -95,6 +96,7 @@ const DRAFT_KEY     = 'svg-editor.draft.v1';
 const HISTORY_KEY   = 'svg-editor.history.v1';
 const HISTORY_MAX   = 20;
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
+
 const DEFAULT_CODE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%">
   <circle cx="50" cy="50" r="50" fill="#33FAFC" />
   <g stroke="#000000" stroke-width="2.0" stroke-linecap="round">
@@ -134,7 +136,6 @@ function showToast(msg) {
   toastTimer = setTimeout(() => toastEl.classList.remove('is-show'), 2400);
 }
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
-
 const errorEl = document.createElement('div');
 errorEl.className = 'error';
 errorEl.hidden = true;
@@ -150,7 +151,6 @@ function showWarning(msg) {
   warningBar.hidden = false;
 }
 function hideWarning() { warningBar.hidden = true; }
-
 function updateButtons() {
   const ok = !!currentSvg;
   btnPreviewMenu.disabled = !ok;
@@ -180,7 +180,6 @@ function extractErrorLine(text) {
   if (m) return { line: parseInt(m[1], 10) };
   return null;
 }
-
 function sanitize(root) {
   const DANGEROUS = new Set(['script', 'iframe', 'object', 'embed', 'meta', 'link']);
   const nodes = [root, ...Array.from(root.querySelectorAll('*'))];
@@ -199,7 +198,6 @@ function sanitize(root) {
   });
   toRemove.forEach(el => { try { el.remove(); } catch(_) {} });
 }
-
 function ensureNamespaces(root) {
   if (!root.getAttribute('xmlns')) root.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
   let usesXlink = false;
@@ -214,7 +212,6 @@ function ensureNamespaces(root) {
   if (usesXlink && !root.getAttribute('xmlns:xlink'))
     root.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
 }
-
 const RESOURCE_TAGS = ['image', 'use', 'feimage'];
 function detectExternalRefs(root) {
   const refs = [];
@@ -231,7 +228,6 @@ function detectExternalRefs(root) {
   }
   return refs;
 }
-
 function parseLength(value) {
   if (!value) return null;
   const s = String(value).trim();
@@ -258,7 +254,6 @@ function getSize(svg) {
   if (h && !w) return { width: h * 0.75, height: h };
   return { width: 800, height: 600 };
 }
-
 function serializeSVG(svg, width, height, scaleViewBox) {
   const clone = svg.cloneNode(true);
   if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
@@ -321,7 +316,6 @@ shadow.innerHTML = `
 `;
 const stageEl  = shadow.querySelector('.stage');
 const canvasEl = shadow.querySelector('.canvas');
-
 class DomRenderer {
   constructor() { this.host = null; this.type = 'dom'; }
   getType() { return this.type; }
@@ -338,7 +332,6 @@ class DomRenderer {
     return canvas2dExportBlob(markup, width, height, format, whiteBg);
   }
 }
-
 async function canvas2dExportBlob(markup, width, height, format, whiteBg) {
   const isJpg = format === 'jpg';
   const needWhite = isJpg || whiteBg;
@@ -363,7 +356,6 @@ async function canvas2dExportBlob(markup, width, height, format, whiteBg) {
   if (!blob) throw new Error('图像生成失败');
   return blob;
 }
-
 const domRenderer = new DomRenderer();
 
 function applyPreviewTransform() {
@@ -375,7 +367,6 @@ function applyPreviewTransform() {
     `rotate(${previewRotation}deg) scale(${s})`;
   zoomLabel.textContent = Math.round(s * 100) + '%';
 }
-
 function fitToView() {
   if (!currentSvg) return;
   const size = getSize(currentSvg);
@@ -391,12 +382,10 @@ function fitToView() {
   isFitMode = true;
   applyPreviewTransform();
 }
-
 function updateBadge(width, height) {
   badge.textContent = `${Math.round(width)} × ${Math.round(height)}`;
   badge.hidden = false;
 }
-
 async function renderPreview() {
   const code = codeEl.value;
   if (!code.trim()) {
@@ -444,7 +433,6 @@ async function renderPreview() {
   fitToView();
   updateButtons();
 }
-
 function locateErrorInEditor(msg) {
   const m = msg.match(/第\s*(\d+)\s*行/);
   if (!m) return;
@@ -459,7 +447,6 @@ function locateErrorInEditor(msg) {
   syncScroll();
   try { codeEl.setSelectionRange(offset, offset + (lines[lineNo - 1] || '').length); } catch(_) {}
 }
-
 function schedulePreviewRender() {
   clearTimeout(renderTimer);
   renderTimer = setTimeout(renderPreview, 250);
@@ -507,7 +494,6 @@ function downloadBlob(blob, filename) {
   }
   fallbackDownload(blob, filename);
 }
-
 function exportSVG(width, height, scaleViewBox) {
   if (!currentSvg) return;
   try {
@@ -534,7 +520,6 @@ async function exportImage(width, height, format, whiteBg, scaleViewBox) {
     showToast('图像导出失败：' + (err.message || '未知错误'));
   }
 }
-
 function openExportModal(format) {
   if (!currentSvg) return;
   const size = getSize(currentSvg);
@@ -579,7 +564,6 @@ function openExportModal(format) {
   }
 }
 function closeExportModal() { modalMask.hidden = true; exportState = null; }
-
 function syncHeightFromWidth() {
   if (!exportState || !exportState.lockRatio) return;
   const w = parseInt(exportWInput.value, 10);
@@ -645,7 +629,6 @@ function applySplit() {
   }
   scheduleApplyViewAfterSplit();
 }
-
 let isSplitting = false;
 let pointerCaptured = false;
 let splitHasMoved = false;
@@ -759,7 +742,6 @@ function syncScroll() {
   highlightEl.scrollLeft = left;
   gutterEl.scrollTop = top;
 }
-
 let lastGutterCount = 0;
 function renderGutter(lineCount) {
   if (lineCount === lastGutterCount) return;
@@ -778,7 +760,6 @@ function renderGutter(lineCount) {
   const digits = String(lineCount).length;
   gutterEl.style.minWidth = `calc(${digits}ch + 22px)`;
 }
-
 let lineResizeObserver = null;
 function observeLinesForWrap() {
   if (!lineResizeObserver) {
@@ -802,7 +783,6 @@ function observeLinesForWrap() {
     lineResizeObserver.observe(el);
   });
 }
-
 function splitHighlightByLines(html) {
   const result = []; let current = ''; const stack = []; let i = 0;
   while (i < html.length) {
@@ -829,11 +809,9 @@ function splitHighlightByLines(html) {
   }
   return result;
 }
-
 let lineNodes = [];
 let lastLineHtmls = [];
 let currentLineEl = null;
-
 function updateCurrentLineHighlight() {
   if (!highlightCurrentLineEnabled) {
     if (currentLineEl) currentLineEl.classList.remove('current');
@@ -850,7 +828,6 @@ function updateCurrentLineHighlight() {
   if (target) target.classList.add('current');
   currentLineEl = target;
 }
-
 function renderEditor() {
   const code = codeEl.value;
   const lineCount = code.split('\n').length;
@@ -895,7 +872,6 @@ function scheduleRenderEditor() {
     renderEditor();
   });
 }
-
 function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function findTagEnd(code, start) {
   let i = start, quote = null;
@@ -976,7 +952,6 @@ function highlightXML(code) {
   }
   return out;
 }
-
 function findMatchingClose(xml, startTagIndex, name) {
   const openEnd = findTagEnd(xml, startTagIndex + 1);
   if (openEnd === -1) return -1;
@@ -1137,7 +1112,6 @@ function saveHistoryList(list) {
   safeSetItem(HISTORY_KEY, '[]');
   showToast('本地存储空间不足，历史无法保存');
 }
-
 function guessTitle(code) {
   const m = code.match(/<title[^>]*>([^<]+)<\/title>/i);
   if (m && m[1].trim()) return m[1].trim().slice(0, 30);
@@ -1157,7 +1131,6 @@ function formatTime(ts) {
   const p = n => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
-
 function openHistory() {
   const list = getHistoryList();
   historyList.innerHTML = '';
@@ -1212,7 +1185,6 @@ function recordSnapshot(force) {
   lastSnapshotTime = now;
   updateUndoRedoMenu();
 }
-
 function applySnapshot(s) {
   codeEl.value = s.text;
   try { codeEl.selectionStart = s.selStart; codeEl.selectionEnd = s.selEnd; } catch(_) {}
@@ -1248,7 +1220,6 @@ function openFindPanel() {
   findInput.select();
 }
 function closeFindPanel() { findPanel.hidden = true; codeEl.focus(); }
-
 function scrollToSelection() {
   const idx = codeEl.selectionStart;
   const text = codeEl.value;
@@ -1276,7 +1247,6 @@ function findNextMatch(backwards) {
   scrollToSelection();
   updateCurrentLineHighlight();
 }
-
 function replaceOne() {
   const query = findInput.value;
   const replacement = replaceInput.value;
@@ -1310,7 +1280,6 @@ function replaceAll() {
   renderEditor(); schedulePreviewRender(); saveDraftDebounced(); recordSnapshot();
   showToast(`已替换 ${count} 处`);
 }
-
 function positionFindPanel() {
   if (findPanel.hidden) return;
   const btnRect = btnFind.getBoundingClientRect();
@@ -1364,7 +1333,6 @@ async function loadFile(file) {
     showToast('读取失败：' + (err.message || '未知错误'));
   }
 }
-
 async function copySVGCode() {
   if (!currentSvg) return;
   const raw = codeEl.value.trim();
@@ -1459,7 +1427,6 @@ function setPreviewRotation(deg) {
   fitToView();
   showToast(`预览旋转 ${previewRotation}°`);
 }
-
 let lockedScrollTop = 0;
 codeEl.addEventListener('focus', () => {
   requestAnimationFrame(() => { codeEl.scrollTop = lockedScrollTop; syncScroll(); });
@@ -1481,7 +1448,6 @@ codeEl.addEventListener('input', () => {
   snapshotTimer = setTimeout(() => recordSnapshot(false), 500);
 });
 codeEl.addEventListener('scroll', syncScroll);
-
 function handleTab(e) {
   const start = codeEl.selectionStart, end = codeEl.selectionEnd;
   const value = codeEl.value;
@@ -1563,7 +1529,6 @@ codeEl.addEventListener('keydown', e => {
 document.addEventListener('selectionchange', () => {
   if (document.activeElement === codeEl) updateCurrentLineHighlight();
 });
-
 function closeAllMenus() {
   previewMenu.hidden = true;   btnPreviewMenu.setAttribute('aria-expanded', 'false');
   editorMenu.hidden  = true;   btnEditorMenu.setAttribute('aria-expanded',  'false');
@@ -1593,7 +1558,6 @@ function toggleMenu(btn, menu) {
 }
 btnPreviewMenu.addEventListener('click', e => { e.stopPropagation(); toggleMenu(btnPreviewMenu, previewMenu); });
 btnEditorMenu.addEventListener('click',  e => { e.stopPropagation(); toggleMenu(btnEditorMenu,  editorMenu); });
-
 function handleMenuKeydown(e, menu) {
   if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
   e.preventDefault();
@@ -1607,7 +1571,6 @@ function handleMenuKeydown(e, menu) {
 }
 previewMenu.addEventListener('keydown', e => handleMenuKeydown(e, previewMenu));
 editorMenu.addEventListener('keydown',  e => handleMenuKeydown(e, editorMenu));
-
 btnUndo.addEventListener('click', undo);
 btnRedo.addEventListener('click', redo);
 
@@ -1622,19 +1585,16 @@ btnFormat.addEventListener('click', () => {
     showToast('代码已格式化');
   } catch (err) { showToast('格式化失败：' + (err.message || '未知错误')); }
 });
-
 btnFind.addEventListener('click', e => {
   e.stopPropagation();
   if (findPanel.hidden) openFindPanel();
   else closeFindPanel();
 });
-
 menuOpenSvg.addEventListener('click', () => { closeAllMenus(); fileInput.click(); });
 menuCopyPng.addEventListener('click', () => { closeAllMenus(); copyPNGImage(); });
 menuCopySvg.addEventListener('click', () => { closeAllMenus(); copySVGCode(); });
 menuSavePng.addEventListener('click', () => { closeAllMenus(); openExportModal('png'); });
 menuSaveSvg.addEventListener('click', () => { closeAllMenus(); openExportModal('svg'); });
-
 menuWrap.addEventListener('click', e => {
   e.stopPropagation();
   isWrapMode = !isWrapMode;
@@ -1672,7 +1632,6 @@ menuClearDraft.addEventListener('click', () => {
   try { localStorage.removeItem(DRAFT_KEY); } catch(_) {}
   showToast('草稿已清空（当前编辑内容保留）');
 });
-
 document.addEventListener('click', e => {
   if (!e.target.closest('#previewActions')) {
     previewMenu.hidden = true; btnPreviewMenu.setAttribute('aria-expanded', 'false');
@@ -1691,7 +1650,6 @@ document.addEventListener('keydown', e => {
   if (!findPanel.hidden) { closeFindPanel(); return; }
   closeAllMenus();
 });
-
 findPrev.addEventListener('click', () => findNextMatch(true));
 findNext.addEventListener('click', () => findNextMatch(false));
 findReplace.addEventListener('click', replaceOne);
@@ -1703,7 +1661,6 @@ findInput.addEventListener('keydown', e => {
 replaceInput.addEventListener('keydown', e => {
   if (e.key === 'Enter') { e.preventDefault(); replaceOne(); }
 });
-
 exportWInput.addEventListener('input', syncHeightFromWidth);
 exportHInput.addEventListener('input', syncWidthFromHeight);
 exportLock.addEventListener('click', () => {
@@ -1728,7 +1685,6 @@ exportOriginal.addEventListener('click', () => {
 exportCancel.addEventListener('click', closeExportModal);
 exportConfirm.addEventListener('click', confirmExport);
 modalMask.addEventListener('click', e => { if (e.target === modalMask) closeExportModal(); });
-
 historyClose.addEventListener('click', closeHistory);
 historyMask.addEventListener('click', e => { if (e.target === historyMask) closeHistory(); });
 historyClear.addEventListener('click', () => {
@@ -1736,14 +1692,12 @@ historyClear.addEventListener('click', () => {
   historyList.innerHTML = '<div class="history-empty">暂无历史版本</div>';
   showToast('历史版本已清空');
 });
-
 warningClose.addEventListener('click', hideWarning);
 fileInput.addEventListener('change', e => {
   const f = e.target.files?.[0];
   if (f) loadFile(f);
   e.target.value = '';
 });
-
 let dragCounter = 0;
 window.addEventListener('dragenter', e => {
   if (!e.dataTransfer) return;
@@ -1785,7 +1739,6 @@ window.addEventListener('drop', e => {
   const file = e.dataTransfer?.files?.[0];
   if (file) loadFile(file);
 });
-
 bgBtns.forEach(btn => btn.addEventListener('click', () => setPreviewBg(btn.dataset.bg)));
 
 previewWrap.addEventListener('wheel', e => {
@@ -1812,7 +1765,6 @@ btnRotateReset.addEventListener('click', () => {
   if (!currentSvg) return;
   setPreviewRotation(0);
 });
-
 let isPanning = false, panHasMoved = false;
 let panStartX = 0, panStartY = 0, panStartTx = 0, panStartTy = 0;
 const activePointers = new Map();
@@ -1901,7 +1853,6 @@ previewWrap.addEventListener('dblclick', e => {
   fitToView();
   showToast('已回中');
 });
-
 window.addEventListener('resize', () => {
   invalidatePreviewRect();
   if (appEl.style.height && window.visualViewport &&
@@ -1943,7 +1894,6 @@ if (window.visualViewport) {
   };
   window.visualViewport.addEventListener('resize', onVVResize);
 }
-
 const draft = loadDraft();
 codeEl.value = draft || DEFAULT_CODE;
 setPreviewBg('checker');
