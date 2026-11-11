@@ -481,14 +481,12 @@ body{
     top:calc(10px + env(safe-area-inset-top,0px));
     left:10px;right:60px;font-size:12px;
   }
-
   .view-controls{left:8px;bottom:8px;gap:6px;padding:4px 6px;}
   .zoom-label{min-width:42px;font-size:11px;}
   .rotate-controls .zoom-btn{min-width:22px;padding:0 3px;}
   .tool-btn svg,
   .zoom-btn svg{width:14px;height:14px;}
   .find-btn--icon svg{width:13px;height:13px;}
-
   .splitter{flex-basis:32px;padding:0 4px;}
   .tool-group{gap:0;}
   .tool-btn{min-width:26px;height:22px;font-size:13px;padding:0 5px;}
@@ -497,7 +495,6 @@ body{
   .tool-grip:hover::before{width:38px;}
   .tool-grip.is-snap-preview::before,
   .tool-grip.is-snap-code::before{width:44px;}
-
   .editor{--ed-size:16px;--ed-lh:1.5;--ed-py:12px;--ed-px:14px;}
   .gutter{padding-left:8px;padding-right:6px;}
 
