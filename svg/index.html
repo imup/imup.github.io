@@ -13,6 +13,7 @@
 <body>
 
 <div class="app" id="appRoot">
+
   <section class="preview-wrap" id="previewWrap">
     <div id="preview" class="preview"></div>
     <div id="badge" class="badge" hidden></div>
@@ -38,6 +39,7 @@
 
       <div id="previewMenu" class="dropdown" hidden role="menu">
         <button id="menuOpenSvg" type="button" role="menuitem">打开 SVG…</button>
+        <button id="menuInsertImage" type="button" role="menuitem">插入图片…</button>
         <div class="dropdown__sep"></div>
         <button id="menuCopyPng" type="button" role="menuitem">复制 PNG 到剪贴板</button>
         <button id="menuCopySvg" type="button" role="menuitem">复制 SVG 源码</button>
@@ -103,6 +105,29 @@
   </section>
 
   <div class="splitter" id="splitter">
+    <div class="tool-group mobile-view-switch">
+      <div class="dropdown-container">
+        <button id="btnMobileViewMenu" class="tool-btn" type="button"
+                aria-label="切换视图" aria-haspopup="menu" aria-expanded="false"
+                title="切换视图">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"
+               fill="currentColor" stroke="none">
+            <circle cx="5" cy="12" r="1.8"/>
+            <circle cx="12" cy="12" r="1.8"/>
+            <circle cx="19" cy="12" r="1.8"/>
+          </svg>
+        </button>
+        <div id="mobileViewMenu" class="dropdown dropdown--dark dropdown--left" hidden role="menu">
+          <button id="menuViewCode" type="button" role="menuitemradio" aria-checked="true">
+            <span class="dropdown__check">✓</span>代码
+          </button>
+          <button id="menuViewAttr" type="button" role="menuitemradio" aria-checked="false" disabled>
+            <span class="dropdown__check">✓</span>属性
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div class="tool-group">
       <button id="btnUndo" class="tool-btn" type="button"
               title="撤销 (Ctrl+Z)" aria-label="撤销">
@@ -150,7 +175,6 @@
           <line x1="16" y1="16" x2="21" y2="21"/>
         </svg>
       </button>
-
       <div class="dropdown-container" id="editorActions">
         <button id="btnEditorMenu" class="tool-btn" type="button"
                 aria-label="更多操作" aria-haspopup="menu" aria-expanded="false"
@@ -183,21 +207,39 @@
 
   <section class="editor" id="editorSection">
     <div id="gutter" class="gutter" aria-hidden="true"></div>
-
     <div class="code-area">
       <pre id="highlight" class="highlight" aria-hidden="true"><code id="highlightCode"></code></pre>
-
       <textarea id="code" class="code-input" wrap="off" spellcheck="false"
                 autocomplete="off" autocapitalize="off" autocorrect="off"
                 aria-label="SVG 源码输入"
                 placeholder="在此粘贴或输入 SVG 代码…"></textarea>
     </div>
   </section>
+
+  <aside id="attrPanel" class="attr-panel" hidden aria-label="元素属性面板">
+    <div class="attr-panel__header">
+      <div class="attr-panel__title">
+        <span id="attrPanelTag" class="attr-panel__tag">—</span>
+        <span id="attrPanelId" class="attr-panel__id" hidden></span>
+      </div>
+      <div class="attr-panel__actions">
+        <button id="attrPanelLocate" class="attr-panel__tool-btn" type="button" title="定位到源码">定位</button>
+        <button id="attrPanelCanvasBtn" class="attr-panel__tool-btn attr-panel__canvas-btn" type="button" title="编辑画布属性">画布</button>
+        <button id="attrPanelClose" class="attr-panel__close" type="button" aria-label="关闭">✕</button>
+      </div>
+    </div>
+    <div id="attrPanelWarning" class="attr-panel__warning" hidden>
+      ⚠️ 源码结构无法定位，属性面板为只读
+    </div>
+    <div id="attrPanelBody" class="attr-panel__body"></div>
+  </aside>
 </div>
 
 <div id="findPanel" class="find-panel" hidden>
-  <input id="findInput" class="find-input" type="text" placeholder="查找内容" />
-  <input id="replaceInput" class="find-input" type="text" placeholder="替换为" />
+  <div class="find-inputs-row">
+    <input id="findInput" class="find-input" type="text" placeholder="查找内容" />
+    <input id="replaceInput" class="find-input" type="text" placeholder="替换为" />
+  </div>
   <div class="find-actions">
     <button id="findPrev" class="find-btn find-btn--icon" type="button"
             title="上一个" aria-label="上一个">
@@ -227,6 +269,92 @@
         <line x1="18" y1="6" x2="6" y2="18"/>
       </svg>
     </button>
+  </div>
+</div>
+
+<div id="historyMask" class="modal-mask" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="historyTitle">
+    <h3 id="historyTitle" class="modal__title">历史版本</h3>
+    <p class="modal__subtitle">点击载入某个版本（最多保留 20 条）</p>
+    <div id="historyList" class="history-list"></div>
+    <div class="modal__actions">
+      <button id="historyClear" class="btn btn--ghost" type="button">清空历史</button>
+      <button id="historyClose" class="btn btn--primary" type="button">关闭</button>
+    </div>
+  </div>
+</div>
+
+<input id="imageFileInput" type="file" accept="image/png,image/jpeg" hidden />
+
+<div id="imageConfigMask" class="modal-mask" hidden>
+  <div class="modal image-config-modal" role="dialog" aria-modal="true"
+       aria-labelledby="imageConfigTitle">
+    <h3 id="imageConfigTitle" class="modal__title">插入图片</h3>
+    <p class="modal__subtitle">设置比例、形状与填充方式后插入画布</p>
+
+    <div class="image-config-preview" id="imageConfigPreview"></div>
+
+    <div class="modal__field" style="margin-bottom:10px">
+      <label class="modal__label" for="imageConfigRatio">比例</label>
+      <select id="imageConfigRatio" class="modal__select">
+        <option value="original">原始比例</option>
+        <option value="1:1">1 : 1</option>
+        <option value="4:3">4 : 3</option>
+        <option value="16:9">16 : 9</option>
+        <option value="3:4">3 : 4</option>
+        <option value="9:16">9 : 16</option>
+        <option value="custom">自定义…</option>
+      </select>
+    </div>
+    <div id="imageConfigCustomRow" class="modal__row" hidden style="margin-bottom:10px">
+      <div class="modal__field">
+        <label class="modal__label" for="imageConfigCustomW">宽</label>
+        <input id="imageConfigCustomW" class="modal__input" type="number"
+               inputmode="numeric" min="1" step="1" value="100" />
+      </div>
+      <span class="modal__x">×</span>
+      <div class="modal__field">
+        <label class="modal__label" for="imageConfigCustomH">高</label>
+        <input id="imageConfigCustomH" class="modal__input" type="number"
+               inputmode="numeric" min="1" step="1" value="100" />
+      </div>
+    </div>
+    <div class="modal__field" style="margin-bottom:10px">
+      <label class="modal__label" for="imageConfigShape">形状</label>
+      <select id="imageConfigShape" class="modal__select">
+        <option value="rect">矩形</option>
+        <option value="roundrect">圆角矩形</option>
+        <option value="circle">圆形</option>
+        <option value="ellipse">椭圆</option>
+      </select>
+    </div>
+    <div id="imageConfigRxRow" class="modal__field" hidden style="margin-bottom:10px">
+      <label class="modal__label" for="imageConfigRx">圆角半径</label>
+      <input id="imageConfigRx" class="modal__input" type="number"
+             inputmode="numeric" min="0" step="1" value="12" />
+    </div>
+    <div class="modal__field" style="margin-bottom:10px">
+      <label class="modal__label">填充</label>
+      <div class="radio-group">
+        <label><input type="radio" name="imageConfigFill" value="slice" checked /> 裁剪填满</label>
+        <label><input type="radio" name="imageConfigFill" value="meet" /> 完整显示</label>
+      </div>
+    </div>
+    <div class="modal__field" style="margin-bottom:10px">
+      <label class="modal__label">插入方式</label>
+      <div class="radio-group">
+        <label><input type="radio" name="imageConfigInsert" value="replace" checked /> 替换画布</label>
+        <label><input type="radio" name="imageConfigInsert" value="append" /> 追加元素</label>
+      </div>
+    </div>
+    <label class="modal__check">
+      <input id="imageConfigCompress" type="checkbox" checked />
+      <span class="modal__check-desc">按目标尺寸压缩嵌入（减小源码体积）</span>
+    </label>
+    <div class="modal__actions">
+      <button id="imageConfigCancel" class="btn btn--ghost" type="button">取消</button>
+      <button id="imageConfigConfirm" class="btn btn--primary" type="button">插入</button>
+    </div>
   </div>
 </div>
 
@@ -271,17 +399,15 @@
         <option value="jpg">JPG（不支持透明）</option>
       </select>
     </div>
-
     <label id="bgRow" class="modal__check" hidden>
       <input id="exportWhiteBg" type="checkbox" />
       <span class="modal__check-desc">白色背景（不勾选则透明）</span>
     </label>
-
-    <label id="viewBoxRow" class="modal__check" hidden>
+    <label id="viewBoxRow" class="modal__check" hidden
+           title="勾选：viewBox 随画布等比扩展，内容视觉大小不变；不勾选：内容随画布缩放">
       <input id="exportScaleViewBox" type="checkbox" />
-      <span class="modal__check-desc">保持内容尺寸不变（画布四周留白）</span>
+      <span class="modal__check-desc">内容视觉大小不变（扩展画布留白）</span>
     </label>
-
     <div class="modal__actions">
       <button id="exportOriginal" class="btn btn--ghost" type="button">原始尺寸</button>
       <button id="exportCancel" class="btn btn--ghost" type="button">取消</button>
@@ -290,21 +416,8 @@
   </div>
 </div>
 
-<div id="historyMask" class="modal-mask" hidden>
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="historyTitle">
-    <h3 id="historyTitle" class="modal__title">历史版本</h3>
-    <p class="modal__subtitle">点击载入某个版本（最多保留 20 条）</p>
-    <div id="historyList" class="history-list"></div>
-    <div class="modal__actions">
-      <button id="historyClear" class="btn btn--ghost" type="button">清空历史</button>
-      <button id="historyClose" class="btn btn--primary" type="button">关闭</button>
-    </div>
-  </div>
-</div>
-
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-<script src="script.js"></script>
-
+<script src="scripts.js"></script>
 </body>
 </html>
