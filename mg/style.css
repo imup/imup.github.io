@@ -1197,48 +1197,6 @@ body{
   gap:6px;
   grid-column:1 / -1;
 }
-/* 时间轴组 */
-.attr-group--time{
-  background:var(--bg-muted);
-  padding:8px 10px;
-  border-radius:6px;
-  border:1px solid var(--border);
-}
-.attr-group--time .attr-group__title{
-  color:var(--accent-text);
-}
-.attr-group--time .attr-group__items{
-  grid-template-columns:1fr;
-  gap:6px;
-}
-.time-axis-row{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  min-width:0;
-}
-.time-axis-slider{
-  flex:1;
-  min-width:0;
-  height:20px;
-  accent-color:var(--accent);
-  cursor:pointer;
-  touch-action:manipulation;
-}
-.time-axis-slider:disabled{
-  opacity:.5;
-  cursor:not-allowed;
-}
-.time-axis-value{
-  flex:0 0 auto;
-  min-width:44px;
-  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
-  font-size:11px;
-  color:var(--text-secondary);
-  text-align:right;
-  font-variant-numeric:tabular-nums;
-}
-
 /* 关键帧 ◆ 按钮 */
 .attr-row__kf-btn{
   flex:0 0 auto;
