@@ -2613,8 +2613,7 @@ function openExportModal(format) {
   updatePresetActiveState();
 
   modalMask.hidden = false;
-  _releaseExportTrap = trapFocusIn(modalMask, { autoFocus: false });
-  exportConfirm.focus({ preventScroll: true });
+  _releaseExportTrap = trapFocusIn(modalMask);
 }
 
 function closeExportModal() {
@@ -6037,14 +6036,13 @@ function setMobileView(view) {
    32. 焦点陷阱（模态可访问性）
    ============================================================ */
 function trapFocusIn(container, opts) {
-  const { autoFocus = true } = opts || {};
+  const { autoFocus = false } = opts || {};
   const prev = document.activeElement;
   const getFocusable = () => Array.from(
     container.querySelectorAll(
       'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'
     )
   ).filter(el => el.offsetParent !== null);
-
   const onKey = (e) => {
     if (e.key !== 'Tab') return;
     const list = getFocusable();
@@ -6054,12 +6052,15 @@ function trapFocusIn(container, opts) {
     else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
   };
   container.addEventListener('keydown', onKey);
-
   if (autoFocus) {
     const list = getFocusable();
     if (list.length) list[0].focus();
+  } else {
+    if (!container.hasAttribute('tabindex')) {
+      container.setAttribute('tabindex', '-1');
+    }
+    container.focus({ preventScroll: true });
   }
-
   return () => {
     container.removeEventListener('keydown', onKey);
     if (prev && prev.focus) { try { prev.focus(); } catch (_) {} }
