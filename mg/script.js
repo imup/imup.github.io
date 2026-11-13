@@ -2582,7 +2582,6 @@ function openExportModal(format) {
   modalTitle.textContent = isSvg ? t('export.titleSvg') : t('export.titleImage');
   exportWInput.value = ow;
   exportHInput.value = oh;
-  exportLock.textContent = '🔒';
   exportLock.classList.add('is-locked');
   exportLock.setAttribute('aria-pressed', 'true');
 
@@ -2671,7 +2670,6 @@ exportHInput.addEventListener('input', () => {
 exportLock.addEventListener('click', () => {
   if (!exportState) return;
   exportState.lockRatio = !exportState.lockRatio;
-  exportLock.textContent = exportState.lockRatio ? '🔒' : '🔓';
   exportLock.classList.toggle('is-locked', exportState.lockRatio);
   exportLock.setAttribute('aria-pressed', String(exportState.lockRatio));
   if (exportState.lockRatio) syncHeightFromWidth();
