@@ -5457,16 +5457,7 @@ function closeAttrPanel() {
 
 
 /* ---- 属性面板主入口 ---- */
-/*
-function rebuildAttrPanel() {
-  if (!attrPanelOpen) return;
-  if (canvasRootMode) {
-    rebuildCanvasAttrPanel();
-    return;
-  }
-  if (!selectedPath || !currentSvg) return;
-  closeAnimAddMenu();
-  */
+
 function rebuildAttrPanel() {
   if (!attrPanelOpen) return;
   const activeEl = document.activeElement;
@@ -5501,12 +5492,8 @@ function rebuildAttrPanel() {
   attrPanelWarning.hidden = !isReadOnly;
   attrPanelBody.innerHTML = '';
 
-  if (!isAnim && !canvasRootMode) {
-    const timeAxisGroup = makeTimeAxisGroup(el, isReadOnly);
-    if (timeAxisGroup) attrPanelBody.appendChild(timeAxisGroup);
-  }
-
   if (tagName === 'image') {
+    
     const href = el.getAttribute('href') || el.getAttribute('xlink:href');
     const clipAttr = el.getAttribute('clip-path') || '';
 
@@ -5558,11 +5545,21 @@ function rebuildAttrPanel() {
     }
   }
 
+
   if (isAnim) {
+    /* 时间轴：用父元素渲染（父元素才有动画信息） */
+    const parentPath = selectedPath.slice(0, -1);
+    const parentEl = parentPath.length > 0 ? resolvePath(currentSvg, parentPath) : null;
+    if (parentEl) {
+      const timeAxisGroup = makeTimeAxisGroup(parentEl, isReadOnly);
+      if (timeAxisGroup) attrPanelBody.appendChild(timeAxisGroup);
+    }
+
     if (selectedPath && selectedPath.length > 0) {
       const animGroup = makeGroup(t('group.animation'), getAnimSpecs().map(a => makeRow(el, a, isReadOnly, false)));
       const animTitle = animGroup.querySelector('.attr-group__title');
       if (animTitle) {
+        
         animTitle.classList.add('attr-group__title--with-action');
         const backBtn = document.createElement('button');
         backBtn.type = 'button';
