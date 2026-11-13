@@ -215,24 +215,24 @@
       "filterEditor": "滤镜编辑器",
       "gradientStops": "色标",
       "filterPrimitives": "滤镜原语（从上到下依次应用）",
-      "filterRegion": "滤镜区域",
-      "timeline": "时间轴"
+      "filterRegion": "滤镜区域"
     },
 
-    "timeAxis": {
-      "totalDur": "总时长"
+    "fieldAnim": {
+      "title": "设置字段动画",
+      "start": "开始",
+      "current": "当前",
+      "end": "结束",
+      "time": "时间",
+      "value": "参数",
+      "confirm": "确认",
+      "invalidRange": "结束时间必须大于开始时间",
+      "emptyValue": "参数不能为空",
+      "saved": "已设置 {field} 动画",
+      "framesRemoved": "已删除 {count} 个越界关键帧"
     },
 
     "keyframe": {
-      "title": "设置字段动画",
-      "subtitle": "字段 {field}",
-      "startTime": "开始时间",
-      "endTime": "结束时间",
-      "value": "值",
-      "confirm": "确认",
-      "positionHint": "当前时间 {time}，将记录在 {percent}% 位置",
-      "invalidRange": "结束时间必须大于开始时间",
-      "emptyValue": "值不能为空",
       "addBtn": "打关键帧"
     },
 
@@ -475,8 +475,7 @@
       "historySaveFailed": "本地存储空间不足，历史无法保存",
       "rootMustBeSvg": "根元素必须是 <svg>",
       "svgSyntaxError": "SVG 语法错误：{detail}{line}",
-      "lineNear": "（第 {line} 行附近）",
-      "keyframeAdded": "已在 {time} 处为 {field} 设置关键帧"
+      "lineNear": "（第 {line} 行附近）"
     },
 
     "example": {
@@ -700,24 +699,24 @@
       "filterEditor": "Filter Editor",
       "gradientStops": "Stops",
       "filterPrimitives": "Filter Primitives (applied top to bottom)",
-      "filterRegion": "Filter Region",
-      "timeline": "Timeline"
+      "filterRegion": "Filter Region"
     },
 
-    "timeAxis": {
-      "totalDur": "Total Duration"
+    "fieldAnim": {
+      "title": "Set Field Animation",
+      "start": "Start",
+      "current": "Current",
+      "end": "End",
+      "time": "Time",
+      "value": "Value",
+      "confirm": "OK",
+      "invalidRange": "End time must be greater than start time",
+      "emptyValue": "Value cannot be empty",
+      "saved": "Animation set for {field}",
+      "framesRemoved": "{count} out-of-range keyframes removed"
     },
 
     "keyframe": {
-      "title": "Set Field Animation",
-      "subtitle": "Field {field}",
-      "startTime": "Start Time",
-      "endTime": "End Time",
-      "value": "Value",
-      "confirm": "OK",
-      "positionHint": "Current {time}, recorded at {percent}%",
-      "invalidRange": "End time must be greater than start time",
-      "emptyValue": "Value cannot be empty",
       "addBtn": "Set Keyframe"
     },
 
@@ -960,8 +959,7 @@
       "historySaveFailed": "Storage full, history cannot be saved",
       "rootMustBeSvg": "Root element must be <svg>",
       "svgSyntaxError": "SVG syntax error: {detail}{line}",
-      "lineNear": " (near line {line})",
-      "keyframeAdded": "Keyframe set for {field} at {time}"
+      "lineNear": " (near line {line})"
     },
 
     "example": {
