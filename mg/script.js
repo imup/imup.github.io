@@ -82,11 +82,14 @@ const findClose      = $('findClose');
 const modalMask      = $('modalMask');
 const modalTitle     = $('modalTitle');
 const modalSubtitle  = $('modalSubtitle');
+const exportTopRow   = $('exportTopRow');
+const formatRow      = $('formatRow');
+const exportPresetGroup = $('exportPresetGroup');
+const exportPresetBtns = Array.from(document.querySelectorAll('.export-preset-btn'));
 const exportWInput   = $('exportW');
 const exportHInput   = $('exportH');
 const exportLock     = $('exportLock');
 const exportHint     = $('exportHint');
-const formatRow      = $('formatRow');
 const exportFormat   = $('exportFormat');
 const bgRow          = $('bgRow');
 const exportWhiteBg  = $('exportWhiteBg');
@@ -2542,6 +2545,31 @@ replaceInput.addEventListener('keydown', e => {
    ============================================================ */
 let _releaseExportTrap = null;
 
+function updatePresetActiveState() {
+  if (!exportState) return;
+  const curW = parseInt(exportWInput.value, 10);
+  const curH = parseInt(exportHInput.value, 10);
+  exportPresetBtns.forEach(btn => {
+    const factor = parseFloat(btn.dataset.factor);
+    const targetW = Math.round(exportState.originWidth * factor);
+    const targetH = Math.round(exportState.originHeight * factor);
+    btn.classList.toggle('is-active', curW === targetW && curH === targetH);
+  });
+}
+
+function applyExportPreset(factor) {
+  if (!exportState) return;
+  const w = Math.round(exportState.originWidth * factor);
+  const h = Math.round(exportState.originHeight * factor);
+  if (w > MAX_SIDE || h > MAX_SIDE) {
+    showToast(t('export.sizeExceeded', { max: MAX_SIDE }));
+    return;
+  }
+  exportWInput.value = w;
+  exportHInput.value = h;
+  updatePresetActiveState();
+}
+
 function openExportModal(format) {
   if (!currentSvg) return;
   const size = getSize(currentSvg);
@@ -2567,7 +2595,11 @@ function openExportModal(format) {
     exportHint.hidden = false;
   } else exportHint.hidden = true;
 
+  // 格式 + 预设：整行控制显隐
+  exportTopRow.hidden = isSvg;
   formatRow.hidden = isSvg;
+  exportPresetGroup.hidden = isSvg;
+
   if (!isSvg && format === 'png') exportFormat.value = 'png';
   const isJpg = !isSvg && exportFormat.value === 'jpg';
   bgRow.hidden = isSvg || isJpg;
@@ -2578,17 +2610,22 @@ function openExportModal(format) {
   modalSubtitle.textContent = isIOSLike()
     ? t('export.subtitleIOS')
     : (isSvg ? t('export.subtitleSvg') : t('export.subtitleImage'));
+
+  updatePresetActiveState();
+
   modalMask.hidden = false;
   _releaseExportTrap = trapFocusIn(modalMask);
   if (window.matchMedia('(hover: hover)').matches) {
     exportWInput.focus(); exportWInput.select();
   }
 }
+
 function closeExportModal() {
   modalMask.hidden = true;
   exportState = null;
   if (_releaseExportTrap) { _releaseExportTrap(); _releaseExportTrap = null; }
 }
+
 function syncHeightFromWidth() {
   if (!exportState || !exportState.lockRatio) return;
   const w = parseInt(exportWInput.value, 10);
@@ -2622,8 +2659,15 @@ function confirmExport() {
   if (mode === 'svg') exportSVG(w, h, scaleVB);
   else exportImage(w, h, format, whiteBg, scaleVB);
 }
-exportWInput.addEventListener('input', syncHeightFromWidth);
-exportHInput.addEventListener('input', syncWidthFromHeight);
+
+exportWInput.addEventListener('input', () => {
+  syncHeightFromWidth();
+  updatePresetActiveState();
+});
+exportHInput.addEventListener('input', () => {
+  syncWidthFromHeight();
+  updatePresetActiveState();
+});
 exportLock.addEventListener('click', () => {
   if (!exportState) return;
   exportState.lockRatio = !exportState.lockRatio;
@@ -2642,6 +2686,13 @@ exportOriginal.addEventListener('click', () => {
   if (!exportState) return;
   exportWInput.value = exportState.originWidth;
   exportHInput.value = exportState.originHeight;
+  updatePresetActiveState();
+});
+exportPresetBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const factor = parseFloat(btn.dataset.factor);
+    applyExportPreset(factor);
+  });
 });
 exportCancel.addEventListener('click', closeExportModal);
 exportConfirm.addEventListener('click', confirmExport);
