@@ -316,6 +316,22 @@
       "mixedValues": "含坐标对/单位等复合值，不支持拉杆，请编辑上方文本",
       "tooManyValues": "值数量 {count}，仅前 10 个可拉杆"
     },
+    "group": {
+  "timeline": "时间轴"
+},
+"timeAxis": {
+  "totalDur": "总时长"
+},
+"keyframe": {
+  "title": "设置关键帧",
+  "subtitle": "字段 {field}，时间 {time}",
+  "value": "值",
+  "confirm": "确认",
+  "addBtn": "打关键帧"
+},
+"toast": {
+  "keyframeAdded": "已在 {time} 处为 {field} 设置关键帧"
+},
 
     "canvasPreset": {
       "ratio16_9": "16:9",
