@@ -452,6 +452,24 @@
     <h3 id="modalTitle" class="modal__title" data-i18n="export.titleSvg">导出 SVG</h3>
     <p id="modalSubtitle" class="modal__subtitle" data-i18n="export.subtitleSvg">设置输出尺寸，点击导出即可保存</p>
 
+    <!-- 格式 + 预设并排 -->
+    <div id="exportTopRow" class="export-top-row">
+      <div id="formatRow" class="export-format-field">
+        <label class="modal__label" for="exportFormat" data-i18n="export.format">图片格式</label>
+        <select id="exportFormat" class="modal__select">
+          <option value="png" data-i18n="export.formatPng">PNG（支持透明）</option>
+          <option value="webp" data-i18n="export.formatWebp">WebP（支持透明）</option>
+          <option value="jpg" data-i18n="export.formatJpg">JPG（不支持透明）</option>
+        </select>
+      </div>
+      <div id="exportPresetGroup" class="export-preset-group">
+        <button type="button" class="export-preset-btn" data-factor="2">2x</button>
+        <button type="button" class="export-preset-btn" data-factor="3">3x</button>
+        <button type="button" class="export-preset-btn" data-factor="4">4x</button>
+        <button type="button" class="export-preset-btn" data-factor="5">5x</button>
+      </div>
+    </div>
+
     <div class="modal__row">
       <div class="modal__field">
         <label class="modal__label" for="exportW" data-i18n="export.width">宽度（px）</label>
@@ -473,24 +491,21 @@
 
     <p id="exportHint" class="modal__hint" hidden></p>
 
-    <div id="formatRow" class="modal__field" style="margin-bottom:10px" hidden>
-      <label class="modal__label" for="exportFormat" data-i18n="export.format">图片格式</label>
-      <select id="exportFormat" class="modal__select">
-        <option value="png" data-i18n="export.formatPng">PNG（支持透明）</option>
-        <option value="webp" data-i18n="export.formatWebp">WebP（支持透明）</option>
-        <option value="jpg" data-i18n="export.formatJpg">JPG（不支持透明）</option>
-      </select>
+    <div class="modal__checks-row">
+      <label id="bgRow" class="modal__check modal__check--half" hidden
+             data-i18n-title="export.whiteBg"
+             title="白色背景（不勾选则透明）">
+        <input id="exportWhiteBg" type="checkbox" />
+        <span class="modal__check-desc" data-i18n="export.whiteBgShort">白底</span>
+      </label>
+      <label id="viewBoxRow" class="modal__check modal__check--half" hidden
+             data-i18n-title="export.keepSize"
+             title="内容视觉大小不变（扩展画布留白）">
+        <input id="exportScaleViewBox" type="checkbox" />
+        <span class="modal__check-desc" data-i18n="export.keepSizeShort">保持尺寸</span>
+      </label>
     </div>
-    <label id="bgRow" class="modal__check" hidden>
-      <input id="exportWhiteBg" type="checkbox" />
-      <span class="modal__check-desc" data-i18n="export.whiteBg">白色背景（不勾选则透明）</span>
-    </label>
-    <label id="viewBoxRow" class="modal__check" hidden
-           data-i18n-title="export.keepSizeTitle"
-           title="勾选：viewBox 随画布等比扩展，内容视觉大小不变；不勾选：内容随画布缩放">
-      <input id="exportScaleViewBox" type="checkbox" />
-      <span class="modal__check-desc" data-i18n="export.keepSize">内容视觉大小不变（扩展画布留白）</span>
-    </label>
+
     <div class="modal__actions">
       <button id="exportOriginal" class="btn btn--ghost" type="button" data-i18n="export.original">原始尺寸</button>
       <button id="exportCancel" class="btn btn--ghost" type="button" data-i18n="btn.cancel">取消</button>
