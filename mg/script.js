@@ -3052,18 +3052,11 @@ function makeStyleRow(el, spec, isReadOnly) {
   return row;
 }
 
-
 /* ---- 行 / 唯一 id ---- */
 let _rowUid = 0;
 const nextRowUid = () => 'attr-' + (++_rowUid);
 
-/* ---- 时间轴状态 ---- */
-const _timeAxisState = {
-  totalDur: 2,
-  currentTime: 0,
-  paused: false
-};
-
+/* ---- 动画时间工具 ---- */
 function parseDuration(str) {
   if (!str) return 0;
   const m = String(str).match(/^([\d.]+)\s*(ms|s|min)?$/);
@@ -3078,21 +3071,6 @@ function parseDuration(str) {
 function formatDuration(sec) {
   const v = Math.round(sec * 100) / 100;
   return v + 's';
-}
-
-function getAnimatedFields(el) {
-  if (!el) return [];
-  const fields = new Set();
-  const anims = el.querySelectorAll('animate, animateTransform, animateColor, set');
-  for (const a of anims) {
-    const attr = a.getAttribute('attributeName');
-    if (attr) fields.add(attr);
-  }
-  return Array.from(fields);
-}
-
-function hasAnyAnimatedField(el) {
-  return getAnimatedFields(el).length > 0;
 }
 
 function readCommonDur(el) {
@@ -3120,237 +3098,369 @@ function findAnimateForField(el, fieldName) {
   return null;
 }
 
-function readFieldAnim(el, fieldName) {
-  const defaultTotalDur = _timeAxisState.totalDur || 2;
+/* ---- 三列弹窗辅助 ---- */
+function readAnimToState(el, fieldName) {
+  const baseVal = el ? (el.getAttribute(fieldName) || '') : '';
   const animate = el ? findAnimateForField(el, fieldName) : null;
 
   if (!animate) {
+    const defaultEnd = readCommonDur(el) || 2;
     return {
-      begin: 0,
-      end: defaultTotalDur,
-      value: el ? (el.getAttribute(fieldName) || '') : ''
+      fieldName,
+      baseVal,
+      beginTime: 0,
+      beginValue: baseVal,
+      endTime: defaultEnd,
+      endValue: baseVal,
+      currentTime: 0,
+      middleFrames: []
     };
   }
 
   const begin = parseDuration(animate.getAttribute('begin'));
   const dur = parseDuration(animate.getAttribute('dur'));
-  const end = begin + (dur > 0 ? dur : defaultTotalDur);
+  const end = begin + (dur > 0 ? dur : 2);
 
-  const valuesStr = animate.getAttribute('values') || '';
-  const values = valuesStr.split(';').filter(v => v !== '');
-  const lastValue = values.length > 0
-    ? values[values.length - 1]
-    : (el ? (el.getAttribute(fieldName) || '') : '');
+  const values = (animate.getAttribute('values') || '').split(';').filter(v => v !== '');
+  const keyTimes = (animate.getAttribute('keyTimes') || '').split(';').map(parseFloat).filter(isFinite);
 
-  return { begin, end, value: lastValue };
-}
-
-function updateAllAnimsDur(el, newDur) {
-  if (!selectedPath) return;
-  let svgRoot;
-  try { svgRoot = parseSVG(codeEl.value); }
-  catch (_) { return; }
-  const target = resolvePath(svgRoot, selectedPath);
-  if (!target) return;
-  const anims = target.querySelectorAll('animate, animateTransform, animateColor, set');
-  let changed = false;
-  for (const a of anims) {
-    const cur = parseDuration(a.getAttribute('dur'));
-    if (Math.abs(cur - newDur) > 0.001) {
-      a.setAttribute('dur', formatDuration(newDur));
-      changed = true;
-    }
-  }
-  if (!changed) return;
-  codeEl.value = serializeSVG(svgRoot);
-  currentSvg = svgRoot;
-  invalidateLineOffsets();
-  renderEditor();
-  schedulePreviewRender();
-  saveDraftDebounced();
-  recordSnapshot(true);
-}
-
-/* ---- 时间轴 UI ---- */
-function makeTimeAxisGroup(el, isReadOnly) {
-  if (!hasAnyAnimatedField(el)) return null;
-
-  const g = document.createElement('div');
-  g.className = 'attr-group attr-group--time';
-  const tEl = document.createElement('div');
-  tEl.className = 'attr-group__title';
-  tEl.textContent = t('group.timeline') || '时间轴';
-  const items = document.createElement('div');
-  items.className = 'attr-group__items';
-
-  const totalDur = readCommonDur(el);
-  _timeAxisState.totalDur = totalDur;
-  if (_timeAxisState.currentTime > totalDur) _timeAxisState.currentTime = 0;
-
-  const svgVisible = canvasEl.firstElementChild;
-  if (svgVisible) {
-    try {
-      svgVisible.pauseAnimations();
-      svgVisible.setCurrentTime(_timeAxisState.currentTime);
-      _timeAxisState.paused = true;
-    } catch (_) {}
+  const n = values.length;
+  if (n === 0) {
+    return {
+      fieldName, baseVal,
+      beginTime: begin,
+      beginValue: baseVal,
+      endTime: end,
+      endValue: baseVal,
+      currentTime: begin,
+      middleFrames: []
+    };
   }
 
-  /* 总时长输入 */
-  const durRow = document.createElement('div');
-  durRow.className = 'attr-row attr-row--full';
-  const durLabel = document.createElement('label');
-  durLabel.className = 'attr-row__label';
-  durLabel.textContent = t('timeAxis.totalDur') || '总时长';
-  const _did = nextRowUid();
-  durLabel.htmlFor = _did;
-  durRow.appendChild(durLabel);
-  const durCtrl = document.createElement('div');
-  durCtrl.className = 'attr-row__control';
-  const durInput = document.createElement('input');
-  durInput.type = 'number';
-  durInput.id = _did;
-  durInput.className = 'attr-row__input';
-  durInput.value = String(totalDur);
-  durInput.min = '0.1';
-  durInput.step = '0.1';
-  durInput.inputMode = 'decimal';
-  if (isReadOnly) durInput.disabled = true;
+  let kt = keyTimes;
+  if (kt.length !== n) {
+    kt = [];
+    for (let i = 0; i < n; i++) kt.push(n === 1 ? 0 : i / (n - 1));
+  }
 
-  /* 滑块行 */
-  const sliderRow = document.createElement('div');
-  sliderRow.className = 'time-axis-row';
+  const middleFrames = [];
+  for (let i = 1; i < n - 1; i++) {
+    middleFrames.push({
+      time: begin + kt[i] * (end - begin),
+      value: values[i]
+    });
+  }
 
-  const slider = document.createElement('input');
-  slider.type = 'range';
-  slider.className = 'time-axis-slider';
-  slider.min = '0';
-  slider.max = String(totalDur);
-  slider.step = '0.01';
-  slider.value = String(_timeAxisState.currentTime);
-  if (isReadOnly) slider.disabled = true;
-
-  const timeLabel = document.createElement('span');
-  timeLabel.className = 'time-axis-value';
-  timeLabel.textContent = formatDuration(_timeAxisState.currentTime);
-
-  durInput.addEventListener('input', () => {
-    const v = parseFloat(durInput.value);
-    if (!isFinite(v) || v <= 0) return;
-    _timeAxisState.totalDur = v;
-    slider.max = String(v);
-    if (_timeAxisState.currentTime > v) {
-      _timeAxisState.currentTime = v;
-      slider.value = String(v);
-      timeLabel.textContent = formatDuration(v);
-      if (svgVisible) { try { svgVisible.setCurrentTime(v); } catch (_) {} }
-    }
-    updateAllAnimsDur(el, v);
-  });
-
-  slider.addEventListener('input', () => {
-    const time = parseFloat(slider.value) || 0;
-    _timeAxisState.currentTime = time;
-    timeLabel.textContent = formatDuration(time);
-    if (svgVisible) {
-      try {
-        svgVisible.pauseAnimations();
-        svgVisible.setCurrentTime(time);
-      } catch (_) {}
-    }
-  });
-
-  durCtrl.appendChild(durInput);
-  durRow.appendChild(durCtrl);
-  items.appendChild(durRow);
-
-  sliderRow.appendChild(slider);
-  sliderRow.appendChild(timeLabel);
-  items.appendChild(sliderRow);
-
-  g.appendChild(tEl);
-  g.appendChild(items);
-  return g;
+  return {
+    fieldName,
+    baseVal,
+    beginTime: begin,
+    beginValue: values[0],
+    endTime: end,
+    endValue: values[n - 1],
+    currentTime: begin,
+    middleFrames
+  };
 }
 
-/* ---- 关键帧输入弹窗 ---- */
+function collectFramesFromState(state) {
+  const frames = [{ time: state.beginTime, value: state.beginValue }];
+  const sorted = [...state.middleFrames].sort((a, b) => a.time - b.time);
+  for (const f of sorted) {
+    if (f.time > state.beginTime + 0.001 && f.time < state.endTime - 0.001) {
+      frames.push({ time: f.time, value: f.value });
+    }
+  }
+  frames.push({ time: state.endTime, value: state.endValue });
+  return frames;
+}
 
-function openKeyframeInputDialog(el, fieldName) {
+function writeAnimFromState(target, fieldName, state) {
+  const begin = state.beginTime;
+  const end = state.endTime;
+  const dur = end - begin;
+  if (dur <= 0) return false;
+
+  const frames = collectFramesFromState(state);
+  const values = frames.map(f => f.value);
+  const keyTimes = frames.map(f => {
+    const kt = (f.time - begin) / dur;
+    return String(Math.round(kt * 1000) / 1000);
+  });
+
+  let animateEl = findAnimateForField(target, fieldName);
+  if (!animateEl) {
+    animateEl = document.createElementNS(SVG_NS, 'animate');
+    animateEl.setAttribute('attributeName', fieldName);
+    animateEl.setAttribute('repeatCount', 'indefinite');
+    target.appendChild(animateEl);
+  }
+
+  animateEl.setAttribute('begin', formatDuration(begin));
+  animateEl.setAttribute('dur', formatDuration(dur));
+  animateEl.setAttribute('values', values.join(';'));
+  animateEl.setAttribute('keyTimes', keyTimes.join(';'));
+  animateEl.removeAttribute('from');
+  animateEl.removeAttribute('to');
+  animateEl.removeAttribute('by');
+  return true;
+}
+
+/* ---- 三列弹窗 ---- */
+function openFieldAnimDialog(el, fieldName) {
   if (!selectedPath) return;
-  const currentTime = _timeAxisState.currentTime || 0;
-  const info = readFieldAnim(el, fieldName);
-
-  const beginVal = info.begin;
-  const endVal = info.end;
-  const valueVal = info.value;
+  const state = readAnimToState(el, fieldName);
+  const fieldLabel = fieldName;
 
   const mask = document.createElement('div');
   mask.className = 'modal-mask';
   mask.innerHTML = `
-    <div class="modal modal--mini" role="dialog" aria-modal="true" aria-labelledby="kfDialogTitle">
-      <h3 id="kfDialogTitle" class="modal__title">${t('keyframe.title') || '设置字段动画'}</h3>
-      <p class="modal__subtitle">${t('keyframe.subtitle', { field: fieldName }) || `字段 ${fieldName}`}</p>
+    <div class="modal modal--field-anim" role="dialog" aria-modal="true" aria-labelledby="faTitle">
+      <h3 id="faTitle" class="modal__title">${t('fieldAnim.title') || '设置字段动画'}：${fieldLabel}</h3>
 
-      <div class="modal__row">
-        <div class="modal__field">
-          <label class="modal__label" for="kfBeginInput">${t('keyframe.startTime') || '开始时间'} (s)</label>
-          <input class="modal__input" type="number" id="kfBeginInput"
-                 min="0" step="0.1" inputmode="decimal"
-                 value="${beginVal}" />
-        </div>
-        <div class="modal__field">
-          <label class="modal__label" for="kfEndInput">${t('keyframe.endTime') || '结束时间'} (s)</label>
-          <input class="modal__input" type="number" id="kfEndInput"
-                 min="0.1" step="0.1" inputmode="decimal"
-                 value="${endVal}" />
+      <div class="fa-timeline">
+        <div class="fa-timeline-track">
+          <div class="fa-timeline-thumb" style="left:0%"></div>
         </div>
       </div>
 
-      <div class="modal__field">
-        <label class="modal__label" for="kfValueInput">${t('keyframe.value') || '值'}</label>
-        <input class="modal__input" type="text" id="kfValueInput"
-               value="${escapeAttr(valueVal)}" />
+      <div class="fa-grid">
+        <div class="fa-col">
+          <div class="fa-col__title">${t('fieldAnim.start') || '开始'}</div>
+          <label class="modal__label">${t('fieldAnim.time') || '时间'}</label>
+          <input class="modal__input" type="number" min="0" step="0.1" inputmode="decimal" data-field="beginTime" />
+          <label class="modal__label">${t('fieldAnim.value') || '参数'}</label>
+          <input class="modal__input" type="text" data-field="beginValue" />
+        </div>
+        <div class="fa-col">
+          <div class="fa-col__title">${t('fieldAnim.current') || '当前'}</div>
+          <label class="modal__label">${t('fieldAnim.time') || '时间'}</label>
+          <input class="modal__input" type="number" min="0" step="0.1" inputmode="decimal" data-field="currentTime" />
+          <label class="modal__label">${t('fieldAnim.value') || '参数'}</label>
+          <input class="modal__input" type="text" data-field="currentValue" />
+        </div>
+        <div class="fa-col">
+          <div class="fa-col__title">${t('fieldAnim.end') || '结束'}</div>
+          <label class="modal__label">${t('fieldAnim.time') || '时间'}</label>
+          <input class="modal__input" type="number" min="0.1" step="0.1" inputmode="decimal" data-field="endTime" />
+          <label class="modal__label">${t('fieldAnim.value') || '参数'}</label>
+          <input class="modal__input" type="text" data-field="endValue" />
+        </div>
       </div>
-
-      <p class="modal__hint" id="kfPositionHint"></p>
 
       <div class="modal__actions">
         <button class="btn btn--ghost" type="button" data-action="cancel">${t('btn.cancel')}</button>
-        <button class="btn btn--primary" type="button" data-action="apply">${t('keyframe.confirm') || '确认'}</button>
+        <button class="btn btn--primary" type="button" data-action="apply">${t('fieldAnim.confirm') || '确认'}</button>
       </div>
     </div>
   `;
   document.body.appendChild(mask);
   const release = trapFocusIn(mask);
 
-  const beginInput = mask.querySelector('#kfBeginInput');
-  const endInput = mask.querySelector('#kfEndInput');
-  const valueInput = mask.querySelector('#kfValueInput');
-  const hintEl = mask.querySelector('#kfPositionHint');
+  const trackEl = mask.querySelector('.fa-timeline-track');
+  const thumbEl = mask.querySelector('.fa-timeline-thumb');
+  const beginTimeInput = mask.querySelector('[data-field="beginTime"]');
+  const beginValueInput = mask.querySelector('[data-field="beginValue"]');
+  const currTimeInput = mask.querySelector('[data-field="currentTime"]');
+  const currValueInput = mask.querySelector('[data-field="currentValue"]');
+  const endTimeInput = mask.querySelector('[data-field="endTime"]');
+  const endValueInput = mask.querySelector('[data-field="endValue"]');
 
-  function updateHint() {
-    const b = parseFloat(beginInput.value);
-    const e = parseFloat(endInput.value);
-    if (!isFinite(b) || !isFinite(e) || e <= b) {
-      hintEl.textContent = t('keyframe.invalidRange') || '结束时间必须大于开始时间';
-      hintEl.style.color = 'var(--danger)';
+  function findFrameAt(time) {
+    for (let i = 0; i < state.middleFrames.length; i++) {
+      if (Math.abs(state.middleFrames[i].time - time) < 0.01) return i;
+    }
+    return -1;
+  }
+
+  function renderDots() {
+    trackEl.querySelectorAll('.fa-timeline-dot').forEach(d => d.remove());
+    const dur = state.endTime - state.beginTime;
+    if (dur <= 0) return;
+    const dots = [];
+    dots.push({ time: state.beginTime });
+    for (const f of state.middleFrames) {
+      if (f.time > state.beginTime + 0.001 && f.time < state.endTime - 0.001) {
+        dots.push({ time: f.time });
+      }
+    }
+    dots.push({ time: state.endTime });
+    for (const d of dots) {
+      const ratio = (d.time - state.beginTime) / dur;
+      const dot = document.createElement('div');
+      dot.className = 'fa-timeline-dot';
+      dot.style.left = (Math.max(0, Math.min(1, ratio)) * 100) + '%';
+      dot.dataset.time = String(d.time);
+      dot.addEventListener('click', (e) => {
+        e.stopPropagation();
+        state.currentTime = d.time;
+        render();
+      });
+      trackEl.appendChild(dot);
+    }
+  }
+
+  function renderThumb() {
+    const dur = state.endTime - state.beginTime;
+    if (dur <= 0) return;
+    const ratio = (state.currentTime - state.beginTime) / dur;
+    thumbEl.style.left = (Math.max(0, Math.min(1, ratio)) * 100) + '%';
+  }
+
+  function renderCurrentColumn() {
+    const isBegin = Math.abs(state.currentTime - state.beginTime) < 0.001;
+    const isEnd = Math.abs(state.currentTime - state.endTime) < 0.001;
+    currTimeInput.value = String(Math.round(state.currentTime * 100) / 100);
+
+    if (isBegin) {
+      currValueInput.value = state.beginValue;
+      currValueInput.readOnly = true;
+    } else if (isEnd) {
+      currValueInput.value = state.endValue;
+      currValueInput.readOnly = true;
+    } else {
+      const idx = findFrameAt(state.currentTime);
+      if (idx >= 0) {
+        currValueInput.value = state.middleFrames[idx].value;
+      } else {
+        currValueInput.value = '';
+      }
+      currValueInput.readOnly = false;
+    }
+  }
+
+  function render() {
+    beginTimeInput.value = String(Math.round(state.beginTime * 100) / 100);
+    beginValueInput.value = state.beginValue;
+    endTimeInput.value = String(Math.round(state.endTime * 100) / 100);
+    endValueInput.value = state.endValue;
+    renderCurrentColumn();
+    renderDots();
+    renderThumb();
+  }
+
+  /* 拖拽 */
+  let dragging = false;
+  function updateFromX(clientX) {
+    const rect = trackEl.getBoundingClientRect();
+    if (rect.width <= 0) return;
+    let ratio = (clientX - rect.left) / rect.width;
+    ratio = Math.max(0, Math.min(1, ratio));
+    let time = state.beginTime + ratio * (state.endTime - state.beginTime);
+    const snapThreshold = 0.02 * (state.endTime - state.beginTime);
+    if (Math.abs(time - state.beginTime) < snapThreshold) time = state.beginTime;
+    else if (Math.abs(time - state.endTime) < snapThreshold) time = state.endTime;
+    else {
+      for (const f of state.middleFrames) {
+        if (Math.abs(f.time - time) < snapThreshold) { time = f.time; break; }
+      }
+    }
+    state.currentTime = Math.round(time * 100) / 100;
+    renderCurrentColumn();
+    renderThumb();
+  }
+
+  thumbEl.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    dragging = true;
+    try { thumbEl.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+  thumbEl.addEventListener('pointermove', (e) => {
+    if (!dragging) return;
+    updateFromX(e.clientX);
+  });
+  function endDrag(e) {
+    dragging = false;
+    try { thumbEl.releasePointerCapture(e.pointerId); } catch (_) {}
+  }
+  thumbEl.addEventListener('pointerup', endDrag);
+  thumbEl.addEventListener('pointercancel', endDrag);
+  trackEl.addEventListener('click', (e) => {
+    if (e.target === thumbEl) return;
+    updateFromX(e.clientX);
+  });
+
+  /* 中列时间输入 */
+  currTimeInput.addEventListener('change', () => {
+    let v = parseFloat(currTimeInput.value);
+    if (!isFinite(v)) { renderCurrentColumn(); return; }
+    if (v < state.beginTime) v = state.beginTime;
+    if (v > state.endTime) v = state.endTime;
+    state.currentTime = Math.round(v * 100) / 100;
+    renderCurrentColumn();
+    renderThumb();
+  });
+
+  /* 中列参数输入 */
+  currValueInput.addEventListener('input', () => {
+    if (currValueInput.readOnly) return;
+    const v = currValueInput.value;
+    const idx = findFrameAt(state.currentTime);
+    const isEdge = Math.abs(state.currentTime - state.beginTime) < 0.001
+                || Math.abs(state.currentTime - state.endTime) < 0.001;
+    if (isEdge) return;
+
+    if (v === '') {
+      if (idx >= 0) {
+        state.middleFrames.splice(idx, 1);
+        renderDots();
+      }
+    } else {
+      if (idx >= 0) {
+        state.middleFrames[idx].value = v;
+      } else {
+        state.middleFrames.push({ time: state.currentTime, value: v });
+        renderDots();
+      }
+    }
+  });
+
+  /* 左列时间 */
+  beginTimeInput.addEventListener('change', () => {
+    let v = parseFloat(beginTimeInput.value);
+    if (!isFinite(v) || v < 0) { beginTimeInput.value = String(state.beginTime); return; }
+    if (v >= state.endTime) {
+      v = state.endTime - 0.1;
+      if (v < 0) v = 0;
+    }
+    const removed = state.middleFrames.filter(f => f.time <= v + 0.001).length;
+    state.beginTime = Math.round(v * 100) / 100;
+    state.middleFrames = state.middleFrames.filter(f => f.time > state.beginTime + 0.001);
+    if (state.currentTime < state.beginTime) state.currentTime = state.beginTime;
+    if (removed > 0) {
+      showToast(t('fieldAnim.framesRemoved', { count: removed }) || `已删除 ${removed} 个越界关键帧`);
+    }
+    render();
+  });
+
+  /* 左列参数 */
+  beginValueInput.addEventListener('input', () => {
+    state.beginValue = beginValueInput.value;
+    renderCurrentColumn();
+  });
+
+  /* 右列时间 */
+  endTimeInput.addEventListener('change', () => {
+    let v = parseFloat(endTimeInput.value);
+    if (!isFinite(v) || v <= state.beginTime) {
+      endTimeInput.value = String(state.endTime);
       return;
     }
-    const span = e - b;
-    let ratio = (currentTime - b) / span;
-    if (ratio < 0) ratio = 0;
-    if (ratio > 1) ratio = 1;
-    const percent = Math.round(ratio * 100);
-    hintEl.textContent = t('keyframe.positionHint', {
-      time: formatDuration(currentTime),
-      percent
-    }) || `当前时间 ${formatDuration(currentTime)}，将记录在 ${percent}% 位置`;
-    hintEl.style.color = 'var(--text-secondary)';
-  }
-  updateHint();
+    const removed = state.middleFrames.filter(f => f.time >= v - 0.001).length;
+    state.endTime = Math.round(v * 100) / 100;
+    state.middleFrames = state.middleFrames.filter(f => f.time < state.endTime - 0.001);
+    if (state.currentTime > state.endTime) state.currentTime = state.endTime;
+    if (removed > 0) {
+      showToast(t('fieldAnim.framesRemoved', { count: removed }) || `已删除 ${removed} 个越界关键帧`);
+    }
+    render();
+  });
 
-  beginInput.addEventListener('input', updateHint);
-  endInput.addEventListener('input', updateHint);
+  /* 右列参数 */
+  endValueInput.addEventListener('input', () => {
+    state.endValue = endValueInput.value;
+    renderCurrentColumn();
+  });
 
   const close = () => {
     if (release) release();
@@ -3360,140 +3470,44 @@ function openKeyframeInputDialog(el, fieldName) {
   mask.querySelector('[data-action="cancel"]').addEventListener('click', close);
   mask.addEventListener('click', (e) => { if (e.target === mask) close(); });
   mask.querySelector('[data-action="apply"]').addEventListener('click', () => {
-    const b = parseFloat(beginInput.value);
-    const e = parseFloat(endInput.value);
-    const v = valueInput.value;
-    if (!isFinite(b) || b < 0) {
-      showToast(t('keyframe.invalidRange') || '开始时间无效');
+    if (state.endTime <= state.beginTime) {
+      showToast(t('fieldAnim.invalidRange') || '结束时间必须大于开始时间');
       return;
     }
-    if (!isFinite(e) || e <= b) {
-      showToast(t('keyframe.invalidRange') || '结束时间必须大于开始时间');
+    if (state.beginValue === '' || state.endValue === '') {
+      showToast(t('fieldAnim.emptyValue') || '参数不能为空');
       return;
     }
-    if (v === '' || v == null) {
-      showToast(t('keyframe.emptyValue') || '值不能为空');
-      return;
-    }
+    let svgRoot;
+    try { svgRoot = parseSVG(codeEl.value); }
+    catch (err) { showToast(t('toast.parseFailed', { msg: err.message || '' })); return; }
+    const target = resolvePath(svgRoot, selectedPath);
+    if (!target) { showToast(t('toast.noSourceLocate')); return; }
+
+    const ok = writeAnimFromState(target, fieldName, state);
+    if (!ok) { showToast(t('fieldAnim.invalidRange') || '结束时间必须大于开始时间'); return; }
+
+    codeEl.value = serializeSVG(svgRoot);
+    currentSvg = svgRoot;
+    invalidateLineOffsets();
+    renderEditor();
+    renderPreview();
+    saveDraftDebounced();
+    recordSnapshot(true);
     close();
-    commitKeyframe(fieldName, v, { begin: b, end: e });
+    showToast(t('fieldAnim.saved', { field: fieldName }) || `已设置 ${fieldName} 动画`);
+
+    suppressAttrRebuild = true;
+    setTimeout(() => {
+      suppressAttrRebuild = false;
+      if (attrPanelOpen && !canvasRootMode) rebuildAttrPanel();
+    }, 120);
   });
 
-  setTimeout(() => { if (valueInput) { valueInput.focus(); valueInput.select(); } }, 30);
+  render();
 }
 
-
-function commitKeyframe(fieldName, newValue, range) {
-  if (!selectedPath) return;
-
-  const begin = (range && isFinite(range.begin)) ? range.begin : 0;
-  const end = (range && isFinite(range.end) && range.end > begin) ? range.end : (begin + 2);
-  const dur = end - begin;
-  const currentTime = _timeAxisState.currentTime || 0;
-
-  let svgRoot;
-  try { svgRoot = parseSVG(codeEl.value); }
-  catch (err) { showToast(t('toast.parseFailed', { msg: err.message || '' })); return; }
-
-  const target = resolvePath(svgRoot, selectedPath);
-  if (!target) { showToast(t('toast.noSourceLocate')); return; }
-
-  let animateEl = findAnimateForField(target, fieldName);
-
-  let tRatio = (currentTime - begin) / dur;
-  if (tRatio < 0) tRatio = 0;
-  if (tRatio > 1) tRatio = 1;
-
-  if (!animateEl) {
-    const baseVal = target.getAttribute(fieldName) || newValue;
-    animateEl = document.createElementNS(SVG_NS, 'animate');
-    animateEl.setAttribute('attributeName', fieldName);
-    animateEl.setAttribute('begin', formatDuration(begin));
-    animateEl.setAttribute('dur', formatDuration(dur));
-    animateEl.setAttribute('repeatCount', 'indefinite');
-
-    if (tRatio <= 0.001) {
-      animateEl.setAttribute('values', newValue);
-      animateEl.setAttribute('keyTimes', '0');
-    } else if (tRatio >= 0.999) {
-      animateEl.setAttribute('values', `${baseVal};${newValue}`);
-      animateEl.setAttribute('keyTimes', '0;1');
-    } else {
-      const rStr = String(Math.round(tRatio * 1000) / 1000);
-      animateEl.setAttribute('values', `${baseVal};${newValue}`);
-      animateEl.setAttribute('keyTimes', `0;${rStr}`);
-    }
-    target.appendChild(animateEl);
-  } else {
-    animateEl.setAttribute('begin', formatDuration(begin));
-    animateEl.setAttribute('dur', formatDuration(dur));
-
-    const existingValues = (animateEl.getAttribute('values') || '').split(';').filter(v => v !== '');
-    const existingKeyTimes = (animateEl.getAttribute('keyTimes') || '')
-      .split(';').map(parseFloat).filter(isFinite);
-
-    if (existingValues.length === 0) {
-      existingValues.push(newValue);
-      existingKeyTimes.push(0);
-    }
-
-    if (existingKeyTimes.length !== existingValues.length) {
-      const n = existingValues.length;
-      existingKeyTimes.length = 0;
-      for (let i = 0; i < n; i++) {
-        existingKeyTimes.push(n === 1 ? 0 : i / (n - 1));
-      }
-    }
-
-    let insertIdx = 0;
-    while (insertIdx < existingKeyTimes.length && existingKeyTimes[insertIdx] < tRatio - 0.001) {
-      insertIdx++;
-    }
-
-    if (insertIdx < existingKeyTimes.length && Math.abs(existingKeyTimes[insertIdx] - tRatio) < 0.001) {
-      existingValues[insertIdx] = newValue;
-    } else {
-      existingValues.splice(insertIdx, 0, newValue);
-      existingKeyTimes.splice(insertIdx, 0, tRatio);
-    }
-
-    if (existingKeyTimes.length > 1) {
-      if (existingKeyTimes[0] > 0.001) {
-        existingKeyTimes[0] = 0;
-      }
-      const lastIdx = existingKeyTimes.length - 1;
-      if (existingKeyTimes[lastIdx] < 0.999) {
-        existingKeyTimes.push(1);
-        existingValues.push(existingValues[existingValues.length - 1]);
-      }
-    }
-
-    animateEl.setAttribute('values', existingValues.join(';'));
-    animateEl.setAttribute('keyTimes',
-      existingKeyTimes.map(v => String(Math.round(v * 1000) / 1000)).join(';'));
-    animateEl.removeAttribute('from');
-    animateEl.removeAttribute('to');
-  }
-
-  codeEl.value = serializeSVG(svgRoot);
-  currentSvg = svgRoot;
-  invalidateLineOffsets();
-  renderEditor();
-  renderPreview();
-  saveDraftDebounced();
-  recordSnapshot(true);
-  showToast(t('toast.keyframeAdded', {
-    field: fieldName,
-    time: formatDuration(currentTime)
-  }) || `已在 ${formatDuration(currentTime)} 处为 ${fieldName} 设置关键帧`);
-
-  suppressAttrRebuild = true;
-  setTimeout(() => {
-    suppressAttrRebuild = false;
-    if (attrPanelOpen && !canvasRootMode) rebuildAttrPanel();
-  }, 120);
-}
-
+/* ---- 行 ---- */
 function makeRow(el, spec, isReadOnly, isCanvas) {
   const row = document.createElement('div');
   row.className = 'attr-row';
@@ -3516,33 +3530,7 @@ function makeRow(el, spec, isReadOnly, isCanvas) {
   label.textContent = spec.labelKey ? t(spec.labelKey) : spec.name;
   const _id = nextRowUid();
   label.htmlFor = _id;
-  /*
-  const animBuilder = FIELD_ANIM_MAP[spec.name];
-  if (animBuilder && !isReadOnly && !isCanvas && spec.type !== 'textarea') {
-    const addBtn = document.createElement('button');
-    addBtn.type = 'button';
-    addBtn.className = 'attr-row__anim-add';
-    addBtn.title = t('anim.addAnimFor', { field: spec.labelKey ? t(spec.labelKey) : spec.name });
-    addBtn.textContent = '+';
-    addBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      addFieldAnim(el, spec.labelKey ? t(spec.labelKey) : spec.name, animBuilder);
-    });
-    label.appendChild(addBtn);
-    if (hasFieldAnim(el, spec.name)) {
-      const rmBtn = document.createElement('button');
-      rmBtn.type = 'button';
-      rmBtn.className = 'attr-row__anim-remove';
-      rmBtn.title = t('anim.removeAnim');
-      rmBtn.textContent = '−';
-      rmBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        removeFieldAnims(el, spec.name);
-      });
-      label.appendChild(rmBtn);
-    }
-  }
-  */
+
   const animBuilder = getFieldAnimBuilder(spec.name);
   if (animBuilder && !isReadOnly && !isCanvas && spec.type !== 'textarea') {
     const addBtn = document.createElement('button');
@@ -3564,7 +3552,7 @@ function makeRow(el, spec, isReadOnly, isCanvas) {
     if (hasFieldAnim(el, spec.name)) kfBtn.classList.add('has-kf');
     kfBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      openKeyframeInputDialog(el, spec.name);
+      openFieldAnimDialog(el, spec.name);
     });
     label.appendChild(kfBtn);
 
@@ -3595,6 +3583,7 @@ function makeRow(el, spec, isReadOnly, isCanvas) {
     input = document.createElement('select');
     input.className = 'attr-row__select';
     input.id = _id;
+    input.dataset.attrName = spec.name;
     spec.options.forEach(opt => {
       const o = document.createElement('option');
       o.value = opt;
@@ -3606,6 +3595,7 @@ function makeRow(el, spec, isReadOnly, isCanvas) {
     input = document.createElement('textarea');
     input.className = 'attr-row__textarea';
     input.id = _id;
+    input.dataset.attrName = spec.name;
     input.value = value;
   } else if (spec.type === 'color') {
     const wrap = document.createElement('div');
@@ -3620,6 +3610,7 @@ function makeRow(el, spec, isReadOnly, isCanvas) {
     text.type = 'text';
     text.className = 'attr-row__input attr-color__text';
     text.id = _id;
+    text.dataset.attrName = spec.name;
     text.value = value;
     text.placeholder = '#000000 / none / url(#id)';
     const toggle = document.createElement('button');
@@ -3666,6 +3657,7 @@ function makeRow(el, spec, isReadOnly, isCanvas) {
     input = document.createElement('input');
     input.type = spec.type === 'number' ? 'number' : 'text';
     input.id = _id;
+    input.dataset.attrName = spec.name;
     if (spec.type === 'number') {
       if (spec.step != null) input.step = spec.step;
       if (spec.min  != null) input.min  = spec.min;
@@ -5552,14 +5544,6 @@ function closeAttrPanel() {
   canvasRootMode = false;
   canvasBackPath = null;
   if (selectionOverlayEl) selectionOverlayEl.innerHTML = '';
-  if (_timeAxisState.paused) {
-    const svgVisible = canvasEl.firstElementChild;
-    if (svgVisible) {
-      try { svgVisible.unpauseAnimations(); } catch (_) {}
-    }
-    _timeAxisState.paused = false;
-  }
-  _timeAxisState.currentTime = 0;
   if (isMobileViewport()) {
     editorEl.hidden = false;
     mobileView = 'code';
@@ -5655,7 +5639,6 @@ function rebuildAttrPanel() {
       attrPanelBody.appendChild(makeImageClipShapeGroup(el, isReadOnly));
     }
   }
-
 
   if (isAnim) {
     /* 时间轴：用父元素渲染（父元素才有动画信息） */
