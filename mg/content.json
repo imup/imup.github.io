@@ -47,11 +47,7 @@
       "newCanvas": "新建画布",
       "resetExample": "恢复示例",
       "history": "历史版本…",
-      "clearDraft": "清空草稿",
-      "theme": "主题",
-      "themeAuto": "自动",
-      "themeLight": "浅色",
-      "themeDark": "深色"
+      "clearDraft": "清空草稿"
     },
 
     "editor": {
@@ -72,8 +68,7 @@
       "filterNoId": "该滤镜没有 id，无法编辑",
       "reconfigImage": "重新配置图片",
       "imageMissing": "图片内容缺失",
-      "backToParent": "← 返回父元素",
-      "notEditable": "id 已被占用"
+      "backToParent": "← 返回父元素"
     },
 
     "find": {
@@ -121,8 +116,7 @@
       "compress": "压缩嵌入",
       "compressTitle": "按目标尺寸压缩嵌入，减小源码体积",
       "insert": "插入",
-      "processing": "处理中…",
-      "invalidRatio": "请输入有效的宽高"
+      "processing": "处理中…"
     },
 
     "clipShape": {
@@ -162,7 +156,9 @@
       "formatWebp": "WebP（支持透明）",
       "formatJpg": "JPG（不支持透明）",
       "whiteBg": "白色背景（不勾选则透明）",
+      "whiteBgShort": "白底",
       "keepSize": "内容视觉大小不变（扩展画布留白）",
+      "keepSizeShort": "保持尺寸",
       "keepSizeTitle": "勾选：viewBox 随画布等比扩展，内容视觉大小不变；不勾选：内容随画布缩放",
       "original": "原始尺寸",
       "confirm": "导出",
@@ -172,15 +168,11 @@
       "invalidSize": "请输入有效的宽度和高度",
       "sizeExceeded": "单边尺寸不能超过 {max}px",
       "whiteBgLabel": "白底",
-      "transparentLabel": "透明",
-      "whiteBgShort": "白底",
-      "keepSizeShort": "保持尺寸"
+      "transparentLabel": "透明"
     },
 
     "btn": {
       "cancel": "取消",
-      "confirm": "确定",
-      "close": "关闭",
       "copy": "复制元素",
       "delete": "删除元素",
       "copyAttr": "复制属性",
@@ -223,7 +215,25 @@
       "filterEditor": "滤镜编辑器",
       "gradientStops": "色标",
       "filterPrimitives": "滤镜原语（从上到下依次应用）",
-      "filterRegion": "滤镜区域"
+      "filterRegion": "滤镜区域",
+      "timeline": "时间轴"
+    },
+
+    "timeAxis": {
+      "totalDur": "总时长"
+    },
+
+    "keyframe": {
+      "title": "设置字段动画",
+      "subtitle": "字段 {field}",
+      "startTime": "开始时间",
+      "endTime": "结束时间",
+      "value": "值",
+      "confirm": "确认",
+      "positionHint": "当前时间 {time}，将记录在 {percent}% 位置",
+      "invalidRange": "结束时间必须大于开始时间",
+      "emptyValue": "值不能为空",
+      "addBtn": "打关键帧"
     },
 
     "field": {
@@ -235,8 +245,6 @@
       "scale": "缩放",
       "skewX": "倾斜 X",
       "skewY": "倾斜 Y",
-      "title": "title",
-      "desc": "desc",
       "color": "颜色",
       "shape": "形状",
       "sizeW": "宽",
@@ -246,7 +254,6 @@
       "presetDotted14": "点线 1 4",
       "presetDashDot": "点划线 6 3 2 3",
       "presetLongDash": "长虚线 8 4",
-      "gradientType": "类型",
       "gradientLinear": "线性",
       "gradientRadial": "径向",
       "gradientUnits": "渐变单位",
@@ -269,8 +276,6 @@
       "filterRegionY": "y",
       "filterRegionW": "width",
       "filterRegionH": "height",
-      "filterOrientation": "orient",
-      "filterAngle": "固定角度（度）",
       "childPlaceholder": "（未设置，输入后自动创建）",
       "defaultOption": "(默认)",
       "presetPlaceholder": "预设…"
@@ -316,22 +321,6 @@
       "mixedValues": "含坐标对/单位等复合值，不支持拉杆，请编辑上方文本",
       "tooManyValues": "值数量 {count}，仅前 10 个可拉杆"
     },
-    "group": {
-  "timeline": "时间轴"
-},
-"timeAxis": {
-  "totalDur": "总时长"
-},
-"keyframe": {
-  "title": "设置关键帧",
-  "subtitle": "字段 {field}，时间 {time}",
-  "value": "值",
-  "confirm": "确认",
-  "addBtn": "打关键帧"
-},
-"toast": {
-  "keyframeAdded": "已在 {time} 处为 {field} 设置关键帧"
-},
 
     "canvasPreset": {
       "ratio16_9": "16:9",
@@ -385,8 +374,6 @@
       "preset": "预设",
       "recent": "最近",
       "reference": "引用",
-      "none": "none",
-      "currentColor": "currentColor",
       "newLinear": "+ 新建线性渐变…",
       "newRadial": "+ 新建径向渐变…",
       "moreOptions": "更多颜色选项"
@@ -484,16 +471,12 @@
       "shapeUnsupported": "不支持的形状",
       "parseFailed": "解析失败：{msg}",
       "renderFailed": "预览渲染失败：{msg}",
-      "historyLoadFailed": "载入历史版本失败",
       "historyReduced": "本地存储空间不足，历史缩减至 {count} 条",
       "historySaveFailed": "本地存储空间不足，历史无法保存",
-      "invalidURL": "空 URL",
-      "imageLoadFailed": "图片加载失败",
       "rootMustBeSvg": "根元素必须是 <svg>",
       "svgSyntaxError": "SVG 语法错误：{detail}{line}",
       "lineNear": "（第 {line} 行附近）",
-      "exportHintForeignObject": "此 SVG 包含 <foreignObject>，部分浏览器/环境导出可能不完整。",
-      "exportHintNoViewBox": "此 SVG 没有 viewBox，修改尺寸可能导致内容被裁切或留白。"
+      "keyframeAdded": "已在 {time} 处为 {field} 设置关键帧"
     },
 
     "example": {
@@ -549,11 +532,7 @@
       "newCanvas": "New Canvas",
       "resetExample": "Restore Example",
       "history": "History…",
-      "clearDraft": "Clear Draft",
-      "theme": "Theme",
-      "themeAuto": "Auto",
-      "themeLight": "Light",
-      "themeDark": "Dark"
+      "clearDraft": "Clear Draft"
     },
 
     "editor": {
@@ -574,8 +553,7 @@
       "filterNoId": "This filter has no id, cannot edit",
       "reconfigImage": "Reconfigure Image",
       "imageMissing": "Image content missing",
-      "backToParent": "← Back to Parent",
-      "notEditable": "id already in use"
+      "backToParent": "← Back to Parent"
     },
 
     "find": {
@@ -623,8 +601,7 @@
       "compress": "Compress",
       "compressTitle": "Compress to target size to reduce source size",
       "insert": "Insert",
-      "processing": "Processing…",
-      "invalidRatio": "Please enter a valid width and height"
+      "processing": "Processing…"
     },
 
     "clipShape": {
@@ -664,7 +641,9 @@
       "formatWebp": "WebP (transparent)",
       "formatJpg": "JPG (no transparency)",
       "whiteBg": "White background (unchecked = transparent)",
+      "whiteBgShort": "White BG",
       "keepSize": "Keep content visual size (expand canvas with padding)",
+      "keepSizeShort": "Keep Size",
       "keepSizeTitle": "Checked: viewBox expands proportionally, content visual size unchanged; Unchecked: content scales with canvas",
       "original": "Original Size",
       "confirm": "Export",
@@ -674,15 +653,11 @@
       "invalidSize": "Please enter a valid width and height",
       "sizeExceeded": "Single side cannot exceed {max}px",
       "whiteBgLabel": "white background",
-      "transparentLabel": "transparent",
-      "whiteBgShort": "White BG",
-      "keepSizeShort": "Keep Size"
+      "transparentLabel": "transparent"
     },
 
     "btn": {
       "cancel": "Cancel",
-      "confirm": "OK",
-      "close": "Close",
       "copy": "Duplicate Element",
       "delete": "Delete Element",
       "copyAttr": "Copy Attributes",
@@ -725,7 +700,25 @@
       "filterEditor": "Filter Editor",
       "gradientStops": "Stops",
       "filterPrimitives": "Filter Primitives (applied top to bottom)",
-      "filterRegion": "Filter Region"
+      "filterRegion": "Filter Region",
+      "timeline": "Timeline"
+    },
+
+    "timeAxis": {
+      "totalDur": "Total Duration"
+    },
+
+    "keyframe": {
+      "title": "Set Field Animation",
+      "subtitle": "Field {field}",
+      "startTime": "Start Time",
+      "endTime": "End Time",
+      "value": "Value",
+      "confirm": "OK",
+      "positionHint": "Current {time}, recorded at {percent}%",
+      "invalidRange": "End time must be greater than start time",
+      "emptyValue": "Value cannot be empty",
+      "addBtn": "Set Keyframe"
     },
 
     "field": {
@@ -737,8 +730,6 @@
       "scale": "Scale",
       "skewX": "Skew X",
       "skewY": "Skew Y",
-      "title": "title",
-      "desc": "desc",
       "color": "Color",
       "shape": "Shape",
       "sizeW": "W",
@@ -748,7 +739,6 @@
       "presetDotted14": "Dotted 1 4",
       "presetDashDot": "Dash-dot 6 3 2 3",
       "presetLongDash": "Long dash 8 4",
-      "gradientType": "Type",
       "gradientLinear": "Linear",
       "gradientRadial": "Radial",
       "gradientUnits": "Gradient Units",
@@ -771,8 +761,6 @@
       "filterRegionY": "y",
       "filterRegionW": "width",
       "filterRegionH": "height",
-      "filterOrientation": "orient",
-      "filterAngle": "Fixed Angle (deg)",
       "childPlaceholder": "(not set, auto-created on input)",
       "defaultOption": "(default)",
       "presetPlaceholder": "Preset…"
@@ -871,8 +859,6 @@
       "preset": "Preset",
       "recent": "Recent",
       "reference": "Reference",
-      "none": "none",
-      "currentColor": "currentColor",
       "newLinear": "+ New Linear Gradient…",
       "newRadial": "+ New Radial Gradient…",
       "moreOptions": "More color options"
@@ -970,16 +956,12 @@
       "shapeUnsupported": "Unsupported shape",
       "parseFailed": "Parse failed: {msg}",
       "renderFailed": "Preview render failed: {msg}",
-      "historyLoadFailed": "Failed to load history version",
       "historyReduced": "Storage full, history reduced to {count}",
       "historySaveFailed": "Storage full, history cannot be saved",
-      "invalidURL": "Empty URL",
-      "imageLoadFailed": "Image load failed",
       "rootMustBeSvg": "Root element must be <svg>",
       "svgSyntaxError": "SVG syntax error: {detail}{line}",
       "lineNear": " (near line {line})",
-      "exportHintForeignObject": "This SVG contains <foreignObject>, export may be incomplete in some browsers/environments.",
-      "exportHintNoViewBox": "This SVG has no viewBox, resizing may crop or leave whitespace."
+      "keyframeAdded": "Keyframe set for {field} at {time}"
     },
 
     "example": {
