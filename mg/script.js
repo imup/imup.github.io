@@ -7605,9 +7605,8 @@ function buildShapeMarkup(shapeId, cx, cy, L) {
 function openCreateShapeMenu(anchorEl) {
   closeCreateShapeMenu();
   const menu = document.createElement('div');
-  menu.className = 'attr-anim-menu create-shape-menu';
+  menu.className = 'attr-anim-menu';
   menu.addEventListener('click', e => e.stopPropagation());
-
   getShapeIds().forEach(id => {
     const btn = document.createElement('button');
     btn.type = 'button';
@@ -7618,26 +7617,33 @@ function openCreateShapeMenu(anchorEl) {
     });
     menu.appendChild(btn);
   });
-
   document.body.appendChild(menu);
-
   const rect = anchorEl.getBoundingClientRect();
   const menuRect = menu.getBoundingClientRect();
   const vh = window.innerHeight;
   const vw = window.innerWidth;
+  const gap = 6;
   let left = rect.left;
   if (left + menuRect.width > vw - 8) left = vw - menuRect.width - 8;
   if (left < 8) left = 8;
-  let top = rect.bottom + 4;
-  if (top + menuRect.height > vh - 8) {
-    top = Math.max(8, rect.top - menuRect.height - 4);
+  const spaceBelow = vh - rect.bottom - gap - 8;
+  const spaceAbove = rect.top - gap - 8;
+  const useUp = menuRect.height > spaceBelow && spaceAbove > spaceBelow;
+  let top;
+  if (useUp) {
+    top = rect.top - menuRect.height - gap;
+    if (top < 8) top = 8;
+    menu.classList.add('is-up');
+  } else {
+    top = rect.bottom + gap;
+    if (top + menuRect.height > vh - 8) top = Math.max(8, vh - menuRect.height - 8);
   }
   menu.style.position = 'fixed';
   menu.style.top = top + 'px';
   menu.style.left = left + 'px';
   menu.style.zIndex = '200';
-
   createShapeMenuEl = menu;
+  anchorEl.setAttribute('aria-expanded', 'true');
 }
 
 function closeCreateShapeMenu() {
@@ -7645,6 +7651,9 @@ function closeCreateShapeMenu() {
     createShapeMenuEl.parentNode.removeChild(createShapeMenuEl);
   }
   createShapeMenuEl = null;
+  if (btnCreateShape) {
+    btnCreateShape.setAttribute('aria-expanded', 'false');
+  }
 }
 
 function createShape(shapeId) {
