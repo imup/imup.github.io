@@ -643,6 +643,69 @@ body{
 }
 .modal__check-desc{flex:1;line-height:1.4;}
 
+/* 导出弹窗：checkbox 并排 */
+.modal__checks-row{
+  display:flex;gap:8px;margin-bottom:10px;
+  flex-wrap:wrap;
+}
+.modal__checks-row[hidden]{display:none;}
+.modal__checks-row .modal__check{
+  flex:0 1 auto;
+  min-width:0;
+  margin:0;
+}
+
+/* 导出弹窗：格式 + 预设并排 */
+.export-top-row{
+  display:flex;
+  gap:8px;
+  margin-bottom:10px;
+  align-items:flex-end;
+}
+.export-top-row[hidden]{display:none;}
+.export-format-field{
+  flex:1 1 auto;
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  min-width:0;
+}
+.export-format-field[hidden]{display:none;}
+.export-preset-group{
+  flex:0 0 auto;
+  display:flex;
+  gap:4px;
+  align-items:center;
+}
+.export-preset-group[hidden]{display:none;}
+.export-preset-btn{
+  min-width:36px;
+  height:38px;
+  padding:0 8px;
+  font-family:inherit;
+  font-size:12px;
+  font-weight:600;
+  font-variant-numeric:tabular-nums;
+  color:var(--text-secondary);
+  background:var(--bg-muted);
+  border:1px solid var(--border);
+  border-radius:8px;
+  cursor:pointer;
+  touch-action:manipulation;
+  transition:background .14s,border-color .14s,color .14s,transform .1s;
+}
+.export-preset-btn:hover{
+  background:var(--bg-hover);
+  border-color:var(--border-hover);
+  color:var(--text-primary);
+}
+.export-preset-btn:active{transform:scale(.95);}
+.export-preset-btn.is-active{
+  color:var(--accent-text);
+  background:var(--accent-bg);
+  border-color:var(--accent-border);
+}
+
 .modal__actions{display:flex;gap:8px;margin-top:14px;}
 .modal__actions .btn{
   flex:1;height:38px;
