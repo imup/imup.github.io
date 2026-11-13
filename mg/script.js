@@ -1,12 +1,7 @@
 (function () {
 'use strict';
 
-/* ============================================================
-   01. 依赖 & DOM 引用
-   ============================================================ */
 const $ = id => document.getElementById(id);
-
-// 主容器
 const appEl         = $('appRoot');
 const previewHost   = $('preview');
 const previewWrap   = $('previewWrap');
@@ -20,8 +15,6 @@ const toastEl       = $('toast');
 const fileInput     = $('fileInput');
 const dropOverlay   = $('dropOverlay');
 const dropOverlayText = dropOverlay.querySelector('.drop-overlay__text');
-
-// 预览区菜单
 const btnPreviewMenu = $('btnPreviewMenu');
 const previewMenu    = $('previewMenu');
 const menuOpenSvg    = $('menuOpenSvg');
@@ -32,8 +25,6 @@ const menuSavePng    = $('menuSavePng');
 const menuSaveSvg    = $('menuSaveSvg');
 const btnRotate90    = $('btnRotate90');
 const btnRotateReset = $('btnRotateReset');
-
-// 编辑器工具栏
 const btnUndo = $('btnUndo');
 const btnRedo = $('btnRedo');
 const btnFormat     = $('btnFormat');
@@ -50,25 +41,17 @@ const menuClearDraft = $('menuClearDraft');
 const menuThemeAuto  = $('menuThemeAuto');
 const menuThemeLight = $('menuThemeLight');
 const menuThemeDark  = $('menuThemeDark');
-
-// 视图控制
 const zoomInBtn     = $('zoomIn');
 const zoomOutBtn    = $('zoomOut');
 const zoomResetBtn  = $('zoomReset');
 const zoomLabel     = zoomResetBtn;
 const bgBtns        = Array.from(document.querySelectorAll('.bg-btn'));
-
-// 分隔条 / 工具栏
 const splitterEl    = $('splitter');
 const splitterGrips = Array.from(document.querySelectorAll('.tool-grip'));
 const btnCreateShape = $('btnCreateShape');
-
-// 警告条
 const warningBar   = $('warningBar');
 const warningText  = $('warningText');
 const warningClose = $('warningClose');
-
-// 查找面板
 const findPanel      = $('findPanel');
 const findInput      = $('findInput');
 const replaceInput   = $('replaceInput');
@@ -77,8 +60,6 @@ const findNext       = $('findNext');
 const findReplace    = $('findReplace');
 const findReplaceAll = $('findReplaceAll');
 const findClose      = $('findClose');
-
-// 导出弹窗
 const modalMask      = $('modalMask');
 const modalTitle     = $('modalTitle');
 const modalSubtitle  = $('modalSubtitle');
@@ -98,14 +79,10 @@ const exportScaleViewBox = $('exportScaleViewBox');
 const exportOriginal = $('exportOriginal');
 const exportCancel   = $('exportCancel');
 const exportConfirm  = $('exportConfirm');
-
-// 历史版本
 const historyMask  = $('historyMask');
 const historyList  = $('historyList');
 const historyClear = $('historyClear');
 const historyClose = $('historyClose');
-
-// 图片插入
 const imageFileInput       = $('imageFileInput');
 const imageConfigMask      = $('imageConfigMask');
 const imageConfigPreview   = $('imageConfigPreview');
@@ -119,8 +96,6 @@ const imageConfigCancel    = $('imageConfigCancel');
 const imageConfigConfirm   = $('imageConfigConfirm');
 const imageConfigFillRadios   = Array.from(document.querySelectorAll('input[name="imageConfigFill"]'));
 const imageConfigInsertRadios = Array.from(document.querySelectorAll('input[name="imageConfigInsert"]'));
-
-// 属性面板
 const attrPanel            = $('attrPanel');
 const attrPanelTag         = $('attrPanelTag');
 const attrPanelId          = $('attrPanelId');
@@ -130,18 +105,11 @@ const attrPanelClose       = $('attrPanelClose');
 const attrPanelLocate      = $('attrPanelLocate');
 const attrPanelCanvasBtn   = $('attrPanelCanvasBtn');
 
-/* ============================================================
-   02. 全局状态 & 常量
-   ============================================================ */
-
-// 外部资源（由 loadContentAndConfig 异步填充）
 let content       = null;
 let CONFIG        = null;
 let contentLoaded = false;
 let currentLocale = 'zh';
 let currentTheme  = 'auto';
-
-// 运行时状态
 let currentSvg   = null;
 let lastGoodCode = null;
 let renderTimer  = null;
@@ -158,8 +126,6 @@ let splitRatio = 0.8;
 let highlightCurrentLineEnabled = true;
 let autoIndentEnabled = true;
 let isFitMode = true;
-
-// 图片导入状态
 const imageImportState = {
   file: null, dataUrl: '', originalW: 0, originalH: 0,
   ratio: 'original', customW: 100, customH: 100,
@@ -167,22 +133,15 @@ const imageImportState = {
   fillMode: 'slice', insertMode: 'replace',
   compress: true, busy: false
 };
-
-// 选中状态
 let selectedPath = null;
 let attrPanelOpen = false;
 let attrCommitTimer = 0;
 let suppressAttrRebuild = false;
 let mobileView = 'code';
-
-// 画布模式
 let canvasRootMode = false;
 let canvasBackPath = null;
-
-// 预览区 rect 缓存
 let cachedPreviewRect = null;
 
-// 常量
 const MAX_SIDE      = 4096;
 const RECENT_COLORS_KEY  = 'svg-editor.recent-colors.v1';
 const RECENT_COLORS_MAX  = 8;
@@ -192,11 +151,8 @@ const HISTORY_MAX   = 20;
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const SNAPSHOT_DEBOUNCE_MS     = 500;
 const SNAPSHOT_MERGE_WINDOW_MS = SNAPSHOT_DEBOUNCE_MS;
-
 const THEME_KEY  = 'svg-editor.theme.v1';
 const LOCALE_KEY = 'svg-editor.locale.v1';
-
-// 示例代码兜底（content.json 加载失败时使用）
 const FALLBACK_CODE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%">
   <circle cx="50" cy="50" r="50" fill="#33FAFC" />
   <g stroke="#000000" stroke-width="2.0" stroke-linecap="round">
@@ -217,39 +173,29 @@ const FALLBACK_CODE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 
   </g>
 </svg>`;
 
-/* ============================================================
-   03. 通用工具函数
-   ============================================================ */
-
 function getPreviewRect() {
   if (!cachedPreviewRect) cachedPreviewRect = previewHost.getBoundingClientRect();
   return cachedPreviewRect;
 }
 function invalidatePreviewRect() { cachedPreviewRect = null; }
-
 function stamp() {
   const d = new Date();
   const p = n => String(n).padStart(2, '0');
   return `${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}`
        + `-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
 }
-
 function showToast(msg) {
   toastEl.textContent = msg;
   toastEl.classList.add('is-show');
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => toastEl.classList.remove('is-show'), 2400);
 }
-
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
-
-// 错误 / 警告条
 const errorEl = document.createElement('div');
 errorEl.className = 'error';
 errorEl.hidden = true;
 errorEl.setAttribute('role', 'alert');
 previewWrap.appendChild(errorEl);
-
 function showError(msg) {
   if (msg) { errorEl.textContent = msg; errorEl.hidden = false; warningBar.hidden = true; }
   else { errorEl.hidden = true; errorEl.textContent = ''; }
@@ -260,23 +206,18 @@ function showWarning(msg) {
   warningBar.hidden = false;
 }
 function hideWarning() { warningBar.hidden = true; }
-
 function updateButtons() {
   const ok = !!currentSvg;
   btnPreviewMenu.disabled = !ok;
   [menuCopyPng, menuCopySvg, menuSavePng, menuSaveSvg, btnRotate90, btnRotateReset]
     .forEach(b => b.disabled = !ok);
 }
-
-/* ---- 主题 ---- */
-
 function getSystemTheme() {
   if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
     return 'dark';
   }
   return 'light';
 }
-
 function loadSavedTheme() {
   try {
     const v = localStorage.getItem(THEME_KEY);
@@ -284,7 +225,6 @@ function loadSavedTheme() {
   } catch (_) {}
   return 'auto';
 }
-
 function applyTheme(theme) {
   currentTheme = theme;
   try { localStorage.setItem(THEME_KEY, theme); } catch (_) {}
@@ -296,14 +236,12 @@ function applyTheme(theme) {
   }
   updateThemeMenuState(theme);
 }
-
 function updateThemeMenuState(theme) {
   if (!menuThemeAuto) return;
   menuThemeAuto.setAttribute('aria-checked', theme === 'auto' ? 'true' : 'false');
   menuThemeLight.setAttribute('aria-checked', theme === 'light' ? 'true' : 'false');
   menuThemeDark.setAttribute('aria-checked', theme === 'dark' ? 'true' : 'false');
 }
-
 function setupThemeWatcher() {
   if (!window.matchMedia) return;
   const mq = window.matchMedia('(prefers-color-scheme: dark)');
@@ -313,9 +251,6 @@ function setupThemeWatcher() {
   if (mq.addEventListener) mq.addEventListener('change', onChange);
   else if (mq.addListener) mq.addListener(onChange);
 }
-
-/* ---- i18n ---- */
-
 function detectLocale() {
   try {
     const saved = localStorage.getItem(LOCALE_KEY);
@@ -324,7 +259,6 @@ function detectLocale() {
   const lang = (navigator.language || '').toLowerCase();
   return /^zh/.test(lang) ? 'zh' : 'en';
 }
-
 function t(key, params) {
   const parts = String(key).split('.');
   let cur = content && content[currentLocale];
@@ -345,7 +279,6 @@ function t(key, params) {
     ? cur.replace(/\{(\w+)\}/g, (_, k) => params[k] != null ? params[k] : '')
     : cur;
 }
-
 function buildFallbackConfig() {
   return {
     animSpecs: [],
@@ -382,11 +315,9 @@ function buildFallbackConfig() {
     parOptions: ['', 'xMidYMid meet']
   };
 }
-
 async function loadContentAndConfig() {
   currentLocale = detectLocale();
   try { localStorage.setItem(LOCALE_KEY, currentLocale); } catch (_) {}
-
   try {
     const [contentRes, configRes] = await Promise.all([
       fetch('./content.json', { cache: 'no-cache' }),
@@ -403,13 +334,10 @@ async function loadContentAndConfig() {
     CONFIG  = buildFallbackConfig();
     contentLoaded = false;
   }
-
   if (!content[currentLocale]) currentLocale = 'zh';
 }
-
 function applyI18n() {
   if (!contentLoaded) return;
-
   document.querySelectorAll('[data-i18n]').forEach(el => {
     const key = el.dataset.i18n;
     if (key) el.textContent = t(key);
@@ -426,14 +354,12 @@ function applyI18n() {
     const key = el.dataset.i18nAria;
     if (key) el.setAttribute('aria-label', t(key));
   });
-
   const titleEl = document.querySelector('title[data-i18n]');
   if (titleEl) {
     const key = titleEl.dataset.i18n;
     if (key) document.title = t(key);
   }
 }
-
 function getExampleCode() {
   if (content && content[currentLocale] && content[currentLocale].example && content[currentLocale].example.code) {
     return content[currentLocale].example.code;
@@ -444,9 +370,6 @@ function getExampleCode() {
   return FALLBACK_CODE;
 }
 
-/* ============================================================
-   04. SVG 解析与净化
-   ============================================================ */
 function parseSVG(code) {
   const doc = new DOMParser().parseFromString(code, 'image/svg+xml');
   const errNode = doc.querySelector('parsererror');
@@ -471,7 +394,6 @@ function extractErrorLine(text) {
   if (m) return { line: parseInt(m[1], 10) };
   return null;
 }
-
 function sanitize(root) {
   const DANGEROUS = new Set(['script','iframe','object','embed','meta','link']);
   const nodes = [root, ...Array.from(root.querySelectorAll('*'))];
@@ -499,7 +421,6 @@ function sanitize(root) {
   });
   toRemove.forEach(el => { try { el.remove(); } catch(_) {} });
 }
-
 function ensureNamespaces(root) {
   if (!root.getAttribute('xmlns')) root.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
   let usesXlink = false;
@@ -514,7 +435,6 @@ function ensureNamespaces(root) {
   if (usesXlink && !root.getAttribute('xmlns:xlink'))
     root.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
 }
-
 const RESOURCE_TAGS = ['image','use','feimage'];
 function detectExternalRefs(root) {
   const refs = [];
@@ -532,9 +452,6 @@ function detectExternalRefs(root) {
   return refs;
 }
 
-/* ============================================================
-   05. 尺寸计算与序列化
-   ============================================================ */
 function parseLength(value) {
   if (!value) return null;
   const s = String(value).trim();
@@ -542,7 +459,6 @@ function parseLength(value) {
   const n = parseFloat(s);
   return isFinite(n) && n > 0 ? n : null;
 }
-
 function getSize(svg) {
   let vbBox = null;
   const vb = svg.getAttribute('viewBox');
@@ -562,7 +478,6 @@ function getSize(svg) {
   if (h && !w) return { width: h * 0.75, height: h };
   return { width: 800, height: 600 };
 }
-
 function serializeSVG(svg, width, height, scaleViewBox) {
   const clone = svg.cloneNode(true);
   if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
@@ -586,9 +501,6 @@ function serializeSVG(svg, width, height, scaleViewBox) {
   return xml;
 }
 
-/* ============================================================
-   06. 预览渲染器（Shadow DOM）
-   ============================================================ */
 const shadow = previewHost.attachShadow({ mode: 'open' });
 shadow.innerHTML = `
   <style>
@@ -619,7 +531,6 @@ shadow.innerHTML = `
     .canvas > * { display: block; }
     .canvas a, .canvas a * { pointer-events: none; cursor: default; }
     .stage.is-stale .canvas { opacity: 0.35; }
-
     .selection-overlay {
       position: absolute; inset: 0;
       pointer-events: none;
@@ -645,7 +556,6 @@ shadow.innerHTML = `
 const stageEl  = shadow.querySelector('.stage');
 const canvasEl = shadow.querySelector('.canvas');
 const selectionOverlayEl = shadow.querySelector('.selection-overlay');
-
 class DomRenderer {
   constructor() { this.host = null; this.type = 'dom'; }
   getType() { return this.type; }
@@ -669,8 +579,6 @@ class DomRenderer {
   }
 }
 const domRenderer = new DomRenderer();
-
-/* 预览尺寸变化兜底刷新高亮（覆盖键盘弹起 / 移动视图切换 / splitter 拖动） */
 if (window.ResizeObserver) {
   const previewResizeObserver = new ResizeObserver(() => {
     invalidatePreviewRect();
@@ -684,9 +592,6 @@ if (window.ResizeObserver) {
   previewResizeObserver.observe(previewWrap);
 }
 
-/* ============================================================
-   07. Canvas 导出（PNG/JPG/WebP）
-   ============================================================ */
 async function canvas2dExportBlob(markup, width, height, format, whiteBg) {
   const isJpg = format === 'jpg';
   const needWhite = isJpg || whiteBg;
@@ -707,8 +612,6 @@ async function canvas2dExportBlob(markup, width, height, format, whiteBg) {
     });
     ctx.drawImage(img, 0, 0, width, height);
   } finally { URL.revokeObjectURL(blobUrl); }
-
-  /* P1-4：按需补画（仅 slice 裁剪 / clip-path 场景） */
   const needsManualImageDraw = (() => {
     if (!/<image\b[^>]*(?:href|xlink:href)\s*=\s*["']data:/i.test(markup)) return false;
     const doc = new DOMParser().parseFromString(markup, 'image/svg+xml');
@@ -727,13 +630,10 @@ async function canvas2dExportBlob(markup, width, height, format, whiteBg) {
       console.warn('[export] 手动补画图片失败：', err);
     }
   }
-
   const blob = await new Promise(res => canvas.toBlob(res, mime, quality));
   if (!blob) throw new Error('png');
   return blob;
 }
-
-/* 图片缓存（P3-2：blob: URL 淘汰时 revoke） */
 const _imgCache = new Map();
 function loadImageFromUrl(url) {
   if (!url) return Promise.reject(new Error('url'));
@@ -755,8 +655,6 @@ function loadImageFromUrl(url) {
     im.src = url;
   });
 }
-
-/* 裁剪形状 → ctx 路径（图片裁剪增强：新增 polygon / polyline 支持） */
 function applyClipShapeToCtx(ctx, shapeEl, sx, sy, offsetX, offsetY) {
   const tag = shapeEl.localName.toLowerCase();
   const num = (a, d) => { const v = parseFloat(shapeEl.getAttribute(a)); return isFinite(v) ? v : d; };
@@ -796,7 +694,6 @@ function applyClipShapeToCtx(ctx, shapeEl, sx, sy, offsetX, offsetY) {
     ctx.closePath();
   }
 }
-
 function computeParDrawRect(img, boxX, boxY, boxW, boxH, par) {
   const iw = img.naturalWidth, ih = img.naturalHeight;
   if (!iw || !ih) return null;
@@ -817,7 +714,6 @@ function computeParDrawRect(img, boxX, boxY, boxW, boxH, par) {
   }
   return { sx, sy, sw, sh, dx, dy, dw, dh, needClip: isSlice };
 }
-
 function computeParDrawRectLocal(img, x, y, w, h, par) {
   const iw = img.naturalWidth, ih = img.naturalHeight;
   if (!iw || !ih) return null;
@@ -837,7 +733,6 @@ function computeParDrawRectLocal(img, x, y, w, h, par) {
   }
   return { sx, sy, sw, sh, dx, dy, dw, dh };
 }
-
 async function drawDataImagesToCanvas(ctx, markup, canvasW, canvasH) {
   const domRoot = canvasEl.firstElementChild;
   const domHasImages = domRoot
@@ -854,7 +749,6 @@ async function drawDataImagesToCanvas(ctx, markup, canvasW, canvasH) {
   }
   await drawDataImagesFromMarkup(ctx, markup, canvasW, canvasH);
 }
-
 async function drawDataImagesFromDom(ctx, svgRoot, canvasW, canvasH) {
   let svgW = 0, svgH = 0;
   try {
@@ -936,7 +830,6 @@ async function drawDataImagesFromDom(ctx, svgRoot, canvasW, canvasH) {
     ctx.restore();
   }
 }
-
 async function drawDataImagesFromMarkup(ctx, markup, canvasW, canvasH) {
   const doc = new DOMParser().parseFromString(markup, 'image/svg+xml');
   const root = doc.documentElement;
@@ -1001,9 +894,6 @@ async function drawDataImagesFromMarkup(ctx, markup, canvasW, canvasH) {
   }
 }
 
-/* ============================================================
-   08. 预览变换（缩放/平移/旋转）
-   ============================================================ */
 function applyPreviewTransform() {
   if (!currentSvg) return;
   const s = previewScale;
@@ -1014,7 +904,6 @@ function applyPreviewTransform() {
   zoomLabel.textContent = Math.round(s * 100) + '%';
   scheduleRefreshSelectionOverlay();
 }
-
 function fitToView() {
   if (!currentSvg) return;
   const size = getSize(currentSvg);
@@ -1030,15 +919,11 @@ function fitToView() {
   isFitMode = true;
   applyPreviewTransform();
 }
-
 function updateBadge(width, height) {
   badge.textContent = `${Math.round(width)} × ${Math.round(height)}`;
   badge.hidden = false;
 }
 
-/* ============================================================
-   09. 渲染主循环
-   ============================================================ */
 async function renderPreview() {
   const code = codeEl.value;
   if (!code.trim()) {
@@ -1068,7 +953,6 @@ async function renderPreview() {
   stageEl.classList.remove('is-stale');
   currentSvg = svg;
   lastGoodCode = code;
-
   const refs = detectExternalRefs(svg);
   if (refs.length > 0) {
     const first = refs[0];
@@ -1076,7 +960,6 @@ async function renderPreview() {
     const suffix = refs.length > 1 ? ' +' + (refs.length - 1) : '';
     showWarning(t('preview.externalRefWarning', { refs: shown + suffix }));
   } else { hideWarning(); }
-
   const size = getSize(svg);
   try {
     await domRenderer.mount(canvasEl, svg, size);
@@ -1088,7 +971,6 @@ async function renderPreview() {
   updateBadge(size.width, size.height);
   if (isFitMode) fitToView();
   updateButtons();
-
   if (selectedPath) {
     const parsedEl = resolvePath(currentSvg, selectedPath);
     const mismatch = parsedEl && (
@@ -1105,7 +987,6 @@ async function renderPreview() {
     }
   }
 }
-
 function locateErrorInEditor(msg) {
   const m = msg.match(/第\s*(\d+)\s*行/);
   if (!m) return;
@@ -1127,9 +1008,6 @@ function schedulePreviewRender() {
   renderTimer = setTimeout(renderPreview, delay);
 }
 
-/* ============================================================
-   10. 文件保存 / 导出
-   ============================================================ */
 function isIOSLike() {
   if (navigator.userAgentData) return navigator.userAgentData.platform === 'iOS';
   return /iPhone|iPad|iPod/.test(navigator.userAgent) ||
@@ -1204,9 +1082,6 @@ async function exportImage(width, height, format, whiteBg, scaleViewBox) {
   }
 }
 
-/* ============================================================
-   11. 分屏布局（splitter 拖动）
-   ============================================================ */
 function setFlex(el, grow, basis, minH) {
   el.style.flexGrow = String(grow);
   el.style.flexShrink = '1';
@@ -1317,9 +1192,6 @@ splitterEl.addEventListener('pointermove', onSplitterPointerMove);
 splitterEl.addEventListener('pointerup', onSplitterPointerUp);
 splitterEl.addEventListener('pointercancel', onSplitterPointerUp);
 
-/* ============================================================
-   12. 编辑器渲染（行号 / 高亮 / 当前行）
-   ============================================================ */
 function syncScroll() {
   const top = codeEl.scrollTop, left = codeEl.scrollLeft;
   highlightEl.scrollTop = top;
@@ -1393,8 +1265,6 @@ function splitHighlightByLines(html) {
   }
   return result;
 }
-
-/* ---- P1-2：行首偏移缓存 + 行号二分 ---- */
 let _lineOffsets = null;
 let _lineOffsetsStamp = -1;
 function invalidateLineOffsets() {
@@ -1425,7 +1295,6 @@ function posToLineNo(pos) {
   }
   return ans + 1;
 }
-
 let lineNodes = [], lastLineHtmls = [], currentLineEl = null;
 function updateCurrentLineHighlight() {
   if (!highlightCurrentLineEnabled) {
@@ -1441,7 +1310,6 @@ function updateCurrentLineHighlight() {
   if (target) target.classList.add('current');
   currentLineEl = target;
 }
-
 function renderEditor() {
   const code = codeEl.value;
   const lineCount = code.split('\n').length;
@@ -1480,9 +1348,6 @@ function scheduleRenderEditor() {
   });
 }
 
-/* ============================================================
-   13. 语法高亮
-   ============================================================ */
 function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 function findTagEnd(code, start) {
@@ -1496,14 +1361,12 @@ function findTagEnd(code, start) {
   }
   return code.length;
 }
-
 function highlightTag(tag) {
   const m = tag.match(/^(<\/?)([A-Za-z_][\w\-:.]*)([\s\S]*?)(\/?>)$/);
   if (!m) return esc(tag);
   const [, open, name, attrs, close] = m;
   return esc(open) + '<span class="tok-tag">' + esc(name) + '</span>' + highlightAttrs(attrs) + esc(close);
 }
-
 function highlightAttrs(attrs) {
   if (!attrs) return '';
   if (attrs.length > 1500 && /data:[^"']{500,}/.test(attrs)) {
@@ -1528,7 +1391,6 @@ function highlightAttrs(attrs) {
   }
   return out;
 }
-
 function highlightXML(code) {
   let out = '', i = 0;
   const len = code.length;
@@ -1571,9 +1433,6 @@ function highlightXML(code) {
   return out;
 }
 
-/* ============================================================
-   14. XML 格式化
-   ============================================================ */
 function findMatchingClose(xml, startTagIndex, name) {
   const openEnd = findTagEnd(xml, startTagIndex + 1);
   if (openEnd === -1) return -1;
@@ -1602,7 +1461,6 @@ function findMatchingClose(xml, startTagIndex, name) {
   }
   return -1;
 }
-
 function formatXML(xml) {
   const tokens = []; let i = 0;
   const len = xml.length; const stack = [];
@@ -1683,16 +1541,12 @@ function formatXML(xml) {
   return out.trimEnd();
 }
 
-/* ============================================================
-   15. 草稿 / 历史 / 撤销重做
-   ============================================================ */
 function saveDraftDebounced() {
   clearTimeout(draftTimer);
   draftTimer = setTimeout(() => {
     try { localStorage.setItem(DRAFT_KEY, codeEl.value); } catch(_) {}
   }, 500);
 }
-
 function loadDraft() {
   try {
     const v = localStorage.getItem(DRAFT_KEY);
@@ -1700,7 +1554,6 @@ function loadDraft() {
   } catch(_) {}
   return null;
 }
-
 function getHistoryList() {
   try {
     const s = localStorage.getItem(HISTORY_KEY);
@@ -1708,12 +1561,10 @@ function getHistoryList() {
     return Array.isArray(arr) ? arr : [];
   } catch(_) { return []; }
 }
-
 function safeSetItem(key, value) {
   try { localStorage.setItem(key, value); return true; }
   catch (_) { return false; }
 }
-
 function saveHistoryList(list) {
   let cur = list.slice();
   while (cur.length > 0) {
@@ -1728,7 +1579,6 @@ function saveHistoryList(list) {
   safeSetItem(HISTORY_KEY, '[]');
   showToast(t('toast.historySaveFailed'));
 }
-
 function guessTitle(code) {
   const m = code.match(/<title[^>]*>([^<]+)<\/title>/i);
   if (m && m[1].trim()) return m[1].trim().slice(0, 30);
@@ -1736,7 +1586,6 @@ function guessTitle(code) {
   if (first) return first.trim().slice(0, 30);
   return t('history.untitled');
 }
-
 function saveToHistory(code) {
   if (!code || !code.trim()) return;
   const list = getHistoryList();
@@ -1744,15 +1593,12 @@ function saveToHistory(code) {
   list.unshift({ code, time: Date.now(), title: guessTitle(code) });
   saveHistoryList(list.slice(0, HISTORY_MAX));
 }
-
 function formatTime(ts) {
   const d = new Date(ts);
   const p = n => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
-
 let _releaseHistoryTrap = null;
-
 function openHistory() {
   const list = getHistoryList();
   historyList.innerHTML = '';
@@ -1787,17 +1633,13 @@ function openHistory() {
   historyMask.hidden = false;
   _releaseHistoryTrap = trapFocusIn(historyMask);
 }
-
 function closeHistory() {
   historyMask.hidden = true;
   if (_releaseHistoryTrap) { _releaseHistoryTrap(); _releaseHistoryTrap = null; }
 }
-
-/* ---- 撤销 / 重做 ---- */
 let undoStack = [];
 let undoIndex = -1;
 let lastSnapshotTime = 0;
-
 function recordSnapshot(force) {
   const text = codeEl.value;
   if (!force && undoIndex >= 0 && undoStack[undoIndex].text === text) return;
@@ -1815,14 +1657,12 @@ function recordSnapshot(force) {
   lastSnapshotTime = now;
   updateUndoRedoMenu();
 }
-
 function applySnapshot(s) {
   codeEl.value = s.text;
   try { codeEl.selectionStart = s.selStart; codeEl.selectionEnd = s.selEnd; } catch(_) {}
   invalidateLineOffsets();
   renderEditor(); schedulePreviewRender(); saveDraftDebounced(); updateUndoRedoMenu();
 }
-
 function undo() {
   const cur = codeEl.value;
   if (undoIndex >= 0 && undoStack[undoIndex].text !== cur) recordSnapshot(true);
@@ -1830,7 +1670,6 @@ function undo() {
   undoIndex--; applySnapshot(undoStack[undoIndex]);
   showToast(t('toast.undone'));
 }
-
 function redo() {
   const cur = codeEl.value;
   if (undoIndex >= 0 && undoIndex < undoStack.length - 1 && undoStack[undoIndex].text !== cur) recordSnapshot(true);
@@ -1838,15 +1677,11 @@ function redo() {
   undoIndex++; applySnapshot(undoStack[undoIndex]);
   showToast(t('toast.redone'));
 }
-
 function updateUndoRedoMenu() {
   btnUndo.disabled = undoIndex <= 0;
   btnRedo.disabled = undoIndex >= undoStack.length - 1;
 }
 
-/* ============================================================
-   16. 查找替换
-   ============================================================ */
 function isMobileViewport() {
   return window.innerWidth <= 480;
 }
@@ -1930,7 +1765,6 @@ function replaceAll() {
   renderEditor(); schedulePreviewRender(); saveDraftDebounced(); recordSnapshot();
   showToast(t('toast.replaced', { count }));
 }
-
 function positionFindPanel() {
   if (findPanel.hidden) return;
 
@@ -1944,12 +1778,10 @@ function positionFindPanel() {
     findPanel.style.maxWidth = 'none';
     return;
   }
-
   findPanel.style.width = 'auto';
   findPanel.style.minWidth = '';
   findPanel.style.maxWidth = '';
   findPanel.style.left = 'auto';
-
   const btnRect = btnFind.getBoundingClientRect();
   const gap = 6, vh = window.innerHeight, vw = window.innerWidth;
   const panelW = findPanel.offsetWidth || 300;
@@ -1964,9 +1796,6 @@ function positionFindPanel() {
   findPanel.style.right = right + 'px';
 }
 
-/* ============================================================
-   17. 文件加载
-   ============================================================ */
 async function loadFile(file) {
   if (!file) return;
   const isSvg = /\.svg$/i.test(file.name) || file.type === 'image/svg+xml';
@@ -1999,9 +1828,6 @@ async function loadFile(file) {
   }
 }
 
-/* ============================================================
-   18. 剪贴板
-   ============================================================ */
 async function copySVGCode() {
   if (!currentSvg) return;
   const raw = codeEl.value.trim();
@@ -2068,9 +1894,6 @@ async function copyPNGImage() {
   }
 }
 
-/* ============================================================
-   19. 预览交互（背景 / 缩放 / 旋转）
-   ============================================================ */
 function setPreviewBg(bg) {
   stageEl.className = 'stage bg-' + bg;
   bgBtns.forEach(b => b.classList.toggle('is-active', b.dataset.bg === bg));
@@ -2124,9 +1947,6 @@ codeEl.addEventListener('input', () => {
 });
 codeEl.addEventListener('scroll', syncScroll);
 
-/* ============================================================
-   20. 指针交互（平移 / 捏合 / 点击选中）
-   ============================================================ */
 let isPanning = false, panHasMoved = false;
 let panStartX = 0, panStartY = 0, panStartTx = 0, panStartTy = 0;
 const activePointers = new Map();
@@ -2250,9 +2070,6 @@ function handlePreviewClick(target) {
 attrPanelClose.addEventListener('click', clearSelection);
 attrPanelLocate.addEventListener('click', locateSelectedInSource);
 
-/* ============================================================
-   21. 键盘快捷键
-   ============================================================ */
 function handleTab(e) {
   const start = codeEl.selectionStart, end = codeEl.selectionEnd;
   const value = codeEl.value;
@@ -2337,9 +2154,6 @@ document.addEventListener('selectionchange', () => {
   if (document.activeElement === codeEl) updateCurrentLineHighlight();
 });
 
-/* ============================================================
-   22. 下拉菜单管理
-   ============================================================ */
 function closeAllMenus() {
   previewMenu.hidden = true;   btnPreviewMenu.setAttribute('aria-expanded', 'false');
   editorMenu.hidden  = true;   btnEditorMenu.setAttribute('aria-expanded',  'false');
@@ -2381,18 +2195,11 @@ function handleMenuKeydown(e, menu) {
 previewMenu.addEventListener('keydown', e => handleMenuKeydown(e, previewMenu));
 editorMenu.addEventListener('keydown',  e => handleMenuKeydown(e, editorMenu));
 
-/* ============================================================
-   23. 编辑操作（菜单 / 按钮绑定）
-   ============================================================ */
-
-/* ---- 创建形状 ---- */
 btnCreateShape.addEventListener('click', e => {
   e.stopPropagation();
   if (createShapeMenuEl) closeCreateShapeMenu();
   else openCreateShapeMenu(btnCreateShape);
 });
-
-/* ---- 撤销 / 重做 / 格式化 / 查找 ---- */
 btnUndo.addEventListener('click', undo);
 btnRedo.addEventListener('click', redo);
 btnFormat.addEventListener('click', () => {
@@ -2412,16 +2219,12 @@ btnFind.addEventListener('click', e => {
   if (findPanel.hidden) openFindPanel();
   else closeFindPanel();
 });
-
-/* ---- 文件菜单 ---- */
 menuOpenSvg.addEventListener('click', () => { closeAllMenus(); fileInput.click(); });
 menuInsertImage.addEventListener('click', () => { closeAllMenus(); imageFileInput.click(); });
 menuCopyPng.addEventListener('click', () => { closeAllMenus(); copyPNGImage(); });
 menuCopySvg.addEventListener('click', () => { closeAllMenus(); copySVGCode(); });
 menuSavePng.addEventListener('click', () => { closeAllMenus(); openExportModal('png'); });
 menuSaveSvg.addEventListener('click', () => { closeAllMenus(); openExportModal('svg'); });
-
-/* ---- 编辑器选项菜单 ---- */
 menuWrap.addEventListener('click', e => {
   e.stopPropagation();
   isWrapMode = !isWrapMode;
@@ -2447,8 +2250,6 @@ menuAutoIndent.addEventListener('click', e => {
   menuAutoIndent.setAttribute('aria-checked', String(autoIndentEnabled));
   closeAllMenus();
 });
-
-/* ---- 新建画布 ---- */
 menuNewBlankCanvas.addEventListener('click', () => {
   closeAllMenus();
   const current = codeEl.value.trim();
@@ -2470,8 +2271,6 @@ menuNewBlankCanvas.addEventListener('click', () => {
   recordSnapshot(true);
   showToast(t('toast.blankCanvasCreated'));
 });
-
-/* ---- 恢复示例 / 历史 / 清空草稿 ---- */
 menuResetExample.addEventListener('click', () => {
   closeAllMenus();
   codeEl.value = getExampleCode();
@@ -2486,13 +2285,9 @@ menuClearDraft.addEventListener('click', () => {
   try { localStorage.removeItem(DRAFT_KEY); } catch(_) {}
   showToast(t('toast.draftCleared'));
 });
-
-/* ---- 主题菜单 ---- */
 menuThemeAuto.addEventListener('click',  () => { closeAllMenus(); applyTheme('auto'); });
 menuThemeLight.addEventListener('click', () => { closeAllMenus(); applyTheme('light'); });
 menuThemeDark.addEventListener('click',  () => { closeAllMenus(); applyTheme('dark'); });
-
-/* ---- 全局点击关闭浮层 ---- */
 document.addEventListener('click', e => {
   if (!e.target.closest('#previewActions')) {
     previewMenu.hidden = true; btnPreviewMenu.setAttribute('aria-expanded', 'false');
@@ -2504,8 +2299,6 @@ document.addEventListener('click', e => {
   closeAnimAddMenu();
   closeCreateShapeMenu();
 });
-
-/* ---- Escape：浮层优先级 ---- */
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   if (createShapeMenuEl) { closeCreateShapeMenu(); return; }
@@ -2526,8 +2319,6 @@ document.addEventListener('keydown', e => {
   if (attrPanelOpen) { clearSelection(); return; }
   closeAllMenus();
 });
-
-/* ---- 查找面板按钮 ---- */
 findPrev.addEventListener('click', () => findNextMatch(true));
 findNext.addEventListener('click', () => findNextMatch(false));
 findReplace.addEventListener('click', replaceOne);
@@ -2540,11 +2331,7 @@ replaceInput.addEventListener('keydown', e => {
   if (e.key === 'Enter') { e.preventDefault(); replaceOne(); }
 });
 
-/* ============================================================
-   24. 导出弹窗
-   ============================================================ */
 let _releaseExportTrap = null;
-
 function updatePresetActiveState() {
   if (!exportState) return;
   const curW = parseInt(exportWInput.value, 10);
@@ -2556,7 +2343,6 @@ function updatePresetActiveState() {
     btn.classList.toggle('is-active', curW === targetW && curH === targetH);
   });
 }
-
 function applyExportPreset(factor) {
   if (!exportState) return;
   const w = Math.round(exportState.originWidth * factor);
@@ -2569,7 +2355,6 @@ function applyExportPreset(factor) {
   exportHInput.value = h;
   updatePresetActiveState();
 }
-
 function openExportModal(format) {
   if (!currentSvg) return;
   const size = getSize(currentSvg);
@@ -2584,7 +2369,6 @@ function openExportModal(format) {
   exportHInput.value = oh;
   exportLock.classList.add('is-locked');
   exportLock.setAttribute('aria-pressed', 'true');
-
   const hasFO = !isSvg && !!currentSvg.querySelector('foreignObject');
   if (hasFO) {
     exportHint.textContent = t('export.hintForeignObject');
@@ -2593,12 +2377,9 @@ function openExportModal(format) {
     exportHint.textContent = t('export.hintNoViewBox');
     exportHint.hidden = false;
   } else exportHint.hidden = true;
-
-  // 格式 + 预设：整行控制显隐
   exportTopRow.hidden = isSvg;
   formatRow.hidden = isSvg;
   exportPresetGroup.hidden = isSvg;
-
   if (!isSvg && format === 'png') exportFormat.value = 'png';
   const isJpg = !isSvg && exportFormat.value === 'jpg';
   bgRow.hidden = isSvg || isJpg;
@@ -2609,19 +2390,15 @@ function openExportModal(format) {
   modalSubtitle.textContent = isIOSLike()
     ? t('export.subtitleIOS')
     : (isSvg ? t('export.subtitleSvg') : t('export.subtitleImage'));
-
   updatePresetActiveState();
-
   modalMask.hidden = false;
   _releaseExportTrap = trapFocusIn(modalMask);
 }
-
 function closeExportModal() {
   modalMask.hidden = true;
   exportState = null;
   if (_releaseExportTrap) { _releaseExportTrap(); _releaseExportTrap = null; }
 }
-
 function syncHeightFromWidth() {
   if (!exportState || !exportState.lockRatio) return;
   const w = parseInt(exportWInput.value, 10);
@@ -2655,7 +2432,6 @@ function confirmExport() {
   if (mode === 'svg') exportSVG(w, h, scaleVB);
   else exportImage(w, h, format, whiteBg, scaleVB);
 }
-
 exportWInput.addEventListener('input', () => {
   syncHeightFromWidth();
   updatePresetActiveState();
@@ -2705,8 +2481,6 @@ fileInput.addEventListener('change', e => {
   if (f) loadFile(f);
   e.target.value = '';
 });
-
-/* ---- 拖拽文件 ---- */
 let dragCounter = 0;
 window.addEventListener('dragenter', e => {
   if (!e.dataTransfer) return;
@@ -2735,8 +2509,6 @@ window.addEventListener('drop', e => {
   const file = e.dataTransfer?.files?.[0];
   if (file) loadFile(file);
 });
-
-/* ---- 预览：背景 / 滚轮 / 缩放 / 旋转 ---- */
 bgBtns.forEach(btn => btn.addEventListener('click', () => setPreviewBg(btn.dataset.bg)));
 previewWrap.addEventListener('wheel', e => {
   if (!currentSvg || !modalMask.hidden) return;
@@ -2760,8 +2532,6 @@ btnRotateReset.addEventListener('click', () => {
   if (!currentSvg) return;
   setPreviewRotation(0);
 });
-
-/* ---- 窗口 resize ---- */
 window.addEventListener('resize', () => {
   invalidatePreviewRect();
   if (appEl.style.height && window.visualViewport &&
@@ -2789,10 +2559,6 @@ window.addEventListener('resize', () => {
   }
 });
 
-/* ============================================================
-   25. 属性面板核心
-   ============================================================ */
-
 function makeGroup(title, rows) {
   const g = document.createElement('div');
   g.className = 'attr-group';
@@ -2804,15 +2570,11 @@ function makeGroup(title, rows) {
   g.appendChild(tEl); g.appendChild(items);
   return g;
 }
-
-/* ---- id 就地编辑 ---- */
 function renderHeaderId(el, isReadOnly) {
   attrPanelId.innerHTML = '';
   attrPanelId.hidden = false;
   attrPanelId.classList.remove('attr-panel__id--empty', 'attr-panel__id--readonly', 'attr-panel__id--error');
-
   const idVal = el.getAttribute('id') || '';
-
   if (isReadOnly) {
     attrPanelId.textContent = idVal ? '#' + idVal : '+ id';
     attrPanelId.classList.add('attr-panel__id--readonly');
@@ -2820,20 +2582,17 @@ function renderHeaderId(el, isReadOnly) {
     attrPanelId.onclick = null;
     return;
   }
-
   if (!idVal) {
     attrPanelId.textContent = '+ id';
     attrPanelId.classList.add('attr-panel__id--empty');
   } else {
     attrPanelId.textContent = '#' + idVal;
   }
-
   attrPanelId.onclick = () => {
     if (attrPanelId.querySelector('input')) return;
     startInlineIdEdit(el, idVal);
   };
 }
-
 function startInlineIdEdit(el, idVal) {
   attrPanelId.classList.remove('attr-panel__id--error');
   attrPanelId.innerHTML = '';
@@ -2848,9 +2607,7 @@ function startInlineIdEdit(el, idVal) {
   attrPanelId.appendChild(wrap);
   input.focus();
   input.select();
-
   let committed = false;
-
   const commit = () => {
     if (committed) return;
     const newId = input.value.trim();
@@ -2866,20 +2623,17 @@ function startInlineIdEdit(el, idVal) {
     _selectedElementId = newId || null;
     setTimeout(() => rebuildAttrPanel(), 120);
   };
-
   const cancel = () => {
     if (committed) return;
     committed = true;
     rebuildAttrPanel();
   };
-
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') { e.preventDefault(); commit(); }
     else if (e.key === 'Escape') { e.preventDefault(); cancel(); }
   });
   input.addEventListener('blur', commit);
 }
-
 function hasDuplicateId(id, excludeEl) {
   if (!currentSvg) return false;
   const all = currentSvg.querySelectorAll('[id]');
@@ -2889,10 +2643,7 @@ function hasDuplicateId(id, excludeEl) {
   }
   return false;
 }
-
-/* ---- title / desc 子元素文本 ---- */
 let childTextCommitTimer = 0;
-
 function makeChildTextRow(el, childTag, type, isReadOnly) {
   const row = document.createElement('div');
   row.className = 'attr-row attr-row--full';
@@ -2902,10 +2653,8 @@ function makeChildTextRow(el, childTag, type, isReadOnly) {
   const _id = nextRowUid();
   label.htmlFor = _id;
   row.appendChild(label);
-
   const ctrl = document.createElement('div');
   ctrl.className = 'attr-row__control';
-
   let input;
   if (type === 'textarea') {
     input = document.createElement('textarea');
@@ -2917,36 +2666,28 @@ function makeChildTextRow(el, childTag, type, isReadOnly) {
     input.className = 'attr-row__input';
   }
   input.id = _id;
-
   const child = el.querySelector(':scope > ' + childTag);
   input.value = child ? (child.textContent || '') : '';
   input.placeholder = child ? '' : t('field.childPlaceholder') || '';
-
   if (isReadOnly) input.disabled = true;
-
   input.addEventListener('input', () => {
     scheduleChildTextCommit(el, childTag, input.value);
   });
-
   ctrl.appendChild(input);
   row.appendChild(ctrl);
   return row;
 }
-
 function scheduleChildTextCommit(el, childTag, text) {
   clearTimeout(childTextCommitTimer);
   childTextCommitTimer = setTimeout(() => commitChildText(el, childTag, text), 400);
 }
-
 function commitChildText(el, childTag, text) {
   if (!selectedPath) return;
   const loc = findTagOffsetByPath(codeEl.value, selectedPath);
   if (!loc) { showToast(t('toast.noSourceLocate')); return; }
-
   const code = codeEl.value;
   const escaped = esc(text);
   const childRe = new RegExp(`<${childTag}\\b[^>]*>([\\s\\S]*?)<\\/${childTag}>`, 'i');
-
   if (loc.isSelfClosing) {
     if (!text.trim()) return;
     const m = loc.tag.match(/^<([^\s>\/]+)/);
@@ -2962,7 +2703,6 @@ function commitChildText(el, childTag, text) {
     const openEnd = loc.start + loc.tag.length;
     const innerCode = code.slice(openEnd, closeStart);
     const m2 = innerCode.match(childRe);
-
     if (m2) {
       const newInner = text.trim()
         ? innerCode.replace(childRe, `<${childTag}>${escaped}</${childTag}>`)
@@ -2975,20 +2715,16 @@ function commitChildText(el, childTag, text) {
       return;
     }
   }
-
   invalidateLineOffsets();
   renderEditor();
   schedulePreviewRender();
   saveDraftDebounced();
   recordSnapshot();
 }
-
-/* ---- style 属性写入 ---- */
 function scheduleStyleCommit(el, name, value) {
   clearTimeout(attrCommitTimer);
   attrCommitTimer = setTimeout(() => commitStyleChange(el, name, value), 300);
 }
-
 function commitStyleChange(el, name, value) {
   if (!selectedPath) return;
   const loc = findTagOffsetByPath(codeEl.value, selectedPath);
@@ -3005,7 +2741,6 @@ function commitStyleChange(el, name, value) {
   recordSnapshot();
   setTimeout(() => { suppressAttrRebuild = false; }, 400);
 }
-
 function makeStyleRow(el, spec, isReadOnly) {
   const row = document.createElement('div');
   row.className = 'attr-row';
@@ -3015,15 +2750,12 @@ function makeStyleRow(el, spec, isReadOnly) {
   const _id = nextRowUid();
   label.htmlFor = _id;
   row.appendChild(label);
-
   const ctrl = document.createElement('div');
   ctrl.className = 'attr-row__control';
-
   let value = '';
   if (el.style) value = el.style.getPropertyValue(spec.name) || '';
   if (!value) value = el.getAttribute(spec.name) || '';
   if (!value) label.classList.add('attr-row__label--from-style');
-
   let input;
   if (spec.type === 'select') {
     input = document.createElement('select');
@@ -3045,45 +2777,32 @@ function makeStyleRow(el, spec, isReadOnly) {
     input.value = value;
     input.addEventListener('input', () => scheduleStyleCommit(el, spec.name, input.value));
   }
-
   if (isReadOnly) input.disabled = true;
   ctrl.appendChild(input);
   row.appendChild(ctrl);
   return row;
 }
-
-/* ---- 行 / 唯一 id ---- */
 let _rowUid = 0;
 const nextRowUid = () => 'attr-' + (++_rowUid);
-
-/* SMIL <animate> 可动画的 presentation attributes 白名单 */
 const SMIL_ANIMATABLE_ATTRS = new Set([
-  /* 几何 */
   'x', 'y', 'cx', 'cy', 'x1', 'y1', 'x2', 'y2',
   'width', 'height', 'rx', 'ry', 'r',
   'pathLength', 'dx', 'dy',
   'd', 'points',
-  /* 外观 */
   'fill', 'fill-opacity', 'fill-rule',
   'stroke', 'stroke-width', 'stroke-opacity',
   'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit',
   'stroke-dasharray', 'stroke-dashoffset',
   'opacity',
-  /* 引用 */
   'filter', 'clip-path', 'mask',
   'marker-start', 'marker-mid', 'marker-end',
-  /* 渲染 */
   'visibility', 'display',
-  /* 文本 */
   'font-family', 'font-size', 'font-weight', 'font-style',
   'text-anchor', 'letter-spacing', 'word-spacing',
   'dominant-baseline', 'alignment-baseline',
   'text-decoration', 'textLength', 'lengthAdjust',
-  /* 交互 */
   'pointer-events', 'cursor'
 ]);
-
-/* ---- 动画时间工具 ---- */
 function parseDuration(str) {
   if (!str) return 0;
   const m = String(str).match(/^([\d.]+)\s*(ms|s|min)?$/);
@@ -3094,12 +2813,10 @@ function parseDuration(str) {
   if (unit === 'min') return n * 60;
   return n;
 }
-
 function formatDuration(sec) {
   const v = Math.round(sec * 100) / 100;
   return v + 's';
 }
-
 function readCommonDur(el) {
   if (!el) return 2;
   const anims = el.querySelectorAll('animate, animateTransform, animateColor, set');
@@ -3114,7 +2831,6 @@ function readCommonDur(el) {
   }
   return maxEnd > 0 ? maxEnd : 2;
 }
-
 function findAnimateForField(el, fieldName) {
   if (!el) return null;
   for (const child of el.children) {
@@ -3124,12 +2840,9 @@ function findAnimateForField(el, fieldName) {
   }
   return null;
 }
-
-/* ---- 三列弹窗辅助 ---- */
 function readAnimToState(el, fieldName) {
   const baseVal = el ? (el.getAttribute(fieldName) || '') : '';
   const animate = el ? findAnimateForField(el, fieldName) : null;
-
   if (!animate) {
     const defaultEnd = readCommonDur(el) || 2;
     return {
@@ -3143,14 +2856,11 @@ function readAnimToState(el, fieldName) {
       middleFrames: []
     };
   }
-
   const begin = parseDuration(animate.getAttribute('begin'));
   const dur = parseDuration(animate.getAttribute('dur'));
   const end = begin + (dur > 0 ? dur : 2);
-
   const values = (animate.getAttribute('values') || '').split(';').filter(v => v !== '');
   const keyTimes = (animate.getAttribute('keyTimes') || '').split(';').map(parseFloat).filter(isFinite);
-
   const n = values.length;
   if (n === 0) {
     return {
@@ -3163,13 +2873,11 @@ function readAnimToState(el, fieldName) {
       middleFrames: []
     };
   }
-
   let kt = keyTimes;
   if (kt.length !== n) {
     kt = [];
     for (let i = 0; i < n; i++) kt.push(n === 1 ? 0 : i / (n - 1));
   }
-
   const middleFrames = [];
   for (let i = 1; i < n - 1; i++) {
     middleFrames.push({
@@ -3177,7 +2885,6 @@ function readAnimToState(el, fieldName) {
       value: values[i]
     });
   }
-
   return {
     fieldName,
     baseVal,
@@ -3189,7 +2896,6 @@ function readAnimToState(el, fieldName) {
     middleFrames
   };
 }
-
 function collectFramesFromState(state) {
   const frames = [{ time: state.beginTime, value: state.beginValue }];
   const sorted = [...state.middleFrames].sort((a, b) => a.time - b.time);
@@ -3201,20 +2907,17 @@ function collectFramesFromState(state) {
   frames.push({ time: state.endTime, value: state.endValue });
   return frames;
 }
-
 function writeAnimFromState(target, fieldName, state) {
   const begin = state.beginTime;
   const end = state.endTime;
   const dur = end - begin;
   if (dur <= 0) return false;
-
   const frames = collectFramesFromState(state);
   const values = frames.map(f => f.value);
   const keyTimes = frames.map(f => {
     const kt = (f.time - begin) / dur;
     return String(Math.round(kt * 1000) / 1000);
   });
-
   let animateEl = findAnimateForField(target, fieldName);
   if (!animateEl) {
     animateEl = document.createElementNS(SVG_NS, 'animate');
@@ -3222,7 +2925,6 @@ function writeAnimFromState(target, fieldName, state) {
     animateEl.setAttribute('repeatCount', 'indefinite');
     target.appendChild(animateEl);
   }
-
   animateEl.setAttribute('begin', formatDuration(begin));
   animateEl.setAttribute('dur', formatDuration(dur));
   animateEl.setAttribute('values', values.join(';'));
@@ -3232,8 +2934,6 @@ function writeAnimFromState(target, fieldName, state) {
   animateEl.removeAttribute('by');
   return true;
 }
-
-/* ---- 三列弹窗 ---- */
 function openFieldAnimDialog(el, fieldName) {
   if (!selectedPath) return;
   const state = readAnimToState(el, fieldName);
@@ -3244,13 +2944,11 @@ function openFieldAnimDialog(el, fieldName) {
   mask.innerHTML = `
     <div class="modal modal--field-anim" role="dialog" aria-modal="true" aria-labelledby="faTitle">
       <h3 id="faTitle" class="modal__title">${t('fieldAnim.title') || '设置字段动画'}：${fieldLabel}</h3>
-
       <div class="fa-timeline">
         <div class="fa-timeline-track">
           <div class="fa-timeline-thumb" style="left:0%"></div>
         </div>
       </div>
-
       <div class="fa-grid">
         <div class="fa-col">
           <div class="fa-col__title">${t('fieldAnim.start') || '开始'}</div>
@@ -3274,7 +2972,6 @@ function openFieldAnimDialog(el, fieldName) {
           <input class="modal__input" type="text" data-field="endValue" />
         </div>
       </div>
-
       <div class="modal__actions">
         <button class="btn btn--ghost" type="button" data-action="cancel">${t('btn.cancel')}</button>
         <button class="btn btn--primary" type="button" data-action="apply">${t('fieldAnim.confirm') || '确认'}</button>
@@ -3283,7 +2980,6 @@ function openFieldAnimDialog(el, fieldName) {
   `;
   document.body.appendChild(mask);
   const release = trapFocusIn(mask);
-
   const trackEl = mask.querySelector('.fa-timeline-track');
   const thumbEl = mask.querySelector('.fa-timeline-thumb');
   const beginTimeInput = mask.querySelector('[data-field="beginTime"]');
@@ -3292,14 +2988,12 @@ function openFieldAnimDialog(el, fieldName) {
   const currValueInput = mask.querySelector('[data-field="currentValue"]');
   const endTimeInput = mask.querySelector('[data-field="endTime"]');
   const endValueInput = mask.querySelector('[data-field="endValue"]');
-
   function findFrameAt(time) {
     for (let i = 0; i < state.middleFrames.length; i++) {
       if (Math.abs(state.middleFrames[i].time - time) < 0.01) return i;
     }
     return -1;
   }
-
   function renderDots() {
     trackEl.querySelectorAll('.fa-timeline-dot').forEach(d => d.remove());
     const dur = state.endTime - state.beginTime;
@@ -3326,19 +3020,16 @@ function openFieldAnimDialog(el, fieldName) {
       trackEl.appendChild(dot);
     }
   }
-
   function renderThumb() {
     const dur = state.endTime - state.beginTime;
     if (dur <= 0) return;
     const ratio = (state.currentTime - state.beginTime) / dur;
     thumbEl.style.left = (Math.max(0, Math.min(1, ratio)) * 100) + '%';
   }
-
   function renderCurrentColumn() {
     const isBegin = Math.abs(state.currentTime - state.beginTime) < 0.001;
     const isEnd = Math.abs(state.currentTime - state.endTime) < 0.001;
     currTimeInput.value = String(Math.round(state.currentTime * 100) / 100);
-
     if (isBegin) {
       currValueInput.value = state.beginValue;
       currValueInput.readOnly = true;
@@ -3355,7 +3046,6 @@ function openFieldAnimDialog(el, fieldName) {
       currValueInput.readOnly = false;
     }
   }
-
   function render() {
     beginTimeInput.value = String(Math.round(state.beginTime * 100) / 100);
     beginValueInput.value = state.beginValue;
@@ -3365,8 +3055,6 @@ function openFieldAnimDialog(el, fieldName) {
     renderDots();
     renderThumb();
   }
-
-  /* 拖拽 */
   let dragging = false;
   function updateFromX(clientX) {
     const rect = trackEl.getBoundingClientRect();
@@ -3386,7 +3074,6 @@ function openFieldAnimDialog(el, fieldName) {
     renderCurrentColumn();
     renderThumb();
   }
-
   thumbEl.addEventListener('pointerdown', (e) => {
     e.preventDefault();
     dragging = true;
@@ -3406,8 +3093,6 @@ function openFieldAnimDialog(el, fieldName) {
     if (e.target === thumbEl) return;
     updateFromX(e.clientX);
   });
-
-  /* 中列时间输入 */
   currTimeInput.addEventListener('change', () => {
     let v = parseFloat(currTimeInput.value);
     if (!isFinite(v)) { renderCurrentColumn(); return; }
@@ -3417,8 +3102,6 @@ function openFieldAnimDialog(el, fieldName) {
     renderCurrentColumn();
     renderThumb();
   });
-
-  /* 中列参数输入 */
   currValueInput.addEventListener('input', () => {
     if (currValueInput.readOnly) return;
     const v = currValueInput.value;
@@ -3426,7 +3109,6 @@ function openFieldAnimDialog(el, fieldName) {
     const isEdge = Math.abs(state.currentTime - state.beginTime) < 0.001
                 || Math.abs(state.currentTime - state.endTime) < 0.001;
     if (isEdge) return;
-
     if (v === '') {
       if (idx >= 0) {
         state.middleFrames.splice(idx, 1);
@@ -3441,8 +3123,6 @@ function openFieldAnimDialog(el, fieldName) {
       }
     }
   });
-
-  /* 左列时间 */
   beginTimeInput.addEventListener('change', () => {
     let v = parseFloat(beginTimeInput.value);
     if (!isFinite(v) || v < 0) { beginTimeInput.value = String(state.beginTime); return; }
@@ -3459,14 +3139,10 @@ function openFieldAnimDialog(el, fieldName) {
     }
     render();
   });
-
-  /* 左列参数 */
   beginValueInput.addEventListener('input', () => {
     state.beginValue = beginValueInput.value;
     renderCurrentColumn();
   });
-
-  /* 右列时间 */
   endTimeInput.addEventListener('change', () => {
     let v = parseFloat(endTimeInput.value);
     if (!isFinite(v) || v <= state.beginTime) {
@@ -3482,18 +3158,14 @@ function openFieldAnimDialog(el, fieldName) {
     }
     render();
   });
-
-  /* 右列参数 */
   endValueInput.addEventListener('input', () => {
     state.endValue = endValueInput.value;
     renderCurrentColumn();
   });
-
   const close = () => {
     if (release) release();
     if (mask.parentNode) mask.parentNode.removeChild(mask);
   };
-
   mask.querySelector('[data-action="cancel"]').addEventListener('click', close);
   mask.addEventListener('click', (e) => { if (e.target === mask) close(); });
   mask.querySelector('[data-action="apply"]').addEventListener('click', () => {
@@ -3510,10 +3182,8 @@ function openFieldAnimDialog(el, fieldName) {
     catch (err) { showToast(t('toast.parseFailed', { msg: err.message || '' })); return; }
     const target = resolvePath(svgRoot, selectedPath);
     if (!target) { showToast(t('toast.noSourceLocate')); return; }
-
     const ok = writeAnimFromState(target, fieldName, state);
     if (!ok) { showToast(t('fieldAnim.invalidRange') || '结束时间必须大于开始时间'); return; }
-
     codeEl.value = serializeSVG(svgRoot);
     currentSvg = svgRoot;
     invalidateLineOffsets();
@@ -3523,18 +3193,15 @@ function openFieldAnimDialog(el, fieldName) {
     recordSnapshot(true);
     close();
     showToast(t('fieldAnim.saved', { field: fieldName }) || `已设置 ${fieldName} 动画`);
-
     suppressAttrRebuild = true;
     setTimeout(() => {
       suppressAttrRebuild = false;
       if (attrPanelOpen && !canvasRootMode) rebuildAttrPanel();
     }, 120);
   });
-
   render();
 }
 
-/* ---- 行 ---- */
 function makeRow(el, spec, isReadOnly, isCanvas) {
   const row = document.createElement('div');
   row.className = 'attr-row';
@@ -3557,47 +3224,6 @@ function makeRow(el, spec, isReadOnly, isCanvas) {
   label.textContent = spec.labelKey ? t(spec.labelKey) : spec.name;
   const _id = nextRowUid();
   label.htmlFor = _id;
-
-/*
-  const animBuilder = getFieldAnimBuilder(spec.name);
-  if (animBuilder && !isReadOnly && !isCanvas && spec.type !== 'textarea') {
-    const addBtn = document.createElement('button');
-    addBtn.type = 'button';
-    addBtn.className = 'attr-row__anim-add';
-    addBtn.title = t('anim.addAnimFor', { field: spec.labelKey ? t(spec.labelKey) : spec.name });
-    addBtn.textContent = '+';
-    addBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      addFieldAnim(el, spec.labelKey ? t(spec.labelKey) : spec.name, animBuilder);
-    });
-    label.appendChild(addBtn);
-
-    const kfBtn = document.createElement('button');
-    kfBtn.type = 'button';
-    kfBtn.className = 'attr-row__kf-btn';
-    kfBtn.title = t('keyframe.addBtn') || '打关键帧';
-    kfBtn.textContent = '◆';
-    if (hasFieldAnim(el, spec.name)) kfBtn.classList.add('has-kf');
-    kfBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      openFieldAnimDialog(el, spec.name);
-    });
-    label.appendChild(kfBtn);
-
-    if (hasFieldAnim(el, spec.name)) {
-      const rmBtn = document.createElement('button');
-      rmBtn.type = 'button';
-      rmBtn.className = 'attr-row__anim-remove';
-      rmBtn.title = t('anim.removeAnim');
-      rmBtn.textContent = '−';
-      rmBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        removeFieldAnims(el, spec.name);
-      });
-      label.appendChild(rmBtn);
-    }
-  }
-  */
   const animBuilder = getFieldAnimBuilder(spec.name);
   const canAddPreset = !!animBuilder && spec.type !== 'textarea';
   const canKeyframe = SMIL_ANIMATABLE_ATTRS.has(spec.name);
@@ -3615,7 +3241,6 @@ function makeRow(el, spec, isReadOnly, isCanvas) {
       });
       label.appendChild(addBtn);
     }
-
     if (canKeyframe) {
       const kfBtn = document.createElement('button');
       kfBtn.type = 'button';
@@ -3629,7 +3254,6 @@ function makeRow(el, spec, isReadOnly, isCanvas) {
       });
       label.appendChild(kfBtn);
     }
-
     if (hasFieldAnim(el, spec.name) && (canAddPreset || canKeyframe)) {
       const rmBtn = document.createElement('button');
       rmBtn.type = 'button';
@@ -3643,7 +3267,6 @@ function makeRow(el, spec, isReadOnly, isCanvas) {
       label.appendChild(rmBtn);
     }
   }
-  
   row.appendChild(label);
   const ctrl = document.createElement('div');
   ctrl.className = 'attr-row__control';
@@ -3721,7 +3344,6 @@ function makeRow(el, spec, isReadOnly, isCanvas) {
         }
       });
     });
-
     wrap.appendChild(picker);
     wrap.appendChild(text);
     wrap.appendChild(toggle);
@@ -3787,7 +3409,6 @@ function makeRow(el, spec, isReadOnly, isCanvas) {
     });
     ctrl.appendChild(presetSel);
   }
-
   if (!isReadOnly && !isCanvas && spec.name === 'values' && spec.type === 'textarea') {
     const sliders = makeValuesSliders(el.getAttribute('values') || '', (newVal) => {
       commitAttrChange(el, 'values', newVal);
@@ -3802,7 +3423,6 @@ function makeRow(el, spec, isReadOnly, isCanvas) {
   }
   return row;
 }
-
 function collectDefsIds(tagName) {
   if (!currentSvg) return [];
   const ids = [];
@@ -3812,8 +3432,6 @@ function collectDefsIds(tagName) {
   });
   return ids;
 }
-
-/* ---- onCreate 分发映射 ---- */
 const REF_ONCREATE_HANDLERS = {
   filter: (targetEl, attrName) => {
     openFilterEditor({ mode: 'create', targetPath: [...selectedPath], targetAttr: attrName });
@@ -3822,7 +3440,6 @@ const REF_ONCREATE_HANDLERS = {
     openMarkerPicker(anchorBtn, [...selectedPath], attrName);
   }
 };
-
 function makeRefRow(el, spec, isReadOnly, isCanvas) {
   const row = document.createElement('div');
   row.className = 'attr-row';
@@ -3835,7 +3452,6 @@ function makeRefRow(el, spec, isReadOnly, isCanvas) {
   const ctrl = document.createElement('div');
   ctrl.className = 'attr-row__control';
   if (spec.onCreate) ctrl.classList.add('attr-row__control--with-extra');
-
   const targetEl = isCanvas ? currentSvg : el;
   const value = targetEl.getAttribute(spec.name) || '';
   const m = value.match(/url\(#([^)]+)\)/);
@@ -3884,7 +3500,6 @@ function makeRefRow(el, spec, isReadOnly, isCanvas) {
   row.appendChild(ctrl);
   return row;
 }
-
 function makeStructureGroup(el, isReadOnly) {
   const group = document.createElement('div');
   group.className = 'attr-group';
@@ -3924,18 +3539,14 @@ function makeStructureGroup(el, isReadOnly) {
   pasteAttrBtn.title = t('btn.pasteAttrTitle');
   pasteAttrBtn.disabled = isReadOnly || !attrClipboard;
   pasteAttrBtn.addEventListener('click', () => pasteElementAttrs(el));
-
   items.appendChild(dupBtn);
   items.appendChild(delBtn);
   items.appendChild(copyAttrBtn);
   items.appendChild(pasteAttrBtn);
-
   group.appendChild(tEl);
   group.appendChild(items);
   return group;
 }
-
-/* ---- 变换组 ---- */
 const TRANSFORM_ANIM_BUILDERS = {
   'translate-tx': () => `<animateTransform attributeName="transform" type="translate" values="0,0;20,0;0,0" dur="2s" repeatCount="indefinite"/>`,
   'translate-ty': () => `<animateTransform attributeName="transform" type="translate" values="0,0;0,20;0,0" dur="2s" repeatCount="indefinite"/>`,
@@ -3945,7 +3556,6 @@ const TRANSFORM_ANIM_BUILDERS = {
   },
   'scale': () => `<animateTransform attributeName="transform" type="scale" values="1;1.2;1" dur="2s" repeatCount="indefinite"/>`
 };
-
 function makeTransformGroup(el, isReadOnly) {
   const g = document.createElement('div');
   g.className = 'attr-group';
@@ -3968,14 +3578,12 @@ function makeTransformGroup(el, isReadOnly) {
     skewY: parsed.skewY,
     extra: parsed.extra
   };
-
   if (parsed.matrix) {
     const notice = document.createElement('div');
     notice.style.cssText = 'grid-column:1 / -1;font-size:11px;color:#b45309;background:rgba(245,158,11,.08);padding:6px 8px;border-radius:4px;line-height:1.4;word-break:break-all;';
     notice.textContent = `matrix(${parsed.matrix})`;
     items.appendChild(notice);
   }
-
   CONFIG.transformSpecs.forEach(spec => {
     const row = document.createElement('div');
     row.className = 'attr-row';
@@ -3998,7 +3606,6 @@ function makeTransformGroup(el, isReadOnly) {
       label.appendChild(addBtn);
     }
     row.appendChild(label);
-
     const ctrl = document.createElement('div');
     ctrl.className = 'attr-row__control';
     const input = document.createElement('input');
@@ -4053,7 +3660,6 @@ function makeTransformGroup(el, isReadOnly) {
   g.appendChild(items);
   return g;
 }
-
 function scheduleTransformCommit(el, values, center) {
   clearTimeout(attrCommitTimer);
   attrCommitTimer = setTimeout(() => commitTransform(el, values, center), 300);
@@ -4075,8 +3681,6 @@ function commitTransform(el, values, center) {
   recordSnapshot();
   setTimeout(() => { suppressAttrRebuild = false; }, 400);
 }
-
-/* ---- 位置属性 / 动画规格 ---- */
 function getPosAttrs(tag) {
   const list = (CONFIG && CONFIG.posAttrs && CONFIG.posAttrs[tag]) || [];
   if (list.length === 0) return [];
@@ -4087,12 +3691,9 @@ function getPosAttrs(tag) {
   }
   return attrs;
 }
-
 function getAnimSpecs() {
   return (CONFIG && CONFIG.animSpecs) || [];
 }
-
-/* ---- 动画值解析 ---- */
 function parseAnimValueList(str) {
   if (!str) return [];
   return str.split(';').map(s => s.trim()).filter(Boolean);
@@ -4244,7 +3845,6 @@ function makeValuesSliders(valuesStr, onCommit) {
   }
   return wrap;
 }
-
 function makeFromToSliders(el, fieldName, onCommit) {
   const wrap = document.createElement('div');
   wrap.className = 'attr-sliders-wrap attr-sliders-wrap--fromto';
@@ -4311,7 +3911,6 @@ function makeFromToSliders(el, fieldName, onCommit) {
   }
   return null;
 }
-
 function scheduleAttrCommit(el, name, value) {
   clearTimeout(attrCommitTimer);
   attrCommitTimer = setTimeout(() => commitAttrChange(el, name, value), 300);
@@ -4411,10 +4010,6 @@ function locateSelectedInSource() {
   syncScroll();
   updateCurrentLineHighlight();
 }
-
-/* ============================================================
-   26. 属性面板：画布模式
-   ============================================================ */
 function rebuildCanvasAttrPanel() {
   if (!currentSvg) { clearSelection(); return; }
   closeAnimAddMenu();
@@ -4431,7 +4026,6 @@ function rebuildCanvasAttrPanel() {
   attrPanelBody.appendChild(makeCanvasBackgroundGroup(isReadOnly));
   attrPanel.dataset.readonly = isReadOnly ? '1' : '';
 }
-
 function makeViewBoxGroup(isReadOnly) {
   const g = document.createElement('div');
   g.className = 'attr-group';
@@ -4496,7 +4090,6 @@ function makeViewBoxGroup(isReadOnly) {
   g.appendChild(items);
   return g;
 }
-
 function makeCanvasSizeGroup(isReadOnly) {
   const g = document.createElement('div');
   g.className = 'attr-group';
@@ -4530,7 +4123,6 @@ function makeCanvasSizeGroup(isReadOnly) {
   wCtrl.appendChild(wInput);
   wRow.appendChild(wCtrl);
   items.appendChild(wRow);
-
   const hRow = document.createElement('div');
   hRow.className = 'attr-row';
   const hLabel = document.createElement('label');
@@ -4553,7 +4145,6 @@ function makeCanvasSizeGroup(isReadOnly) {
   hCtrl.appendChild(hInput);
   hRow.appendChild(hCtrl);
   items.appendChild(hRow);
-
   if (!isReadOnly) {
     const presetsWrap = document.createElement('div');
     presetsWrap.className = 'attr-group__presets';
@@ -4600,7 +4191,6 @@ function makeCanvasSizeGroup(isReadOnly) {
   g.appendChild(items);
   return g;
 }
-
 function commitCanvasSize(minX, minY, newW, newH) {
   const loc = findRootSvgTag(codeEl.value);
   if (!loc) { showToast(t('toast.noSourceLocate')); return; }
@@ -4620,9 +4210,7 @@ function commitCanvasSize(minX, minY, newW, newH) {
   newOpenTag = patchAttrInTag(newOpenTag, 'height', String(newH));
   if (newOpenTag === oldOpenTag) return;
   codeEl.value = codeEl.value.slice(0, loc.openStart) + newOpenTag + codeEl.value.slice(loc.openEnd);
-
   syncBackgroundRectTo(newMinX, newMinY, newW, newH);
-
   isFitMode = false;
   invalidateLineOffsets();
   renderEditor();
@@ -4706,7 +4294,6 @@ function commitCanvasAttr(name, value) {
   saveDraftDebounced();
   recordSnapshot();
 }
-
 function computePresetSize(preset, curW, curH) {
   if (preset.mode === 'fixed') {
     return { w: preset.width, h: preset.height };
@@ -4723,7 +4310,6 @@ function computePresetSize(preset, curW, curH) {
   }
   return null;
 }
-
 function getCurrentBackgroundRect(svg) {
   if (!svg) return null;
   for (const child of svg.children) {
@@ -4733,7 +4319,6 @@ function getCurrentBackgroundRect(svg) {
   }
   return null;
 }
-
 function getCanvasViewBoxSize(svg) {
   const vbAttr = svg.getAttribute('viewBox') || '';
   const p = vbAttr.trim().split(/[\s,]+/).map(Number);
@@ -4744,7 +4329,6 @@ function getCanvasViewBoxSize(svg) {
   const h = parseLength(svg.getAttribute('height')) || 600;
   return { x: 0, y: 0, w, h };
 }
-
 function syncBackgroundRectTo(x, y, w, h) {
   const rectRegex = /<rect\b[^>]*\bdata-editor-bg\s*=\s*["']1["'][^>]*>/i;
   const m = codeEl.value.match(rectRegex);
@@ -4759,7 +4343,6 @@ function syncBackgroundRectTo(x, y, w, h) {
     codeEl.value = codeEl.value.replace(rectRegex, patched);
   }
 }
-
 function commitCanvasBackground(color) {
   let svgRoot;
   try { svgRoot = parseSVG(codeEl.value); }
@@ -4871,9 +4454,6 @@ function makeCanvasBackgroundGroup(isReadOnly) {
   return g;
 }
 
-/* ============================================================
-   27. 源码定位（路径↔偏移）
-   ============================================================ */
 function findTagOffsetByPath(code, path) {
   if (!path || path.length === 0) return null;
   const len = code.length;
@@ -4934,7 +4514,6 @@ function findTagOffsetByPath(code, path) {
   }
   return null;
 }
-
 function skipElementContent(code, startPos, openTag) {
   const m = openTag.match(/^<([^\s>\/]+)/);
   if (!m) return -1;
@@ -4965,7 +4544,6 @@ function skipElementContent(code, startPos, openTag) {
   }
   return depth === 0 ? i : -1;
 }
-
 function findRootSvgTag(code) {
   const len = code.length;
   let i = 0;
@@ -4991,13 +4569,11 @@ function findRootSvgTag(code) {
   }
   return null;
 }
-
 function escapeReg(s) { return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
 function escapeAttr(v) {
   return String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;')
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
-
 function patchAttrInTag(tag, name, value) {
   if (value == null || value === '') return removeAttrInTag(tag, name);
   const lower = name.toLowerCase();
@@ -5013,8 +4589,6 @@ function removeAttrInTag(tag, name) {
   const re = new RegExp('\\s' + escapeReg(lower) + '\\s*=\\s*("[^"]*"|\'[^\']*\')', 'i');
   return tag.replace(re, '');
 }
-
-/* ---- 阶段 1：style 属性补丁 ---- */
 function setCSSProp(styleStr, name, value) {
   const parts = styleStr.split(';').map(s => s.trim()).filter(Boolean);
   const map = {};
@@ -5039,7 +4613,6 @@ function setCSSProp(styleStr, name, value) {
   }
   return order.map(k => `${k}: ${map[k]}`).join('; ');
 }
-
 function patchStyleInTag(tag, name, value) {
   const cssName = name.toLowerCase();
   const styleRe = /\sstyle\s*=\s*("([^"]*)"|'([^']*)')/i;
@@ -5087,14 +4660,9 @@ function resolvePath(root, path) {
   return cur;
 }
 
-/* ============================================================
-   28. 元素选中 / 高亮框
-   ============================================================ */
 const ANIM_TAGS = new Set(['animate', 'animatetransform', 'animatemotion', 'animatecolor', 'set']);
 let animAddMenuEl = null;
 let overlayRafId = 0;
-
-/* 高亮框：每次重建，无跨帧缓存状态 */
 function applySelectionOutline(el) {
   if (!selectionOverlayEl) return;
   selectionOverlayEl.innerHTML = '';
@@ -5107,11 +4675,9 @@ function applySelectionOutline(el) {
   } else if (el === canvasEl.firstElementChild) {
     return;
   }
-
   let bbox;
   try { bbox = targetEl.getBoundingClientRect(); } catch (_) { return; }
   if (!bbox || bbox.width === 0 || bbox.height === 0) return;
-
   const stageRect = stageEl.getBoundingClientRect();
   const pad = 3;
   const box = document.createElement('div');
@@ -5122,9 +4688,6 @@ function applySelectionOutline(el) {
   box.style.height = (bbox.height + pad * 2) + 'px';
   selectionOverlayEl.appendChild(box);
 }
-
-/* 用 canvas 里可见元素解析路径：
-   currentSvg 是 parseSVG 解析出的游离副本，getBoundingClientRect() 恒返回 0 */
 function refreshSelectionOverlay() {
   if (!selectionOverlayEl) return;
   if (!selectedPath || !currentSvg) { selectionOverlayEl.innerHTML = ''; return; }
@@ -5133,8 +4696,6 @@ function refreshSelectionOverlay() {
   if (el) applySelectionOutline(el);
   else selectionOverlayEl.innerHTML = '';
 }
-
-/* 纯 rAF 合并：同帧多次调用只刷新一次 */
 function scheduleRefreshSelectionOverlay() {
   if (!selectionOverlayEl) return;
   if (overlayRafId) return;
@@ -5143,13 +4704,8 @@ function scheduleRefreshSelectionOverlay() {
     refreshSelectionOverlay();
   });
 }
-
-/* 选中身份校验（用于 renderPreview 恢复选中时检测路径是否已失配） */
 let _selectedElementTag = null;
 let _selectedElementId  = null;
-
-/* 选中元素：先切布局再同步绘制
-   getBoundingClientRect() 会强制 reflow，读到的是 openAttrPanel 后的新坐标 */
 function selectElement(el) {
   if (!el || el === canvasEl.firstElementChild) return;
   const path = getElementPath(el);
@@ -5162,7 +4718,6 @@ function selectElement(el) {
   openAttrPanel();
   applySelectionOutline(el);
 }
-
 function clearSelection() {
   selectedPath = null;
   _selectedElementTag = null;
@@ -5173,11 +4728,6 @@ function clearSelection() {
   closeAttrPanel();
 }
 
-/* ============================================================
-   29. 动画管理
-   ============================================================ */
-
-/* ---- 预设动画模板 ---- */
 const ANIM_TEMPLATES = [
   { id: 'fade',
     build: () => `<animate attributeName="opacity" values="1;0;1" dur="2s" repeatCount="indefinite"/>` },
@@ -5201,8 +4751,6 @@ const ANIM_TEMPLATES = [
   { id: 'custom', isCustom: true,
     build: () => `<animate attributeName="" dur="2s" repeatCount="indefinite"/>` }
 ];
-
-/* ---- 字段动画：底层工具 ---- */
 function buildValuePulseAnim(attrName, currentVal, delta) {
   const v = parseFloat(currentVal);
   const base = isFinite(v) ? v : 0;
@@ -5221,8 +4769,6 @@ function buildColorLoopAnim(attrName) {
 function buildOpacityPulseAnim(attrName) {
   return `<animate attributeName="${attrName}" values="1;0.3;1" dur="2s" repeatCount="indefinite"/>`;
 }
-
-/* ---- 字段动画：kind → 生成函数 ---- */
 const FIELD_ANIM_KIND_BUILDERS = {
   valuePulse:   (el, name, spec) => buildValuePulseAnim(name, el.getAttribute(name) || 0, spec.delta || 20),
   scalePulse:   (el, name, spec) => buildScalePulseAnim(name, el.getAttribute(name) || 100, spec.factor || 1.3),
@@ -5239,8 +4785,6 @@ function getFieldAnimBuilder(fieldName) {
   if (!kindBuilder) return null;
   return (el) => kindBuilder(el, fieldName, spec);
 }
-
-/* 兼容层：JS-25 通过 FIELD_ANIM_MAP[spec.name] 引用 */
 const FIELD_ANIM_MAP = new Proxy({}, {
   get(_, name) {
     return getFieldAnimBuilder(name) || undefined;
@@ -5249,8 +4793,6 @@ const FIELD_ANIM_MAP = new Proxy({}, {
     return !!(CONFIG && CONFIG.fieldAnims && CONFIG.fieldAnims[name]);
   }
 });
-
-/* ---- 预设动画模板：kind + attrs → 标签字符串 ---- */
 function buildAnimTag(kind, attrs) {
   const esc = v => String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
   const attrStr = Object.entries(attrs || {})
@@ -5277,15 +4819,12 @@ function buildAnimFromSpec(templateId, el) {
 function getAnimTemplateIds() {
   return (CONFIG && CONFIG.animTemplates && CONFIG.animTemplates.order) || [];
 }
-
 function isCustomAnimTemplate(id) {
   const templates = CONFIG && CONFIG.animTemplates;
   if (!templates || !templates.builders) return false;
   const spec = templates.builders[id];
   return !!(spec && spec.isCustom);
 }
-
-/* ---- 元素中心（供旋转类动画计算） ---- */
 function getElementCenter(el) {
   if (!el) return { x: 50, y: 50 };
   const tag = el.localName;
@@ -5301,8 +4840,6 @@ function getElementCenter(el) {
   }
   return { x: 50, y: 50 };
 }
-
-/* ---- 动画存在性检测 ---- */
 function hasFieldAnim(el, fieldName) {
   if (!el || !fieldName) return false;
   const anims = el.querySelectorAll('animate, animateTransform, animateColor, set');
@@ -5323,8 +4860,6 @@ function hasAnyAnim(el) {
   if (!el) return false;
   return el.querySelector('animate, animateTransform, animateMotion, animateColor, set') !== null;
 }
-
-/* ---- 删除动画 ---- */
 function removeFieldAnims(el, fieldName) {
   if (!selectedPath || !el) return;
   const loc = findTagOffsetByPath(codeEl.value, selectedPath);
@@ -5399,8 +4934,6 @@ function removeAllAnimsOfElement(el) {
   rebuildAttrPanel();
   showToast(t('anim.deleteAllAnims'));
 }
-
-/* ---- 变换解析 / 构建 ---- */
 function parseTransform(str) {
   const result = { tx: 0, ty: 0, rot: 0, rotCx: null, rotCy: null, scale: 1, skewX: 0, skewY: 0, matrix: null, extra: '' };
   if (!str) return result;
@@ -5458,8 +4991,6 @@ function buildTransform(v, defaultCx, defaultCy) {
   if (v.extra) parts.push(v.extra);
   return parts.join(' ');
 }
-
-/* ---- 动画插入 ---- */
 function insertAnimChild(parentPath, animMarkup) {
   const loc = findTagOffsetByPath(codeEl.value, parentPath);
   if (!loc) return false;
@@ -5501,7 +5032,6 @@ function insertAnimChild(parentPath, animMarkup) {
   }
   return true;
 }
-
 function addAnimTemplate(templateId) {
   if (!selectedPath || !currentSvg) return;
   const el = resolvePath(currentSvg, selectedPath);
@@ -5575,8 +5105,6 @@ function addFieldAnim(el, fieldName, animBuilder) {
   rebuildAttrPanel();
   showToast(t('anim.addedToField', { field: fieldName }));
 }
-
-/* ---- 预设动画添加菜单 ---- */
 function showAnimAddMenu(anchorEl) {
   closeAnimAddMenu();
   const menu = document.createElement('div');
@@ -5591,7 +5119,6 @@ function showAnimAddMenu(anchorEl) {
     });
     menu.appendChild(btn);
   });
-
   document.body.appendChild(menu);
 
   const rect = anchorEl.getBoundingClientRect();
@@ -5622,8 +5149,6 @@ function closeAnimAddMenu() {
   }
   animAddMenuEl = null;
 }
-
-/* ---- 属性面板开关 ---- */
 function openAttrPanel() {
   closeFindPanel();
   closeAllMenus();
@@ -5647,12 +5172,8 @@ function closeAttrPanel() {
     mobileView = 'code';
   }
 }
-
-/* ---- 属性面板主入口 ---- */
 function rebuildAttrPanel() {
   if (!attrPanelOpen) return;
-
-  // Safari 焦点保护：用户正在面板内输入时，跳过重建
   const activeEl = document.activeElement;
   if (activeEl && attrPanelBody.contains(activeEl) &&
       (activeEl.tagName === 'INPUT' ||
@@ -5660,7 +5181,6 @@ function rebuildAttrPanel() {
        activeEl.tagName === 'SELECT')) {
     return;
   }
-
   if (canvasRootMode) {
     rebuildCanvasAttrPanel();
     return;
@@ -5727,15 +5247,12 @@ function rebuildAttrPanel() {
         });
         wrap.appendChild(reconfigBtn);
       }
-
       attrPanelBody.appendChild(wrap);
     }
-
     if (/url\(#clip-/.test(clipAttr)) {
       attrPanelBody.appendChild(makeImageClipShapeGroup(el, isReadOnly));
     }
   }
-
   if (isAnim) {
     if (selectedPath && selectedPath.length > 0) {
       const animGroup = makeGroup(t('group.animation'), getAnimSpecs().map(a => makeRow(el, a, isReadOnly, false)));
@@ -5960,11 +5477,6 @@ attrPanelCanvasBtn.addEventListener('click', () => {
   }
 });
 
-/* ============================================================
-   30. 图片插入
-   ============================================================ */
-
-/* 裁剪形状生成辅助 */
 function polygonPoints(cx, cy, rx, ry, n) {
   const pts = [];
   for (let i = 0; i < n; i++) {
@@ -6039,7 +5551,6 @@ function buildShapeElement(shape, x, y, w, h, params) {
   }
   return null;
 }
-
 async function loadImageForConfig(file) {
   if (!file) return;
   if (!/^image\/(png|jpeg)$/.test(file.type)) {
@@ -6080,7 +5591,6 @@ async function loadImageForConfig(file) {
   imageImportState.compress = true;
   openImageConfigModal();
 }
-
 function computeImageBox() {
   const { originalW, originalH, ratio, customW, customH, insertMode } = imageImportState;
   let L = 0;
@@ -6308,7 +5818,6 @@ function appendImageToSource(defsStr, imageStr) {
       });
     }
   }
-
   const tmpImgDoc = new DOMParser().parseFromString(
     `<svg xmlns="${SVG_NS_L}">${imageStr}</svg>`, 'image/svg+xml'
   );
@@ -6318,7 +5827,6 @@ function appendImageToSource(defsStr, imageStr) {
   return formatXML(serializeSVG(clone));
 }
 
-/* ---- 图片裁剪形状切换 ---- */
 function readImageClipShape(imageEl) {
   if (!imageEl || imageEl.localName !== 'image') return null;
   const clipAttr = imageEl.getAttribute('clip-path') || '';
@@ -6374,7 +5882,6 @@ function updateImageClipShape(newShape, params) {
     showToast(t('clipShape.clipRemoved'));
     return;
   }
-
   const x = parseFloat(imageEl.getAttribute('x')) || 0;
   const y = parseFloat(imageEl.getAttribute('y')) || 0;
   const w = parseFloat(imageEl.getAttribute('width')) || 0;
@@ -6388,7 +5895,6 @@ function updateImageClipShape(newShape, params) {
   if (existingClipId) {
     clipPathEl = svgRoot.querySelector(`clipPath[id="${existingClipId}"]`);
   }
-
   if (!clipPathEl) {
     const newId = 'clip-' + Math.random().toString(36).slice(2, 10);
     imageEl.setAttribute('clip-path', `url(#${newId})`);
@@ -6410,7 +5916,6 @@ function updateImageClipShape(newShape, params) {
 
   writeBackSvg(svgRoot, needRebuildPanel);
 }
-
 function writeBackSvg(svgRoot, rebuildNow) {
   codeEl.value = serializeSVG(svgRoot);
   invalidateLineOffsets();
@@ -6489,12 +5994,10 @@ function makeImageClipShapeGroup(el, isReadOnly) {
       updateImageClipShape('star', { points: current.params.points, ratio: Math.max(0.1, Math.min(0.9, v)) });
     }, 0.05));
   }
-
   g.appendChild(tEl);
   g.appendChild(items);
   return g;
 }
-
 function makeClipShapeParamRow(labelText, value, isReadOnly, onChange, step) {
   const row = document.createElement('div');
   row.className = 'attr-row attr-row--full';
@@ -6529,7 +6032,6 @@ function makeClipShapeParamRow(labelText, value, isReadOnly, onChange, step) {
   row.appendChild(ctrl);
   return row;
 }
-
 imageFileInput.addEventListener('change', e => {
   const f = e.target.files?.[0];
   e.target.value = '';
@@ -6572,9 +6074,6 @@ imageConfigMask.addEventListener('click', e => {
   if (e.target === imageConfigMask) closeImageConfigModal();
 });
 
-/* ============================================================
-   31. 移动端视图
-   ============================================================ */
 function setMobileView(view) {
   if (!isMobileViewport()) return;
   if (view === 'attr' && !attrPanelOpen) return;
@@ -6589,9 +6088,6 @@ function setMobileView(view) {
   scheduleRefreshSelectionOverlay();
 }
 
-/* ============================================================
-   32. 焦点陷阱（模态可访问性）
-   ============================================================ */
 function trapFocusIn(container, opts) {
   const { autoFocus = false } = opts || {};
   const prev = document.activeElement;
@@ -6624,9 +6120,6 @@ function trapFocusIn(container, opts) {
   };
 }
 
-/* ============================================================
-   33. 启动初始化
-   ============================================================ */
 (function detectScrollbarWidth() {
   const div = document.createElement('div');
   div.style.cssText = 'width:100px;height:100px;overflow:scroll;position:absolute;top:-9999px;left:0;';
@@ -6654,8 +6147,6 @@ if (window.visualViewport) {
   };
   window.visualViewport.addEventListener('resize', onVVResize);
 }
-
-  // 1. 加载外部资源
 (function setupPreventPageZoom() {
   const isPreviewTarget = (target) =>
     !!(target && target.closest && target.closest('#previewWrap'));
@@ -6668,15 +6159,10 @@ if (window.visualViewport) {
   document.addEventListener('gestureend',    preventGesture, { passive: false });
 })();
 (async function bootstrap() {
-  // 1. 加载外部资源
   await loadContentAndConfig();
-
-  // 2. 应用 i18n 与主题
   applyI18n();
   applyTheme(loadSavedTheme());
   setupThemeWatcher();
-
-  // 3. 初始化编辑器内容
   const draft = loadDraft();
   codeEl.value = draft || getExampleCode();
   setPreviewBg('checker');
@@ -6685,18 +6171,12 @@ if (window.visualViewport) {
   renderPreview();
   applySplit();
   updateUndoRedoMenu();
-
-  // 4. 资源加载失败提示
   if (!contentLoaded) {
-    showToast('资源加载失败，部分功能受限（请确认 content.json / config.json 可访问）');
+    showToast('资源加载失败，部分功能受限（请确认 json可访问）');
   }
 })();
 
-/* ============================================================
-   34. 属性复制 / 粘贴
-   ============================================================ */
 let attrClipboard = null;
-
 function isExcludedAttrForPaste(name) {
   const n = name.toLowerCase();
   if (n === 'id' || n === 'class') return true;
@@ -6708,7 +6188,6 @@ function isExcludedAttrForPaste(name) {
   if (n.startsWith('xlink:')) return true;
   return false;
 }
-
 function copyElementAttrs(el) {
   if (!el) return;
   const attrs = {};
@@ -6768,17 +6247,12 @@ function updatePasteButtonState() {
   });
 }
 
-/* ============================================================
-   35. 颜色下拉 popover
-   ============================================================ */
 let colorPopoverEl = null;
 let colorPopoverOutsideClick = null;
 let popoverContext = { targetPath: null, targetAttr: null };
-
 function setPopoverContext(path, attr) {
   popoverContext = { targetPath: path ? [...path] : null, targetAttr: attr || null };
 }
-
 function getRecentColors() {
   try {
     const s = localStorage.getItem(RECENT_COLORS_KEY);
@@ -6840,8 +6314,6 @@ function openColorPopover(anchorEl, currentValue, onSelect) {
     presetsSec.appendChild(presetsGrid);
     pop.appendChild(presetsSec);
   }
-
-  /* 最近 */
   const recent = getRecentColors();
   if (recent.length > 0) {
     const recentSec = document.createElement('div');
@@ -6868,8 +6340,6 @@ function openColorPopover(anchorEl, currentValue, onSelect) {
     recentSec.appendChild(recentGrid);
     pop.appendChild(recentSec);
   }
-
-  /* 引用 */
   const refs = collectPaintRefs();
   if (refs.length > 0) {
     const refSec = document.createElement('div');
@@ -6894,8 +6364,6 @@ function openColorPopover(anchorEl, currentValue, onSelect) {
     refSec.appendChild(refList);
     pop.appendChild(refSec);
   }
-
-  /* 关键词 */
   const kwSec = document.createElement('div');
   kwSec.className = 'color-popover__section';
   ['none', 'currentColor'].forEach(v => {
@@ -6910,8 +6378,6 @@ function openColorPopover(anchorEl, currentValue, onSelect) {
     kwSec.appendChild(btn);
   });
   pop.appendChild(kwSec);
-
-  /* 新建渐变 */
   const gradSec = document.createElement('div');
   gradSec.className = 'color-popover__section';
   [
@@ -6934,10 +6400,7 @@ function openColorPopover(anchorEl, currentValue, onSelect) {
     gradSec.appendChild(btn);
   });
   pop.appendChild(gradSec);
-
   document.body.appendChild(pop);
-
-  /* 定位 */
   const rect = anchorEl.getBoundingClientRect();
   const popRect = pop.getBoundingClientRect();
   const vw = window.innerWidth;
@@ -6952,9 +6415,7 @@ function openColorPopover(anchorEl, currentValue, onSelect) {
   }
   pop.style.left = left + 'px';
   pop.style.top = top + 'px';
-
   colorPopoverEl = pop;
-
   colorPopoverOutsideClick = (e) => {
     if (!pop.contains(e.target) && e.target !== anchorEl && !anchorEl.contains(e.target)) {
       closeColorPopover();
@@ -6976,9 +6437,6 @@ function closeColorPopover() {
   }
 }
 
-/* ============================================================
-   36. 渐变编辑器
-   ============================================================ */
 const SVG_NS = 'http://www.w3.org/2000/svg';
 let gradientEditorMask = null;
 
@@ -6990,7 +6448,6 @@ function findGradientInSvg(svgRoot, id) {
   }
   return null;
 }
-
 function parseGradientStops(gEl) {
   const stops = [];
   Array.from(gEl.children).forEach(child => {
@@ -7006,7 +6463,6 @@ function parseGradientStops(gEl) {
   });
   return stops;
 }
-
 function openGradientEditor(opts) {
   const mode = opts.mode || 'create';
   let type = opts.type || 'linear';
@@ -7176,7 +6632,6 @@ function openGradientEditor(opts) {
       });
     });
   }
-
   function renderStops() {
     stopsEl.innerHTML = '';
     stops.forEach((stop, i) => {
@@ -7226,7 +6681,6 @@ function openGradientEditor(opts) {
         renderStops();
         renderPreview();
       });
-
       row.appendChild(offInput);
       row.appendChild(colInput);
       row.appendChild(opInput);
@@ -7362,24 +6816,16 @@ function applyGradient(opts) {
   showToast(mode === 'edit' ? t('gradientEditor.updated') : t('gradientEditor.created'));
 }
 
-/* JS-37 滤镜编辑器 | 数据驱动：FILTER_PRIMITIVE_DEFS 改为读 CONFIG.filterPrimitives；菜单从 CONFIG.filterPrimitives.order 生成 */
-/* ============================================================
-   37. 滤镜编辑器
-   ============================================================ */
 let filterEditorMask = null;
-
-/* 原语规格访问器 */
 function getFilterPrimDef(type) {
   const fp = CONFIG && CONFIG.filterPrimitives;
   if (!fp || !fp.defs) return null;
   return fp.defs[type] || null;
 }
-
 function getFilterPrimOrder() {
   const fp = CONFIG && CONFIG.filterPrimitives;
   return (fp && fp.order) || [];
 }
-
 function createDefaultPrimAttrs(type) {
   const def = getFilterPrimDef(type);
   if (!def) return {};
@@ -7389,7 +6835,6 @@ function createDefaultPrimAttrs(type) {
   });
   return attrs;
 }
-
 function parseFilterPrimitives(filterEl) {
   const result = [];
   Array.from(filterEl.children).forEach(child => {
@@ -7408,7 +6853,6 @@ function parseFilterPrimitives(filterEl) {
   });
   return result;
 }
-
 function primitiveToMarkup(prim) {
   const { type, attrs } = prim;
   const localEsc = (v) => String(v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
@@ -7423,7 +6867,6 @@ function primitiveToMarkup(prim) {
     .map(([k, v]) => `${k}="${localEsc(v)}"`).join(' ');
   return attrStr ? `<${type} ${attrStr}/>` : `<${type}/>`;
 }
-
 function buildFilterSvg(prims, filterAttrs) {
   const x  = filterAttrs.x || '-10%';
   const y  = filterAttrs.y || '-10%';
@@ -7443,7 +6886,6 @@ function buildFilterSvg(prims, filterAttrs) {
     </svg>
   `;
 }
-
 function openFilterEditor(opts) {
   const mode = opts.mode || 'create';
   let existingId = opts.existingId || '';
@@ -7463,14 +6905,12 @@ function openFilterEditor(opts) {
       });
     }
   }
-
   if (prims.length === 0 && mode === 'create') {
     const firstType = getFilterPrimOrder()[0];
     if (firstType) {
       prims = [{ type: firstType, attrs: createDefaultPrimAttrs(firstType) }];
     }
   }
-
   const mask = document.createElement('div');
   mask.className = 'modal-mask';
   mask.innerHTML = `
@@ -7520,11 +6960,9 @@ function openFilterEditor(opts) {
   `;
   document.body.appendChild(mask);
   let _releaseFilterTrap = trapFocusIn(mask);
-
   const modal = mask.querySelector('.modal');
   const previewEl = modal.querySelector('.filter-editor__preview');
   const primsEl = modal.querySelector('.filter-editor__prims');
-
   function renderPreview() { previewEl.innerHTML = buildFilterSvg(prims, filterAttrs); }
 
   function renderPrims() {
@@ -7607,7 +7045,6 @@ function openFilterEditor(opts) {
 
   renderPrims();
   renderPreview();
-
   modal.querySelectorAll('[data-region]').forEach(inp => {
     const k = inp.dataset.region;
     const ev = inp.tagName === 'SELECT' ? 'change' : 'input';
@@ -7616,7 +7053,6 @@ function openFilterEditor(opts) {
       renderPreview();
     });
   });
-
   modal.querySelector('.filter-editor__add').addEventListener('click', (e) => {
     e.stopPropagation();
     const btn = e.currentTarget;
@@ -7700,8 +7136,7 @@ function applyFilter(opts) {
     }
     defs.appendChild(filterEl);
   }
-
-  Array.from(filterEl.attributes).forEach(a => filterEl.removeAttribute(a.name));
+Array.from(filterEl.attributes).forEach(a => filterEl.removeAttribute(a.name));
   while (filterEl.firstChild) filterEl.removeChild(filterEl.firstChild);
 
   filterEl.setAttribute('id', targetId);
@@ -7734,25 +7169,16 @@ function applyFilter(opts) {
   showToast(mode === 'edit' ? t('filterEditor.updated') : t('filterEditor.created'));
 }
 
-/* JS-38 marker 预设生成 | 数据驱动：MARKER_PRESETS 改为读 CONFIG.markerPresets；菜单从 order 生成；markup 模板 {color} 占位替换 */
-/* ============================================================
-   38. marker 预设生成
-   ============================================================ */
 let markerPickerEl = null;
-
-/* marker 预设访问器 */
 function getMarkerPresetIds() {
   const mp = CONFIG && CONFIG.markerPresets;
   return (mp && mp.order) || [];
 }
-
 function getMarkerPresetDef(id) {
   const mp = CONFIG && CONFIG.markerPresets;
   if (!mp || !mp.defs) return null;
   return mp.defs[id] || null;
 }
-
-/* 从引用元素读取描边/填充色作为箭头颜色；无有效值时回退黑色 */
 function getMarkerSourceColor(el) {
   if (!el) return '#000000';
   const stroke = el.getAttribute('stroke');
@@ -7828,8 +7254,6 @@ function closeMarkerPicker() {
   }
   markerPickerEl = null;
 }
-
-/* 在 svgRoot 的 defs 内追加 marker，并写入目标元素引用 */
 function mountMarkerIntoSvg(svgRoot, targetEl, attrName, markerEl) {
   let defs = null;
   for (let i = 0; i < svgRoot.children.length; i++) {
@@ -7857,8 +7281,6 @@ function commitMarkerSvg(svgRoot, toastMsg) {
   }, 120);
   showToast(toastMsg);
 }
-
-/* 用 markup 模板构建 marker 内部子元素（{color} 占位替换） */
 function buildMarkerInnerContent(markupTemplate, color) {
   const coloredMarkup = String(markupTemplate || '').replace(/\{color\}/g, color);
   const tmp = new DOMParser().parseFromString(
@@ -7902,8 +7324,6 @@ function createMarkerPreset(presetId, targetPath, attrName) {
   mountMarkerIntoSvg(svgRoot, targetEl, attrName, markerEl);
   commitMarkerSvg(svgRoot, t('marker.added', { label: t('marker.' + presetId) }));
 }
-
-/* 自定义形状 markup 生成：使用 {color} 占位，应用时统一替换 */
 function buildCustomShapeMarkup(shape, vbW, vbH) {
   const cx = vbW / 2, cy = vbH / 2;
   if (shape === 'triangle') return `<path d="M0,0 L${vbW},${cy} L0,${vbH} z" fill="{color}"/>`;
@@ -7916,7 +7336,6 @@ function buildCustomShapeMarkup(shape, vbW, vbH) {
   }
   return `<rect x="0" y="0" width="${vbW}" height="${vbH}" fill="{color}"/>`;
 }
-
 function openMarkerCustomDialog(targetPath, attrName) {
   const mask = document.createElement('div');
   mask.className = 'modal-mask';
@@ -8013,10 +7432,8 @@ function openMarkerCustomDialog(targetPath, attrName) {
     close();
   });
 }
-
 function applyCustomMarker(opts) {
   const { targetPath, attrName, shape, vbW, vbH, mW, mH, refX, refY, orient } = opts;
-
   let svgRoot;
   try { svgRoot = parseSVG(codeEl.value); }
   catch (err) { showToast(t('toast.parseFailed', { msg: err.message || '' })); return; }
@@ -8046,17 +7463,11 @@ function applyCustomMarker(opts) {
   commitMarkerSvg(svgRoot, t('marker.customAdded'));
 }
 
-/* JS-39 创建形状 | 数据驱动：形状列表与参数来自 CONFIG.shapes；kind 分发逻辑保留在 JS */
-/* ============================================================
-   39. 创建形状
-   ============================================================ */
 let createShapeMenuEl = null;
 
 function buildEmptySvgMarkup() {
   return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%"></svg>';
 }
-
-/* kind → 生成函数（唯一需要 JS 改的地方；新增 kind 时在此追加） */
 const SHAPE_KIND_BUILDERS = {
   rect: (cx, cy, L, d) => {
     const size = L * (d.sizeRatio != null ? d.sizeRatio : 1.0);
@@ -8140,12 +7551,10 @@ const SHAPE_KIND_BUILDERS = {
     return el;
   }
 };
-
 function getShapeIds() {
   const shapes = CONFIG && CONFIG.shapes;
   return (shapes && shapes.order) || [];
 }
-
 function buildShapeMarkup(shapeId, cx, cy, L) {
   const shapes = CONFIG && CONFIG.shapes;
   if (!shapes || !shapes.builders) return null;
@@ -8158,7 +7567,6 @@ function buildShapeMarkup(shapeId, cx, cy, L) {
   }
   return builder(cx, cy, L, spec.defaults || {});
 }
-
 function openCreateShapeMenu(anchorEl) {
   closeCreateShapeMenu();
   const menu = document.createElement('div');
@@ -8202,7 +7610,6 @@ function openCreateShapeMenu(anchorEl) {
   createShapeMenuEl = menu;
   anchorEl.setAttribute('aria-expanded', 'true');
 }
-
 function closeCreateShapeMenu() {
   if (createShapeMenuEl && createShapeMenuEl.parentNode) {
     createShapeMenuEl.parentNode.removeChild(createShapeMenuEl);
@@ -8212,14 +7619,12 @@ function closeCreateShapeMenu() {
     btnCreateShape.setAttribute('aria-expanded', 'false');
   }
 }
-
 function createShape(shapeId) {
   if (!currentSvg || !codeEl.value.trim()) {
     codeEl.value = buildEmptySvgMarkup();
     invalidateLineOffsets();
     renderEditor();
   }
-
   let svgRoot;
   try { svgRoot = parseSVG(codeEl.value); }
   catch (err) { showToast(t('toast.parseFailed', { msg: err.message || '' })); return; }
@@ -8245,13 +7650,11 @@ function createShape(shapeId) {
   const newEl = newSvg.children[newIdx];
   _selectedElementTag = newEl ? newEl.localName : null;
   _selectedElementId  = newEl ? (newEl.getAttribute('id') || null) : null;
-
   invalidateLineOffsets();
   renderEditor();
   renderPreview();
   saveDraftDebounced();
   recordSnapshot(true);
-
   openAttrPanel();
   showToast(t('toast.shapeCreated', { label: t('shape.' + shapeId) }));
 }
