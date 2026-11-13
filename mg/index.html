@@ -482,11 +482,14 @@
         <input id="exportH" class="modal__input" type="number"
                inputmode="numeric" min="1" step="1" />
       </div>
+      
       <button id="exportLock" class="modal__lock is-locked" type="button"
               data-i18n-aria="export.lock"
               data-i18n-title="export.lockTitle"
               aria-label="锁定宽高比" aria-pressed="true"
-              title="锁定 / 解锁宽高比">🔒</button>
+              title="锁定 / 解锁宽高比">
+        <span class="modal__lock-glyph" aria-hidden="true">∞</span>
+      </button>
     </div>
 
     <p id="exportHint" class="modal__hint" hidden></p>
