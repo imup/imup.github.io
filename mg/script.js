@@ -3052,9 +3052,336 @@ function makeStyleRow(el, spec, isReadOnly) {
   return row;
 }
 
+
 /* ---- 行 / 唯一 id ---- */
 let _rowUid = 0;
 const nextRowUid = () => 'attr-' + (++_rowUid);
+
+/* ---- 时间轴状态 ---- */
+const _timeAxisState = {
+  totalDur: 2,
+  currentTime: 0,
+  paused: false
+};
+
+function parseDuration(str) {
+  if (!str) return 0;
+  const m = String(str).match(/^([\d.]+)\s*(ms|s|min)?$/);
+  if (!m) return 0;
+  const n = parseFloat(m[1]);
+  const unit = m[2] || 's';
+  if (unit === 'ms') return n / 1000;
+  if (unit === 'min') return n * 60;
+  return n;
+}
+
+function formatDuration(sec) {
+  const v = Math.round(sec * 100) / 100;
+  return v + 's';
+}
+
+function getAnimatedFields(el) {
+  if (!el) return [];
+  const fields = new Set();
+  const anims = el.querySelectorAll('animate, animateTransform, animateColor, set');
+  for (const a of anims) {
+    const attr = a.getAttribute('attributeName');
+    if (attr) fields.add(attr);
+  }
+  return Array.from(fields);
+}
+
+function hasAnyAnimatedField(el) {
+  return getAnimatedFields(el).length > 0;
+}
+
+function readCommonDur(el) {
+  if (!el) return 2;
+  const anims = el.querySelectorAll('animate, animateTransform, animateColor, set');
+  const durs = [];
+  for (const a of anims) {
+    const d = parseDuration(a.getAttribute('dur'));
+    if (d > 0) durs.push(d);
+  }
+  if (durs.length === 0) return 2;
+  return durs[0];
+}
+
+function findAnimateForField(el, fieldName) {
+  if (!el) return null;
+  for (const child of el.children) {
+    const tag = child.localName;
+    if (tag !== 'animate' && tag !== 'animateTransform' && tag !== 'animateColor' && tag !== 'set') continue;
+    if (child.getAttribute('attributeName') === fieldName) return child;
+  }
+  return null;
+}
+
+function updateAllAnimsDur(el, newDur) {
+  if (!selectedPath) return;
+  let svgRoot;
+  try { svgRoot = parseSVG(codeEl.value); }
+  catch (_) { return; }
+  const target = resolvePath(svgRoot, selectedPath);
+  if (!target) return;
+  const anims = target.querySelectorAll('animate, animateTransform, animateColor, set');
+  let changed = false;
+  for (const a of anims) {
+    const cur = parseDuration(a.getAttribute('dur'));
+    if (Math.abs(cur - newDur) > 0.001) {
+      a.setAttribute('dur', formatDuration(newDur));
+      changed = true;
+    }
+  }
+  if (!changed) return;
+  codeEl.value = serializeSVG(svgRoot);
+  currentSvg = svgRoot;
+  invalidateLineOffsets();
+  renderEditor();
+  schedulePreviewRender();
+  saveDraftDebounced();
+  recordSnapshot(true);
+}
+
+/* ---- 时间轴 UI ---- */
+function makeTimeAxisGroup(el, isReadOnly) {
+  if (!hasAnyAnimatedField(el)) return null;
+
+  const g = document.createElement('div');
+  g.className = 'attr-group attr-group--time';
+  const tEl = document.createElement('div');
+  tEl.className = 'attr-group__title';
+  tEl.textContent = t('group.timeline') || '时间轴';
+  const items = document.createElement('div');
+  items.className = 'attr-group__items';
+
+  const totalDur = readCommonDur(el);
+  _timeAxisState.totalDur = totalDur;
+  if (_timeAxisState.currentTime > totalDur) _timeAxisState.currentTime = 0;
+
+  const svgVisible = canvasEl.firstElementChild;
+  if (svgVisible) {
+    try {
+      svgVisible.pauseAnimations();
+      svgVisible.setCurrentTime(_timeAxisState.currentTime);
+      _timeAxisState.paused = true;
+    } catch (_) {}
+  }
+
+  /* 总时长输入 */
+  const durRow = document.createElement('div');
+  durRow.className = 'attr-row attr-row--full';
+  const durLabel = document.createElement('label');
+  durLabel.className = 'attr-row__label';
+  durLabel.textContent = t('timeAxis.totalDur') || '总时长';
+  const _did = nextRowUid();
+  durLabel.htmlFor = _did;
+  durRow.appendChild(durLabel);
+  const durCtrl = document.createElement('div');
+  durCtrl.className = 'attr-row__control';
+  const durInput = document.createElement('input');
+  durInput.type = 'number';
+  durInput.id = _did;
+  durInput.className = 'attr-row__input';
+  durInput.value = String(totalDur);
+  durInput.min = '0.1';
+  durInput.step = '0.1';
+  durInput.inputMode = 'decimal';
+  if (isReadOnly) durInput.disabled = true;
+
+  /* 滑块行 */
+  const sliderRow = document.createElement('div');
+  sliderRow.className = 'time-axis-row';
+
+  const slider = document.createElement('input');
+  slider.type = 'range';
+  slider.className = 'time-axis-slider';
+  slider.min = '0';
+  slider.max = String(totalDur);
+  slider.step = '0.01';
+  slider.value = String(_timeAxisState.currentTime);
+  if (isReadOnly) slider.disabled = true;
+
+  const timeLabel = document.createElement('span');
+  timeLabel.className = 'time-axis-value';
+  timeLabel.textContent = formatDuration(_timeAxisState.currentTime);
+
+  durInput.addEventListener('input', () => {
+    const v = parseFloat(durInput.value);
+    if (!isFinite(v) || v <= 0) return;
+    _timeAxisState.totalDur = v;
+    slider.max = String(v);
+    if (_timeAxisState.currentTime > v) {
+      _timeAxisState.currentTime = v;
+      slider.value = String(v);
+      timeLabel.textContent = formatDuration(v);
+      if (svgVisible) { try { svgVisible.setCurrentTime(v); } catch (_) {} }
+    }
+    updateAllAnimsDur(el, v);
+  });
+
+  slider.addEventListener('input', () => {
+    const time = parseFloat(slider.value) || 0;
+    _timeAxisState.currentTime = time;
+    timeLabel.textContent = formatDuration(time);
+    if (svgVisible) {
+      try {
+        svgVisible.pauseAnimations();
+        svgVisible.setCurrentTime(time);
+      } catch (_) {}
+    }
+  });
+
+  durCtrl.appendChild(durInput);
+  durRow.appendChild(durCtrl);
+  items.appendChild(durRow);
+
+  sliderRow.appendChild(slider);
+  sliderRow.appendChild(timeLabel);
+  items.appendChild(sliderRow);
+
+  g.appendChild(tEl);
+  g.appendChild(items);
+  return g;
+}
+
+/* ---- 关键帧输入弹窗 ---- */
+function openKeyframeInputDialog(el, fieldName) {
+  if (!selectedPath) return;
+  const totalDur = _timeAxisState.totalDur || 2;
+  const currentTime = _timeAxisState.currentTime || 0;
+
+  let defaultValue = el.getAttribute(fieldName) || '';
+  const existing = findAnimateForField(el, fieldName);
+  if (existing) {
+    const vals = (existing.getAttribute('values') || '').split(';');
+    if (vals.length > 0 && vals[vals.length - 1]) {
+      defaultValue = vals[vals.length - 1];
+    }
+  }
+
+  const mask = document.createElement('div');
+  mask.className = 'modal-mask';
+  mask.innerHTML = `
+    <div class="modal modal--mini" role="dialog" aria-modal="true" aria-labelledby="kfDialogTitle">
+      <h3 id="kfDialogTitle" class="modal__title">${t('keyframe.title') || '设置关键帧'}</h3>
+      <p class="modal__subtitle">${t('keyframe.subtitle', { field: fieldName, time: formatDuration(currentTime) }) || `字段 ${fieldName}，时间 ${formatDuration(currentTime)}`}</p>
+      <div class="modal__field">
+        <label class="modal__label" for="kfValueInput">${t('keyframe.value') || '值'}</label>
+        <input class="modal__input" type="text" id="kfValueInput" value="${escapeAttr(defaultValue)}" />
+      </div>
+      <div class="modal__actions">
+        <button class="btn btn--ghost" type="button" data-action="cancel">${t('btn.cancel')}</button>
+        <button class="btn btn--primary" type="button" data-action="apply">${t('keyframe.confirm') || '确认'}</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(mask);
+  const release = trapFocusIn(mask);
+
+  const input = mask.querySelector('#kfValueInput');
+  const close = () => {
+    if (release) release();
+    if (mask.parentNode) mask.parentNode.removeChild(mask);
+  };
+
+  mask.querySelector('[data-action="cancel"]').addEventListener('click', close);
+  mask.addEventListener('click', (e) => { if (e.target === mask) close(); });
+  mask.querySelector('[data-action="apply"]').addEventListener('click', () => {
+    const newValue = input.value;
+    close();
+    commitKeyframe(fieldName, newValue, totalDur);
+  });
+
+  setTimeout(() => { if (input) { input.focus(); input.select(); } }, 30);
+}
+
+function commitKeyframe(fieldName, newValue, totalDur) {
+  if (!selectedPath) return;
+
+  let svgRoot;
+  try { svgRoot = parseSVG(codeEl.value); }
+  catch (err) { showToast(t('toast.parseFailed', { msg: err.message || '' })); return; }
+
+  const target = resolvePath(svgRoot, selectedPath);
+  if (!target) { showToast(t('toast.noSourceLocate')); return; }
+
+  let animateEl = findAnimateForField(target, fieldName);
+  const tRatio = Math.min(1, Math.max(0, _timeAxisState.currentTime / totalDur));
+
+  if (!animateEl) {
+    animateEl = document.createElementNS(SVG_NS, 'animate');
+    animateEl.setAttribute('attributeName', fieldName);
+    animateEl.setAttribute('values', newValue);
+    animateEl.setAttribute('keyTimes', '0');
+    animateEl.setAttribute('dur', formatDuration(totalDur));
+    animateEl.setAttribute('repeatCount', 'indefinite');
+    target.appendChild(animateEl);
+  } else {
+    const existingValues = (animateEl.getAttribute('values') || '').split(';').filter(Boolean);
+    const existingKeyTimes = (animateEl.getAttribute('keyTimes') || '')
+      .split(';').map(parseFloat).filter(isFinite);
+
+    if (existingValues.length === 0) {
+      existingValues.push(newValue);
+      existingKeyTimes.push(0);
+    }
+
+    if (existingKeyTimes.length !== existingValues.length) {
+      const n = existingValues.length;
+      existingKeyTimes.length = 0;
+      for (let i = 0; i < n; i++) {
+        existingKeyTimes.push(n === 1 ? 0 : i / (n - 1));
+      }
+    }
+
+    let insertIdx = 0;
+    while (insertIdx < existingKeyTimes.length && existingKeyTimes[insertIdx] < tRatio - 0.001) {
+      insertIdx++;
+    }
+
+    if (insertIdx < existingKeyTimes.length && Math.abs(existingKeyTimes[insertIdx] - tRatio) < 0.001) {
+      existingValues[insertIdx] = newValue;
+    } else {
+      existingValues.splice(insertIdx, 0, newValue);
+      existingKeyTimes.splice(insertIdx, 0, tRatio);
+    }
+
+    if (existingKeyTimes.length > 1) {
+      if (existingKeyTimes[0] > 0.001) {
+        existingKeyTimes[0] = 0;
+      }
+      const lastIdx = existingKeyTimes.length - 1;
+      if (existingKeyTimes[lastIdx] < 0.999) {
+        existingKeyTimes.push(1);
+        existingValues.push(existingValues[existingValues.length - 1]);
+      }
+    }
+
+    animateEl.setAttribute('values', existingValues.join(';'));
+    animateEl.setAttribute('keyTimes', existingKeyTimes.map(v => String(Math.round(v * 1000) / 1000)).join(';'));
+    if (!animateEl.getAttribute('dur')) {
+      animateEl.setAttribute('dur', formatDuration(totalDur));
+    }
+    animateEl.removeAttribute('from');
+    animateEl.removeAttribute('to');
+  }
+
+  codeEl.value = serializeSVG(svgRoot);
+  currentSvg = svgRoot;
+  invalidateLineOffsets();
+  renderEditor();
+  renderPreview();
+  saveDraftDebounced();
+  recordSnapshot(true);
+  showToast(t('toast.keyframeAdded', { field: fieldName }) || `已在 ${formatDuration(_timeAxisState.currentTime)} 处为 ${fieldName} 设置关键帧`);
+
+  suppressAttrRebuild = true;
+  setTimeout(() => {
+    suppressAttrRebuild = false;
+    if (attrPanelOpen && !canvasRootMode) rebuildAttrPanel();
+  }, 120);
+}
 
 function makeRow(el, spec, isReadOnly, isCanvas) {
   const row = document.createElement('div');
@@ -3078,7 +3405,33 @@ function makeRow(el, spec, isReadOnly, isCanvas) {
   label.textContent = spec.labelKey ? t(spec.labelKey) : spec.name;
   const _id = nextRowUid();
   label.htmlFor = _id;
-
+  /*
+  const animBuilder = FIELD_ANIM_MAP[spec.name];
+  if (animBuilder && !isReadOnly && !isCanvas && spec.type !== 'textarea') {
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'attr-row__anim-add';
+    addBtn.title = t('anim.addAnimFor', { field: spec.labelKey ? t(spec.labelKey) : spec.name });
+    addBtn.textContent = '+';
+    addBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      addFieldAnim(el, spec.labelKey ? t(spec.labelKey) : spec.name, animBuilder);
+    });
+    label.appendChild(addBtn);
+    if (hasFieldAnim(el, spec.name)) {
+      const rmBtn = document.createElement('button');
+      rmBtn.type = 'button';
+      rmBtn.className = 'attr-row__anim-remove';
+      rmBtn.title = t('anim.removeAnim');
+      rmBtn.textContent = '−';
+      rmBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        removeFieldAnims(el, spec.name);
+      });
+      label.appendChild(rmBtn);
+    }
+  }
+  */
   const animBuilder = getFieldAnimBuilder(spec.name);
   if (animBuilder && !isReadOnly && !isCanvas && spec.type !== 'textarea') {
     const addBtn = document.createElement('button');
@@ -5078,6 +5431,7 @@ function openAttrPanel() {
   if (isMobileViewport()) setMobileView('attr');
   else attrPanel.hidden = false;
 }
+
 function closeAttrPanel() {
   closeAnimAddMenu();
   if (!attrPanelOpen) return;
@@ -5087,6 +5441,14 @@ function closeAttrPanel() {
   canvasRootMode = false;
   canvasBackPath = null;
   if (selectionOverlayEl) selectionOverlayEl.innerHTML = '';
+  if (_timeAxisState.paused) {
+    const svgVisible = canvasEl.firstElementChild;
+    if (svgVisible) {
+      try { svgVisible.unpauseAnimations(); } catch (_) {}
+    }
+    _timeAxisState.paused = false;
+  }
+  _timeAxisState.currentTime = 0;
   if (isMobileViewport()) {
     editorEl.hidden = false;
     mobileView = 'code';
@@ -5134,10 +5496,15 @@ function rebuildAttrPanel() {
   const loc = findTagOffsetByPath(codeEl.value, selectedPath);
   const isReadOnly = !loc;
   renderHeaderId(el, isReadOnly);
-
+  
   ensureHeaderAddBtn(isAnim);
   attrPanelWarning.hidden = !isReadOnly;
   attrPanelBody.innerHTML = '';
+
+  if (!isAnim && !canvasRootMode) {
+    const timeAxisGroup = makeTimeAxisGroup(el, isReadOnly);
+    if (timeAxisGroup) attrPanelBody.appendChild(timeAxisGroup);
+  }
 
   if (tagName === 'image') {
     const href = el.getAttribute('href') || el.getAttribute('xlink:href');
