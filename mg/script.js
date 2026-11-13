@@ -5098,12 +5098,36 @@ function clearSelection() {
   closeAttrPanel();
 }
 
-/* JS-29 动画管理 | 数据驱动：ANIM_TEMPLATES 来自 CONFIG.animTemplates；FIELD_ANIM_MAP 改为 getFieldAnimBuilder + Proxy 兼容层 */
 /* ============================================================
    29. 动画管理
    ============================================================ */
 
-/* ---- 底层动画值生成工具（保留，供 FIELD_ANIM_KIND_BUILDERS 使用） ---- */
+/* ---- 预设动画模板 ---- */
+const ANIM_TEMPLATES = [
+  { id: 'fade',
+    build: () => `<animate attributeName="opacity" values="1;0;1" dur="2s" repeatCount="indefinite"/>` },
+  { id: 'rotate',
+    build: (el) => {
+      const c = getElementCenter(el);
+      return `<animateTransform attributeName="transform" type="rotate" from="0 ${c.x} ${c.y}" to="360 ${c.x} ${c.y}" dur="4s" repeatCount="indefinite"/>`;
+    } },
+  { id: 'scale',
+    build: () => `<animateTransform attributeName="transform" type="scale" values="1;1.2;1" dur="2s" repeatCount="indefinite"/>` },
+  { id: 'translate',
+    build: () => `<animateTransform attributeName="transform" type="translate" values="0,0;20,0;0,0" dur="2s" repeatCount="indefinite"/>` },
+  { id: 'color',
+    build: () => `<animate attributeName="fill" values="#ff0000;#00ff00;#ff0000" dur="3s" repeatCount="indefinite"/>` },
+  { id: 'stroke',
+    build: () => `<animate attributeName="stroke-dashoffset" from="100" to="0" dur="2s" fill="freeze"/>` },
+  { id: 'motion',
+    build: () => `<animateMotion path="M0,0 C 20,-20 40,20 60,0" dur="4s" repeatCount="indefinite"/>` },
+  { id: 'pulse',
+    build: () => `<animate attributeName="opacity" values="1;0.4;1" dur="1s" repeatCount="indefinite"/>` },
+  { id: 'custom', isCustom: true,
+    build: () => `<animate attributeName="" dur="2s" repeatCount="indefinite"/>` }
+];
+
+/* ---- 字段动画：底层工具 ---- */
 function buildValuePulseAnim(attrName, currentVal, delta) {
   const v = parseFloat(currentVal);
   const base = isFinite(v) ? v : 0;
@@ -5123,7 +5147,7 @@ function buildOpacityPulseAnim(attrName) {
   return `<animate attributeName="${attrName}" values="1;0.3;1" dur="2s" repeatCount="indefinite"/>`;
 }
 
-/* ---- 字段动画：kind → 生成函数（新增 kind 时在此追加） ---- */
+/* ---- 字段动画：kind → 生成函数 ---- */
 const FIELD_ANIM_KIND_BUILDERS = {
   valuePulse:   (el, name, spec) => buildValuePulseAnim(name, el.getAttribute(name) || 0, spec.delta || 20),
   scalePulse:   (el, name, spec) => buildScalePulseAnim(name, el.getAttribute(name) || 100, spec.factor || 1.3),
@@ -5141,7 +5165,7 @@ function getFieldAnimBuilder(fieldName) {
   return (el) => kindBuilder(el, fieldName, spec);
 }
 
-/* 兼容层：保留 FIELD_ANIM_MAP[spec.name] 的旧引用方式，JS-25 无需修改 */
+/* 兼容层：JS-25 通过 FIELD_ANIM_MAP[spec.name] 引用 */
 const FIELD_ANIM_MAP = new Proxy({}, {
   get(_, name) {
     return getFieldAnimBuilder(name) || undefined;
@@ -5151,7 +5175,7 @@ const FIELD_ANIM_MAP = new Proxy({}, {
   }
 });
 
-/* ---- 动画模板：kind + attrs → 标签字符串 ---- */
+/* ---- 预设动画模板：kind + attrs → 标签字符串 ---- */
 function buildAnimTag(kind, attrs) {
   const esc = v => String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
   const attrStr = Object.entries(attrs || {})
@@ -5477,7 +5501,7 @@ function addFieldAnim(el, fieldName, animBuilder) {
   showToast(t('anim.addedToField', { field: fieldName }));
 }
 
-/* ---- 动画添加菜单 ---- */
+/* ---- 预设动画添加菜单 ---- */
 function showAnimAddMenu(anchorEl) {
   closeAnimAddMenu();
   const menu = document.createElement('div');
@@ -5524,7 +5548,7 @@ function closeAnimAddMenu() {
   animAddMenuEl = null;
 }
 
-/* ---- 属性面板开 / 关 ---- */
+/* ---- 属性面板开关 ---- */
 function openAttrPanel() {
   closeFindPanel();
   closeAllMenus();
@@ -5534,7 +5558,6 @@ function openAttrPanel() {
   if (isMobileViewport()) setMobileView('attr');
   else attrPanel.hidden = false;
 }
-
 function closeAttrPanel() {
   closeAnimAddMenu();
   if (!attrPanelOpen) return;
@@ -5550,11 +5573,11 @@ function closeAttrPanel() {
   }
 }
 
-
 /* ---- 属性面板主入口 ---- */
-
 function rebuildAttrPanel() {
   if (!attrPanelOpen) return;
+
+  // Safari 焦点保护：用户正在面板内输入时，跳过重建
   const activeEl = document.activeElement;
   if (activeEl && attrPanelBody.contains(activeEl) &&
       (activeEl.tagName === 'INPUT' ||
@@ -5569,7 +5592,6 @@ function rebuildAttrPanel() {
   }
   if (!selectedPath || !currentSvg) return;
   closeAnimAddMenu();
-  
   attrPanelCanvasBtn.classList.remove('is-active');
   attrPanelCanvasBtn.textContent = t('attrPanel.canvas');
   const el = resolvePath(currentSvg, selectedPath);
@@ -5582,13 +5604,12 @@ function rebuildAttrPanel() {
   const loc = findTagOffsetByPath(codeEl.value, selectedPath);
   const isReadOnly = !loc;
   renderHeaderId(el, isReadOnly);
-  
+
   ensureHeaderAddBtn(isAnim);
   attrPanelWarning.hidden = !isReadOnly;
   attrPanelBody.innerHTML = '';
 
   if (tagName === 'image') {
-    
     const href = el.getAttribute('href') || el.getAttribute('xlink:href');
     const clipAttr = el.getAttribute('clip-path') || '';
 
@@ -5641,19 +5662,10 @@ function rebuildAttrPanel() {
   }
 
   if (isAnim) {
-    /* 时间轴：用父元素渲染（父元素才有动画信息） */
-    const parentPath = selectedPath.slice(0, -1);
-    const parentEl = parentPath.length > 0 ? resolvePath(currentSvg, parentPath) : null;
-    if (parentEl) {
-      const timeAxisGroup = makeTimeAxisGroup(parentEl, isReadOnly);
-      if (timeAxisGroup) attrPanelBody.appendChild(timeAxisGroup);
-    }
-
     if (selectedPath && selectedPath.length > 0) {
       const animGroup = makeGroup(t('group.animation'), getAnimSpecs().map(a => makeRow(el, a, isReadOnly, false)));
       const animTitle = animGroup.querySelector('.attr-group__title');
       if (animTitle) {
-        
         animTitle.classList.add('attr-group__title--with-action');
         const backBtn = document.createElement('button');
         backBtn.type = 'button';
@@ -5872,7 +5884,6 @@ attrPanelCanvasBtn.addEventListener('click', () => {
     if (isMobileViewport()) setMobileView('attr');
   }
 });
-
 
 /* ============================================================
    30. 图片插入
