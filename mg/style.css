@@ -1139,19 +1139,9 @@ body{
   transition:background .14s;
 }
 .attr-anim-menu>button:hover{background:var(--bg-hover);}
-
-.create-shape-menu{
-  display:grid;
-  grid-template-columns:repeat(3, 1fr);
-  gap:4px;
-  padding:6px;
-  min-width:220px;
-}
-.create-shape-menu>button{
-  padding:8px 4px;
-  font-size:11.5px;
-  justify-content:center;
-  text-align:center;
+.attr-anim-menu.is-up{
+  transform-origin:bottom left;
+  animation-name:popInUp;
 }
 
 .attr-panel__add-anim-wrap{
