@@ -3120,6 +3120,31 @@ function findAnimateForField(el, fieldName) {
   return null;
 }
 
+function readFieldAnim(el, fieldName) {
+  const defaultTotalDur = _timeAxisState.totalDur || 2;
+  const animate = el ? findAnimateForField(el, fieldName) : null;
+
+  if (!animate) {
+    return {
+      begin: 0,
+      end: defaultTotalDur,
+      value: el ? (el.getAttribute(fieldName) || '') : ''
+    };
+  }
+
+  const begin = parseDuration(animate.getAttribute('begin'));
+  const dur = parseDuration(animate.getAttribute('dur'));
+  const end = begin + (dur > 0 ? dur : defaultTotalDur);
+
+  const valuesStr = animate.getAttribute('values') || '';
+  const values = valuesStr.split(';').filter(v => v !== '');
+  const lastValue = values.length > 0
+    ? values[values.length - 1]
+    : (el ? (el.getAttribute(fieldName) || '') : '');
+
+  return { begin, end, value: lastValue };
+}
+
 function updateAllAnimsDur(el, newDur) {
   if (!selectedPath) return;
   let svgRoot;
@@ -3249,30 +3274,46 @@ function makeTimeAxisGroup(el, isReadOnly) {
 }
 
 /* ---- 关键帧输入弹窗 ---- */
+
 function openKeyframeInputDialog(el, fieldName) {
   if (!selectedPath) return;
-  const totalDur = _timeAxisState.totalDur || 2;
   const currentTime = _timeAxisState.currentTime || 0;
+  const info = readFieldAnim(el, fieldName);
 
-  let defaultValue = el.getAttribute(fieldName) || '';
-  const existing = findAnimateForField(el, fieldName);
-  if (existing) {
-    const vals = (existing.getAttribute('values') || '').split(';');
-    if (vals.length > 0 && vals[vals.length - 1]) {
-      defaultValue = vals[vals.length - 1];
-    }
-  }
+  const beginVal = info.begin;
+  const endVal = info.end;
+  const valueVal = info.value;
 
   const mask = document.createElement('div');
   mask.className = 'modal-mask';
   mask.innerHTML = `
     <div class="modal modal--mini" role="dialog" aria-modal="true" aria-labelledby="kfDialogTitle">
-      <h3 id="kfDialogTitle" class="modal__title">${t('keyframe.title') || '设置关键帧'}</h3>
-      <p class="modal__subtitle">${t('keyframe.subtitle', { field: fieldName, time: formatDuration(currentTime) }) || `字段 ${fieldName}，时间 ${formatDuration(currentTime)}`}</p>
+      <h3 id="kfDialogTitle" class="modal__title">${t('keyframe.title') || '设置字段动画'}</h3>
+      <p class="modal__subtitle">${t('keyframe.subtitle', { field: fieldName }) || `字段 ${fieldName}`}</p>
+
+      <div class="modal__row">
+        <div class="modal__field">
+          <label class="modal__label" for="kfBeginInput">${t('keyframe.startTime') || '开始时间'} (s)</label>
+          <input class="modal__input" type="number" id="kfBeginInput"
+                 min="0" step="0.1" inputmode="decimal"
+                 value="${beginVal}" />
+        </div>
+        <div class="modal__field">
+          <label class="modal__label" for="kfEndInput">${t('keyframe.endTime') || '结束时间'} (s)</label>
+          <input class="modal__input" type="number" id="kfEndInput"
+                 min="0.1" step="0.1" inputmode="decimal"
+                 value="${endVal}" />
+        </div>
+      </div>
+
       <div class="modal__field">
         <label class="modal__label" for="kfValueInput">${t('keyframe.value') || '值'}</label>
-        <input class="modal__input" type="text" id="kfValueInput" value="${escapeAttr(defaultValue)}" />
+        <input class="modal__input" type="text" id="kfValueInput"
+               value="${escapeAttr(valueVal)}" />
       </div>
+
+      <p class="modal__hint" id="kfPositionHint"></p>
+
       <div class="modal__actions">
         <button class="btn btn--ghost" type="button" data-action="cancel">${t('btn.cancel')}</button>
         <button class="btn btn--primary" type="button" data-action="apply">${t('keyframe.confirm') || '确认'}</button>
@@ -3282,7 +3323,35 @@ function openKeyframeInputDialog(el, fieldName) {
   document.body.appendChild(mask);
   const release = trapFocusIn(mask);
 
-  const input = mask.querySelector('#kfValueInput');
+  const beginInput = mask.querySelector('#kfBeginInput');
+  const endInput = mask.querySelector('#kfEndInput');
+  const valueInput = mask.querySelector('#kfValueInput');
+  const hintEl = mask.querySelector('#kfPositionHint');
+
+  function updateHint() {
+    const b = parseFloat(beginInput.value);
+    const e = parseFloat(endInput.value);
+    if (!isFinite(b) || !isFinite(e) || e <= b) {
+      hintEl.textContent = t('keyframe.invalidRange') || '结束时间必须大于开始时间';
+      hintEl.style.color = 'var(--danger)';
+      return;
+    }
+    const span = e - b;
+    let ratio = (currentTime - b) / span;
+    if (ratio < 0) ratio = 0;
+    if (ratio > 1) ratio = 1;
+    const percent = Math.round(ratio * 100);
+    hintEl.textContent = t('keyframe.positionHint', {
+      time: formatDuration(currentTime),
+      percent
+    }) || `当前时间 ${formatDuration(currentTime)}，将记录在 ${percent}% 位置`;
+    hintEl.style.color = 'var(--text-secondary)';
+  }
+  updateHint();
+
+  beginInput.addEventListener('input', updateHint);
+  endInput.addEventListener('input', updateHint);
+
   const close = () => {
     if (release) release();
     if (mask.parentNode) mask.parentNode.removeChild(mask);
@@ -3291,16 +3360,36 @@ function openKeyframeInputDialog(el, fieldName) {
   mask.querySelector('[data-action="cancel"]').addEventListener('click', close);
   mask.addEventListener('click', (e) => { if (e.target === mask) close(); });
   mask.querySelector('[data-action="apply"]').addEventListener('click', () => {
-    const newValue = input.value;
+    const b = parseFloat(beginInput.value);
+    const e = parseFloat(endInput.value);
+    const v = valueInput.value;
+    if (!isFinite(b) || b < 0) {
+      showToast(t('keyframe.invalidRange') || '开始时间无效');
+      return;
+    }
+    if (!isFinite(e) || e <= b) {
+      showToast(t('keyframe.invalidRange') || '结束时间必须大于开始时间');
+      return;
+    }
+    if (v === '' || v == null) {
+      showToast(t('keyframe.emptyValue') || '值不能为空');
+      return;
+    }
     close();
-    commitKeyframe(fieldName, newValue, totalDur);
+    commitKeyframe(fieldName, v, { begin: b, end: e });
   });
 
-  setTimeout(() => { if (input) { input.focus(); input.select(); } }, 30);
+  setTimeout(() => { if (valueInput) { valueInput.focus(); valueInput.select(); } }, 30);
 }
 
-function commitKeyframe(fieldName, newValue, totalDur) {
+
+function commitKeyframe(fieldName, newValue, range) {
   if (!selectedPath) return;
+
+  const begin = (range && isFinite(range.begin)) ? range.begin : 0;
+  const end = (range && isFinite(range.end) && range.end > begin) ? range.end : (begin + 2);
+  const dur = end - begin;
+  const currentTime = _timeAxisState.currentTime || 0;
 
   let svgRoot;
   try { svgRoot = parseSVG(codeEl.value); }
@@ -3310,18 +3399,36 @@ function commitKeyframe(fieldName, newValue, totalDur) {
   if (!target) { showToast(t('toast.noSourceLocate')); return; }
 
   let animateEl = findAnimateForField(target, fieldName);
-  const tRatio = Math.min(1, Math.max(0, _timeAxisState.currentTime / totalDur));
+
+  let tRatio = (currentTime - begin) / dur;
+  if (tRatio < 0) tRatio = 0;
+  if (tRatio > 1) tRatio = 1;
 
   if (!animateEl) {
+    const baseVal = target.getAttribute(fieldName) || newValue;
     animateEl = document.createElementNS(SVG_NS, 'animate');
     animateEl.setAttribute('attributeName', fieldName);
-    animateEl.setAttribute('values', newValue);
-    animateEl.setAttribute('keyTimes', '0');
-    animateEl.setAttribute('dur', formatDuration(totalDur));
+    animateEl.setAttribute('begin', formatDuration(begin));
+    animateEl.setAttribute('dur', formatDuration(dur));
     animateEl.setAttribute('repeatCount', 'indefinite');
+
+    if (tRatio <= 0.001) {
+      animateEl.setAttribute('values', newValue);
+      animateEl.setAttribute('keyTimes', '0');
+    } else if (tRatio >= 0.999) {
+      animateEl.setAttribute('values', `${baseVal};${newValue}`);
+      animateEl.setAttribute('keyTimes', '0;1');
+    } else {
+      const rStr = String(Math.round(tRatio * 1000) / 1000);
+      animateEl.setAttribute('values', `${baseVal};${newValue}`);
+      animateEl.setAttribute('keyTimes', `0;${rStr}`);
+    }
     target.appendChild(animateEl);
   } else {
-    const existingValues = (animateEl.getAttribute('values') || '').split(';').filter(Boolean);
+    animateEl.setAttribute('begin', formatDuration(begin));
+    animateEl.setAttribute('dur', formatDuration(dur));
+
+    const existingValues = (animateEl.getAttribute('values') || '').split(';').filter(v => v !== '');
     const existingKeyTimes = (animateEl.getAttribute('keyTimes') || '')
       .split(';').map(parseFloat).filter(isFinite);
 
@@ -3362,10 +3469,8 @@ function commitKeyframe(fieldName, newValue, totalDur) {
     }
 
     animateEl.setAttribute('values', existingValues.join(';'));
-    animateEl.setAttribute('keyTimes', existingKeyTimes.map(v => String(Math.round(v * 1000) / 1000)).join(';'));
-    if (!animateEl.getAttribute('dur')) {
-      animateEl.setAttribute('dur', formatDuration(totalDur));
-    }
+    animateEl.setAttribute('keyTimes',
+      existingKeyTimes.map(v => String(Math.round(v * 1000) / 1000)).join(';'));
     animateEl.removeAttribute('from');
     animateEl.removeAttribute('to');
   }
@@ -3377,7 +3482,10 @@ function commitKeyframe(fieldName, newValue, totalDur) {
   renderPreview();
   saveDraftDebounced();
   recordSnapshot(true);
-  showToast(t('toast.keyframeAdded', { field: fieldName }) || `已在 ${formatDuration(_timeAxisState.currentTime)} 处为 ${fieldName} 设置关键帧`);
+  showToast(t('toast.keyframeAdded', {
+    field: fieldName,
+    time: formatDuration(currentTime)
+  }) || `已在 ${formatDuration(currentTime)} 处为 ${fieldName} 设置关键帧`);
 
   suppressAttrRebuild = true;
   setTimeout(() => {
