@@ -3098,13 +3098,16 @@ function hasAnyAnimatedField(el) {
 function readCommonDur(el) {
   if (!el) return 2;
   const anims = el.querySelectorAll('animate, animateTransform, animateColor, set');
-  const durs = [];
+  let maxEnd = 0;
   for (const a of anims) {
-    const d = parseDuration(a.getAttribute('dur'));
-    if (d > 0) durs.push(d);
+    const begin = parseDuration(a.getAttribute('begin'));
+    const dur = parseDuration(a.getAttribute('dur'));
+    if (dur > 0) {
+      const end = begin + dur;
+      if (end > maxEnd) maxEnd = end;
+    }
   }
-  if (durs.length === 0) return 2;
-  return durs[0];
+  return maxEnd > 0 ? maxEnd : 2;
 }
 
 function findAnimateForField(el, fieldName) {
