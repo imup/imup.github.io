@@ -3056,6 +3056,33 @@ function makeStyleRow(el, spec, isReadOnly) {
 let _rowUid = 0;
 const nextRowUid = () => 'attr-' + (++_rowUid);
 
+/* SMIL <animate> 可动画的 presentation attributes 白名单 */
+const SMIL_ANIMATABLE_ATTRS = new Set([
+  /* 几何 */
+  'x', 'y', 'cx', 'cy', 'x1', 'y1', 'x2', 'y2',
+  'width', 'height', 'rx', 'ry', 'r',
+  'pathLength', 'dx', 'dy',
+  'd', 'points',
+  /* 外观 */
+  'fill', 'fill-opacity', 'fill-rule',
+  'stroke', 'stroke-width', 'stroke-opacity',
+  'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit',
+  'stroke-dasharray', 'stroke-dashoffset',
+  'opacity',
+  /* 引用 */
+  'filter', 'clip-path', 'mask',
+  'marker-start', 'marker-mid', 'marker-end',
+  /* 渲染 */
+  'visibility', 'display',
+  /* 文本 */
+  'font-family', 'font-size', 'font-weight', 'font-style',
+  'text-anchor', 'letter-spacing', 'word-spacing',
+  'dominant-baseline', 'alignment-baseline',
+  'text-decoration', 'textLength', 'lengthAdjust',
+  /* 交互 */
+  'pointer-events', 'cursor'
+]);
+
 /* ---- 动画时间工具 ---- */
 function parseDuration(str) {
   if (!str) return 0;
@@ -3531,6 +3558,7 @@ function makeRow(el, spec, isReadOnly, isCanvas) {
   const _id = nextRowUid();
   label.htmlFor = _id;
 
+/*
   const animBuilder = getFieldAnimBuilder(spec.name);
   if (animBuilder && !isReadOnly && !isCanvas && spec.type !== 'textarea') {
     const addBtn = document.createElement('button');
@@ -3569,6 +3597,53 @@ function makeRow(el, spec, isReadOnly, isCanvas) {
       label.appendChild(rmBtn);
     }
   }
+  */
+  const animBuilder = getFieldAnimBuilder(spec.name);
+  const canAddPreset = !!animBuilder && spec.type !== 'textarea';
+  const canKeyframe = SMIL_ANIMATABLE_ATTRS.has(spec.name);
+
+  if (!isReadOnly && !isCanvas && (canAddPreset || canKeyframe)) {
+    if (canAddPreset) {
+      const addBtn = document.createElement('button');
+      addBtn.type = 'button';
+      addBtn.className = 'attr-row__anim-add';
+      addBtn.title = t('anim.addAnimFor', { field: spec.labelKey ? t(spec.labelKey) : spec.name });
+      addBtn.textContent = '+';
+      addBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        addFieldAnim(el, spec.labelKey ? t(spec.labelKey) : spec.name, animBuilder);
+      });
+      label.appendChild(addBtn);
+    }
+
+    if (canKeyframe) {
+      const kfBtn = document.createElement('button');
+      kfBtn.type = 'button';
+      kfBtn.className = 'attr-row__kf-btn';
+      kfBtn.title = t('keyframe.addBtn') || '打关键帧';
+      kfBtn.textContent = '◆';
+      if (hasFieldAnim(el, spec.name)) kfBtn.classList.add('has-kf');
+      kfBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openFieldAnimDialog(el, spec.name);
+      });
+      label.appendChild(kfBtn);
+    }
+
+    if (hasFieldAnim(el, spec.name) && (canAddPreset || canKeyframe)) {
+      const rmBtn = document.createElement('button');
+      rmBtn.type = 'button';
+      rmBtn.className = 'attr-row__anim-remove';
+      rmBtn.title = t('anim.removeAnim');
+      rmBtn.textContent = '−';
+      rmBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        removeFieldAnims(el, spec.name);
+      });
+      label.appendChild(rmBtn);
+    }
+  }
+  
   row.appendChild(label);
   const ctrl = document.createElement('div');
   ctrl.className = 'attr-row__control';
