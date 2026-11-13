@@ -1,36 +1,23 @@
-/* ============================================================
-   CSS 主题变量
-   ============================================================ */
 :root {
   color-scheme: light;
-
-  /* 背景 */
   --bg-app: #f8fafc;
   --bg-panel: #ffffff;
   --bg-hover: #f1f5f9;
   --bg-active: #e2e8f0;
   --bg-muted: #f8fafc;
-
-  /* 文字 */
   --text-primary: #0f172a;
   --text-secondary: #64748b;
   --text-muted: #94a3b8;
   --text-inverse: #f8fafc;
-
-  /* 边框 */
   --border: #e2e8f0;
   --border-hover: #cbd5e1;
   --border-strong: #94a3b8;
-
-  /* 主色 */
   --accent: #2563eb;
   --accent-hover: #1d4ed8;
   --accent-bg: #eff6ff;
   --accent-border: #bfdbfe;
   --accent-text: #1d4ed8;
   --accent-shadow: rgba(37, 99, 235, .15);
-
-  /* 状态 */
   --danger: #dc2626;
   --danger-bg: #fef2f2;
   --danger-border: #fecaca;
@@ -45,25 +32,17 @@
   --error-text: #b91c1c;
   --error-accent: #ef4444;
   --success: #16a34a;
-
-  /* 遮罩/阴影 */
   --overlay: rgba(15, 23, 42, .52);
   --shadow-sm: 0 3px 10px rgba(15, 23, 42, .10);
   --shadow-md: 0 12px 30px rgba(15, 23, 42, .18);
   --shadow-lg: 0 24px 60px rgba(15, 23, 42, .28);
-
-  /* 悬浮控件（预览控制条 / FAB） */
   --ctrl-bg: rgba(255, 255, 255, .94);
   --ctrl-border: #e2e8f0;
-
-  /* 工具栏 */
   --splitter-bg: #f1f5f9;
   --tool-text: #475569;
   --tool-text-hover: #1e293b;
   --grip-bg: #cbd5e1;
   --grip-bg-hover: #94a3b8;
-
-  /* 编辑器（深色，编辑器区域始终深色） */
   --ed-bg: #0f172a;
   --ed-bg-darker: #0b1220;
   --ed-border: #1e293b;
@@ -80,8 +59,6 @@
   --ed-btn-bg-hover: #475569;
   --ed-btn-border: #475569;
   --ed-btn-border-hover: #64748b;
-
-  /* 代码高亮 */
   --tok-comment: #64748b;
   --tok-tag: #7dd3fc;
   --tok-attr: #fbbf24;
@@ -89,44 +66,33 @@
   --tok-pi: #c4b5fd;
   --tok-doctype: #c4b5fd;
   --tok-cdata: #94a3b8;
-
-  /* Toast */
   --toast-bg: rgba(15, 23, 42, .94);
   --toast-text: #f8fafc;
-
-  /* 选中框 */
   --selection-accent: #2563eb;
-
-  /* badge */
   --badge-bg: rgba(15, 23, 42, .72);
   --badge-text: #e2e8f0;
 }
 
 [data-theme="dark"] {
   color-scheme: dark;
-
   --bg-app: #0b1220;
   --bg-panel: #1e293b;
   --bg-hover: #334155;
   --bg-active: #475569;
   --bg-muted: #1e293b;
-
   --text-primary: #e2e8f0;
   --text-secondary: #94a3b8;
   --text-muted: #64748b;
   --text-inverse: #0f172a;
-
   --border: #334155;
   --border-hover: #475569;
   --border-strong: #64748b;
-
   --accent: #60a5fa;
   --accent-hover: #93c5fd;
   --accent-bg: #1e3a5f;
   --accent-border: #2563eb;
   --accent-text: #93c5fd;
   --accent-shadow: rgba(96, 165, 250, .20);
-
   --danger: #f87171;
   --danger-bg: #3b1e1e;
   --danger-border: #7f1d1d;
@@ -141,21 +107,17 @@
   --error-text: #f87171;
   --error-accent: #ef4444;
   --success: #4ade80;
-
   --overlay: rgba(0, 0, 0, .72);
   --shadow-sm: 0 3px 10px rgba(0, 0, 0, .35);
   --shadow-md: 0 12px 30px rgba(0, 0, 0, .45);
   --shadow-lg: 0 24px 60px rgba(0, 0, 0, .55);
-
   --ctrl-bg: rgba(30, 41, 59, .94);
   --ctrl-border: #334155;
-
   --splitter-bg: #1e293b;
   --tool-text: #94a3b8;
   --tool-text-hover: #e2e8f0;
   --grip-bg: #475569;
   --grip-bg-hover: #64748b;
-
   --ed-bg: #0a0f1a;
   --ed-bg-darker: #060a12;
   --ed-border: #1e293b;
@@ -172,7 +134,6 @@
   --ed-btn-bg-hover: #475569;
   --ed-btn-border: #475569;
   --ed-btn-border-hover: #64748b;
-
   --tok-comment: #64748b;
   --tok-tag: #7dd3fc;
   --tok-attr: #fbbf24;
@@ -180,17 +141,13 @@
   --tok-pi: #c4b5fd;
   --tok-doctype: #c4b5fd;
   --tok-cdata: #94a3b8;
-
   --toast-bg: rgba(226, 232, 240, .94);
   --toast-text: #0f172a;
-
   --selection-accent: #60a5fa;
-
   --badge-bg: rgba(226, 232, 240, .72);
   --badge-text: #0f172a;
 }
 
-/* ---------- 01. 基础重置 ---------- */
 *,*::before,*::after{box-sizing:border-box;}
 html{
   height:100%;
@@ -206,7 +163,6 @@ body{
   touch-action:pan-x pan-y;
 }
 
-/* ---------- 02. 应用布局 ---------- */
 .app{display:flex;flex-direction:column;width:100%;height:100vh;height:100dvh;}
 .preview-wrap{
   position:relative;flex:80 1 0;min-height:80px;
@@ -216,7 +172,6 @@ body{
 }
 .preview{width:100%;height:100%;}
 
-/* ---------- 03. 预览区 & 状态提示 ---------- */
 .preview-actions{
   position:absolute;
   top:calc(14px + env(safe-area-inset-top,0px));
@@ -270,7 +225,6 @@ body{
 }
 .warning-bar__close:hover{opacity:1;background:var(--warn-shadow);}
 
-/* ---------- 04. 文件操作 FAB 与下拉菜单 ---------- */
 .fab{
   display:inline-grid;place-items:center;
   width:40px;height:34px;padding:0;
@@ -323,7 +277,6 @@ body{
 .dropdown__check{width:14px;text-align:center;font-size:12px;color:var(--accent);opacity:0;}
 .dropdown>[aria-checked="true"] .dropdown__check{opacity:1;}
 
-/* 深色下拉菜单（编辑器菜单，用编辑器配套色） */
 .dropdown--dark{background:var(--ed-bg);border-color:var(--ed-border);box-shadow:var(--shadow-lg);}
 .dropdown--dark>button{color:var(--ed-text);}
 .dropdown--dark>button:hover{background:var(--ed-btn-bg);}
@@ -333,7 +286,6 @@ body{
 
 .dropdown-container{position:relative;flex:0 0 auto;display:flex;align-items:center;}
 
-/* ---------- 05. 视图控制条 ---------- */
 .view-controls{
   position:absolute;
   left:calc(14px + env(safe-area-inset-left,0px));
@@ -383,7 +335,6 @@ body{
 .zoom-label:hover{background:var(--bg-hover);color:var(--tool-text-hover);}
 .rotate-controls{display:flex;align-items:center;gap:3px;}
 
-/* ---------- 06. 分隔条 / 工具栏 ---------- */
 .splitter{
   flex:0 0 34px;
   display:flex;align-items:center;
@@ -435,7 +386,6 @@ body{
 .tool-grip.is-snap-preview::before,
 .tool-grip.is-snap-code::before{background:var(--accent);width:60px;}
 
-/* ---------- 07. 代码编辑器 ---------- */
 .editor{
   --ed-font:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;
   --ed-size:13px;--ed-lh:1.65;--ed-py:16px;--ed-px:18px;
@@ -501,7 +451,6 @@ body{
 
 .editor[hidden]{display:none !important;}
 
-/* ---------- 08. 查找替换面板 ---------- */
 .find-panel{
   position:fixed;
   left:auto;
@@ -539,7 +488,6 @@ body{
 .find-btn--icon{flex:0 0 auto;min-width:28px;padding:0;display:grid;place-items:center;}
 .find-btn--icon svg{display:block;width:14px;height:14px;}
 
-/* ---------- 09. 通用弹窗 / 历史版本 / 拖拽遮罩 / Toast ---------- */
 .history-list{
   max-height:320px;overflow-y:auto;margin:0 0 10px;
   border:1px solid var(--border);border-radius:8px;background:var(--bg-muted);
@@ -664,7 +612,6 @@ body{
 }
 .modal__check-desc{flex:1;line-height:1.4;}
 
-/* 导出弹窗：checkbox 并排 */
 .modal__checks-row{
   display:flex;gap:8px;margin-bottom:10px;
   flex-wrap:wrap;
@@ -676,7 +623,6 @@ body{
   margin:0;
 }
 
-/* 导出弹窗：格式 + 预设并排 */
 .export-top-row{
   display:flex;
   gap:8px;
@@ -770,7 +716,6 @@ body{
 }
 .toast.is-show{opacity:1;transform:translate(-50%,0);}
 
-/* ---------- 10. 图片配置弹窗 ---------- */
 .image-config-modal{max-width:480px;}
 
 .image-config-preview{
@@ -790,7 +735,6 @@ body{
 }
 .image-config-preview svg{max-width:100%;max-height:100%;display:block;}
 
-/* 比例行：比例下拉 + 宽高内联一行 */
 .image-config-ratio-row{
   display:flex;align-items:center;gap:8px;
   margin-bottom:10px;
@@ -821,14 +765,12 @@ body{
   font-size:13px;
 }
 
-/* 填充 + 插入方式并列 */
 .image-config-row-pair{
   display:flex;gap:10px;margin-bottom:10px;
   flex-wrap:wrap;
 }
 .image-config-row-pair .modal__field{flex:1 1 0;min-width:0;}
 
-/* 蒙板剪裁 + 压缩嵌入并列 */
 .image-config-checks-row{
   display:flex;gap:8px;margin-bottom:10px;
   flex-wrap:wrap;
@@ -853,7 +795,6 @@ body{
 .radio-group--compact{gap:4px;}
 .radio-group--compact label{padding:5px 8px;font-size:12px;gap:4px;}
 
-/* ---------- 11. 属性面板 ---------- */
 .attr-panel{
   position:fixed;
   top:0;right:0;bottom:0;
@@ -1190,14 +1131,12 @@ body{
   transition:background .14s,border-color .14s;
 }
 .attr-row__anim-remove:hover{background:var(--danger-hover);border-color:var(--danger);}
-
 .attr-viewbox{
   display:grid;
   grid-template-columns:repeat(4, minmax(0, 1fr));
   gap:6px;
   grid-column:1 / -1;
 }
-/* 关键帧 ◆ 按钮 */
 .attr-row__kf-btn{
   flex:0 0 auto;
   width:16px;
@@ -1224,15 +1163,11 @@ body{
   color:var(--accent);
   border-color:var(--accent-border);
 }
-
-/* 关键帧输入弹窗（mini modal） */
 .modal--mini{max-width:340px;}
 .modal--mini .modal__subtitle{
   margin-bottom:14px;
   font-size:12px;
 }
-
-/* 三列字段动画弹窗 */
 .modal--field-anim{max-width:480px;}
 
 .fa-timeline{
@@ -1448,7 +1383,6 @@ body{
 }
 .color-popover__action:hover{background:var(--bg-hover);}
 
-/* 渐变编辑器 */
 .gradient-editor{max-width:480px;}
 .gradient-editor__preview{
   height:48px;margin-bottom:12px;
@@ -1501,7 +1435,6 @@ body{
 }
 .gradient-editor__add-stop:hover{background:var(--bg-active);}
 
-/* 滤镜编辑器 */
 .filter-editor{max-width:520px;}
 .filter-editor__preview{
   height:120px;margin-bottom:12px;
@@ -1588,7 +1521,6 @@ body{
 }
 .filter-editor__region .modal__field{min-width:0;}
 
-/* ---------- 12. 移动端适配（≤480px） ---------- */
 @media (max-width: 480px){
   .preview-actions{
     top:calc(10px + env(safe-area-inset-top,0px));
@@ -1625,7 +1557,6 @@ body{
   .modal__title{font-size:15px;}
   .image-config-preview{height:140px;}
 
-  /* 图片裁剪增强：窄屏保持并排，收紧间距与字号 */
   .image-config-row-pair{gap:6px;}
   .image-config-checks-row{gap:4px;}
   .image-config-row-pair .modal__field{flex:1 1 0;min-width:0;}
@@ -1674,7 +1605,6 @@ body{
   .attr-slider-row__text{font-size:10.5px;}
 }
 
-/* ---------- 13. 矮屏适配 ---------- */
 @media (max-height: 480px){
   .editor{min-height:80px;}
 }
