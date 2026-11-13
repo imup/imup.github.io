@@ -173,6 +173,8 @@
       "sizeExceeded": "单边尺寸不能超过 {max}px",
       "whiteBgLabel": "白底",
       "transparentLabel": "透明"
+      "whiteBgShort": "白底",
+      "keepSizeShort": "保持尺寸"
     },
 
     "btn": {
@@ -657,6 +659,8 @@
       "sizeExceeded": "Single side cannot exceed {max}px",
       "whiteBgLabel": "white background",
       "transparentLabel": "transparent"
+      "whiteBgShort": "White BG",
+      "keepSizeShort": "Keep Size"
     },
 
     "btn": {
