@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport"
+      content="width=device-width, initial-scale=1.0,
+               maximum-scale=1.0, user-scalable=no,
+               viewport-fit=cover,
+               interactive-widget=resizes-content" />
+<title data-i18n="pageTitle">SVG编辑器</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- ============================================================
+     HTML-A 应用根容器
+     ============================================================ -->
+<div class="app" id="appRoot">
+
+  <!-- ----------------------------------------------------------
+       HTML-B 1. 预览区
+       ---------------------------------------------------------- -->
+  <section class="preview-wrap" id="previewWrap">
+    <div id="preview" class="preview"></div>
+    <div id="badge" class="badge" hidden></div>
+
+    <div id="warningBar" class="warning-bar" role="status" aria-live="polite" hidden>
+      <span class="warning-bar__icon">⚠️</span>
+      <span class="warning-bar__text" id="warningText"></span>
+      <button id="warningClose" class="warning-bar__close" type="button"
+              data-i18n-aria="preview.closeWarning"
+              aria-label="关闭警告">✕</button>
+    </div>
+
+    <div class="preview-actions" id="previewActions">
+      <button id="btnPreviewMenu" class="fab fab--ghost" type="button"
+              data-i18n-title="preview.fileMenu"
+              data-i18n-aria="preview.fileMenu"
+              aria-label="文件操作" aria-haspopup="menu" aria-expanded="false"
+              title="文件操作">
+        <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"
+             fill="currentColor" stroke="none">
+          <circle cx="5" cy="12" r="1.8"/>
+          <circle cx="12" cy="12" r="1.8"/>
+          <circle cx="19" cy="12" r="1.8"/>
+        </svg>
+      </button>
+
+      <div id="previewMenu" class="dropdown" hidden role="menu">
+        <button id="menuOpenSvg" type="button" role="menuitem" data-i18n="menu.openSvg">打开 SVG…</button>
+        <button id="menuInsertImage" type="button" role="menuitem" data-i18n="menu.insertImage">插入图片…</button>
+        <div class="dropdown__sep"></div>
+        <button id="menuCopyPng" type="button" role="menuitem" data-i18n="menu.copyPng">复制 PNG 到剪贴板</button>
+        <button id="menuCopySvg" type="button" role="menuitem" data-i18n="menu.copySvg">复制 SVG 源码</button>
+        <div class="dropdown__sep"></div>
+        <button id="menuSavePng" type="button" role="menuitem" data-i18n="menu.savePng">导出图片…</button>
+        <button id="menuSaveSvg" type="button" role="menuitem" data-i18n="menu.saveSvg">导出 SVG…</button>
+      </div>
+    </div>
+
+    <div class="view-controls">
+      <div class="bg-switcher" role="group" aria-label="预览背景">
+        <button class="bg-btn is-active" data-bg="checker" type="button"
+                data-i18n-aria="preview.bgChecker"
+                data-i18n-title="preview.bgChecker"
+                aria-label="棋盘格背景" title="棋盘格"></button>
+        <button class="bg-btn" data-bg="white" type="button"
+                data-i18n-aria="preview.bgWhite"
+                data-i18n-title="preview.bgWhite"
+                aria-label="白色背景" title="白色"></button>
+        <button class="bg-btn" data-bg="dark" type="button"
+                data-i18n-aria="preview.bgDark"
+                data-i18n-title="preview.bgDark"
+                aria-label="深色背景" title="深色"></button>
+      </div>
+      <span class="view-controls__sep"></span>
+      <div class="zoom-controls">
+        <button id="zoomOut" class="zoom-btn" type="button"
+                data-i18n-aria="preview.zoomOut"
+                data-i18n-title="preview.zoomOut"
+                aria-label="缩小" title="缩小">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"
+               fill="none" stroke="currentColor" stroke-width="2.5"
+               stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </button>
+        <button id="zoomReset" class="zoom-label" type="button"
+                data-i18n-aria="preview.zoomResetAria"
+                data-i18n-title="preview.zoomReset"
+                aria-label="重置视图" title="点击重置为适应窗口">100%</button>
+        <button id="zoomIn" class="zoom-btn" type="button"
+                data-i18n-aria="preview.zoomIn"
+                data-i18n-title="preview.zoomIn"
+                aria-label="放大" title="放大">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"
+               fill="none" stroke="currentColor" stroke-width="2.5"
+               stroke-linecap="round" stroke-linejoin="round">
+            <line x1="5" y1="12" x2="19" y2="12"/>
+            <line x1="12" y1="5" x2="12" y2="19"/>
+          </svg>
+        </button>
+      </div>
+      <span class="view-controls__sep"></span>
+      <div class="rotate-controls">
+        <button id="btnRotate90" class="zoom-btn" type="button"
+                data-i18n-aria="preview.rotate90"
+                data-i18n-title="preview.rotate90"
+                aria-label="顺时针旋转 90°" title="顺时针旋转 90°">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"
+               fill="none" stroke="currentColor" stroke-width="2.4"
+               stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20.5 12a8.5 8.5 0 1 1-2.8-6.3"/>
+            <polyline points="20.5 3.5 20.5 9 15 9"/>
+          </svg>
+        </button>
+        <button id="btnRotateReset" class="zoom-btn" type="button"
+                data-i18n-aria="preview.rotateReset"
+                data-i18n-title="preview.rotateReset"
+                aria-label="复位旋转" title="复位旋转">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"
+               fill="none" stroke="currentColor" stroke-width="2.4"
+               stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3.5 12a8.5 8.5 0 1 0 2.8-6.3"/>
+            <polyline points="3.5 3.5 3.5 9 9 9"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ----------------------------------------------------------
+       HTML-C 2. 分隔条 / 工具栏
+       ---------------------------------------------------------- -->
+  <div class="splitter" id="splitter">
+    <div class="tool-group">
+      <button id="btnCreateShape" class="tool-btn" type="button"
+              data-i18n-aria="toolbar.createShape"
+              data-i18n-title="toolbar.createShape"
+              aria-label="创建形状" title="创建形状">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"
+             fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="10" height="10" rx="1"/>
+          <line x1="18" y1="8" x2="22" y2="8"/>
+          <line x1="20" y1="6" x2="20" y2="10"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="tool-group">
+      <button id="btnUndo" class="tool-btn" type="button"
+              data-i18n-title="toolbar.undo"
+              data-i18n-aria="toolbar.undoAria"
+              title="撤销 (Ctrl+Z)" aria-label="撤销">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"
+             fill="none" stroke="currentColor" stroke-width="2.5"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 14L4 9l5-5"/>
+          <path d="M4 9h10a6 6 0 0 1 0 12h-3"/>
+        </svg>
+      </button>
+      <button id="btnRedo" class="tool-btn" type="button"
+              data-i18n-title="toolbar.redo"
+              data-i18n-aria="toolbar.redoAria"
+              title="重做 (Ctrl+Shift+Z)" aria-label="重做">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"
+             fill="none" stroke="currentColor" stroke-width="2.5"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 14l5-5-5-5"/>
+          <path d="M20 9H10a6 6 0 0 0 0 12h3"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="tool-center">
+      <div id="splitterGrip" class="tool-grip"
+           data-i18n-title="toolbar.gripTitle"
+           title="拖动调整布局 · 双击恢复默认"></div>
+    </div>
+
+    <div class="tool-group">
+      <button id="btnFormat" class="tool-btn" type="button"
+              data-i18n-title="toolbar.format"
+              data-i18n-aria="toolbar.formatAria"
+              title="格式化" aria-label="格式化代码">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"
+             fill="none" stroke="currentColor" stroke-width="2.4"
+             stroke-linecap="round" stroke-linejoin="round">
+          <line x1="11" y1="6"  x2="21" y2="6"/>
+          <line x1="11" y1="12" x2="21" y2="12"/>
+          <line x1="11" y1="18" x2="21" y2="18"/>
+          <polyline points="3 9 6 12 3 15"/>
+        </svg>
+      </button>
+      <button id="btnFind" class="tool-btn" type="button"
+              data-i18n-title="toolbar.find"
+              data-i18n-aria="toolbar.findAria"
+              title="查找替换 (Ctrl+F)" aria-label="查找替换">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"
+             fill="none" stroke="currentColor" stroke-width="2.4"
+             stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="7"/>
+          <line x1="16" y1="16" x2="21" y2="21"/>
+        </svg>
+      </button>
+      <div class="dropdown-container" id="editorActions">
+        <button id="btnEditorMenu" class="tool-btn" type="button"
+                data-i18n-aria="toolbar.more"
+                data-i18n-title="toolbar.more"
+                aria-label="更多操作" aria-haspopup="menu" aria-expanded="false"
+                title="更多操作">
+          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"
+               fill="currentColor" stroke="none">
+            <circle cx="5" cy="12" r="1.8"/>
+            <circle cx="12" cy="12" r="1.8"/>
+            <circle cx="19" cy="12" r="1.8"/>
+          </svg>
+        </button>
+        <div id="editorMenu" class="dropdown dropdown--dark" hidden role="menu">
+          <button id="menuWrap" type="button" role="menuitemcheckbox" aria-checked="false">
+            <span class="dropdown__check">✓</span><span data-i18n="menu.wrap">自动换行</span>
+          </button>
+          <button id="menuHighlightLine" type="button" role="menuitemcheckbox" aria-checked="true">
+            <span class="dropdown__check">✓</span><span data-i18n="menu.highlightLine">高亮当前行</span>
+          </button>
+          <button id="menuAutoIndent" type="button" role="menuitemcheckbox" aria-checked="true">
+            <span class="dropdown__check">✓</span><span data-i18n="menu.autoIndent">自动缩进</span>
+          </button>
+          <div class="dropdown__sep"></div>
+          <button id="menuNewBlankCanvas" type="button" role="menuitem" data-i18n="menu.newCanvas">新建画布</button>
+          <button id="menuResetExample" type="button" role="menuitem" data-i18n="menu.resetExample">恢复示例</button>
+          <button id="menuHistory" type="button" role="menuitem" data-i18n="menu.history">历史版本…</button>
+          <div class="dropdown__sep"></div>
+          <button id="menuThemeAuto" type="button" role="menuitemradio" aria-checked="true">
+            <span class="dropdown__check">✓</span><span data-i18n="theme.auto">自动</span>
+          </button>
+          <button id="menuThemeLight" type="button" role="menuitemradio" aria-checked="false">
+            <span class="dropdown__check">✓</span><span data-i18n="theme.light">浅色</span>
+          </button>
+          <button id="menuThemeDark" type="button" role="menuitemradio" aria-checked="false">
+            <span class="dropdown__check">✓</span><span data-i18n="theme.dark">深色</span>
+          </button>
+          <div class="dropdown__sep"></div>
+          <button id="menuClearDraft" type="button" role="menuitem" data-i18n="menu.clearDraft">清空草稿</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ----------------------------------------------------------
+       HTML-D 3. 代码编辑器
+       ---------------------------------------------------------- -->
+  <section class="editor" id="editorSection">
+    <div id="gutter" class="gutter" aria-hidden="true"></div>
+    <div class="code-area">
+      <pre id="highlight" class="highlight" aria-hidden="true"><code id="highlightCode"></code></pre>
+      <textarea id="code" class="code-input" wrap="off" spellcheck="false"
+                autocomplete="off" autocapitalize="off" autocorrect="off"
+                data-i18n-aria="editor.aria"
+                data-i18n-placeholder="editor.placeholder"
+                aria-label="SVG 源码输入"
+                placeholder="在此粘贴或输入 SVG 代码…"></textarea>
+    </div>
+  </section>
+
+  <!-- ----------------------------------------------------------
+       HTML-E 4. 元素属性面板
+       ---------------------------------------------------------- -->
+  <aside id="attrPanel" class="attr-panel" hidden data-i18n-aria="attrPanel.aria" aria-label="元素属性面板">
+    <div class="attr-panel__header">
+      <div class="attr-panel__title">
+        <span id="attrPanelTag" class="attr-panel__tag">—</span>
+        <span id="attrPanelId" class="attr-panel__id" hidden></span>
+      </div>
+      <div class="attr-panel__actions">
+        <button id="attrPanelLocate" class="attr-panel__tool-btn" type="button"
+                data-i18n="attrPanel.locate"
+                data-i18n-title="attrPanel.locate"
+                title="定位到源码">定位</button>
+        <button id="attrPanelCanvasBtn" class="attr-panel__tool-btn attr-panel__canvas-btn" type="button"
+                data-i18n="attrPanel.canvas"
+                data-i18n-title="attrPanel.canvas"
+                title="编辑画布属性">画布</button>
+        <button id="attrPanelClose" class="attr-panel__close" type="button"
+                data-i18n-aria="attrPanel.close"
+                aria-label="关闭">✕</button>
+      </div>
+    </div>
+    <div id="attrPanelWarning" class="attr-panel__warning" hidden data-i18n="attrPanel.warning">
+      ⚠️ 源码结构无法定位，属性面板为只读
+    </div>
+    <div id="attrPanelBody" class="attr-panel__body"></div>
+  </aside>
+
+</div>
+
+<!-- ============================================================
+     HTML-F 5. 浮动面板 / 弹窗 / 输入
+     ============================================================ -->
+
+<!-- 查找替换面板 -->
+<div id="findPanel" class="find-panel" hidden>
+  <div class="find-inputs-row">
+    <input id="findInput" class="find-input" type="text"
+           data-i18n-placeholder="find.inputPlaceholder"
+           placeholder="查找内容" />
+    <input id="replaceInput" class="find-input" type="text"
+           data-i18n-placeholder="find.replacePlaceholder"
+           placeholder="替换为" />
+  </div>
+  <div class="find-actions">
+    <button id="findPrev" class="find-btn find-btn--icon" type="button"
+            data-i18n-title="find.prev"
+            data-i18n-aria="find.prev"
+            title="上一个" aria-label="上一个">
+      <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"
+           fill="none" stroke="currentColor" stroke-width="2.5"
+           stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="19" x2="12" y2="5"/>
+        <polyline points="5 12 12 5 19 12"/>
+      </svg>
+    </button>
+    <button id="findNext" class="find-btn find-btn--icon" type="button"
+            data-i18n-title="find.next"
+            data-i18n-aria="find.next"
+            title="下一个" aria-label="下一个">
+      <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"
+           fill="none" stroke="currentColor" stroke-width="2.5"
+           stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"/>
+        <polyline points="5 12 12 19 19 12"/>
+      </svg>
+    </button>
+    <button id="findReplace" class="find-btn" type="button" data-i18n="find.replace">替换</button>
+    <button id="findReplaceAll" class="find-btn" type="button" data-i18n="find.replaceAll">全部</button>
+    <button id="findClose" class="find-btn find-btn--icon" type="button"
+            data-i18n-aria="find.close"
+            aria-label="关闭">
+      <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"
+           fill="none" stroke="currentColor" stroke-width="2.5"
+           stroke-linecap="round" stroke-linejoin="round">
+        <line x1="6" y1="6" x2="18" y2="18"/>
+        <line x1="18" y1="6" x2="6" y2="18"/>
+      </svg>
+    </button>
+  </div>
+</div>
+
+<!-- 历史版本弹窗 -->
+<div id="historyMask" class="modal-mask" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="historyTitle">
+    <h3 id="historyTitle" class="modal__title" data-i18n="history.title">历史版本</h3>
+    <p class="modal__subtitle" data-i18n="history.subtitle">点击载入某个版本（最多保留 20 条）</p>
+    <div id="historyList" class="history-list"></div>
+    <div class="modal__actions">
+      <button id="historyClear" class="btn btn--ghost" type="button" data-i18n="history.clear">清空历史</button>
+      <button id="historyClose" class="btn btn--primary" type="button" data-i18n="history.close">关闭</button>
+    </div>
+  </div>
+</div>
+
+<!-- 图片选择隐藏输入 -->
+<input id="imageFileInput" type="file" accept="image/png,image/jpeg" hidden />
+
+<!-- ============================================================
+     图片插入配置弹窗
+     ============================================================ -->
+<div id="imageConfigMask" class="modal-mask" hidden>
+  <div class="modal image-config-modal" role="dialog" aria-modal="true"
+       aria-labelledby="imageConfigTitle">
+    <h3 id="imageConfigTitle" class="modal__title" data-i18n="imageConfig.title">插入图片</h3>
+    <p class="modal__subtitle" data-i18n="imageConfig.subtitle">设置比例、填充方式后插入画布</p>
+
+    <div class="image-config-preview" id="imageConfigPreview"></div>
+
+    <div class="image-config-ratio-row">
+      <label class="modal__label" for="imageConfigRatio" data-i18n="imageConfig.ratio">比例</label>
+      <select id="imageConfigRatio" class="modal__select">
+        <option value="original" data-i18n="imageConfig.ratioOriginal">原始比例</option>
+        <option value="1:1" data-i18n="imageConfig.ratio1x1">1 : 1</option>
+        <option value="4:3" data-i18n="imageConfig.ratio4x3">4 : 3</option>
+        <option value="16:9" data-i18n="imageConfig.ratio16x9">16 : 9</option>
+        <option value="3:4" data-i18n="imageConfig.ratio3x4">3 : 4</option>
+        <option value="9:16" data-i18n="imageConfig.ratio9x16">9 : 16</option>
+        <option value="custom" data-i18n="imageConfig.ratioCustom">自定义…</option>
+      </select>
+      <div id="imageConfigCustomRow" class="image-config-size-inline">
+        <label class="modal__label" for="imageConfigCustomW" data-i18n="imageConfig.width">宽</label>
+        <input id="imageConfigCustomW" class="modal__input" type="number"
+               inputmode="numeric" min="1" step="1" value="100" />
+        <span class="modal__x">×</span>
+        <label class="modal__label" for="imageConfigCustomH" data-i18n="imageConfig.height">高</label>
+        <input id="imageConfigCustomH" class="modal__input" type="number"
+               inputmode="numeric" min="1" step="1" value="100" />
+      </div>
+    </div>
+
+    <div class="image-config-row-pair">
+      <div class="modal__field">
+        <label class="modal__label" data-i18n="imageConfig.fill">填充</label>
+        <div class="radio-group radio-group--compact">
+          <label><input type="radio" name="imageConfigFill" value="slice" checked /> <span data-i18n="imageConfig.fillSlice">裁剪填满</span></label>
+          <label><input type="radio" name="imageConfigFill" value="meet" /> <span data-i18n="imageConfig.fillMeet">完整显示</span></label>
+        </div>
+      </div>
+      <div class="modal__field">
+        <label class="modal__label" data-i18n="imageConfig.insertMode">插入方式</label>
+        <div class="radio-group radio-group--compact">
+          <label><input type="radio" name="imageConfigInsert" value="replace" checked /> <span data-i18n="imageConfig.insertReplace">替换画布</span></label>
+          <label><input type="radio" name="imageConfigInsert" value="append" /> <span data-i18n="imageConfig.insertAppend">追加元素</span></label>
+        </div>
+      </div>
+    </div>
+
+    <div class="image-config-checks-row">
+      <label class="modal__check modal__check--half"
+             data-i18n-title="imageConfig.clipTitle"
+             title="插入后可在属性面板切换形状（矩形/圆形/星形等）">
+        <input id="imageConfigClip" type="checkbox" checked />
+        <span class="modal__check-desc" data-i18n="imageConfig.clip">蒙板剪裁</span>
+      </label>
+      <label class="modal__check modal__check--half"
+             data-i18n-title="imageConfig.compressTitle"
+             title="按目标尺寸压缩嵌入，减小源码体积">
+        <input id="imageConfigCompress" type="checkbox" checked />
+        <span class="modal__check-desc" data-i18n="imageConfig.compress">压缩嵌入</span>
+      </label>
+    </div>
+
+    <div class="modal__actions">
+      <button id="imageConfigCancel" class="btn btn--ghost" type="button" data-i18n="btn.cancel">取消</button>
+      <button id="imageConfigConfirm" class="btn btn--primary" type="button" data-i18n="imageConfig.insert">插入</button>
+    </div>
+  </div>
+</div>
+
+<!-- SVG 文件选择隐藏输入 -->
+<input id="fileInput" type="file" accept=".svg,image/svg+xml" hidden />
+
+<!-- 拖拽遮罩 -->
+<div id="dropOverlay" class="drop-overlay" hidden>
+  <div class="drop-overlay__inner">
+    <div class="drop-overlay__icon">📂</div>
+    <div class="drop-overlay__text" data-i18n="dropOverlay.text">松开以载入文件（SVG）</div>
+  </div>
+</div>
+
+<!-- 导出弹窗 -->
+<div id="modalMask" class="modal-mask" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <h3 id="modalTitle" class="modal__title" data-i18n="export.titleSvg">导出 SVG</h3>
+    <p id="modalSubtitle" class="modal__subtitle" data-i18n="export.subtitleSvg">设置输出尺寸，点击导出即可保存</p>
+
+    <div class="modal__row">
+      <div class="modal__field">
+        <label class="modal__label" for="exportW" data-i18n="export.width">宽度（px）</label>
+        <input id="exportW" class="modal__input" type="number"
+               inputmode="numeric" min="1" step="1" />
+      </div>
+      <span class="modal__x">×</span>
+      <div class="modal__field">
+        <label class="modal__label" for="exportH" data-i18n="export.height">高度（px）</label>
+        <input id="exportH" class="modal__input" type="number"
+               inputmode="numeric" min="1" step="1" />
+      </div>
+      <button id="exportLock" class="modal__lock is-locked" type="button"
+              data-i18n-aria="export.lock"
+              data-i18n-title="export.lockTitle"
+              aria-label="锁定宽高比" aria-pressed="true"
+              title="锁定 / 解锁宽高比">🔒</button>
+    </div>
+
+    <p id="exportHint" class="modal__hint" hidden></p>
+
+    <div id="formatRow" class="modal__field" style="margin-bottom:10px" hidden>
+      <label class="modal__label" for="exportFormat" data-i18n="export.format">图片格式</label>
+      <select id="exportFormat" class="modal__select">
+        <option value="png" data-i18n="export.formatPng">PNG（支持透明）</option>
+        <option value="webp" data-i18n="export.formatWebp">WebP（支持透明）</option>
+        <option value="jpg" data-i18n="export.formatJpg">JPG（不支持透明）</option>
+      </select>
+    </div>
+    <label id="bgRow" class="modal__check" hidden>
+      <input id="exportWhiteBg" type="checkbox" />
+      <span class="modal__check-desc" data-i18n="export.whiteBg">白色背景（不勾选则透明）</span>
+    </label>
+    <label id="viewBoxRow" class="modal__check" hidden
+           data-i18n-title="export.keepSizeTitle"
+           title="勾选：viewBox 随画布等比扩展，内容视觉大小不变；不勾选：内容随画布缩放">
+      <input id="exportScaleViewBox" type="checkbox" />
+      <span class="modal__check-desc" data-i18n="export.keepSize">内容视觉大小不变（扩展画布留白）</span>
+    </label>
+    <div class="modal__actions">
+      <button id="exportOriginal" class="btn btn--ghost" type="button" data-i18n="export.original">原始尺寸</button>
+      <button id="exportCancel" class="btn btn--ghost" type="button" data-i18n="btn.cancel">取消</button>
+      <button id="exportConfirm" class="btn btn--primary" type="button" data-i18n="export.confirm">导出</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script src="script.js"></script>
+</body>
+</html>
