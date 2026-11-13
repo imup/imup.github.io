@@ -3742,7 +3742,7 @@ function commitAttrChange(el, name, value) {
   schedulePreviewRender();
   saveDraftDebounced();
   recordSnapshot();
-  setTimeout(() => { if (!wasSuppressed) suppressAttrRebuild = false; }, 400);
+  setTimeout(() => { if (!wasSuppressed) suppressAttrRebuild = false; }, 800);
 }
 function deleteSelectedElement() {
   if (!selectedPath) return;
@@ -5034,7 +5034,9 @@ function closeAttrPanel() {
   }
 }
 
+
 /* ---- 属性面板主入口 ---- */
+/*
 function rebuildAttrPanel() {
   if (!attrPanelOpen) return;
   if (canvasRootMode) {
@@ -5043,6 +5045,24 @@ function rebuildAttrPanel() {
   }
   if (!selectedPath || !currentSvg) return;
   closeAnimAddMenu();
+  */
+function rebuildAttrPanel() {
+  if (!attrPanelOpen) return;
+  const activeEl = document.activeElement;
+  if (activeEl && attrPanelBody.contains(activeEl) &&
+      (activeEl.tagName === 'INPUT' ||
+       activeEl.tagName === 'TEXTAREA' ||
+       activeEl.tagName === 'SELECT')) {
+    return;
+  }
+
+  if (canvasRootMode) {
+    rebuildCanvasAttrPanel();
+    return;
+  }
+  if (!selectedPath || !currentSvg) return;
+  closeAnimAddMenu();
+  
   attrPanelCanvasBtn.classList.remove('is-active');
   attrPanelCanvasBtn.textContent = t('attrPanel.canvas');
   const el = resolvePath(currentSvg, selectedPath);
