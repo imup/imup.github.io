@@ -6047,6 +6047,18 @@ if (window.visualViewport) {
   window.visualViewport.addEventListener('resize', onVVResize);
 }
 
+  // 1. 加载外部资源
+(function setupPreventPageZoom() {
+  const isPreviewTarget = (target) =>
+    !!(target && target.closest && target.closest('#previewWrap'));
+  const preventGesture = (e) => {
+    if (isPreviewTarget(e.target)) return;
+    e.preventDefault();
+  };
+  document.addEventListener('gesturestart',  preventGesture, { passive: false });
+  document.addEventListener('gesturechange', preventGesture, { passive: false });
+  document.addEventListener('gestureend',    preventGesture, { passive: false });
+})();
 (async function bootstrap() {
   // 1. 加载外部资源
   await loadContentAndConfig();
