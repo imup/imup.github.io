@@ -2613,10 +2613,8 @@ function openExportModal(format) {
   updatePresetActiveState();
 
   modalMask.hidden = false;
-  _releaseExportTrap = trapFocusIn(modalMask);
-  if (window.matchMedia('(hover: hover)').matches) {
-    exportWInput.focus(); exportWInput.select();
-  }
+  _releaseExportTrap = trapFocusIn(modalMask, { autoFocus: false });
+  exportConfirm.focus({ preventScroll: true });
 }
 
 function closeExportModal() {
@@ -6038,7 +6036,8 @@ function setMobileView(view) {
 /* ============================================================
    32. 焦点陷阱（模态可访问性）
    ============================================================ */
-function trapFocusIn(container) {
+function trapFocusIn(container, opts) {
+  const { autoFocus = true } = opts || {};
   const prev = document.activeElement;
   const getFocusable = () => Array.from(
     container.querySelectorAll(
@@ -6056,8 +6055,10 @@ function trapFocusIn(container) {
   };
   container.addEventListener('keydown', onKey);
 
-  const list = getFocusable();
-  if (list.length) list[0].focus();
+  if (autoFocus) {
+    const list = getFocusable();
+    if (list.length) list[0].focus();
+  }
 
   return () => {
     container.removeEventListener('keydown', onKey);
