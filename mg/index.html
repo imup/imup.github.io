@@ -12,14 +12,8 @@
 </head>
 <body>
 
-<!-- ============================================================
-     HTML-A 应用根容器
-     ============================================================ -->
 <div class="app" id="appRoot">
 
-  <!-- ----------------------------------------------------------
-       HTML-B 1. 预览区
-       ---------------------------------------------------------- -->
   <section class="preview-wrap" id="previewWrap">
     <div id="preview" class="preview"></div>
     <div id="badge" class="badge" hidden></div>
@@ -128,10 +122,6 @@
       </div>
     </div>
   </section>
-
-  <!-- ----------------------------------------------------------
-       HTML-C 2. 分隔条 / 工具栏
-       ---------------------------------------------------------- -->
       
   <div class="splitter" id="splitter">
     <div class="tool-group">
@@ -249,9 +239,6 @@
     </div>
   </div>
 
-  <!-- ----------------------------------------------------------
-       HTML-D 3. 代码编辑器
-       ---------------------------------------------------------- -->
   <section class="editor" id="editorSection">
     <div id="gutter" class="gutter" aria-hidden="true"></div>
     <div class="code-area">
@@ -265,9 +252,6 @@
     </div>
   </section>
 
-  <!-- ----------------------------------------------------------
-       HTML-E 4. 元素属性面板
-       ---------------------------------------------------------- -->
   <aside id="attrPanel" class="attr-panel" hidden data-i18n-aria="attrPanel.aria" aria-label="元素属性面板">
     <div class="attr-panel__header">
       <div class="attr-panel__title">
@@ -296,11 +280,6 @@
 
 </div>
 
-<!-- ============================================================
-     HTML-F 5. 浮动面板 / 弹窗 / 输入
-     ============================================================ -->
-
-<!-- 查找替换面板 -->
 <div id="findPanel" class="find-panel" hidden>
   <div class="find-inputs-row">
     <input id="findInput" class="find-input" type="text"
@@ -348,7 +327,6 @@
   </div>
 </div>
 
-<!-- 历史版本弹窗 -->
 <div id="historyMask" class="modal-mask" hidden>
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="historyTitle">
     <h3 id="historyTitle" class="modal__title" data-i18n="history.title">历史版本</h3>
@@ -361,12 +339,8 @@
   </div>
 </div>
 
-<!-- 图片选择隐藏输入 -->
 <input id="imageFileInput" type="file" accept="image/png,image/jpeg" hidden />
 
-<!-- ============================================================
-     图片插入配置弹窗
-     ============================================================ -->
 <div id="imageConfigMask" class="modal-mask" hidden>
   <div class="modal image-config-modal" role="dialog" aria-modal="true"
        aria-labelledby="imageConfigTitle">
@@ -436,10 +410,8 @@
   </div>
 </div>
 
-<!-- SVG 文件选择隐藏输入 -->
 <input id="fileInput" type="file" accept=".svg,image/svg+xml" hidden />
 
-<!-- 拖拽遮罩 -->
 <div id="dropOverlay" class="drop-overlay" hidden>
   <div class="drop-overlay__inner">
     <div class="drop-overlay__icon">📂</div>
@@ -447,13 +419,11 @@
   </div>
 </div>
 
-<!-- 导出弹窗 -->
 <div id="modalMask" class="modal-mask" hidden>
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <h3 id="modalTitle" class="modal__title" data-i18n="export.titleSvg">导出 SVG</h3>
     <p id="modalSubtitle" class="modal__subtitle" data-i18n="export.subtitleSvg">设置输出尺寸，点击导出即可保存</p>
 
-    <!-- 格式 + 预设并排 -->
     <div id="exportTopRow" class="export-top-row">
       <div id="formatRow" class="export-format-field">
         <label class="modal__label" for="exportFormat" data-i18n="export.format">图片格式</label>
@@ -518,7 +488,6 @@
   </div>
 </div>
 
-<!-- Toast -->
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
 <script src="script.js"></script>
