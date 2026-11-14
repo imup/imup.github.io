@@ -165,8 +165,22 @@
                    "values": "1;1.2;1", "dur": "2s", "repeatCount": "indefinite" }
       }
     },
-    { "key": "skewX", "labelKey": "field.skewX", "step": 1 },
-    { "key": "skewY", "labelKey": "field.skewY", "step": 1 }
+    {
+    "key": "skewX", "labelKey": "field.skewX", "step": 1,
+  "preset": {
+    "kind": "animateTransform",
+    "attrs": { "attributeName": "transform", "type": "skewX",
+               "values": "0;20;0", "dur": "2s", "repeatCount": "indefinite" }
+  }
+    },
+    {
+    "key": "skewY", "labelKey": "field.skewY", "step": 1,
+  "preset": {
+    "kind": "animateTransform",
+    "attrs": { "attributeName": "transform", "type": "skewY",
+               "values": "0;20;0", "dur": "2s", "repeatCount": "indefinite" }
+  }
+    }
   ],
 
   "canvasPresets": [
