@@ -133,7 +133,6 @@
   "transformSpecs": [
     {
       "key": "tx", "labelKey": "field.translateX", "step": 1,
-      "animType": "translate", "animAxis": "x",
       "preset": {
         "kind": "animateTransform",
         "attrs": { "attributeName": "transform", "type": "translate",
@@ -142,7 +141,6 @@
     },
     {
       "key": "ty", "labelKey": "field.translateY", "step": 1,
-      "animType": "translate", "animAxis": "y",
       "preset": {
         "kind": "animateTransform",
         "attrs": { "attributeName": "transform", "type": "translate",
@@ -151,7 +149,6 @@
     },
     {
       "key": "rot", "labelKey": "field.rotation", "step": 1,
-      "animType": "rotate",
       "preset": {
         "kind": "animateTransform", "dynamic": "rotateCenter",
         "attrs": { "attributeName": "transform", "type": "rotate",
@@ -162,15 +159,14 @@
     { "key": "rotCy", "labelKey": "field.rotCenterY", "step": 1 },
     {
       "key": "scale", "labelKey": "field.scale", "step": 0.1, "min": 0,
-      "animType": "scale",
       "preset": {
         "kind": "animateTransform",
         "attrs": { "attributeName": "transform", "type": "scale",
                    "values": "1;1.2;1", "dur": "2s", "repeatCount": "indefinite" }
       }
     },
-    { "key": "skewX", "labelKey": "field.skewX", "step": 1, "animType": "skewX" },
-    { "key": "skewY", "labelKey": "field.skewY", "step": 1, "animType": "skewY" }
+    { "key": "skewX", "labelKey": "field.skewX", "step": 1 },
+    { "key": "skewY", "labelKey": "field.skewY", "step": 1 }
   ],
 
   "canvasPresets": [
@@ -263,47 +259,75 @@
   "filterPrimitives": {
     "order": ["feGaussianBlur", "feDropShadow", "feOffset", "feBlend", "feColorMatrix", "feTurbulence", "feComposite", "feMerge"],
     "defs": {
-      "feGaussianBlur": { "fields": [{ "name": "stdDeviation", "type": "text", "default": "3", "placeholder": "3", "full": true }] },
-      "feDropShadow": { "fields": [
-        { "name": "dx", "type": "number", "default": 2 },
-        { "name": "dy", "type": "number", "default": 2 },
-        { "name": "stdDeviation", "type": "number", "default": 3 },
-        { "name": "flood-color", "type": "color", "default": "#000000" },
-        { "name": "flood-opacity", "type": "number", "default": 0.5, "step": 0.1 }
-      ] },
-      "feOffset": { "fields": [
-        { "name": "dx", "type": "number", "default": 4 },
-        { "name": "dy", "type": "number", "default": 4 }
-      ] },
-      "feBlend": { "fields": [
-        { "name": "mode", "type": "select", "options": ["normal","multiply","screen","overlay","darken","lighten"], "default": "normal" },
-        { "name": "in",  "type": "text", "default": "SourceGraphic", "placeholder": "SourceGraphic" },
-        { "name": "in2", "type": "text", "default": "", "placeholder": "in2" }
-      ] },
-      "feColorMatrix": { "fields": [
-        { "name": "type", "type": "select", "options": ["matrix","saturate","hueRotate","luminanceToAlpha"], "default": "saturate" },
-        { "name": "values", "type": "text", "default": "0.5", "placeholder": "0.5", "full": true }
-      ] },
-      "feTurbulence": { "fields": [
-        { "name": "baseFrequency", "type": "text", "default": "0.05", "placeholder": "0.05" },
-        { "name": "numOctaves", "type": "number", "default": 2 },
-        { "name": "type", "type": "select", "options": ["fractalNoise","turbulence"], "default": "fractalNoise" }
-      ] },
-      "feComposite": { "fields": [
-        { "name": "operator", "type": "select", "options": ["over","in","out","atop","xor"], "default": "over" },
-        { "name": "in",  "type": "text", "default": "SourceGraphic", "placeholder": "SourceGraphic" },
-        { "name": "in2", "type": "text", "default": "", "placeholder": "in2" }
-      ] },
-      "feMerge": { "fields": [{ "name": "inputs", "type": "text", "default": "SourceGraphic", "placeholder": "SourceGraphic, blur", "full": true }] }
+      "feGaussianBlur": {
+        "fields": [{ "name": "stdDeviation", "type": "text", "default": "3", "placeholder": "3", "full": true }]
+      },
+      "feDropShadow": {
+        "fields": [
+          { "name": "dx", "type": "number", "default": 2 },
+          { "name": "dy", "type": "number", "default": 2 },
+          { "name": "stdDeviation", "type": "number", "default": 3 },
+          { "name": "flood-color", "type": "color", "default": "#000000" },
+          { "name": "flood-opacity", "type": "number", "default": 0.5, "step": 0.1 }
+        ]
+      },
+      "feOffset": {
+        "fields": [
+          { "name": "dx", "type": "number", "default": 4 },
+          { "name": "dy", "type": "number", "default": 4 }
+        ]
+      },
+      "feBlend": {
+        "fields": [
+          { "name": "mode", "type": "select", "options": ["normal","multiply","screen","overlay","darken","lighten"], "default": "normal" },
+          { "name": "in",  "type": "text", "default": "SourceGraphic", "placeholder": "SourceGraphic" },
+          { "name": "in2", "type": "text", "default": "", "placeholder": "in2" }
+        ]
+      },
+      "feColorMatrix": {
+        "fields": [
+          { "name": "type", "type": "select", "options": ["matrix","saturate","hueRotate","luminanceToAlpha"], "default": "saturate" },
+          { "name": "values", "type": "text", "default": "0.5", "placeholder": "0.5", "full": true }
+        ]
+      },
+      "feTurbulence": {
+        "fields": [
+          { "name": "baseFrequency", "type": "text", "default": "0.05", "placeholder": "0.05" },
+          { "name": "numOctaves", "type": "number", "default": 2 },
+          { "name": "type", "type": "select", "options": ["fractalNoise","turbulence"], "default": "fractalNoise" }
+        ]
+      },
+      "feComposite": {
+        "fields": [
+          { "name": "operator", "type": "select", "options": ["over","in","out","atop","xor"], "default": "over" },
+          { "name": "in",  "type": "text", "default": "SourceGraphic", "placeholder": "SourceGraphic" },
+          { "name": "in2", "type": "text", "default": "", "placeholder": "in2" }
+        ]
+      },
+      "feMerge": {
+        "fields": [{ "name": "inputs", "type": "text", "default": "SourceGraphic", "placeholder": "SourceGraphic, blur", "full": true }]
+      }
     }
   },
 
   "markerPresets": {
     "order": ["triangle", "circle", "vee"],
     "defs": {
-      "triangle": { "viewBox": "0 0 10 10", "refX": 10, "refY": 5, "size": 10, "markup": "<path d=\"M0,0 L10,5 L0,10 z\" fill=\"{color}\"/>" },
-      "circle":   { "viewBox": "0 0 10 10", "refX": 5, "refY": 5, "size": 10, "markup": "<circle cx=\"5\" cy=\"5\" r=\"4\" fill=\"{color}\"/>" },
-      "vee":      { "viewBox": "0 0 10 10", "refX": 8, "refY": 5, "size": 10, "markup": "<path d=\"M2,2 L8,5 L2,8\" fill=\"none\" stroke=\"{color}\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>" }
+      "triangle": {
+        "viewBox": "0 0 10 10",
+        "refX": 10, "refY": 5, "size": 10,
+        "markup": "<path d=\"M0,0 L10,5 L0,10 z\" fill=\"{color}\"/>"
+      },
+      "circle": {
+        "viewBox": "0 0 10 10",
+        "refX": 5, "refY": 5, "size": 10,
+        "markup": "<circle cx=\"5\" cy=\"5\" r=\"4\" fill=\"{color}\"/>"
+      },
+      "vee": {
+        "viewBox": "0 0 10 10",
+        "refX": 8, "refY": 5, "size": 10,
+        "markup": "<path d=\"M2,2 L8,5 L2,8\" fill=\"none\" stroke=\"{color}\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>"
+      }
     }
   }
 }
