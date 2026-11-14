@@ -4721,29 +4721,6 @@ function clearSelection() {
   closeAttrPanel();
 }
 
-const ANIM_TEMPLATES = [
-  { id: 'fade',
-    build: () => `<animate attributeName="opacity" values="1;0;1" dur="2s" repeatCount="indefinite"/>` },
-  { id: 'rotate',
-    build: (el) => {
-      const c = getElementCenter(el);
-      return `<animateTransform attributeName="transform" type="rotate" from="0 ${c.x} ${c.y}" to="360 ${c.x} ${c.y}" dur="4s" repeatCount="indefinite"/>`;
-    } },
-  { id: 'scale',
-    build: () => `<animateTransform attributeName="transform" type="scale" values="1;1.2;1" dur="2s" repeatCount="indefinite"/>` },
-  { id: 'translate',
-    build: () => `<animateTransform attributeName="transform" type="translate" values="0,0;20,0;0,0" dur="2s" repeatCount="indefinite"/>` },
-  { id: 'color',
-    build: () => `<animate attributeName="fill" values="#ff0000;#00ff00;#ff0000" dur="3s" repeatCount="indefinite"/>` },
-  { id: 'stroke',
-    build: () => `<animate attributeName="stroke-dashoffset" from="100" to="0" dur="2s" fill="freeze"/>` },
-  { id: 'motion',
-    build: () => `<animateMotion path="M0,0 C 20,-20 40,20 60,0" dur="4s" repeatCount="indefinite"/>` },
-  { id: 'pulse',
-    build: () => `<animate attributeName="opacity" values="1;0.4;1" dur="1s" repeatCount="indefinite"/>` },
-  { id: 'custom', isCustom: true,
-    build: () => `<animate attributeName="" dur="2s" repeatCount="indefinite"/>` }
-];
 function buildValuePulseAnim(attrName, currentVal, delta) {
   const v = parseFloat(currentVal);
   const base = isFinite(v) ? v : 0;
