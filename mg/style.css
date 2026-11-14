@@ -948,6 +948,16 @@ body{
 .attr-row__select:disabled,
 .attr-row__textarea:disabled{opacity:.55;cursor:not-allowed;background:var(--bg-muted);}
 
+.attr-row__input--error{
+  border-color:var(--danger) !important;
+  box-shadow:0 0 0 3px rgba(220,38,38,.15) !important;
+  animation:attrShake .3s;
+}
+@keyframes attrShake{
+  0%,100%{transform:translateX(0);}
+  25%{transform:translateX(-3px);}
+  75%{transform:translateX(3px);}
+}
 .attr-row__extra-btn{
   flex:0 0 auto;width:22px;height:22px;padding:0;
   display:grid;place-items:center;
