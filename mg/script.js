@@ -2784,25 +2784,6 @@ function makeStyleRow(el, spec, isReadOnly) {
 }
 let _rowUid = 0;
 const nextRowUid = () => 'attr-' + (++_rowUid);
-const SMIL_ANIMATABLE_ATTRS = new Set([
-  'x', 'y', 'cx', 'cy', 'x1', 'y1', 'x2', 'y2',
-  'width', 'height', 'rx', 'ry', 'r',
-  'pathLength', 'dx', 'dy',
-  'd', 'points',
-  'fill', 'fill-opacity', 'fill-rule',
-  'stroke', 'stroke-width', 'stroke-opacity',
-  'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit',
-  'stroke-dasharray', 'stroke-dashoffset',
-  'opacity',
-  'filter', 'clip-path', 'mask',
-  'marker-start', 'marker-mid', 'marker-end',
-  'visibility', 'display',
-  'font-family', 'font-size', 'font-weight', 'font-style',
-  'text-anchor', 'letter-spacing', 'word-spacing',
-  'dominant-baseline', 'alignment-baseline',
-  'text-decoration', 'textLength', 'lengthAdjust',
-  'pointer-events', 'cursor'
-]);
 function parseDuration(str) {
   if (!str) return 0;
   const m = String(str).match(/^([\d.]+)\s*(ms|s|min)?$/);
@@ -3226,7 +3207,7 @@ function makeRow(el, spec, isReadOnly, isCanvas) {
   label.htmlFor = _id;
   const animBuilder = getFieldAnimBuilder(spec.name);
   const canAddPreset = !!animBuilder && spec.type !== 'textarea';
-  const canKeyframe = SMIL_ANIMATABLE_ATTRS.has(spec.name);
+  const canKeyframe = !!spec.animatable;
 
   if (!isReadOnly && !isCanvas && (canAddPreset || canKeyframe)) {
     if (canAddPreset) {
@@ -3547,15 +3528,18 @@ function makeStructureGroup(el, isReadOnly) {
   group.appendChild(items);
   return group;
 }
-const TRANSFORM_ANIM_BUILDERS = {
-  'translate-tx': () => `<animateTransform attributeName="transform" type="translate" values="0,0;20,0;0,0" dur="2s" repeatCount="indefinite"/>`,
-  'translate-ty': () => `<animateTransform attributeName="transform" type="translate" values="0,0;0,20;0,0" dur="2s" repeatCount="indefinite"/>`,
-  'rotate': (el) => {
+function buildAnimFromSpecPreset(preset, el) {
+  if (!preset) return '';
+  const attrs = { ...(preset.attrs || {}) };
+  if (preset.dynamic === 'rotateCenter') {
     const c = getElementCenter(el);
-    return `<animateTransform attributeName="transform" type="rotate" from="0 ${c.x} ${c.y}" to="360 ${c.x} ${c.y}" dur="4s" repeatCount="indefinite"/>`;
-  },
-  'scale': () => `<animateTransform attributeName="transform" type="scale" values="1;1.2;1" dur="2s" repeatCount="indefinite"/>`
-};
+    attrs.attributeName = attrs.attributeName || 'transform';
+    attrs.from = `0 ${c.x} ${c.y}`;
+    attrs.to   = `360 ${c.x} ${c.y}`;
+  }
+  return buildAnimTag(preset.kind, attrs);
+}
+
 function makeTransformGroup(el, isReadOnly) {
   const g = document.createElement('div');
   g.className = 'attr-group';
@@ -3592,8 +3576,7 @@ function makeTransformGroup(el, isReadOnly) {
     label.textContent = t(spec.labelKey);
     const _id = nextRowUid();
     label.htmlFor = _id;
-
-    if (!isReadOnly && spec.animKey && TRANSFORM_ANIM_BUILDERS[spec.animKey]) {
+    if (!isReadOnly && spec.preset) {
       const addBtn = document.createElement('button');
       addBtn.type = 'button';
       addBtn.className = 'attr-row__anim-add';
@@ -3601,7 +3584,8 @@ function makeTransformGroup(el, isReadOnly) {
       addBtn.textContent = '+';
       addBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        addFieldAnim(el, t(spec.labelKey), () => TRANSFORM_ANIM_BUILDERS[spec.animKey](el));
+        const markup = buildAnimFromSpecPreset(spec.preset, el);
+        addFieldAnim(el, t(spec.labelKey), () => markup);
       });
       label.appendChild(addBtn);
     }
@@ -3685,9 +3669,18 @@ function getPosAttrs(tag) {
   const list = (CONFIG && CONFIG.posAttrs && CONFIG.posAttrs[tag]) || [];
   if (list.length === 0) return [];
   const textareaSet = new Set(CONFIG.posAttrTextarea || []);
-  const attrs = list.map(n => ({ name: n, type: textareaSet.has(n) ? 'textarea' : 'number' }));
+  const attrs = list.map(item => {
+    if (typeof item === 'string') {
+      return {
+        name: item,
+        type: textareaSet.has(item) ? 'textarea' : 'number',
+        animatable: true
+      };
+    }
+    return { animatable: true, type: 'number', ...item };
+  });
   if (CONFIG.pathLengthTags && CONFIG.pathLengthTags.includes(tag)) {
-    attrs.push({ name: 'pathLength', type: 'number' });
+    attrs.push({ name: 'pathLength', type: 'number', animatable: true });
   }
   return attrs;
 }
