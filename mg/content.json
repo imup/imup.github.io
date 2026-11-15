@@ -25,8 +25,6 @@
       "gripTitle": "拖动调整布局 · 双击恢复默认",
       "format": "格式化",
       "formatAria": "格式化代码",
-      "find": "查找替换 (Ctrl+F)",
-      "findAria": "查找替换",
       "more": "更多操作",
       "createShape": "创建形状",
       "layoutRestored": "已恢复默认 80/20 布局",
@@ -69,16 +67,6 @@
       "reconfigImage": "重新配置图片",
       "imageMissing": "图片内容缺失",
       "backToParent": "← 返回父元素"
-    },
-
-    "find": {
-      "inputPlaceholder": "查找内容",
-      "replacePlaceholder": "替换为",
-      "prev": "上一个",
-      "next": "下一个",
-      "replace": "替换",
-      "replaceAll": "全部",
-      "close": "关闭"
     },
 
     "history": {
@@ -605,8 +593,6 @@
       "gripTitle": "Drag to resize · Double-click to reset",
       "format": "Format",
       "formatAria": "Format Code",
-      "find": "Find & Replace (Ctrl+F)",
-      "findAria": "Find & Replace",
       "more": "More Actions",
       "createShape": "Create Shape",
       "layoutRestored": "Default 80/20 layout restored",
@@ -649,16 +635,6 @@
       "reconfigImage": "Reconfigure Image",
       "imageMissing": "Image content missing",
       "backToParent": "← Back to Parent"
-    },
-
-    "find": {
-      "inputPlaceholder": "Find",
-      "replacePlaceholder": "Replace with",
-      "prev": "Previous",
-      "next": "Next",
-      "replace": "Replace",
-      "replaceAll": "All",
-      "close": "Close"
     },
 
     "history": {
