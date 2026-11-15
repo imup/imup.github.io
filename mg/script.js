@@ -28,7 +28,6 @@ const btnRotateReset = $('btnRotateReset');
 const btnUndo = $('btnUndo');
 const btnRedo = $('btnRedo');
 const btnFormat     = $('btnFormat');
-const btnFind       = $('btnFind');
 const btnEditorMenu = $('btnEditorMenu');
 const editorMenu    = $('editorMenu');
 const menuWrap      = $('menuWrap');
@@ -52,14 +51,6 @@ const btnCreateShape = $('btnCreateShape');
 const warningBar   = $('warningBar');
 const warningText  = $('warningText');
 const warningClose = $('warningClose');
-const findPanel      = $('findPanel');
-const findInput      = $('findInput');
-const replaceInput   = $('replaceInput');
-const findPrev       = $('findPrev');
-const findNext       = $('findNext');
-const findReplace    = $('findReplace');
-const findReplaceAll = $('findReplaceAll');
-const findClose      = $('findClose');
 const modalMask      = $('modalMask');
 const modalTitle     = $('modalTitle');
 const modalSubtitle  = $('modalSubtitle');
@@ -1691,126 +1682,6 @@ function updateUndoRedoMenu() {
 function isMobileViewport() {
   return window.innerWidth <= 480;
 }
-function openFindPanel() {
-  closeAttrPanel();
-  findPanel.hidden = false;
-  positionFindPanel();
-  if (!isMobileViewport()) {
-    findInput.focus();
-    findInput.select();
-  }
-}
-function closeFindPanel() {
-  if (isMobileViewport()) {
-    if (document.activeElement === findInput) { try { findInput.blur(); } catch (_) {} }
-    if (document.activeElement === replaceInput) { try { replaceInput.blur(); } catch (_) {} }
-  }
-  findPanel.hidden = true;
-  if (!isMobileViewport()) codeEl.focus();
-}
-function scrollToSelection() {
-  const idx = codeEl.selectionStart;
-  const text = codeEl.value;
-  const lineNo = posToLineNo(idx);
-  const lineHeight = parseFloat(getComputedStyle(codeEl).lineHeight) || 21;
-  const padTop = parseFloat(getComputedStyle(codeEl).paddingTop) || 0;
-  codeEl.scrollTop = Math.max(0, (lineNo - 1) * lineHeight - codeEl.clientHeight / 3 + padTop);
-  syncScroll();
-}
-function findNextMatch(backwards) {
-  const query = findInput.value;
-  if (!query) return;
-  const text = codeEl.value;
-  let idx;
-  if (backwards) {
-    idx = text.lastIndexOf(query, Math.max(0, codeEl.selectionStart - 1));
-    if (idx < 0) idx = text.lastIndexOf(query);
-  } else {
-    idx = text.indexOf(query, codeEl.selectionEnd);
-    if (idx < 0) idx = text.indexOf(query);
-  }
-  if (idx < 0) { showToast(t('toast.notFound')); return; }
-  try { codeEl.setSelectionRange(idx, idx + query.length); } catch(_) {}
-
-  if (isMobileViewport()) {
-    const panelRect = findPanel.getBoundingClientRect();
-    const codeRect  = codeEl.getBoundingClientRect();
-    const lineHeight = parseFloat(getComputedStyle(codeEl).lineHeight) || 21;
-    const padTop = parseFloat(getComputedStyle(codeEl).paddingTop) || 0;
-    const lineNo = posToLineNo(idx);
-    const targetY = (lineNo - 1) * lineHeight + padTop;
-    const obscureTop = Math.max(0, panelRect.bottom - codeRect.top);
-    codeEl.scrollTop = Math.max(0, targetY - obscureTop - lineHeight * 2);
-    syncScroll();
-  } else {
-    codeEl.focus();
-    scrollToSelection();
-  }
-  updateCurrentLineHighlight();
-}
-function replaceOne() {
-  const query = findInput.value, replacement = replaceInput.value;
-  if (!query) return;
-  const selText = codeEl.value.slice(codeEl.selectionStart, codeEl.selectionEnd);
-  if (selText === query) {
-    const start = codeEl.selectionStart;
-    const before = codeEl.value.slice(0, start);
-    const after = codeEl.value.slice(codeEl.selectionEnd);
-    codeEl.value = before + replacement + after;
-    codeEl.selectionStart = codeEl.selectionEnd = start + replacement.length;
-    invalidateLineOffsets();
-    renderEditor(); schedulePreviewRender(); saveDraftDebounced(); recordSnapshot();
-  }
-  findNextMatch(false);
-}
-function replaceAll() {
-  const query = findInput.value, replacement = replaceInput.value;
-  if (!query) return;
-  const text = codeEl.value;
-  if (!text.includes(query)) { showToast(t('toast.notFound')); return; }
-  const parts = []; let i = 0, count = 0;
-  while (i <= text.length) {
-    const idx = text.indexOf(query, i);
-    if (idx < 0) { parts.push(text.slice(i)); break; }
-    parts.push(text.slice(i, idx));
-    parts.push(replacement);
-    i = idx + query.length; count++;
-  }
-  codeEl.value = parts.join('');
-  invalidateLineOffsets();
-  renderEditor(); schedulePreviewRender(); saveDraftDebounced(); recordSnapshot();
-  showToast(t('toast.replaced', { count }));
-}
-function positionFindPanel() {
-  if (findPanel.hidden) return;
-
-  if (isMobileViewport()) {
-    const splitterRect = splitterEl.getBoundingClientRect();
-    findPanel.style.top = splitterRect.bottom + 'px';
-    findPanel.style.left = '0';
-    findPanel.style.right = '0';
-    findPanel.style.width = '';
-    findPanel.style.minWidth = '0';
-    findPanel.style.maxWidth = 'none';
-    return;
-  }
-  findPanel.style.width = 'auto';
-  findPanel.style.minWidth = '';
-  findPanel.style.maxWidth = '';
-  findPanel.style.left = 'auto';
-  const btnRect = btnFind.getBoundingClientRect();
-  const gap = 6, vh = window.innerHeight, vw = window.innerWidth;
-  const panelW = findPanel.offsetWidth || 300;
-  const panelH = findPanel.offsetHeight || 120;
-  let top;
-  if (btnRect.top - gap - panelH >= 8) top = btnRect.top - gap - panelH;
-  else if (btnRect.bottom + gap + panelH <= vh - 8) top = btnRect.bottom + gap;
-  else top = Math.max(8, vh - panelH - 8);
-  let right = vw - btnRect.right;
-  right = Math.min(Math.max(right, 8), vw - panelW - 8);
-  findPanel.style.top = top + 'px';
-  findPanel.style.right = right + 'px';
-}
 
 async function loadFile(file) {
   if (!file) return;
@@ -2073,12 +1944,20 @@ function handlePreviewClick(target) {
   const svgRoot = canvasEl.firstElementChild;
   if (!svgRoot) return;
   if (!target || target === svgRoot) {
-    clearSelection(); return;
+    clearSelection();
+    closeAllMenus();
+    closeAnimAddMenu();
+    closeCreateShapeMenu();
+    return;
   }
   let cur = target;
   while (cur && cur !== svgRoot && !svgRoot.contains(cur)) cur = cur.parentElement;
   if (!cur || cur === svgRoot) {
-    clearSelection(); return;
+    clearSelection();
+    closeAllMenus();
+    closeAnimAddMenu();
+    closeCreateShapeMenu();
+    return;
   }
   selectElement(cur);
 }
@@ -2149,7 +2028,6 @@ codeEl.addEventListener('keydown', e => {
     const k = e.key.toLowerCase();
     if (k === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
     if ((k === 'z' && e.shiftKey) || k === 'y') { e.preventDefault(); redo(); return; }
-    if (k === 'f') { e.preventDefault(); openFindPanel(); return; }
     if (k === 's') {
       e.preventDefault();
       if (e.shiftKey) fileInput.click();
@@ -2164,7 +2042,6 @@ codeEl.addEventListener('keydown', e => {
   }
   if (e.key === 'Tab') { e.preventDefault(); handleTab(e); return; }
   if (e.key === 'Enter' && autoIndentEnabled && !e.isComposing) { e.preventDefault(); handleEnterIndent(); return; }
-  if (e.key === 'Escape' && !findPanel.hidden) { e.preventDefault(); closeFindPanel(); }
 });
 document.addEventListener('selectionchange', () => {
   if (document.activeElement === codeEl) updateCurrentLineHighlight();
@@ -2229,11 +2106,6 @@ btnFormat.addEventListener('click', () => {
     renderEditor(); schedulePreviewRender(); saveDraftDebounced(); recordSnapshot(true);
     showToast(t('toast.formatted'));
   } catch (err) { showToast(t('toast.formatFailed', { msg: err.message || '' })); }
-});
-btnFind.addEventListener('click', e => {
-  e.stopPropagation();
-  if (findPanel.hidden) openFindPanel();
-  else closeFindPanel();
 });
 menuOpenSvg.addEventListener('click', () => { closeAllMenus(); fileInput.click(); });
 menuInsertImage.addEventListener('click', () => { closeAllMenus(); imageFileInput.click(); });
@@ -2311,7 +2183,6 @@ document.addEventListener('click', e => {
   if (!e.target.closest('#editorActions')) {
     editorMenu.hidden = true; btnEditorMenu.setAttribute('aria-expanded', 'false');
   }
-  if (!findPanel.hidden && !e.target.closest('#findPanel')) closeFindPanel();
   closeAnimAddMenu();
   closeCreateShapeMenu();
 });
@@ -2331,20 +2202,8 @@ document.addEventListener('keydown', e => {
   if (!imageConfigMask.hidden) { closeImageConfigModal(); return; }
   if (!historyMask.hidden) { closeHistory(); return; }
   if (!modalMask.hidden) { closeExportModal(); return; }
-  if (!findPanel.hidden) { closeFindPanel(); return; }
   if (attrPanelOpen) { clearSelection(); return; }
   closeAllMenus();
-});
-findPrev.addEventListener('click', () => findNextMatch(true));
-findNext.addEventListener('click', () => findNextMatch(false));
-findReplace.addEventListener('click', replaceOne);
-findReplaceAll.addEventListener('click', replaceAll);
-findClose.addEventListener('click', closeFindPanel);
-findInput.addEventListener('keydown', e => {
-  if (e.key === 'Enter') { e.preventDefault(); findNextMatch(e.shiftKey); }
-});
-replaceInput.addEventListener('keydown', e => {
-  if (e.key === 'Enter') { e.preventDefault(); replaceOne(); }
 });
 
 let _releaseExportTrap = null;
@@ -2550,6 +2409,7 @@ btnRotateReset.addEventListener('click', () => {
 });
 window.addEventListener('resize', () => {
   invalidatePreviewRect();
+  updateAttrPanelTop();
   if (appEl.style.height && window.visualViewport &&
       window.visualViewport.height >= window.innerHeight - 100) {
     appEl.style.height = '';
@@ -2560,7 +2420,6 @@ window.addEventListener('resize', () => {
   }
   if (!previewMenu.hidden) positionDropdown(btnPreviewMenu, previewMenu);
   if (!editorMenu.hidden)  positionDropdown(btnEditorMenu,  editorMenu);
-  if (!findPanel.hidden)   positionFindPanel();
   if (!isMobileViewport()) {
     if (editorEl.hidden) editorEl.hidden = false;
   } else {
@@ -2636,7 +2495,6 @@ if (window.visualViewport) {
         if (isFitMode) fitToView();
         else applyPreviewTransform();
       }
-      if (!findPanel.hidden) positionFindPanel();
     });
   };
   window.visualViewport.addEventListener('resize', onVVResize);
@@ -5225,15 +5083,15 @@ function closeAnimAddMenu() {
   }
   animAddMenuEl = null;
 }
+
 function openAttrPanel() {
-  // 移动端：进入属性面板前主动收起代码框的软键盘
   if (isMobileViewport() && document.activeElement === codeEl) {
     try { codeEl.blur(); } catch (_) {}
   }
-  closeFindPanel();
   closeAllMenus();
   closeAnimAddMenu();
   attrPanelOpen = true;
+  updateAttrPanelTop();
   rebuildAttrPanel();
   if (isMobileViewport()) setMobileView('attr');
   else attrPanel.hidden = false;
