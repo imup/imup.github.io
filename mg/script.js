@@ -172,13 +172,15 @@ const FALLBACK_CODE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 
     <circle cx="66" cy="66" r="3.0" />
   </g>
 </svg>`;
-// ===== 属性标签三级解析（spec.labelKey > content.attr.<name> > 原始属性名） =====
-const ANIM_TAGS = new Set(['animate', 'animatetransform', 'animatemotion', 'animatecolor', 'set']);
+
+// ===== 约定式属性标签解析 =====
+// 优先级：spec.labelKey > content.json → attr.<name> / animField.<name> > 原始属性名
 function resolveAttrLabel(spec, el) {
   if (spec.labelKey) return t(spec.labelKey);
-  const isAnim = el && ANIM_TAGS.has((el.localName || '').toLowerCase());
-  const prefix = isAnim ? 'animField.' : 'attr.';
-  const key = prefix + spec.name;
+  const tag = el ? (el.localName || '').toLowerCase() : '';
+  const isAnim = tag === 'animate' || tag === 'animatetransform'
+              || tag === 'animatemotion' || tag === 'animatecolor' || tag === 'set';
+  const key = (isAnim ? 'animField.' : 'attr.') + spec.name;
   const translated = t(key);
   if (translated !== key) return translated;
   return spec.name;
@@ -1149,7 +1151,6 @@ function onSplitterPointerDown(e) {
   document.body.style.cursor = 'ns-resize';
   document.body.style.userSelect = 'none';
 }
-
 function onSplitterPointerMove(e) {
   if (!isSplitting) return;
   const delta = e.clientY - splitStartY;
@@ -1163,7 +1164,7 @@ function onSplitterPointerMove(e) {
   const ratio = clamp(newPreviewH / totalH, 0.05, 0.95);
   splitRatio = ratio; splitState = 'default';
   splitterGrips.forEach(g => {
-    g.classList.toggle('is-snap-code', ratio >= 0.90);
+    g.classList.toggle('is-snap-code',    ratio >= 0.90);
   });
   applySplit();
 }
@@ -1700,6 +1701,10 @@ function openFindPanel() {
   }
 }
 function closeFindPanel() {
+  if (isMobileViewport()) {
+    if (document.activeElement === findInput) { try { findInput.blur(); } catch (_) {} }
+    if (document.activeElement === replaceInput) { try { replaceInput.blur(); } catch (_) {} }
+  }
   findPanel.hidden = true;
   if (!isMobileViewport()) codeEl.focus();
 }
@@ -1724,10 +1729,9 @@ function findNextMatch(backwards) {
     idx = text.indexOf(query, codeEl.selectionEnd);
     if (idx < 0) idx = text.indexOf(query);
   }
-  
   if (idx < 0) { showToast(t('toast.notFound')); return; }
-  codeEl.focus();
   try { codeEl.setSelectionRange(idx, idx + query.length); } catch(_) {}
+
   if (isMobileViewport()) {
     const panelRect = findPanel.getBoundingClientRect();
     const codeRect  = codeEl.getBoundingClientRect();
@@ -1739,6 +1743,7 @@ function findNextMatch(backwards) {
     codeEl.scrollTop = Math.max(0, targetY - obscureTop - lineHeight * 2);
     syncScroll();
   } else {
+    codeEl.focus();
     scrollToSelection();
   }
   updateCurrentLineHighlight();
@@ -2570,6 +2575,83 @@ window.addEventListener('resize', () => {
   }
 });
 
+function trapFocusIn(container, opts) {
+  const { autoFocus = false } = opts || {};
+  const prev = document.activeElement;
+  const getFocusable = () => Array.from(
+    container.querySelectorAll(
+      'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'
+    )
+  ).filter(el => el.offsetParent !== null);
+  const onKey = (e) => {
+    if (e.key !== 'Tab') return;
+    const list = getFocusable();
+    if (!list.length) { e.preventDefault(); return; }
+    const first = list[0], last = list[list.length - 1];
+    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+  };
+  container.addEventListener('keydown', onKey);
+  if (autoFocus) {
+    const list = getFocusable();
+    if (list.length) list[0].focus();
+  } else {
+    if (!container.hasAttribute('tabindex')) {
+      container.setAttribute('tabindex', '-1');
+    }
+    container.focus({ preventScroll: true });
+  }
+  return () => {
+    container.removeEventListener('keydown', onKey);
+    if (prev && prev.focus) {
+      const isInputLike = prev.tagName === 'INPUT' || prev.tagName === 'TEXTAREA';
+      if (isMobileViewport() && isInputLike) {
+        // 移动端不把焦点还给输入控件（避免关闭弹窗后立刻弹键盘）
+      } else {
+        try { prev.focus(); } catch (_) {}
+      }
+    }
+  };
+}
+
+(function detectScrollbarWidth() {
+  const div = document.createElement('div');
+  div.style.cssText = 'width:100px;height:100px;overflow:scroll;position:absolute;top:-9999px;left:0;';
+  document.body.appendChild(div);
+  const w = div.offsetWidth - div.clientWidth;
+  div.remove();
+  document.documentElement.style.setProperty('--ed-sbw', w + 'px');
+})();
+
+if (window.visualViewport) {
+  let vvRaf = 0;
+  const onVVResize = () => {
+    if (vvRaf) return;
+    vvRaf = requestAnimationFrame(() => {
+      vvRaf = 0;
+      const vv = window.visualViewport;
+      appEl.style.height = (vv.height < window.innerHeight - 100) ? (vv.height + 'px') : '';
+      invalidatePreviewRect();
+      if (currentSvg) {
+        if (isFitMode) fitToView();
+        else applyPreviewTransform();
+      }
+      if (!findPanel.hidden) positionFindPanel();
+    });
+  };
+  window.visualViewport.addEventListener('resize', onVVResize);
+}
+(function setupPreventPageZoom() {
+  const isPreviewTarget = (target) =>
+    !!(target && target.closest && target.closest('#previewWrap'));
+  const preventGesture = (e) => {
+    if (isPreviewTarget(e.target)) return;
+    e.preventDefault();
+  };
+  document.addEventListener('gesturestart',  preventGesture, { passive: false });
+  document.addEventListener('gesturechange', preventGesture, { passive: false });
+  document.addEventListener('gestureend',    preventGesture, { passive: false });
+})();
 function makeGroup(title, rows) {
   const g = document.createElement('div');
   g.className = 'attr-group';
@@ -2752,7 +2834,6 @@ function commitStyleChange(el, name, value) {
   recordSnapshot();
   setTimeout(() => { suppressAttrRebuild = false; }, 400);
 }
-
 function makeStyleRow(el, spec, isReadOnly) {
   const row = document.createElement('div');
   row.className = 'attr-row';
@@ -3195,6 +3276,7 @@ function openFieldAnimDialog(el, fieldName) {
   });
   render();
 }
+
 function makeRow(el, spec, isReadOnly, isCanvas) {
   const row = document.createElement('div');
   row.className = 'attr-row';
@@ -3211,7 +3293,6 @@ function makeRow(el, spec, isReadOnly, isCanvas) {
   const canKeyframe = !!spec.animatable;
 
   if (!isReadOnly && !isCanvas && (canAddPreset || canKeyframe)) {
-    
     if (canAddPreset) {
       const addBtn = document.createElement('button');
       addBtn.type = 'button';
@@ -3392,7 +3473,6 @@ function makeRow(el, spec, isReadOnly, isCanvas) {
     });
     ctrl.appendChild(presetSel);
   }
-  
   if (!isReadOnly && !isCanvas && spec.sliders === 'values') {
     const sliders = makeValuesSliders(el.getAttribute(spec.name) || '', (newVal) => {
       commitAttrChange(el, spec.name, newVal);
@@ -3427,7 +3507,6 @@ const REF_ONCREATE_HANDLERS = {
 function makeRefRow(el, spec, isReadOnly, isCanvas) {
   const row = document.createElement('div');
   row.className = 'attr-row';
-  
   const label = document.createElement('label');
   label.className = 'attr-row__label';
   label.textContent = resolveAttrLabel(spec, el);
@@ -3533,19 +3612,18 @@ function makeStructureGroup(el, isReadOnly) {
   group.appendChild(items);
   return group;
 }
-
 function buildAnimFromSpecPreset(preset, el) {
   if (!preset) return '';
   const attrs = { ...(preset.attrs || {}) };
-  if (spec.dynamic === 'rotateCenter') {
-  const c = getElementCenter(el, selectedPath);
-  attrs.attributeName = attrs.attributeName || 'transform';
-  attrs.from = `0 ${c.x} ${c.y}`;
-  attrs.to   = `360 ${c.x} ${c.y}`;
-  attrs.additive = 'sum';
-}
+  if (preset.dynamic === 'rotateCenter') {
+    const c = getElementCenter(el);
+    attrs.attributeName = attrs.attributeName || 'transform';
+    attrs.from = `0 ${c.x} ${c.y}`;
+    attrs.to   = `360 ${c.x} ${c.y}`;
+  }
   return buildAnimTag(preset.kind, attrs);
 }
+
 function makeTransformGroup(el, isReadOnly) {
   const g = document.createElement('div');
   g.className = 'attr-group';
@@ -3983,7 +4061,10 @@ function locateSelectedInSource() {
     const rootLoc = findRootSvgTag(codeEl.value);
     if (!rootLoc) { showToast(t('toast.noSourceLocate')); return; }
     if (isMobileViewport() && mobileView === 'attr') setMobileView('code');
-    try { codeEl.focus(); codeEl.setSelectionRange(rootLoc.start, rootLoc.end); } catch(_) {}
+    try {
+      codeEl.setSelectionRange(rootLoc.start, rootLoc.end);
+      if (!isMobileViewport()) codeEl.focus();
+    } catch(_) {}
     const lineNo = posToLineNo(rootLoc.start);
     const lineHeight = parseFloat(getComputedStyle(codeEl).lineHeight) || 21;
     const padTop = parseFloat(getComputedStyle(codeEl).paddingTop) || 0;
@@ -4001,7 +4082,10 @@ function locateSelectedInSource() {
     if (e > 0) end = e;
   }
   if (isMobileViewport() && mobileView === 'attr') setMobileView('code');
-  try { codeEl.focus(); codeEl.setSelectionRange(loc.start, end); } catch(_) {}
+  try {
+    codeEl.setSelectionRange(loc.start, end);
+    if (!isMobileViewport()) codeEl.focus();
+  } catch(_) {}
   const lineNo = posToLineNo(loc.start);
   const lineHeight = parseFloat(getComputedStyle(codeEl).lineHeight) || 21;
   const padTop = parseFloat(getComputedStyle(codeEl).paddingTop) || 0;
@@ -4230,60 +4314,24 @@ function autoFitViewBox() {
     'pattern', 'symbol', 'marker', 'title', 'desc', 'metadata',
     'animate', 'animatetransform', 'animatemotion', 'animatecolor', 'set'
   ]);
-  function autoFitViewBox() {
-  const svgRoot = canvasEl.firstElementChild;
-  if (!svgRoot) { showToast(t('toast.renderFailed', { msg: '' })); return; }
-  const rootRect = svgRoot.getBoundingClientRect();
-  if (!rootRect.width || !rootRect.height) { showToast(t('toast.noContentToFit')); return; }
-
-  const size = getSize(currentSvg);
-  const scaleX = size.width  / rootRect.width;
-  const scaleY = size.height / rootRect.height;
-
-  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  let hasAny = false;
-  const skipTags = new Set([
-    'defs', 'clippath', 'mask', 'filter', 'lineargradient', 'radialgradient',
-    'pattern', 'symbol', 'marker', 'title', 'desc', 'metadata',
-    'animate', 'animatetransform', 'animatemotion', 'animatecolor', 'set'
-  ]);
   const walk = (el) => {
     const tag = (el.localName || '').toLowerCase();
     if (skipTags.has(tag)) return;
     try {
-      if (typeof el.getBoundingClientRect === 'function') {
-        const r = el.getBoundingClientRect(); 
-        if (r.width > 0 || r.height > 0) {
-          const x1 = (r.left   - rootRect.left) * scaleX;
-          const y1 = (r.top    - rootRect.top)  * scaleY;
-          const x2 = (r.right  - rootRect.left) * scaleX;
-          const y2 = (r.bottom - rootRect.top)  * scaleY;
-          if (x1 < minX) minX = x1;
-          if (y1 < minY) minY = y1;
-          if (x2 > maxX) maxX = x2;
-          if (y2 > maxY) maxY = y2;
+      if (typeof el.getBBox === 'function') {
+        const b = el.getBBox();
+        if (b && (b.width > 0 || b.height > 0) &&
+            isFinite(b.x) && isFinite(b.y) && isFinite(b.width) && isFinite(b.height)) {
+          if (b.x < minX) minX = b.x;
+          if (b.y < minY) minY = b.y;
+          if (b.x + b.width > maxX) maxX = b.x + b.width;
+          if (b.y + b.height > maxY) maxY = b.y + b.height;
           hasAny = true;
         }
       }
     } catch (_) {}
     Array.from(el.children || []).forEach(walk);
   };
-  Array.from(svgRoot.children).forEach(walk);
-  if (!hasAny || !isFinite(minX) || !isFinite(maxX)) {
-    showToast(t('toast.noContentToFit'));
-    return;
-  }
-  const w = maxX - minX, h = maxY - minY;
-  if (w <= 0 || h <= 0) { showToast(t('toast.contentSizeError')); return; }
-  const pad = Math.max(w, h) * 0.05;
-  const vx = Math.round((minX - pad) * 100) / 100;
-  const vy = Math.round((minY - pad) * 100) / 100;
-  const vw = Math.round((w + pad * 2) * 100) / 100;
-  const vh = Math.round((h + pad * 2) * 100) / 100;
-  commitCanvasAttr('viewBox', `${vx} ${vy} ${vw} ${vh}`);
-  showToast(t('toast.viewBoxFitted', { v: `${vx} ${vy} ${vw} ${vh}` }));
-  setTimeout(() => { if (canvasRootMode) rebuildCanvasAttrPanel(); }, 300);
-}
   Array.from(svgRoot.children).forEach(walk);
   if (!hasAny || !isFinite(minX) || !isFinite(maxX)) {
     showToast(t('toast.noContentToFit'));
@@ -4694,6 +4742,8 @@ function resolvePath(root, path) {
   }
   return cur;
 }
+
+const ANIM_TAGS = new Set(['animate', 'animatetransform', 'animatemotion', 'animatecolor', 'set']);
 let animAddMenuEl = null;
 let overlayRafId = 0;
 function applySelectionOutline(el) {
@@ -4779,7 +4829,6 @@ function buildColorLoopAnim(attrName) {
 function buildOpacityPulseAnim(attrName) {
   return `<animate attributeName="${attrName}" values="1;0.3;1" dur="2s" repeatCount="indefinite"/>`;
 }
-
 const FIELD_ANIM_KIND_BUILDERS = {
   valuePulse:   (el, name, spec) => buildValuePulseAnim(name, el.getAttribute(name) || 0, spec.delta || 20),
   scalePulse:   (el, name, spec) => buildScalePulseAnim(name, el.getAttribute(name) || 100, spec.factor || 1.3),
@@ -4842,7 +4891,7 @@ function isCustomAnimTemplate(id) {
   const spec = templates.builders[id];
   return !!(spec && spec.isCustom);
 }
-function getElementCenter(el, path) {
+function getElementCenter(el) {
   if (!el) return { x: 50, y: 50 };
   const tag = el.localName;
   const num = (a, d) => { const v = parseFloat(el.getAttribute(a)); return isFinite(v) ? v : d; };
@@ -4855,19 +4904,7 @@ function getElementCenter(el, path) {
   if (tag === 'line') {
     return { x: (num('x1', 0) + num('x2', 0)) / 2, y: (num('y1', 0) + num('y2', 0)) / 2 };
   }
-  const p = path || selectedPath;
-  if (p && canvasEl.firstElementChild) {
-    const visibleEl = resolvePath(canvasEl.firstElementChild, p);
-    if (visibleEl && visibleEl !== canvasEl.firstElementChild) {
-      try {
-        const bbox = visibleEl.getBBox();
-        if (isFinite(bbox.x) && isFinite(bbox.y) && bbox.width >= 0 && bbox.height >= 0
-            && (bbox.width > 0 || bbox.height > 0)) {
-          return { x: bbox.x + bbox.width / 2, y: bbox.y + bbox.height / 2 };
-        }
-      } catch (_) {}
-    }
-  }
+  // 对 path/text/g 等：用 viewBox 中心作为 fallback（比硬编码 50 更合理，且永远不会失败）
   if (currentSvg) {
     const vb = currentSvg.getAttribute('viewBox');
     if (vb) {
@@ -5189,6 +5226,10 @@ function closeAnimAddMenu() {
   animAddMenuEl = null;
 }
 function openAttrPanel() {
+  // 移动端：进入属性面板前主动收起代码框的软键盘
+  if (isMobileViewport() && document.activeElement === codeEl) {
+    try { codeEl.blur(); } catch (_) {}
+  }
   closeFindPanel();
   closeAllMenus();
   closeAnimAddMenu();
@@ -5198,6 +5239,13 @@ function openAttrPanel() {
   else attrPanel.hidden = false;
 }
 function closeAttrPanel() {
+  // 移动端：关闭属性面板前主动收起软键盘
+  if (isMobileViewport()) {
+    const a = document.activeElement;
+    if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA')) {
+      try { a.blur(); } catch (_) {}
+    }
+  }
   closeAnimAddMenu();
   if (!attrPanelOpen) return;
   attrPanelOpen = false;
@@ -5209,6 +5257,12 @@ function closeAttrPanel() {
   if (isMobileViewport()) {
     editorEl.hidden = false;
     mobileView = 'code';
+    // 防御：显示代码区后如果焦点意外落在 codeEl，主动 blur
+    setTimeout(() => {
+      if (document.activeElement === codeEl) {
+        try { codeEl.blur(); } catch (_) {}
+      }
+    }, 0);
   }
 }
 function rebuildAttrPanel() {
@@ -6123,46 +6177,14 @@ function setMobileView(view) {
   } else {
     editorEl.hidden = false;
     attrPanel.hidden = true;
+    // 防御：切回代码区后，若 codeEl 被某些浏览器自动恢复焦点，主动 blur
+    setTimeout(() => {
+      if (document.activeElement === codeEl) {
+        try { codeEl.blur(); } catch (_) {}
+      }
+    }, 0);
   }
   scheduleRefreshSelectionOverlay();
-}
-
-function trapFocusIn(container, opts) {
-  const { autoFocus = false } = opts || {};
-  const prev = document.activeElement;
-  const getFocusable = () => Array.from(
-    container.querySelectorAll(
-      'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'
-    )
-  ).filter(el => el.offsetParent !== null);
-  const onKey = (e) => {
-    if (e.key !== 'Tab') return;
-    const list = getFocusable();
-    if (!list.length) { e.preventDefault(); return; }
-    const first = list[0], last = list[list.length - 1];
-    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-  };
-  container.addEventListener('keydown', onKey);
-  if (autoFocus) {
-    const list = getFocusable();
-    if (list.length) list[0].focus();
-  } else {
-    if (!container.hasAttribute('tabindex')) {
-      container.setAttribute('tabindex', '-1');
-    }
-    container.focus({ preventScroll: true });
-  }
-  return () => {
-    container.removeEventListener('keydown', onKey);
-    if (prev && prev.focus) {
-      const isInputLike = prev.tagName === 'INPUT' || prev.tagName === 'TEXTAREA';
-      if (isMobileViewport() && isInputLike) {
-      } else {
-        try { prev.focus(); } catch (_) {}
-      }
-    }
-  };
 }
 
 (function detectScrollbarWidth() {
@@ -7609,8 +7631,6 @@ function buildShapeFromTemplate(template, cx, cy, L, params) {
   );
   return doc.documentElement.firstElementChild;
 }
-
-
 function buildShapeMarkup(shapeId, cx, cy, L) {
   const shapes = CONFIG && CONFIG.shapes;
   if (!shapes || !shapes.builders) return null;
