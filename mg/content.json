@@ -530,8 +530,7 @@
       "undone": "已撤销",
       "noRedo": "没有可重做的操作",
       "redone": "已重做",
-      "notFound": "未找到匹配",
-      "replaced": "已替换 {count} 处",
+
       "srcMissing": "无法定位到源码，已忽略本次修改",
       "structError": "源码结构异常",
       "deleteFailed": "删除失败：源码结构异常",
