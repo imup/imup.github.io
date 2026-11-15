@@ -1112,10 +1112,7 @@ function applySplit() {
   const isMobile = window.innerWidth <= 480;
   const minEditor = isMobile ? 100 : 120;
   const minPreview = 80;
-  if (splitState === 'preview-max') {
-    setFlex(previewWrap, 100, '0', minPreview);
-    setFlex(editorEl, 0.001, minEditor + 'px', minEditor);
-  } else if (splitState === 'code-max') {
+  if (splitState === 'code-max') {
     setFlex(previewWrap, 0.001, minPreview + 'px', minPreview);
     setFlex(editorEl, 100, '0', minEditor);
   } else {
@@ -1152,6 +1149,7 @@ function onSplitterPointerDown(e) {
   document.body.style.cursor = 'ns-resize';
   document.body.style.userSelect = 'none';
 }
+
 function onSplitterPointerMove(e) {
   if (!isSplitting) return;
   const delta = e.clientY - splitStartY;
@@ -1165,8 +1163,7 @@ function onSplitterPointerMove(e) {
   const ratio = clamp(newPreviewH / totalH, 0.05, 0.95);
   splitRatio = ratio; splitState = 'default';
   splitterGrips.forEach(g => {
-    g.classList.toggle('is-snap-preview', ratio <= 0.10);
-    g.classList.toggle('is-snap-code',    ratio >= 0.90);
+    g.classList.toggle('is-snap-code', ratio >= 0.90);
   });
   applySplit();
 }
@@ -1182,10 +1179,7 @@ function onSplitterPointerUp(e) {
   splitterGrips.forEach(g => g.classList.remove('is-snap-preview', 'is-snap-code'));
   if (splitHasMoved) {
     lastSplitDownTime = 0; lastSplitDownY = 0; splitHasMoved = false;
-    if (splitRatio <= 0.10) {
-      splitState = 'preview-max'; applySplit();
-      showToast(t('toolbar.previewMax'));
-    } else if (splitRatio >= 0.90) {
+    if (splitRatio >= 0.90) {
       splitState = 'code-max'; applySplit();
       showToast(t('toolbar.codeMax'));
     }
@@ -1700,9 +1694,15 @@ function openFindPanel() {
   closeAttrPanel();
   findPanel.hidden = false;
   positionFindPanel();
-  findInput.focus(); findInput.select();
+  if (!isMobileViewport()) {
+    findInput.focus();
+    findInput.select();
+  }
 }
-function closeFindPanel() { findPanel.hidden = true; codeEl.focus(); }
+function closeFindPanel() {
+  findPanel.hidden = true;
+  if (!isMobileViewport()) codeEl.focus();
+}
 function scrollToSelection() {
   const idx = codeEl.selectionStart;
   const text = codeEl.value;
@@ -1724,10 +1724,10 @@ function findNextMatch(backwards) {
     idx = text.indexOf(query, codeEl.selectionEnd);
     if (idx < 0) idx = text.indexOf(query);
   }
+  
   if (idx < 0) { showToast(t('toast.notFound')); return; }
   codeEl.focus();
   try { codeEl.setSelectionRange(idx, idx + query.length); } catch(_) {}
-
   if (isMobileViewport()) {
     const panelRect = findPanel.getBoundingClientRect();
     const codeRect  = codeEl.getBoundingClientRect();
@@ -3533,18 +3533,19 @@ function makeStructureGroup(el, isReadOnly) {
   group.appendChild(items);
   return group;
 }
+
 function buildAnimFromSpecPreset(preset, el) {
   if (!preset) return '';
   const attrs = { ...(preset.attrs || {}) };
-  if (preset.dynamic === 'rotateCenter') {
-    const c = getElementCenter(el);
-    attrs.attributeName = attrs.attributeName || 'transform';
-    attrs.from = `0 ${c.x} ${c.y}`;
-    attrs.to   = `360 ${c.x} ${c.y}`;
-  }
+  if (spec.dynamic === 'rotateCenter') {
+  const c = getElementCenter(el, selectedPath);
+  attrs.attributeName = attrs.attributeName || 'transform';
+  attrs.from = `0 ${c.x} ${c.y}`;
+  attrs.to   = `360 ${c.x} ${c.y}`;
+  attrs.additive = 'sum';
+}
   return buildAnimTag(preset.kind, attrs);
 }
-
 function makeTransformGroup(el, isReadOnly) {
   const g = document.createElement('div');
   g.className = 'attr-group';
@@ -4229,24 +4230,60 @@ function autoFitViewBox() {
     'pattern', 'symbol', 'marker', 'title', 'desc', 'metadata',
     'animate', 'animatetransform', 'animatemotion', 'animatecolor', 'set'
   ]);
+  function autoFitViewBox() {
+  const svgRoot = canvasEl.firstElementChild;
+  if (!svgRoot) { showToast(t('toast.renderFailed', { msg: '' })); return; }
+  const rootRect = svgRoot.getBoundingClientRect();
+  if (!rootRect.width || !rootRect.height) { showToast(t('toast.noContentToFit')); return; }
+
+  const size = getSize(currentSvg);
+  const scaleX = size.width  / rootRect.width;
+  const scaleY = size.height / rootRect.height;
+
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  let hasAny = false;
+  const skipTags = new Set([
+    'defs', 'clippath', 'mask', 'filter', 'lineargradient', 'radialgradient',
+    'pattern', 'symbol', 'marker', 'title', 'desc', 'metadata',
+    'animate', 'animatetransform', 'animatemotion', 'animatecolor', 'set'
+  ]);
   const walk = (el) => {
     const tag = (el.localName || '').toLowerCase();
     if (skipTags.has(tag)) return;
     try {
-      if (typeof el.getBBox === 'function') {
-        const b = el.getBBox();
-        if (b && (b.width > 0 || b.height > 0) &&
-            isFinite(b.x) && isFinite(b.y) && isFinite(b.width) && isFinite(b.height)) {
-          if (b.x < minX) minX = b.x;
-          if (b.y < minY) minY = b.y;
-          if (b.x + b.width > maxX) maxX = b.x + b.width;
-          if (b.y + b.height > maxY) maxY = b.y + b.height;
+      if (typeof el.getBoundingClientRect === 'function') {
+        const r = el.getBoundingClientRect(); 
+        if (r.width > 0 || r.height > 0) {
+          const x1 = (r.left   - rootRect.left) * scaleX;
+          const y1 = (r.top    - rootRect.top)  * scaleY;
+          const x2 = (r.right  - rootRect.left) * scaleX;
+          const y2 = (r.bottom - rootRect.top)  * scaleY;
+          if (x1 < minX) minX = x1;
+          if (y1 < minY) minY = y1;
+          if (x2 > maxX) maxX = x2;
+          if (y2 > maxY) maxY = y2;
           hasAny = true;
         }
       }
     } catch (_) {}
     Array.from(el.children || []).forEach(walk);
   };
+  Array.from(svgRoot.children).forEach(walk);
+  if (!hasAny || !isFinite(minX) || !isFinite(maxX)) {
+    showToast(t('toast.noContentToFit'));
+    return;
+  }
+  const w = maxX - minX, h = maxY - minY;
+  if (w <= 0 || h <= 0) { showToast(t('toast.contentSizeError')); return; }
+  const pad = Math.max(w, h) * 0.05;
+  const vx = Math.round((minX - pad) * 100) / 100;
+  const vy = Math.round((minY - pad) * 100) / 100;
+  const vw = Math.round((w + pad * 2) * 100) / 100;
+  const vh = Math.round((h + pad * 2) * 100) / 100;
+  commitCanvasAttr('viewBox', `${vx} ${vy} ${vw} ${vh}`);
+  showToast(t('toast.viewBoxFitted', { v: `${vx} ${vy} ${vw} ${vh}` }));
+  setTimeout(() => { if (canvasRootMode) rebuildCanvasAttrPanel(); }, 300);
+}
   Array.from(svgRoot.children).forEach(walk);
   if (!hasAny || !isFinite(minX) || !isFinite(maxX)) {
     showToast(t('toast.noContentToFit'));
@@ -4805,7 +4842,7 @@ function isCustomAnimTemplate(id) {
   const spec = templates.builders[id];
   return !!(spec && spec.isCustom);
 }
-function getElementCenter(el) {
+function getElementCenter(el, path) {
   if (!el) return { x: 50, y: 50 };
   const tag = el.localName;
   const num = (a, d) => { const v = parseFloat(el.getAttribute(a)); return isFinite(v) ? v : d; };
@@ -4817,6 +4854,28 @@ function getElementCenter(el) {
   }
   if (tag === 'line') {
     return { x: (num('x1', 0) + num('x2', 0)) / 2, y: (num('y1', 0) + num('y2', 0)) / 2 };
+  }
+  const p = path || selectedPath;
+  if (p && canvasEl.firstElementChild) {
+    const visibleEl = resolvePath(canvasEl.firstElementChild, p);
+    if (visibleEl && visibleEl !== canvasEl.firstElementChild) {
+      try {
+        const bbox = visibleEl.getBBox();
+        if (isFinite(bbox.x) && isFinite(bbox.y) && bbox.width >= 0 && bbox.height >= 0
+            && (bbox.width > 0 || bbox.height > 0)) {
+          return { x: bbox.x + bbox.width / 2, y: bbox.y + bbox.height / 2 };
+        }
+      } catch (_) {}
+    }
+  }
+  if (currentSvg) {
+    const vb = currentSvg.getAttribute('viewBox');
+    if (vb) {
+      const q = vb.trim().split(/[\s,]+/).map(Number);
+      if (q.length === 4 && q[2] > 0 && q[3] > 0) {
+        return { x: q[0] + q[2] / 2, y: q[1] + q[3] / 2 };
+      }
+    }
   }
   return { x: 50, y: 50 };
 }
@@ -6096,7 +6155,13 @@ function trapFocusIn(container, opts) {
   }
   return () => {
     container.removeEventListener('keydown', onKey);
-    if (prev && prev.focus) { try { prev.focus(); } catch (_) {} }
+    if (prev && prev.focus) {
+      const isInputLike = prev.tagName === 'INPUT' || prev.tagName === 'TEXTAREA';
+      if (isMobileViewport() && isInputLike) {
+      } else {
+        try { prev.focus(); } catch (_) {}
+      }
+    }
   };
 }
 
