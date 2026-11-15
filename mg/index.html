@@ -140,6 +140,7 @@
     </div>
 
     <div class="tool-group">
+      
       <button id="btnUndo" class="tool-btn" type="button"
               data-i18n-title="toolbar.undo"
               data-i18n-aria="toolbar.undoAria"
@@ -182,17 +183,6 @@
           <line x1="11" y1="12" x2="21" y2="12"/>
           <line x1="11" y1="18" x2="21" y2="18"/>
           <polyline points="3 9 6 12 3 15"/>
-        </svg>
-      </button>
-      <button id="btnFind" class="tool-btn" type="button"
-              data-i18n-title="toolbar.find"
-              data-i18n-aria="toolbar.findAria"
-              title="查找替换 (Ctrl+F)" aria-label="查找替换">
-        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"
-             fill="none" stroke="currentColor" stroke-width="2.4"
-             stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="11" cy="11" r="7"/>
-          <line x1="16" y1="16" x2="21" y2="21"/>
         </svg>
       </button>
       <div class="dropdown-container" id="editorActions">
@@ -277,54 +267,6 @@
     </div>
     <div id="attrPanelBody" class="attr-panel__body"></div>
   </aside>
-
-</div>
-
-<div id="findPanel" class="find-panel" hidden>
-  <div class="find-inputs-row">
-    <input id="findInput" class="find-input" type="text"
-           data-i18n-placeholder="find.inputPlaceholder"
-           placeholder="查找内容" />
-    <input id="replaceInput" class="find-input" type="text"
-           data-i18n-placeholder="find.replacePlaceholder"
-           placeholder="替换为" />
-  </div>
-  <div class="find-actions">
-    <button id="findPrev" class="find-btn find-btn--icon" type="button"
-            data-i18n-title="find.prev"
-            data-i18n-aria="find.prev"
-            title="上一个" aria-label="上一个">
-      <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"
-           fill="none" stroke="currentColor" stroke-width="2.5"
-           stroke-linecap="round" stroke-linejoin="round">
-        <line x1="12" y1="19" x2="12" y2="5"/>
-        <polyline points="5 12 12 5 19 12"/>
-      </svg>
-    </button>
-    <button id="findNext" class="find-btn find-btn--icon" type="button"
-            data-i18n-title="find.next"
-            data-i18n-aria="find.next"
-            title="下一个" aria-label="下一个">
-      <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"
-           fill="none" stroke="currentColor" stroke-width="2.5"
-           stroke-linecap="round" stroke-linejoin="round">
-        <line x1="12" y1="5" x2="12" y2="19"/>
-        <polyline points="5 12 12 19 19 12"/>
-      </svg>
-    </button>
-    <button id="findReplace" class="find-btn" type="button" data-i18n="find.replace">替换</button>
-    <button id="findReplaceAll" class="find-btn" type="button" data-i18n="find.replaceAll">全部</button>
-    <button id="findClose" class="find-btn find-btn--icon" type="button"
-            data-i18n-aria="find.close"
-            aria-label="关闭">
-      <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"
-           fill="none" stroke="currentColor" stroke-width="2.5"
-           stroke-linecap="round" stroke-linejoin="round">
-        <line x1="6" y1="6" x2="18" y2="18"/>
-        <line x1="18" y1="6" x2="6" y2="18"/>
-      </svg>
-    </button>
-  </div>
 </div>
 
 <div id="historyMask" class="modal-mask" hidden>
