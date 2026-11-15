@@ -1567,6 +1567,7 @@ body{
   .image-config-size-inline .modal__input{min-width:48px;height:30px;font-size:12px;}
 
   .attr-panel{
+    top:var(--attr-panel-top, 0px);
     position:static;
     width:100%;
     max-width:none;
