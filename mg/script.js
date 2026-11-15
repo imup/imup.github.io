@@ -5075,6 +5075,7 @@ function closeAnimAddMenu() {
   animAddMenuEl = null;
 }
 
+
 function openAttrPanel() {
   if (isMobileViewport() && document.activeElement === codeEl) {
     try { codeEl.blur(); } catch (_) {}
@@ -5082,7 +5083,6 @@ function openAttrPanel() {
   closeAllMenus();
   closeAnimAddMenu();
   attrPanelOpen = true;
-  updateAttrPanelTop();
   rebuildAttrPanel();
   if (isMobileViewport()) setMobileView('attr');
   else attrPanel.hidden = false;
