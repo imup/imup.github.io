@@ -5075,6 +5075,15 @@ function closeAnimAddMenu() {
   animAddMenuEl = null;
 }
 
+function updateAttrPanelTop() {
+  if (!attrPanelOpen) return;
+  if (isMobileViewport()) {
+    attrPanel.style.removeProperty('--attr-panel-top');
+    return;
+  }
+  const rect = splitterEl.getBoundingClientRect();
+  attrPanel.style.setProperty('--attr-panel-top', rect.bottom + 'px');
+}
 
 function openAttrPanel() {
   if (isMobileViewport() && document.activeElement === codeEl) {
@@ -5083,12 +5092,12 @@ function openAttrPanel() {
   closeAllMenus();
   closeAnimAddMenu();
   attrPanelOpen = true;
+  updateAttrPanelTop();
   rebuildAttrPanel();
   if (isMobileViewport()) setMobileView('attr');
   else attrPanel.hidden = false;
 }
 function closeAttrPanel() {
-  // 移动端：关闭属性面板前主动收起软键盘
   if (isMobileViewport()) {
     const a = document.activeElement;
     if (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA')) {
