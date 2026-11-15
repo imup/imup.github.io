@@ -1944,15 +1944,24 @@ function handlePreviewClick(target) {
   const svgRoot = canvasEl.firstElementChild;
   if (!svgRoot) return;
   if (!target || target === svgRoot) {
-    clearSelection(); return;
+    clearSelection();
+    closeAllMenus();
+    closeAnimAddMenu();
+    closeCreateShapeMenu();
+    return;
   }
   let cur = target;
   while (cur && cur !== svgRoot && !svgRoot.contains(cur)) cur = cur.parentElement;
   if (!cur || cur === svgRoot) {
-    clearSelection(); return;
+    clearSelection();
+    closeAllMenus();
+    closeAnimAddMenu();
+    closeCreateShapeMenu();
+    return;
   }
   selectElement(cur);
 }
+
 attrPanelClose.addEventListener('click', clearSelection);
 attrPanelLocate.addEventListener('click', locateSelectedInSource);
 
