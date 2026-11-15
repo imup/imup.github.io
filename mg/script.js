@@ -172,6 +172,17 @@ const FALLBACK_CODE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 
     <circle cx="66" cy="66" r="3.0" />
   </g>
 </svg>`;
+// ===== 属性标签三级解析（spec.labelKey > content.attr.<name> > 原始属性名） =====
+const ANIM_TAGS = new Set(['animate', 'animatetransform', 'animatemotion', 'animatecolor', 'set']);
+function resolveAttrLabel(spec, el) {
+  if (spec.labelKey) return t(spec.labelKey);
+  const isAnim = el && ANIM_TAGS.has((el.localName || '').toLowerCase());
+  const prefix = isAnim ? 'animField.' : 'attr.';
+  const key = prefix + spec.name;
+  const translated = t(key);
+  if (translated !== key) return translated;
+  return spec.name;
+}
 
 function getPreviewRect() {
   if (!cachedPreviewRect) cachedPreviewRect = previewHost.getBoundingClientRect();
@@ -2741,12 +2752,14 @@ function commitStyleChange(el, name, value) {
   recordSnapshot();
   setTimeout(() => { suppressAttrRebuild = false; }, 400);
 }
+
 function makeStyleRow(el, spec, isReadOnly) {
   const row = document.createElement('div');
   row.className = 'attr-row';
   const label = document.createElement('label');
   label.className = 'attr-row__label';
-  label.textContent = spec.labelKey ? t(spec.labelKey) : spec.name;
+  label.textContent = resolveAttrLabel(spec, el);
+  label.title = spec.name;
   const _id = nextRowUid();
   label.htmlFor = _id;
   row.appendChild(label);
@@ -3182,27 +3195,15 @@ function openFieldAnimDialog(el, fieldName) {
   });
   render();
 }
-
 function makeRow(el, spec, isReadOnly, isCanvas) {
   const row = document.createElement('div');
   row.className = 'attr-row';
   if (spec.type === 'textarea') row.classList.add('attr-row--full');
-  let hasFromToSliders = false;
-  if ((spec.name === 'from' || spec.name === 'to') && spec.type === 'text') {
-    const ownItems = parseAnimValueSingle(el.getAttribute(spec.name) || '');
-    const otherName = spec.name === 'from' ? 'to' : 'from';
-    const otherItems = parseAnimValueSingle(el.getAttribute(otherName) || '');
-    if (ownItems.length === 1 && otherItems.length === 1) {
-      if ((isNumericComponent(ownItems[0]) && isNumericComponent(otherItems[0])) ||
-          (isColorComponent(ownItems[0]) && isColorComponent(otherItems[0]))) {
-        row.classList.add('attr-row--full');
-        hasFromToSliders = true;
-      }
-    }
-  }
+
   const label = document.createElement('label');
   label.className = 'attr-row__label';
-  label.textContent = spec.labelKey ? t(spec.labelKey) : spec.name;
+  label.textContent = resolveAttrLabel(spec, el);
+  label.title = spec.name;
   const _id = nextRowUid();
   label.htmlFor = _id;
   const animBuilder = getFieldAnimBuilder(spec.name);
@@ -3210,15 +3211,16 @@ function makeRow(el, spec, isReadOnly, isCanvas) {
   const canKeyframe = !!spec.animatable;
 
   if (!isReadOnly && !isCanvas && (canAddPreset || canKeyframe)) {
+    
     if (canAddPreset) {
       const addBtn = document.createElement('button');
       addBtn.type = 'button';
       addBtn.className = 'attr-row__anim-add';
-      addBtn.title = t('anim.addAnimFor', { field: spec.labelKey ? t(spec.labelKey) : spec.name });
+      addBtn.title = t('anim.addAnimFor', { field: resolveAttrLabel(spec, el) });
       addBtn.textContent = '+';
       addBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        addFieldAnim(el, spec.labelKey ? t(spec.labelKey) : spec.name, animBuilder);
+        addFieldAnim(el, resolveAttrLabel(spec, el), animBuilder);
       });
       label.appendChild(addBtn);
     }
@@ -3390,13 +3392,14 @@ function makeRow(el, spec, isReadOnly, isCanvas) {
     });
     ctrl.appendChild(presetSel);
   }
-  if (!isReadOnly && !isCanvas && spec.name === 'values' && spec.type === 'textarea') {
-    const sliders = makeValuesSliders(el.getAttribute('values') || '', (newVal) => {
-      commitAttrChange(el, 'values', newVal);
+  
+  if (!isReadOnly && !isCanvas && spec.sliders === 'values') {
+    const sliders = makeValuesSliders(el.getAttribute(spec.name) || '', (newVal) => {
+      commitAttrChange(el, spec.name, newVal);
     });
     if (sliders.childElementCount > 0) ctrl.appendChild(sliders);
   }
-  if (!isReadOnly && !isCanvas && hasFromToSliders) {
+  if (!isReadOnly && !isCanvas && spec.sliders === 'fromto') {
     const sliders = makeFromToSliders(el, spec.name, (newVal) => {
       commitAttrChange(el, spec.name, newVal);
     });
@@ -3424,9 +3427,11 @@ const REF_ONCREATE_HANDLERS = {
 function makeRefRow(el, spec, isReadOnly, isCanvas) {
   const row = document.createElement('div');
   row.className = 'attr-row';
+  
   const label = document.createElement('label');
   label.className = 'attr-row__label';
-  label.textContent = spec.labelKey ? t(spec.labelKey) : spec.name;
+  label.textContent = resolveAttrLabel(spec, el);
+  label.title = spec.name;
   const _id = nextRowUid();
   label.htmlFor = _id;
   row.appendChild(label);
@@ -4652,8 +4657,6 @@ function resolvePath(root, path) {
   }
   return cur;
 }
-
-const ANIM_TAGS = new Set(['animate', 'animatetransform', 'animatemotion', 'animatecolor', 'set']);
 let animAddMenuEl = null;
 let overlayRafId = 0;
 function applySelectionOutline(el) {
@@ -4739,12 +4742,19 @@ function buildColorLoopAnim(attrName) {
 function buildOpacityPulseAnim(attrName) {
   return `<animate attributeName="${attrName}" values="1;0.3;1" dur="2s" repeatCount="indefinite"/>`;
 }
+
 const FIELD_ANIM_KIND_BUILDERS = {
   valuePulse:   (el, name, spec) => buildValuePulseAnim(name, el.getAttribute(name) || 0, spec.delta || 20),
   scalePulse:   (el, name, spec) => buildScalePulseAnim(name, el.getAttribute(name) || 100, spec.factor || 1.3),
   colorLoop:    (el, name) => buildColorLoopAnim(name),
   opacityPulse: (el, name) => buildOpacityPulseAnim(name),
-  dashoffset:   (el, name) => `<animate attributeName="stroke-dashoffset" from="100" to="0" dur="2s" repeatCount="indefinite"/>`
+  dashoffset:   (el, name) => `<animate attributeName="stroke-dashoffset" from="100" to="0" dur="2s" repeatCount="indefinite"/>`,
+  template:     (el, name, spec) => {
+    const cur = el.getAttribute(name) || '';
+    const vars = { name, value: cur, ...(spec.params || {}) };
+    return String(spec.template).replace(/\{\{(\w+)\}\}/g,
+      (_, k) => vars[k] != null ? vars[k] : '');
+  }
 };
 
 function getFieldAnimBuilder(fieldName) {
@@ -7525,11 +7535,25 @@ function getShapeIds() {
   const shapes = CONFIG && CONFIG.shapes;
   return (shapes && shapes.order) || [];
 }
+function buildShapeFromTemplate(template, cx, cy, L, params) {
+  const vars = { cx, cy, L, ...(params || {}) };
+  const markup = String(template).replace(/\{\{(\w+)\}\}/g,
+    (_, k) => vars[k] != null ? vars[k] : '');
+  const doc = new DOMParser().parseFromString(
+    `<svg xmlns="${SVG_NS}">${markup}</svg>`, 'image/svg+xml'
+  );
+  return doc.documentElement.firstElementChild;
+}
+
+
 function buildShapeMarkup(shapeId, cx, cy, L) {
   const shapes = CONFIG && CONFIG.shapes;
   if (!shapes || !shapes.builders) return null;
   const spec = shapes.builders[shapeId];
   if (!spec) return null;
+  if (spec.template) {
+    return buildShapeFromTemplate(spec.template, cx, cy, L, spec.defaults);
+  }
   const builder = SHAPE_KIND_BUILDERS[spec.kind];
   if (!builder) {
     console.warn('[shape] unknown kind:', spec.kind);
