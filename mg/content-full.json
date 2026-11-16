@@ -11,8 +11,9 @@
       "zoomIn": "放大",
       "zoomReset": "点击重置为适应窗口",
       "zoomResetAria": "重置视图",
-      "rotate90": "顺时针旋转 90°",
-      "rotateReset": "复位旋转",
+      "animPlay": "播放动画",
+      "animLoop": "循环播放",
+      "animStop": "停止播放",
       "closeWarning": "关闭警告",
       "externalRefWarning": "检测到外部引用：{refs}，导出 PNG 可能失败"
     },
@@ -25,8 +26,6 @@
       "gripTitle": "拖动调整布局 · 双击恢复默认",
       "format": "格式化",
       "formatAria": "格式化代码",
-      "find": "查找替换 (Ctrl+F)",
-      "findAria": "查找替换",
       "more": "更多操作",
       "createShape": "创建形状",
       "layoutRestored": "已恢复默认 80/20 布局",
@@ -45,7 +44,6 @@
       "autoIndent": "自动缩进",
       "newCanvas": "新建画布",
       "resetExample": "恢复示例",
-      "history": "历史版本…",
       "clearDraft": "清空草稿"
     },
 
@@ -68,27 +66,6 @@
       "reconfigImage": "重新配置图片",
       "imageMissing": "图片内容缺失",
       "backToParent": "← 返回父元素"
-    },
-
-    "find": {
-      "inputPlaceholder": "查找内容",
-      "replacePlaceholder": "替换为",
-      "prev": "上一个",
-      "next": "下一个",
-      "replace": "替换",
-      "replaceAll": "全部",
-      "close": "关闭"
-    },
-
-    "history": {
-      "title": "历史版本",
-      "subtitle": "点击载入某个版本（最多保留 20 条）",
-      "clear": "清空历史",
-      "close": "关闭",
-      "empty": "暂无历史版本",
-      "cleared": "历史版本已清空",
-      "loaded": "已载入历史版本",
-      "untitled": "未命名"
     },
 
     "imageConfig": {
@@ -173,6 +150,7 @@
       "cancel": "取消",
       "copy": "复制元素",
       "delete": "删除元素",
+      "deleteAnim": "删除动画",
       "copyAttr": "复制属性",
       "pasteAttr": "粘贴属性",
       "copyAttrTitle": "复制当前元素的可编辑属性（不含 id / class / data-*）",
@@ -188,7 +166,6 @@
     },
 
     "theme": {
-      "auto": "自动",
       "light": "浅色",
       "dark": "深色"
     },
@@ -212,7 +189,11 @@
       "filterPrimitives": "滤镜原语（从上到下依次应用）",
       "filterRegion": "滤镜区域",
       "textPath": "文本路径",
-      "link": "链接"
+      "link": "链接",
+      "pattern": "图案",
+      "symbol": "符号",
+      "view": "视图",
+      "switch": "条件切换"
     },
 
     "fieldAnim": {
@@ -243,7 +224,6 @@
       "skewX": "倾斜 X",
       "skewY": "倾斜 Y",
       "color": "颜色",
-      "shape": "形状",
       "sizeW": "宽",
       "sizeH": "高",
       "presetSolid": "实线",
@@ -324,10 +304,13 @@
       "visibility": "可见性",
       "display": "显示",
       "overflow": "溢出处理",
+      "clip-rule": "裁剪规则",
       "shape-rendering": "形状渲染",
       "text-rendering": "文字渲染",
       "image-rendering": "图像渲染",
+      "color-rendering": "颜色渲染",
       "color-interpolation": "颜色插值",
+      "color-profile": "颜色配置文件",
       "mix-blend-mode": "混合模式",
       "isolation": "隔离",
       "class": "CSS 类名",
@@ -341,6 +324,7 @@
       "letter-spacing": "字间距",
       "dominant-baseline": "基线对齐",
       "alignment-baseline": "对齐基线",
+      "baseline-shift": "基线偏移",
       "text-decoration": "文本装饰",
       "textLength": "文本长度",
       "lengthAdjust": "长度调整",
@@ -384,7 +368,18 @@
       "mode": "混合模式",
       "values": "值",
       "colorMatrixType": "色彩矩阵类型",
-      "turbulenceType": "湍流类型"
+      "turbulenceType": "湍流类型",
+      "order": "阶数",
+      "kernelMatrix": "卷积核矩阵",
+      "divisor": "除数",
+      "bias": "偏置",
+      "scale": "缩放",
+      "xChannelSelector": "X 通道",
+      "yChannelSelector": "Y 通道",
+      "crossorigin": "CORS 策略",
+      "patternUnits": "图案单位",
+      "patternContentUnits": "图案内容单位",
+      "patternTransform": "图案变换"
     },
 
     "animField": {
@@ -477,7 +472,12 @@
       "feComposite": "合成",
       "feMerge": "合并",
       "feFlood": "纯色填充",
-      "feMorphology": "形态学"
+      "feMorphology": "形态学",
+      "feTile": "平铺",
+      "feImage": "图像",
+      "feComponentTransfer": "分量传递",
+      "feConvolveMatrix": "卷积矩阵",
+      "feDisplacementMap": "置换映射"
     },
 
     "marker": {
@@ -572,17 +572,13 @@
       "svgSaveFailed": "SVG 保存失败：{msg}",
       "imageSaved": "{ext} 已保存（{w} × {h}，{bg}）",
       "imageExportFailed": "图像导出失败：{msg}",
-      "saved": "已保存",
       "shareFailed": "分享失败：{msg}",
       "viewReset": "视图已重置为适应窗口",
       "centered": "已回中",
-      "rotated": "预览旋转 {deg}°",
       "noUndo": "没有可撤销的操作",
       "undone": "已撤销",
       "noRedo": "没有可重做的操作",
       "redone": "已重做",
-      "notFound": "未找到匹配",
-      "replaced": "已替换 {count} 处",
       "srcMissing": "无法定位到源码，已忽略本次修改",
       "structError": "源码结构异常",
       "deleteFailed": "删除失败：源码结构异常",
@@ -606,8 +602,6 @@
       "shapeUnsupported": "不支持的形状",
       "parseFailed": "解析失败：{msg}",
       "renderFailed": "预览渲染失败：{msg}",
-      "historyReduced": "本地存储空间不足，历史缩减至 {count} 条",
-      "historySaveFailed": "本地存储空间不足，历史无法保存",
       "rootMustBeSvg": "根元素必须是 <svg>",
       "svgSyntaxError": "SVG 语法错误：{detail}{line}",
       "lineNear": "（第 {line} 行附近）"
@@ -630,8 +624,9 @@
       "zoomIn": "Zoom In",
       "zoomReset": "Click to reset to fit window",
       "zoomResetAria": "Reset View",
-      "rotate90": "Rotate 90° clockwise",
-      "rotateReset": "Reset Rotation",
+      "animPlay": "Play Animation",
+      "animLoop": "Loop Animation",
+      "animStop": "Stop Animation",
       "closeWarning": "Close Warning",
       "externalRefWarning": "External references detected: {refs}. PNG export may fail."
     },
@@ -644,8 +639,6 @@
       "gripTitle": "Drag to resize · Double-click to reset",
       "format": "Format",
       "formatAria": "Format Code",
-      "find": "Find & Replace (Ctrl+F)",
-      "findAria": "Find & Replace",
       "more": "More Actions",
       "createShape": "Create Shape",
       "layoutRestored": "Default 80/20 layout restored",
@@ -664,7 +657,6 @@
       "autoIndent": "Auto Indent",
       "newCanvas": "New Canvas",
       "resetExample": "Restore Example",
-      "history": "History…",
       "clearDraft": "Clear Draft"
     },
 
@@ -687,27 +679,6 @@
       "reconfigImage": "Reconfigure Image",
       "imageMissing": "Image content missing",
       "backToParent": "← Back to Parent"
-    },
-
-    "find": {
-      "inputPlaceholder": "Find",
-      "replacePlaceholder": "Replace with",
-      "prev": "Previous",
-      "next": "Next",
-      "replace": "Replace",
-      "replaceAll": "All",
-      "close": "Close"
-    },
-
-    "history": {
-      "title": "History",
-      "subtitle": "Click a version to load (max 20 kept)",
-      "clear": "Clear History",
-      "close": "Close",
-      "empty": "No history versions",
-      "cleared": "History cleared",
-      "loaded": "History version loaded",
-      "untitled": "Untitled"
     },
 
     "imageConfig": {
@@ -792,6 +763,7 @@
       "cancel": "Cancel",
       "copy": "Duplicate Element",
       "delete": "Delete Element",
+      "deleteAnim": "Delete Animation",
       "copyAttr": "Copy Attributes",
       "pasteAttr": "Paste Attributes",
       "copyAttrTitle": "Copy editable attributes (excluding id / class / data-*)",
@@ -807,7 +779,6 @@
     },
 
     "theme": {
-      "auto": "Auto",
       "light": "Light",
       "dark": "Dark"
     },
@@ -831,7 +802,11 @@
       "filterPrimitives": "Filter Primitives (applied top to bottom)",
       "filterRegion": "Filter Region",
       "textPath": "Text Path",
-      "link": "Link"
+      "link": "Link",
+      "pattern": "Pattern",
+      "symbol": "Symbol",
+      "view": "View",
+      "switch": "Switch"
     },
 
     "fieldAnim": {
@@ -862,7 +837,6 @@
       "skewX": "Skew X",
       "skewY": "Skew Y",
       "color": "Color",
-      "shape": "Shape",
       "sizeW": "W",
       "sizeH": "H",
       "presetSolid": "Solid",
@@ -943,10 +917,13 @@
       "visibility": "Visibility",
       "display": "Display",
       "overflow": "Overflow",
+      "clip-rule": "Clip Rule",
       "shape-rendering": "Shape Rendering",
       "text-rendering": "Text Rendering",
       "image-rendering": "Image Rendering",
+      "color-rendering": "Color Rendering",
       "color-interpolation": "Color Interpolation",
+      "color-profile": "Color Profile",
       "mix-blend-mode": "Blend Mode",
       "isolation": "Isolation",
       "class": "CSS Class",
@@ -960,6 +937,7 @@
       "letter-spacing": "Letter Spacing",
       "dominant-baseline": "Dominant Baseline",
       "alignment-baseline": "Alignment Baseline",
+      "baseline-shift": "Baseline Shift",
       "text-decoration": "Text Decoration",
       "textLength": "Text Length",
       "lengthAdjust": "Length Adjust",
@@ -1003,7 +981,18 @@
       "mode": "Mode",
       "values": "Values",
       "colorMatrixType": "Matrix Type",
-      "turbulenceType": "Turbulence Type"
+      "turbulenceType": "Turbulence Type",
+      "order": "Order",
+      "kernelMatrix": "Kernel Matrix",
+      "divisor": "Divisor",
+      "bias": "Bias",
+      "scale": "Scale",
+      "xChannelSelector": "X Channel",
+      "yChannelSelector": "Y Channel",
+      "crossorigin": "CORS",
+      "patternUnits": "Pattern Units",
+      "patternContentUnits": "Pattern Content Units",
+      "patternTransform": "Pattern Transform"
     },
 
     "animField": {
@@ -1096,7 +1085,12 @@
       "feComposite": "Composite",
       "feMerge": "Merge",
       "feFlood": "Flood",
-      "feMorphology": "Morphology"
+      "feMorphology": "Morphology",
+      "feTile": "Tile",
+      "feImage": "Image",
+      "feComponentTransfer": "Component Transfer",
+      "feConvolveMatrix": "Convolve Matrix",
+      "feDisplacementMap": "Displacement Map"
     },
 
     "marker": {
@@ -1191,17 +1185,13 @@
       "svgSaveFailed": "SVG save failed: {msg}",
       "imageSaved": "{ext} saved ({w} × {h}, {bg})",
       "imageExportFailed": "Image export failed: {msg}",
-      "saved": "Saved",
       "shareFailed": "Share failed: {msg}",
       "viewReset": "View reset to fit window",
       "centered": "Centered",
-      "rotated": "Preview rotated {deg}°",
       "noUndo": "Nothing to undo",
       "undone": "Undone",
       "noRedo": "Nothing to redo",
       "redone": "Redone",
-      "notFound": "No match found",
-      "replaced": "Replaced {count} occurrences",
       "srcMissing": "Source not found, change ignored",
       "structError": "Source structure error",
       "deleteFailed": "Delete failed: source structure error",
@@ -1225,8 +1215,6 @@
       "shapeUnsupported": "Unsupported shape",
       "parseFailed": "Parse failed: {msg}",
       "renderFailed": "Preview render failed: {msg}",
-      "historyReduced": "Storage full, history reduced to {count}",
-      "historySaveFailed": "Storage full, history cannot be saved",
       "rootMustBeSvg": "Root element must be <svg>",
       "svgSyntaxError": "SVG syntax error: {detail}{line}",
       "lineNear": " (near line {line})"
