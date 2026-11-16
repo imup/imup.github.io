@@ -43,6 +43,10 @@ const bgBtns        = Array.from(document.querySelectorAll('.bg-btn'));
 const splitterEl    = $('splitter');
 const splitterGrips = Array.from(document.querySelectorAll('.tool-grip'));
 const btnCreateShape = $('btnCreateShape');
+const animControls    = $('animControls');
+const btnAnimCycle    = $('btnAnimCycle');
+const animCycleIcon   = $('animCycleIcon');
+const btnCreateShape = $('btnCreateShape');
 const warningBar   = $('warningBar');
 const warningText  = $('warningText');
 const warningClose = $('warningClose');
@@ -107,6 +111,7 @@ let splitRatio = 0.8;
 let highlightCurrentLineEnabled = true;
 let autoIndentEnabled = true;
 let isFitMode = true;
+let animState = 'playing';
 const imageImportState = {
   file: null, dataUrl: '', originalW: 0, originalH: 0,
   ratio: 'original', customW: 100, customH: 100,
@@ -133,6 +138,9 @@ const SNAPSHOT_DEBOUNCE_MS     = 500;
 const SNAPSHOT_MERGE_WINDOW_MS = SNAPSHOT_DEBOUNCE_MS;
 const THEME_KEY  = 'svg-editor.theme.v1';
 const LOCALE_KEY = 'svg-editor.locale.v1';
+const ANIM_ICON_PLAY = '<polygon points="7,5 19,12 7,19"/>';
+const ANIM_ICON_LOOP = '<path d="M17 2l4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>';
+const ANIM_ICON_STOP = '<rect x="6" y="6" width="12" height="12" rx="1.5"/>';
 const FALLBACK_CODE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100%" height="100%">
   <circle cx="50" cy="50" r="50" fill="#33FAFC" />
   <g stroke="#000000" stroke-width="2.0" stroke-linecap="round">
@@ -897,7 +905,74 @@ function updateBadge(width, height) {
   badge.textContent = `${Math.round(width)} × ${Math.round(height)}`;
   badge.hidden = false;
 }
+function hasAnySvgAnimation() {
+  if (!currentSvg) return false;
+  return currentSvg.querySelector('animate, animateTransform, animateMotion, animateColor, set') !== null;
+}
+function updateAnimControls() {
+  if (!animControls) return;
+  const has = hasAnySvgAnimation();
+  animControls.hidden = !has;
+  if (!has) return;
 
+  let iconHtml, fill, stroke, strokeW, titleKey;
+  if (animState === 'playing') {
+    iconHtml = ANIM_ICON_PLAY; fill = 'currentColor'; stroke = 'none'; strokeW = null;
+    titleKey = 'preview.animPlay';
+  } else if (animState === 'looping') {
+    iconHtml = ANIM_ICON_LOOP; fill = 'none'; stroke = 'currentColor'; strokeW = '2.4';
+    titleKey = 'preview.animLoop';
+  } else {
+    iconHtml = ANIM_ICON_STOP; fill = 'currentColor'; stroke = 'none'; strokeW = null;
+    titleKey = 'preview.animStop';
+  }
+  animCycleIcon.innerHTML = iconHtml;
+  animCycleIcon.setAttribute('fill', fill);
+  animCycleIcon.setAttribute('stroke', stroke);
+  if (strokeW) {
+    animCycleIcon.setAttribute('stroke-width', strokeW);
+    animCycleIcon.setAttribute('stroke-linecap', 'round');
+    animCycleIcon.setAttribute('stroke-linejoin', 'round');
+  } else {
+    animCycleIcon.removeAttribute('stroke-width');
+    animCycleIcon.removeAttribute('stroke-linecap');
+    animCycleIcon.removeAttribute('stroke-linejoin');
+  }
+  const title = t(titleKey) || titleKey;
+  btnAnimCycle.title = title;
+  btnAnimCycle.setAttribute('aria-label', title);
+}
+function applyAnimState() {
+  const svg = canvasEl.firstElementChild;
+  if (!svg) return;
+  if (animState === 'stopped') {
+    try { svg.pauseAnimations(); } catch (_) {}
+    try { svg.setCurrentTime(0); } catch (_) {}
+  } else {
+    try { svg.unpauseAnimations(); } catch (_) {}
+    if (animState === 'looping') {
+      try { svg.setCurrentTime(0); } catch (_) {}
+    }
+  }
+}
+function cycleAnimState() {
+  if (animState === 'playing') animState = 'looping';
+  else if (animState === 'looping') animState = 'stopped';
+  else animState = 'playing';
+
+  const svg = canvasEl.firstElementChild;
+  if (svg) {
+    if (animState === 'stopped') {
+      try { svg.pauseAnimations(); } catch (_) {}
+    } else if (animState === 'looping') {
+      try { svg.unpauseAnimations(); } catch (_) {}
+      try { svg.setCurrentTime(0); } catch (_) {}
+    } else {
+      try { svg.unpauseAnimations(); } catch (_) {}
+    }
+  }
+  updateAnimControls();
+}
 async function renderPreview() {
   const code = codeEl.value;
   if (!code.trim()) {
@@ -908,6 +983,7 @@ async function renderPreview() {
     stageEl.classList.remove('is-stale');
     updateButtons();
     closeAttrPanel();
+    updateAnimControls();
     return;
   }
   if (code === lastGoodCode) {
@@ -942,6 +1018,8 @@ async function renderPreview() {
     showToast(t('toast.renderFailed', { msg: err.message || '' }));
     return;
   }
+  applyAnimState();
+  updateAnimControls();
   updateBadge(size.width, size.height);
   if (isFitMode) fitToView();
   updateButtons();
@@ -1091,7 +1169,7 @@ const DBLCLICK_INTERVAL = 350;
 const DBLCLICK_DISTANCE = 10;
 function getPreviewHeight() { return previewWrap.getBoundingClientRect().height; }
 function onSplitterPointerDown(e) {
-  if (e.target.closest('.tool-btn') || e.target.closest('.dropdown')) return;
+  if (e.target.closest('.tool-btn') || e.target.closest('.dropdown') || e.target.closest('.anim-controls')) return;
   if (e.pointerType === 'mouse' && e.button !== 0) return;
   const now = Date.now();
   if (now - lastSplitDownTime < DBLCLICK_INTERVAL &&
@@ -1969,12 +2047,12 @@ function handleMenuKeydown(e, menu) {
 }
 previewMenu.addEventListener('keydown', e => handleMenuKeydown(e, previewMenu));
 editorMenu.addEventListener('keydown',  e => handleMenuKeydown(e, editorMenu));
-
 btnCreateShape.addEventListener('click', e => {
   e.stopPropagation();
   if (createShapeMenuEl) closeCreateShapeMenu();
   else openCreateShapeMenu(btnCreateShape);
 });
+if (btnAnimCycle) btnAnimCycle.addEventListener('click', cycleAnimState);
 btnUndo.addEventListener('click', undo);
 btnRedo.addEventListener('click', redo);
 btnFormat.addEventListener('click', () => {
