@@ -333,7 +333,6 @@ body{
   touch-action:manipulation;transition:background .14s,color .14s;
 }
 .zoom-label:hover{background:var(--bg-hover);color:var(--tool-text-hover);}
-.rotate-controls{display:flex;align-items:center;gap:3px;}
 
 .splitter{
   flex:0 0 34px;
