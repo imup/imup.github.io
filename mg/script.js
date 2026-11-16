@@ -7202,6 +7202,26 @@ function openFilterPicker(anchorEl, targetPath, attrName) {
   closeFilterPicker();
   const menu = document.createElement('div');
   menu.className = 'attr-anim-menu';
+
+  // 如果目标元素已引用滤镜，提供"编辑当前滤镜…"入口
+  const targetEl = currentSvg ? resolvePath(currentSvg, targetPath) : null;
+  const curVal = targetEl ? (targetEl.getAttribute(attrName) || '') : '';
+  const mCur = curVal.match(/url\(#([^)]+)\)/);
+  const curId = mCur ? mCur[1] : '';
+  if (curId && currentSvg && findGradientInSvg(currentSvg, curId)) {
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.textContent = t('attrPanel.editFilter') || '编辑当前滤镜…';
+    editBtn.addEventListener('click', () => {
+      closeFilterPicker();
+      openFilterEditor({ mode: 'edit', existingId: curId });
+    });
+    menu.appendChild(editBtn);
+    const sep0 = document.createElement('div');
+    sep0.className = 'dropdown__sep';
+    menu.appendChild(sep0);
+  }
+
   const order = (CONFIG.filterPresets && CONFIG.filterPresets.order) || [];
   order.forEach(id => {
     const btn = document.createElement('button');
