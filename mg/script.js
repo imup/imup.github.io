@@ -6900,7 +6900,8 @@ function openFilterEditor(opts) {
           const wrap = document.createElement('div');
           wrap.className = 'filter-editor__prim-field' + (f.full ? ' filter-editor__prim-field--full' : '');
           const label = document.createElement('label');
-          label.textContent = f.name;
+          label.textContent = f.labelKey ? t(f.labelKey) : resolveAttrLabel({ name: f.name }, null);
+          label.title = f.name;
           wrap.appendChild(label);
 
           let input;
