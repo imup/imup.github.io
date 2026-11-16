@@ -5275,11 +5275,94 @@ function hookFilterEdit(ctx) {
   return [editBtn];
 }
 
+function hookTextContent(ctx) {
+  const { el, isReadOnly } = ctx;
+  const hasChildElement = Array.from(el.childNodes).some(n => n.nodeType === 1);
+
+  const row = document.createElement('div');
+  row.className = 'attr-row attr-row--full';
+  const label = document.createElement('label');
+  label.className = 'attr-row__label';
+  label.textContent = t('attr.textContent') || '文本内容';
+  const _id = nextRowUid();
+  label.htmlFor = _id;
+  row.appendChild(label);
+
+  const ctrl = document.createElement('div');
+  ctrl.className = 'attr-row__control';
+
+  if (hasChildElement) {
+    const notice = document.createElement('div');
+    notice.style.cssText = 'padding:6px 8px;font-size:11px;color:var(--text-muted);background:var(--bg-muted);border:1px solid var(--border);border-radius:6px;line-height:1.4;';
+    notice.textContent = t('attr.textContentMixed') || '含子元素，请选中子元素或使用源码编辑';
+    ctrl.appendChild(notice);
+  } else {
+    let currentText = '';
+    for (const node of el.childNodes) {
+      if (node.nodeType === 3) currentText += node.textContent;
+    }
+    const input = document.createElement('textarea');
+    input.className = 'attr-row__textarea';
+    input.rows = 2;
+    input.id = _id;
+    input.value = currentText;
+    input.placeholder = t('attr.textContentPlaceholder') || '输入文本';
+    if (isReadOnly) input.disabled = true;
+    input.addEventListener('input', () => {
+      scheduleTextContentCommit(input.value);
+    });
+    ctrl.appendChild(input);
+  }
+
+  row.appendChild(ctrl);
+  return [row];
+}
+
+let textContentCommitTimer = 0;
+function scheduleTextContentCommit(text) {
+  clearTimeout(textContentCommitTimer);
+  textContentCommitTimer = setTimeout(() => commitTextContent(text), 400);
+}
+
+function commitTextContent(text) {
+  if (!selectedPath) return;
+  const loc = findTagOffsetByPath(codeEl.value, selectedPath);
+  if (!loc) { showToast(t('toast.srcMissing')); return; }
+  const code = codeEl.value;
+  const escaped = esc(text);
+  if (loc.isSelfClosing) {
+    if (!text.trim()) return;
+    const m = loc.tag.match(/^<([^\s>\/]+)/);
+    const tagName = m ? m[1] : '';
+    const openTag = loc.tag.replace(/\/>\s*$/, '>');
+    const newBlock = `${openTag}${escaped}</${tagName}>`;
+    codeEl.value = code.slice(0, loc.start) + newBlock + code.slice(loc.end);
+  } else {
+    const closeEnd = skipElementContent(code, loc.start, loc.tag);
+    if (closeEnd < 0) { showToast(t('toast.structError')); return; }
+    const closeStart = code.lastIndexOf('</', closeEnd - 1);
+    if (closeStart < 0) return;
+    const openEnd = loc.start + loc.tag.length;
+    const innerCode = code.slice(openEnd, closeStart);
+    if (/<[a-zA-Z]/.test(innerCode)) {
+      showToast(t('attr.textContentMixed') || '含子元素，无法编辑');
+      return;
+    }
+    codeEl.value = code.slice(0, openEnd) + escaped + code.slice(closeStart);
+  }
+  invalidateLineOffsets();
+  renderEditor();
+  schedulePreviewRender();
+  saveDraftDebounced();
+  recordSnapshot();
+}
+
 const PANEL_SPECIAL_HOOKS = {
   animPanel:    hookAnimPanel,
   imagePreview: hookImagePreview,
   gradientEdit: hookGradientEdit,
-  filterEdit:   hookFilterEdit
+  filterEdit:   hookFilterEdit,
+  textContent:  hookTextContent
 };
 
 function openAttrPanel() {
