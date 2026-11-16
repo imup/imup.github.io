@@ -197,6 +197,7 @@
             <circle cx="19" cy="12" r="1.8"/>
           </svg>
         </button>
+        
         <div id="editorMenu" class="dropdown dropdown--dark" hidden role="menu">
           <button id="menuWrap" type="button" role="menuitemcheckbox" aria-checked="false">
             <span class="dropdown__check">✓</span><span data-i18n="menu.wrap">自动换行</span>
@@ -210,7 +211,6 @@
           <div class="dropdown__sep"></div>
           <button id="menuNewBlankCanvas" type="button" role="menuitem" data-i18n="menu.newCanvas">新建画布</button>
           <button id="menuResetExample" type="button" role="menuitem" data-i18n="menu.resetExample">恢复示例</button>
-          <button id="menuHistory" type="button" role="menuitem" data-i18n="menu.history">历史版本…</button>
           <div class="dropdown__sep"></div>
           <button id="menuThemeAuto" type="button" role="menuitemradio" aria-checked="true">
             <span class="dropdown__check">✓</span><span data-i18n="theme.auto">自动</span>
@@ -266,18 +266,6 @@
     </div>
     <div id="attrPanelBody" class="attr-panel__body"></div>
   </aside>
-</div>
-
-<div id="historyMask" class="modal-mask" hidden>
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="historyTitle">
-    <h3 id="historyTitle" class="modal__title" data-i18n="history.title">历史版本</h3>
-    <p class="modal__subtitle" data-i18n="history.subtitle">点击载入某个版本（最多保留 20 条）</p>
-    <div id="historyList" class="history-list"></div>
-    <div class="modal__actions">
-      <button id="historyClear" class="btn btn--ghost" type="button" data-i18n="history.clear">清空历史</button>
-      <button id="historyClose" class="btn btn--primary" type="button" data-i18n="history.close">关闭</button>
-    </div>
-  </div>
 </div>
 
 <input id="imageFileInput" type="file" accept="image/png,image/jpeg" hidden />
