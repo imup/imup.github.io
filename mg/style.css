@@ -351,7 +351,7 @@ body{
   touch-action:manipulation;
 }
 .tool-group{flex:0 0 auto;display:flex;align-items:center;gap:2px;}
-.tool-center{flex:1 1 auto;min-width:60px;display:flex;align-items:center;padding:0;}
+.tool-center{flex:1 1 auto;min-width:60px;display:flex;align-items:center;padding:0;position:relative;}
 .tool-btn{
   flex:0 0 auto;
   min-width:28px;height:24px;
@@ -380,6 +380,21 @@ body{
   content:'';width:40px;height:4px;
   background:var(--grip-bg);border-radius:2px;
   transition:background .14s,width .14s;
+}
+.anim-controls{
+  position:absolute;
+  left:50%;top:50%;
+  transform:translate(-50%,-50%);
+  display:flex;align-items:center;gap:2px;
+  padding:0 6px;
+  background:var(--splitter-bg);
+  border-radius:4px;
+  z-index:1;
+}
+.anim-controls[hidden]{display:none;}
+.anim-controls__btn{
+  position:relative;
+  z-index:1;
 }
 .tool-grip:hover::before{background:var(--grip-bg-hover);width:52px;}
 .tool-grip.is-snap-preview::before,
@@ -1479,6 +1494,7 @@ body{
 
   .view-controls{left:8px;bottom:8px;gap:6px;padding:4px 6px;}
   .zoom-label{min-width:42px;font-size:11px;}
+  
   .rotate-controls .zoom-btn{min-width:22px;padding:0 3px;}
   .tool-btn svg,
   .zoom-btn svg{width:14px;height:14px;}
