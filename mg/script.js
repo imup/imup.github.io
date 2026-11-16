@@ -160,8 +160,6 @@ const FALLBACK_CODE = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 
   </g>
 </svg>`;
 
-// ===== 约定式属性标签解析 =====
-// 优先级：spec.labelKey > content.json → attr.<name> / animField.<name> > 原始属性名
 function resolveAttrLabel(spec, el) {
   if (spec.labelKey) return t(spec.labelKey);
   const tag = el ? (el.localName || '').toLowerCase() : '';
@@ -2427,7 +2425,6 @@ function trapFocusIn(container, opts) {
     if (prev && prev.focus) {
       const isInputLike = prev.tagName === 'INPUT' || prev.tagName === 'TEXTAREA';
       if (isMobileViewport() && isInputLike) {
-        // 移动端不把焦点还给输入控件（避免关闭弹窗后立刻弹键盘）
       } else {
         try { prev.focus(); } catch (_) {}
       }
@@ -5086,7 +5083,6 @@ function closeAttrPanel() {
   if (isMobileViewport()) {
     editorEl.hidden = false;
     mobileView = 'code';
-    // 防御：显示代码区后如果焦点意外落在 codeEl，主动 blur
     setTimeout(() => {
       if (document.activeElement === codeEl) {
         try { codeEl.blur(); } catch (_) {}
@@ -6006,7 +6002,6 @@ function setMobileView(view) {
   } else {
     editorEl.hidden = false;
     attrPanel.hidden = true;
-    // 防御：切回代码区后，若 codeEl 被某些浏览器自动恢复焦点，主动 blur
     setTimeout(() => {
       if (document.activeElement === codeEl) {
         try { codeEl.blur(); } catch (_) {}
