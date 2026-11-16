@@ -11,6 +11,9 @@
       "zoomIn": "放大",
       "zoomReset": "点击重置为适应窗口",
       "zoomResetAria": "重置视图",
+      "animPlay": "播放动画",
+      "animLoop": "循环播放",
+      "animStop": "停止播放",
       "closeWarning": "关闭警告",
       "externalRefWarning": "检测到外部引用：{refs}，导出 PNG 可能失败"
     },
@@ -560,6 +563,9 @@
       "zoomIn": "Zoom In",
       "zoomReset": "Click to reset to fit window",
       "zoomResetAria": "Reset View",
+      "animPlay": "Play Animation",
+      "animLoop": "Loop Animation",
+      "animStop": "Stop Animation",
       "closeWarning": "Close Warning",
       "externalRefWarning": "External references detected: {refs}. PNG export may fail."
     },
