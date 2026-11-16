@@ -627,6 +627,11 @@
       "lineNear": "（第 {line} 行附近）"
     },
 
+    "expr": {
+      "result": "{expr} = {result}",
+      "error": "表达式错误：{msg}"
+    },
+
     "option": {
       "auto": "自动", "CSS": "CSS 属性", "XML": "XML 属性",
       "translate": "平移", "rotate": "旋转", "scale": "缩放", "skewX": "X 斜切", "skewY": "Y 斜切",
@@ -1324,6 +1329,11 @@
       "rootMustBeSvg": "Root element must be <svg>",
       "svgSyntaxError": "SVG syntax error: {detail}{line}",
       "lineNear": " (near line {line})"
+    },
+
+    "expr": {
+      "result": "{expr} = {result}",
+      "error": "Expression error: {msg}"
     },
 
     "option": {
