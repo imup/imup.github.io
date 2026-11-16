@@ -46,7 +46,6 @@ const btnCreateShape = $('btnCreateShape');
 const animControls    = $('animControls');
 const btnAnimCycle    = $('btnAnimCycle');
 const animCycleIcon   = $('animCycleIcon');
-const btnCreateShape = $('btnCreateShape');
 const warningBar   = $('warningBar');
 const warningText  = $('warningText');
 const warningClose = $('warningClose');
