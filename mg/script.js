@@ -34,7 +34,6 @@ const menuWrap      = $('menuWrap');
 const menuHighlightLine = $('menuHighlightLine');
 const menuAutoIndent = $('menuAutoIndent');
 const menuNewBlankCanvas = $('menuNewBlankCanvas');
-const menuHistory    = $('menuHistory');
 const menuResetExample = $('menuResetExample');
 const menuClearDraft = $('menuClearDraft');
 const menuThemeAuto  = $('menuThemeAuto');
@@ -70,10 +69,6 @@ const exportScaleViewBox = $('exportScaleViewBox');
 const exportOriginal = $('exportOriginal');
 const exportCancel   = $('exportCancel');
 const exportConfirm  = $('exportConfirm');
-const historyMask  = $('historyMask');
-const historyList  = $('historyList');
-const historyClear = $('historyClear');
-const historyClose = $('historyClose');
 const imageFileInput       = $('imageFileInput');
 const imageConfigMask      = $('imageConfigMask');
 const imageConfigPreview   = $('imageConfigPreview');
@@ -137,7 +132,6 @@ const MAX_SIDE      = 4096;
 const RECENT_COLORS_KEY  = 'svg-editor.recent-colors.v1';
 const RECENT_COLORS_MAX  = 8;
 const DRAFT_KEY     = 'svg-editor.draft.v1';
-const HISTORY_KEY   = 'svg-editor.history.v1';
 const HISTORY_MAX   = 20;
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const SNAPSHOT_DEBOUNCE_MS     = 500;
@@ -1551,89 +1545,7 @@ function loadDraft() {
   } catch(_) {}
   return null;
 }
-function getHistoryList() {
-  try {
-    const s = localStorage.getItem(HISTORY_KEY);
-    const arr = s ? JSON.parse(s) : [];
-    return Array.isArray(arr) ? arr : [];
-  } catch(_) { return []; }
-}
-function safeSetItem(key, value) {
-  try { localStorage.setItem(key, value); return true; }
-  catch (_) { return false; }
-}
-function saveHistoryList(list) {
-  let cur = list.slice();
-  while (cur.length > 0) {
-    if (safeSetItem(HISTORY_KEY, JSON.stringify(cur))) {
-      if (cur.length < list.length) {
-        showToast(t('toast.historyReduced', { count: cur.length }));
-      }
-      return;
-    }
-    cur = cur.slice(0, Math.max(0, Math.floor(cur.length / 2)));
-  }
-  safeSetItem(HISTORY_KEY, '[]');
-  showToast(t('toast.historySaveFailed'));
-}
-function guessTitle(code) {
-  const m = code.match(/<title[^>]*>([^<]+)<\/title>/i);
-  if (m && m[1].trim()) return m[1].trim().slice(0, 30);
-  const first = code.split('\n').find(l => l.trim());
-  if (first) return first.trim().slice(0, 30);
-  return t('history.untitled');
-}
-function saveToHistory(code) {
-  if (!code || !code.trim()) return;
-  const list = getHistoryList();
-  if (list[0] && list[0].code === code) return;
-  list.unshift({ code, time: Date.now(), title: guessTitle(code) });
-  saveHistoryList(list.slice(0, HISTORY_MAX));
-}
-function formatTime(ts) {
-  const d = new Date(ts);
-  const p = n => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
-}
-let _releaseHistoryTrap = null;
-function openHistory() {
-  const list = getHistoryList();
-  historyList.innerHTML = '';
-  if (list.length === 0) {
-    const empty = document.createElement('div');
-    empty.className = 'history-empty';
-    empty.textContent = t('history.empty');
-    historyList.appendChild(empty);
-  } else {
-    list.forEach(item => {
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'history-item';
-      const tEl = document.createElement('span');
-      tEl.className = 'history-item__title';
-      tEl.textContent = item.title || t('history.untitled');
-      const time = document.createElement('span');
-      time.className = 'history-item__time';
-      time.textContent = formatTime(item.time);
-      btn.appendChild(tEl); btn.appendChild(time);
-      btn.addEventListener('click', () => {
-        codeEl.value = item.code;
-        selectedPath = null;
-        invalidateLineOffsets();
-        renderEditor(); schedulePreviewRender(); saveDraftDebounced(); recordSnapshot(true);
-        closeHistory();
-        showToast(t('history.loaded'));
-      });
-      historyList.appendChild(btn);
-    });
-  }
-  historyMask.hidden = false;
-  _releaseHistoryTrap = trapFocusIn(historyMask);
-}
-function closeHistory() {
-  historyMask.hidden = true;
-  if (_releaseHistoryTrap) { _releaseHistoryTrap(); _releaseHistoryTrap = null; }
-}
+
 let undoStack = [];
 let undoIndex = -1;
 let lastSnapshotTime = 0;
@@ -1702,7 +1614,6 @@ async function loadFile(file) {
     selectedPath = null;
     invalidateLineOffsets();
     renderEditor(); schedulePreviewRender(); saveDraftDebounced(); recordSnapshot(true);
-    if (!hasParseError) saveToHistory(text);
     const lineCount = text.split('\n').length;
     const isSingleLine = (lineCount === 1 && text.length > 80);
     let msg;
@@ -2167,7 +2078,6 @@ menuResetExample.addEventListener('click', () => {
   renderEditor(); renderPreview(); saveDraftDebounced(); recordSnapshot(true);
   showToast(t('toast.exampleRestored'));
 });
-menuHistory.addEventListener('click', () => { closeAllMenus(); openHistory(); });
 menuClearDraft.addEventListener('click', () => {
   closeAllMenus();
   try { localStorage.removeItem(DRAFT_KEY); } catch(_) {}
@@ -2199,8 +2109,8 @@ document.addEventListener('keydown', e => {
     const cancelBtn = filterEditorMask.querySelector('[data-action="cancel"]');
     if (cancelBtn) { cancelBtn.click(); return; }
   }
+  
   if (!imageConfigMask.hidden) { closeImageConfigModal(); return; }
-  if (!historyMask.hidden) { closeHistory(); return; }
   if (!modalMask.hidden) { closeExportModal(); return; }
   if (attrPanelOpen) { clearSelection(); return; }
   closeAllMenus();
@@ -2343,13 +2253,6 @@ exportPresetBtns.forEach(btn => {
 exportCancel.addEventListener('click', closeExportModal);
 exportConfirm.addEventListener('click', confirmExport);
 modalMask.addEventListener('click', e => { if (e.target === modalMask) closeExportModal(); });
-historyClose.addEventListener('click', closeHistory);
-historyMask.addEventListener('click', e => { if (e.target === historyMask) closeHistory(); });
-historyClear.addEventListener('click', () => {
-  try { localStorage.removeItem(HISTORY_KEY); } catch(_) {}
-  historyList.innerHTML = `<div class="history-empty">${t('history.empty')}</div>`;
-  showToast(t('history.cleared'));
-});
 warningClose.addEventListener('click', hideWarning);
 fileInput.addEventListener('change', e => {
   const f = e.target.files?.[0];
