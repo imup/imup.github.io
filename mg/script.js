@@ -2158,12 +2158,14 @@ document.addEventListener('click', e => {
   if (!e.target.closest('#editorActions')) {
     editorMenu.hidden = true; btnEditorMenu.setAttribute('aria-expanded', 'false');
   }
+  closeFilterPicker();
   closeAnimAddMenu();
   closeCreateShapeMenu();
 });
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   if (createShapeMenuEl) { closeCreateShapeMenu(); return; }
+  if (filterPickerEl) { closeFilterPicker(); return; }
   if (markerPickerEl) { closeMarkerPicker(); return; }
   if (colorPopoverEl) { closeColorPopover(); return; }
   if (gradientEditorMask) {
@@ -3352,8 +3354,8 @@ function collectDefsIds(tagName) {
   return ids;
 }
 const REF_ONCREATE_HANDLERS = {
-  filter: (targetEl, attrName) => {
-    openFilterEditor({ mode: 'create', targetPath: [...selectedPath], targetAttr: attrName });
+  filter: (targetEl, attrName, anchorBtn) => {
+    openFilterPicker(anchorBtn, [...selectedPath], attrName);
   },
   marker: (targetEl, attrName, anchorBtn) => {
     openMarkerPicker(anchorBtn, [...selectedPath], attrName);
@@ -7193,6 +7195,115 @@ Array.from(filterEl.attributes).forEach(a => filterEl.removeAttribute(a.name));
   }, 120);
 
   showToast(mode === 'edit' ? t('filterEditor.updated') : t('filterEditor.created'));
+}
+
+let filterPickerEl = null;
+function openFilterPicker(anchorEl, targetPath, attrName) {
+  closeFilterPicker();
+  const menu = document.createElement('div');
+  menu.className = 'attr-anim-menu';
+  const order = (CONFIG.filterPresets && CONFIG.filterPresets.order) || [];
+  order.forEach(id => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = t('filterPreset.' + id);
+    btn.addEventListener('click', () => {
+      closeFilterPicker();
+      applyFilterPreset(id, targetPath, attrName);
+    });
+    menu.appendChild(btn);
+  });
+  const sep = document.createElement('div');
+  sep.className = 'dropdown__sep';
+  menu.appendChild(sep);
+  const customBtn = document.createElement('button');
+  customBtn.type = 'button';
+  customBtn.textContent = t('filterEditor.titleCreate');
+  customBtn.addEventListener('click', () => {
+    closeFilterPicker();
+    openFilterEditor({ mode: 'create', targetPath, targetAttr: attrName });
+  });
+  menu.appendChild(customBtn);
+
+  document.body.appendChild(menu);
+  const rect = anchorEl.getBoundingClientRect();
+  const menuRect = menu.getBoundingClientRect();
+  const vw = window.innerWidth;
+  const vh = window.innerHeight;
+  let left = rect.right - menuRect.width;
+  if (left < 8) left = 8;
+  if (left + menuRect.width > vw - 8) left = vw - menuRect.width - 8;
+  let top = rect.bottom + 4;
+  if (top + menuRect.height > vh - 8) top = Math.max(8, rect.top - menuRect.height - 4);
+  menu.style.position = 'fixed';
+  menu.style.left = left + 'px';
+  menu.style.top = top + 'px';
+  menu.style.zIndex = '250';
+  filterPickerEl = menu;
+
+  const outside = (e) => {
+    if (!menu.contains(e.target) && e.target !== anchorEl && !anchorEl.contains(e.target)) {
+      closeFilterPicker();
+      document.removeEventListener('mousedown', outside, true);
+    }
+  };
+  setTimeout(() => document.addEventListener('mousedown', outside, true), 0);
+}
+function closeFilterPicker() {
+  if (filterPickerEl && filterPickerEl.parentNode) {
+    filterPickerEl.parentNode.removeChild(filterPickerEl);
+  }
+  filterPickerEl = null;
+}
+function applyFilterPreset(presetId, targetPath, attrName) {
+  const preset = CONFIG.filterPresets && CONFIG.filterPresets.builders
+    ? CONFIG.filterPresets.builders[presetId] : null;
+  if (!preset) return;
+  let svgRoot;
+  try { svgRoot = parseSVG(codeEl.value); }
+  catch (err) { showToast(t('toast.parseFailed', { msg: err.message || '' })); return; }
+  const targetEl = resolvePath(svgRoot, targetPath);
+  if (!targetEl) { showToast(t('toast.noSourceLocate')); return; }
+
+  const filterId = 'filter-' + Math.random().toString(36).slice(2, 8);
+  const filterEl = document.createElementNS(SVG_NS, 'filter');
+  filterEl.setAttribute('id', filterId);
+  filterEl.setAttribute('x', '-10%');
+  filterEl.setAttribute('y', '-10%');
+  filterEl.setAttribute('width', '120%');
+  filterEl.setAttribute('height', '120%');
+  filterEl.setAttribute('filterUnits', 'objectBoundingBox');
+  preset.prims.forEach(prim => {
+    const primEl = document.createElementNS(SVG_NS, prim.type);
+    Object.entries(prim.attrs || {}).forEach(([k, v]) => {
+      primEl.setAttribute(k, v);
+    });
+    filterEl.appendChild(primEl);
+  });
+
+  let defs = null;
+  for (let i = 0; i < svgRoot.children.length; i++) {
+    if (svgRoot.children[i].localName === 'defs') { defs = svgRoot.children[i]; break; }
+  }
+  if (!defs) {
+    defs = document.createElementNS(SVG_NS, 'defs');
+    svgRoot.insertBefore(defs, svgRoot.firstChild);
+  }
+  defs.appendChild(filterEl);
+  targetEl.setAttribute(attrName, `url(#${filterId})`);
+
+  codeEl.value = serializeSVG(svgRoot);
+  invalidateLineOffsets();
+  suppressAttrRebuild = true;
+  renderEditor();
+  renderPreview();
+  saveDraftDebounced();
+  recordSnapshot(true);
+  setTimeout(() => {
+    suppressAttrRebuild = false;
+    if (attrPanelOpen && !canvasRootMode) rebuildAttrPanel();
+  }, 120);
+  showToast(t('filterPreset.applied', { label: t('filterPreset.' + presetId) }));
 }
 
 let markerPickerEl = null;
