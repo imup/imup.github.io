@@ -382,7 +382,10 @@
       "patternTransform": "图案变换",
       "offset": "位置",
       "stop-color": "色标颜色",
-      "stop-opacity": "色标不透明度"
+      "stop-opacity": "色标不透明度",
+      "textContent": "文本内容",
+      "textContentPlaceholder": "输入文本内容",
+      "textContentMixed": "含子元素，请选中子元素或使用源码编辑"
     },
 
     "animField": {
@@ -1010,7 +1013,10 @@
       "patternTransform": "Pattern Transform",
       "offset": "Offset",
       "stop-color": "Stop Color",
-      "stop-opacity": "Stop Opacity"
+      "stop-opacity": "Stop Opacity",
+      "textContent": "Text Content",
+      "textContentPlaceholder": "Enter text",
+      "textContentMixed": "Has child elements; edit them or use source code"
     },
 
     "animField": {
