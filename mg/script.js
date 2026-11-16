@@ -6076,7 +6076,6 @@ if (window.visualViewport) {
         if (isFitMode) fitToView();
         else applyPreviewTransform();
       }
-      if (!findPanel.hidden) positionFindPanel();
     });
   };
   window.visualViewport.addEventListener('resize', onVVResize);
