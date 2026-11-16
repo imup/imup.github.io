@@ -34,9 +34,7 @@ const menuAutoIndent = $('menuAutoIndent');
 const menuNewBlankCanvas = $('menuNewBlankCanvas');
 const menuResetExample = $('menuResetExample');
 const menuClearDraft = $('menuClearDraft');
-const menuThemeAuto  = $('menuThemeAuto');
-const menuThemeLight = $('menuThemeLight');
-const menuThemeDark  = $('menuThemeDark');
+const menuThemeToggle = $('menuThemeToggle');
 const zoomInBtn     = $('zoomIn');
 const zoomOutBtn    = $('zoomOut');
 const zoomResetBtn  = $('zoomReset');
@@ -93,7 +91,7 @@ let content       = null;
 let CONFIG        = null;
 let contentLoaded = false;
 let currentLocale = 'zh';
-let currentTheme  = 'auto';
+let currentTheme  = 'light';
 let currentSvg   = null;
 let lastGoodCode = null;
 let renderTimer  = null;
@@ -207,44 +205,28 @@ function updateButtons() {
   [menuCopyPng, menuCopySvg, menuSavePng, menuSaveSvg]
     .forEach(b => b.disabled = !ok);
 }
-function getSystemTheme() {
-  if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-    return 'dark';
-  }
-  return 'light';
-}
 function loadSavedTheme() {
   try {
     const v = localStorage.getItem(THEME_KEY);
-    if (v === 'auto' || v === 'light' || v === 'dark') return v;
+    if (v === 'dark') return 'dark';
   } catch (_) {}
-  return 'auto';
+  return 'light';
 }
 function applyTheme(theme) {
+  if (theme !== 'dark') theme = 'light';
   currentTheme = theme;
   try { localStorage.setItem(THEME_KEY, theme); } catch (_) {}
-  const resolved = theme === 'auto' ? getSystemTheme() : theme;
-  if (resolved === 'dark') {
+  if (theme === 'dark') {
     document.documentElement.setAttribute('data-theme', 'dark');
   } else {
     document.documentElement.removeAttribute('data-theme');
   }
-  updateThemeMenuState(theme);
+  updateThemeMenuState();
 }
-function updateThemeMenuState(theme) {
-  if (!menuThemeAuto) return;
-  menuThemeAuto.setAttribute('aria-checked', theme === 'auto' ? 'true' : 'false');
-  menuThemeLight.setAttribute('aria-checked', theme === 'light' ? 'true' : 'false');
-  menuThemeDark.setAttribute('aria-checked', theme === 'dark' ? 'true' : 'false');
-}
-function setupThemeWatcher() {
-  if (!window.matchMedia) return;
-  const mq = window.matchMedia('(prefers-color-scheme: dark)');
-  const onChange = () => {
-    if (currentTheme === 'auto') applyTheme('auto');
-  };
-  if (mq.addEventListener) mq.addEventListener('change', onChange);
-  else if (mq.addListener) mq.addListener(onChange);
+function updateThemeMenuState() {
+  if (!menuThemeToggle) return;
+  const next = currentTheme === 'dark' ? 'light' : 'dark';
+  menuThemeToggle.textContent = t('theme.' + next);
 }
 function detectLocale() {
   try {
@@ -2072,9 +2054,10 @@ menuClearDraft.addEventListener('click', () => {
   try { localStorage.removeItem(DRAFT_KEY); } catch(_) {}
   showToast(t('toast.draftCleared'));
 });
-menuThemeAuto.addEventListener('click',  () => { closeAllMenus(); applyTheme('auto'); });
-menuThemeLight.addEventListener('click', () => { closeAllMenus(); applyTheme('light'); });
-menuThemeDark.addEventListener('click',  () => { closeAllMenus(); applyTheme('dark'); });
+menuThemeToggle.addEventListener('click', () => {
+  closeAllMenus();
+  applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
+});
 document.addEventListener('click', e => {
   if (!e.target.closest('#previewActions')) {
     previewMenu.hidden = true; btnPreviewMenu.setAttribute('aria-expanded', 'false');
@@ -5979,7 +5962,6 @@ if (window.visualViewport) {
   await loadContentAndConfig();
   applyI18n();
   applyTheme(loadSavedTheme());
-  setupThemeWatcher();
   const draft = loadDraft();
   codeEl.value = draft || getExampleCode();
   setPreviewBg('checker');
