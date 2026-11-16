@@ -163,9 +163,8 @@
     },
 
     "theme": {
-      "auto": "自动",
-      "light": "浅色",
-      "dark": "深色"
+      "light": "浅色主题",
+      "dark": "深色主题"
     },
 
     "group": {
@@ -713,7 +712,6 @@
     },
 
     "theme": {
-      "auto": "Auto",
       "light": "Light",
       "dark": "Dark"
     },
