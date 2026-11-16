@@ -11,8 +11,6 @@
       "zoomIn": "放大",
       "zoomReset": "点击重置为适应窗口",
       "zoomResetAria": "重置视图",
-      "rotate90": "顺时针旋转 90°",
-      "rotateReset": "复位旋转",
       "closeWarning": "关闭警告",
       "externalRefWarning": "检测到外部引用：{refs}，导出 PNG 可能失败"
     },
@@ -513,7 +511,6 @@
       "shareFailed": "分享失败：{msg}",
       "viewReset": "视图已重置为适应窗口",
       "centered": "已回中",
-      "rotated": "预览旋转 {deg}°",
       "noUndo": "没有可撤销的操作",
       "undone": "已撤销",
       "noRedo": "没有可重做的操作",
@@ -564,8 +561,6 @@
       "zoomIn": "Zoom In",
       "zoomReset": "Click to reset to fit window",
       "zoomResetAria": "Reset View",
-      "rotate90": "Rotate 90° clockwise",
-      "rotateReset": "Reset Rotation",
       "closeWarning": "Close Warning",
       "externalRefWarning": "External references detected: {refs}. PNG export may fail."
     },
@@ -1066,7 +1061,6 @@
       "shareFailed": "Share failed: {msg}",
       "viewReset": "View reset to fit window",
       "centered": "Centered",
-      "rotated": "Preview rotated {deg}°",
       "noUndo": "Nothing to undo",
       "undone": "Undone",
       "noRedo": "Nothing to redo",
