@@ -23,8 +23,6 @@ const menuCopyPng    = $('menuCopyPng');
 const menuCopySvg    = $('menuCopySvg');
 const menuSavePng    = $('menuSavePng');
 const menuSaveSvg    = $('menuSaveSvg');
-const btnRotate90    = $('btnRotate90');
-const btnRotateReset = $('btnRotateReset');
 const btnUndo = $('btnUndo');
 const btnRedo = $('btnRedo');
 const btnFormat     = $('btnFormat');
@@ -104,7 +102,6 @@ let draftTimer   = null;
 let previewScale = 1;
 let previewPanX  = 0;
 let previewPanY  = 0;
-let previewRotation = 0;
 let exportState  = null;
 let isWrapMode   = false;
 let splitState = 'default';
@@ -207,7 +204,7 @@ function hideWarning() { warningBar.hidden = true; }
 function updateButtons() {
   const ok = !!currentSvg;
   btnPreviewMenu.disabled = !ok;
-  [menuCopyPng, menuCopySvg, menuSavePng, menuSaveSvg, btnRotate90, btnRotateReset]
+  [menuCopyPng, menuCopySvg, menuSavePng, menuSaveSvg]
     .forEach(b => b.disabled = !ok);
 }
 function getSystemTheme() {
@@ -898,7 +895,7 @@ function applyPreviewTransform() {
   canvasEl.style.transformOrigin = 'center center';
   canvasEl.style.transform =
     `translate(calc(-50% + ${previewPanX}px), calc(-50% + ${previewPanY}px)) ` +
-    `rotate(${previewRotation}deg) scale(${s})`;
+    `scale(${s})`;
   zoomLabel.textContent = Math.round(s * 100) + '%';
   scheduleRefreshSelectionOverlay();
 }
@@ -907,10 +904,7 @@ function fitToView() {
   const size = getSize(currentSvg);
   const rect = getPreviewRect();
   const pad = 40;
-  const rotated = previewRotation % 180 !== 0;
-  const dispW = rotated ? size.height : size.width;
-  const dispH = rotated ? size.width  : size.height;
-  const s = Math.min((rect.width - pad) / dispW, (rect.height - pad) / dispH, 1);
+  const s = Math.min((rect.width - pad) / size.width, (rect.height - pad) / size.height, 1);
   previewScale = clamp(s, 0.05, 20);
   previewPanX = 0;
   previewPanY = 0;
@@ -1715,11 +1709,6 @@ function zoomByButton(factor) {
   const rect = getPreviewRect();
   zoomAt(factor, rect.width / 2, rect.height / 2);
 }
-function setPreviewRotation(deg) {
-  previewRotation = ((deg % 360) + 360) % 360;
-  fitToView();
-  showToast(t('toast.rotated', { deg: previewRotation }));
-}
 
 let lockedScrollTop = 0;
 codeEl.addEventListener('focus', () => {
@@ -2301,14 +2290,6 @@ zoomResetBtn.addEventListener('click', () => {
   if (!currentSvg) return;
   fitToView();
   showToast(t('toast.viewReset'));
-});
-btnRotate90.addEventListener('click', () => {
-  if (!currentSvg) return;
-  setPreviewRotation(previewRotation + 90);
-});
-btnRotateReset.addEventListener('click', () => {
-  if (!currentSvg) return;
-  setPreviewRotation(0);
 });
 window.addEventListener('resize', () => {
   invalidatePreviewRect();
