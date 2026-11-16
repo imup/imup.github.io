@@ -941,35 +941,53 @@ function updateAnimControls() {
   btnAnimCycle.title = title;
   btnAnimCycle.setAttribute('aria-label', title);
 }
+
 function applyAnimState() {
   const svg = canvasEl.firstElementChild;
   if (!svg) return;
+  const anims = svg.querySelectorAll('animate, animateTransform, animateMotion, animateColor, set');
+  anims.forEach(a => {
+    if (a._endHandler) {
+      try { a.removeEventListener('end', a._endHandler); } catch (_) {}
+      a._endHandler = null;
+    }
+  });
+
   if (animState === 'stopped') {
     try { svg.pauseAnimations(); } catch (_) {}
-    try { svg.setCurrentTime(0); } catch (_) {}
-  } else {
+    return;
+  }
+  if (animState === 'playing') {
+    const totalCount = anims.length;
+    let endedCount = 0;
     try { svg.unpauseAnimations(); } catch (_) {}
-    if (animState === 'looping') {
-      try { svg.setCurrentTime(0); } catch (_) {}
-    }
+    anims.forEach(a => {
+      a.setAttribute('repeatCount', '1');
+      const handler = () => {
+        endedCount++;
+        if (endedCount >= totalCount && animState === 'playing') {
+          animState = 'stopped';
+          try { svg.pauseAnimations(); } catch (_) {}
+          updateAnimControls();
+        }
+      };
+      a._endHandler = handler;
+      try { a.addEventListener('end', handler); } catch (_) {}
+      try { a.beginElement(); } catch (_) {}
+    });
+  } else if (animState === 'looping') {
+    anims.forEach(a => {
+      a.setAttribute('repeatCount', 'indefinite');
+      try { a.beginElement(); } catch (_) {}
+    });
+    try { svg.unpauseAnimations(); } catch (_) {}
   }
 }
 function cycleAnimState() {
   if (animState === 'playing') animState = 'looping';
   else if (animState === 'looping') animState = 'stopped';
   else animState = 'playing';
-
-  const svg = canvasEl.firstElementChild;
-  if (svg) {
-    if (animState === 'stopped') {
-      try { svg.pauseAnimations(); } catch (_) {}
-    } else if (animState === 'looping') {
-      try { svg.unpauseAnimations(); } catch (_) {}
-      try { svg.setCurrentTime(0); } catch (_) {}
-    } else {
-      try { svg.unpauseAnimations(); } catch (_) {}
-    }
-  }
+  applyAnimState();
   updateAnimControls();
 }
 async function renderPreview() {
