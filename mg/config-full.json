@@ -1,4 +1,28 @@
 {
+  "panelLayout": [
+    { "type": "special", "hook": "animPanel", "tags": ["animate", "animatetransform", "animatemotion", "animatecolor", "set"], "exclusive": true },
+    { "type": "special", "hook": "imagePreview", "tags": ["image"] },
+    { "type": "special", "hook": "gradientEdit", "tags": ["linearGradient", "radialGradient"] },
+    { "type": "special", "hook": "filterEdit", "tags": ["filter"] },
+    { "type": "group", "source": "posAttrs", "titleKey": "group.position", "when": "hasSpecs" },
+    { "type": "transform" },
+    { "type": "group", "source": "fillSpecs", "titleKey": "group.appearance" },
+    { "type": "group", "source": "strokeAdvSpecs", "titleKey": "group.strokeAdvanced" },
+    { "type": "group", "source": "refSpecs+refUnitSpecs", "titleKey": "group.reference" },
+    { "type": "group", "source": "renderSpecs", "titleKey": "group.render" },
+    { "type": "group", "source": "interactSpecs", "titleKey": "group.interact" },
+    { "type": "group", "source": "textBaseSpecs", "titleKey": "group.text", "tags": ["text", "tspan", "textPath"] },
+    { "type": "group", "source": "textAdvSpecs", "titleKey": "group.textAdv", "tags": ["text", "tspan", "textPath"] },
+    { "type": "group", "source": "textPathSpecs", "titleKey": "group.textPath", "tags": ["textPath"] },
+    { "type": "group", "source": "aSpecs", "titleKey": "group.link", "tags": ["a"] },
+    { "type": "group", "source": "patternSpecs", "titleKey": "group.pattern", "tags": ["pattern"] },
+    { "type": "group", "source": "symbolSpecs", "titleKey": "group.symbol", "tags": ["symbol"] },
+    { "type": "group", "source": "viewSpecs", "titleKey": "group.view", "tags": ["view"] },
+    { "type": "group", "source": "switchSpecs", "titleKey": "group.switch", "tags": ["switch"] },
+    { "type": "childAnims" },
+    { "type": "structure", "when": "!isReadOnly" }
+  ],
+
   "animSpecs": [
     { "name": "attributeName", "type": "text" },
     { "name": "attributeType", "type": "select", "options": ["", "auto", "CSS", "XML"] },
@@ -26,18 +50,19 @@
   ],
 
   "posAttrs": {
-    "rect":     ["x", "y", "width", "height", "rx", "ry"],
-    "circle":   ["cx", "cy", "r"],
-    "ellipse":  ["cx", "cy", "rx", "ry"],
-    "line":     ["x1", "y1", "x2", "y2"],
-    "image":    ["x", "y", "width", "height"],
-    "use":      ["x", "y", "width", "height"],
-    "text":     ["x", "y", "dx", "dy"],
-    "tspan":    ["x", "y", "dx", "dy"],
+    "rect": ["x", "y", "width", "height", "rx", "ry"],
+    "circle": ["cx", "cy", "r"],
+    "ellipse": ["cx", "cy", "rx", "ry"],
+    "line": ["x1", "y1", "x2", "y2"],
+    "image": ["x", "y", "width", "height"],
+    "foreignObject": ["x", "y", "width", "height"],
+    "use": ["x", "y", "width", "height"],
+    "text": ["x", "y", "dx", "dy"],
+    "tspan": ["x", "y", "dx", "dy"],
     "textPath": ["startOffset"],
-    "path":     ["d"],
+    "path": ["d"],
     "polyline": ["points"],
-    "polygon":  ["points"]
+    "polygon": ["points"]
   },
 
   "posAttrTextarea": ["d", "points", "startOffset"],
@@ -98,10 +123,13 @@
     { "name": "visibility", "type": "select", "options": ["", "visible", "hidden", "collapse"], "animatable": true },
     { "name": "display", "type": "select", "options": ["", "inline", "block", "none"], "animatable": true },
     { "name": "overflow", "type": "select", "options": ["", "visible", "hidden", "scroll", "auto"] },
+    { "name": "clip-rule", "type": "select", "options": ["", "nonzero", "evenodd"], "animatable": true },
     { "name": "shape-rendering", "type": "select", "options": ["", "auto", "optimizeSpeed", "crispEdges", "geometricPrecision"] },
     { "name": "text-rendering", "type": "select", "options": ["", "auto", "optimizeSpeed", "optimizeLegibility", "geometricPrecision"] },
     { "name": "image-rendering", "type": "select", "options": ["", "auto", "optimizeQuality", "optimizeSpeed", "pixelated", "smooth", "high-quality", "crisp-edges"] },
+    { "name": "color-rendering", "type": "select", "options": ["", "auto", "optimizeSpeed", "optimizeQuality"] },
     { "name": "color-interpolation", "type": "select", "options": ["", "auto", "sRGB", "linearRGB"] },
+    { "name": "color-profile", "type": "text" },
     { "name": "mix-blend-mode", "type": "select", "options": ["", "normal", "multiply", "screen", "overlay", "darken", "lighten", "color-dodge", "color-burn", "hard-light", "soft-light", "difference", "exclusion", "hue", "saturation", "color", "luminosity"] },
     { "name": "isolation", "type": "select", "options": ["", "auto", "isolate"] },
     { "name": "style", "type": "textarea" },
@@ -129,6 +157,7 @@
   "textAdvSpecs": [
     { "name": "dominant-baseline", "type": "select", "options": ["", "auto", "text-before-edge", "text-after-edge", "middle", "central", "hanging", "alphabetic", "ideographic", "mathematical", "inherit"], "animatable": true },
     { "name": "alignment-baseline", "type": "select", "options": ["", "auto", "baseline", "before-edge", "text-before-edge", "middle", "central", "after-edge", "text-after-edge", "ideographic", "alphabetic", "hanging", "mathematical", "inherit"], "animatable": true },
+    { "name": "baseline-shift", "type": "text", "animatable": true },
     { "name": "text-decoration", "type": "select", "options": ["", "none", "underline", "overline", "line-through"], "animatable": true },
     { "name": "textLength", "type": "number", "animatable": true },
     { "name": "lengthAdjust", "type": "select", "options": ["", "spacing", "spacingAndGlyphs"], "animatable": true },
@@ -159,29 +188,61 @@
     { "name": "hreflang", "type": "text" }
   ],
 
+  "patternSpecs": [
+    { "name": "href", "type": "text" },
+    { "name": "x", "type": "text", "animatable": true },
+    { "name": "y", "type": "text", "animatable": true },
+    { "name": "width", "type": "text", "animatable": true },
+    { "name": "height", "type": "text", "animatable": true },
+    { "name": "viewBox", "type": "text" },
+    { "name": "preserveAspectRatio", "type": "select", "options": ["", "none", "xMidYMid meet", "xMidYMid slice", "xMinYMin meet", "xMinYMin slice", "xMidYMin meet", "xMidYMin slice", "xMaxYMin meet", "xMaxYMin slice", "xMinYMid meet", "xMinYMid slice", "xMaxYMid meet", "xMaxYMid slice", "xMinYMax meet", "xMinYMax slice", "xMidYMax meet", "xMidYMax slice", "xMaxYMax meet", "xMaxYMax slice"] },
+    { "name": "patternUnits", "type": "select", "options": ["", "userSpaceOnUse", "objectBoundingBox"] },
+    { "name": "patternContentUnits", "type": "select", "options": ["", "userSpaceOnUse", "objectBoundingBox"] },
+    { "name": "patternTransform", "type": "text" }
+  ],
+
+  "symbolSpecs": [
+    { "name": "viewBox", "type": "text" },
+    { "name": "preserveAspectRatio", "type": "select", "options": ["", "none", "xMidYMid meet", "xMidYMid slice", "xMinYMin meet", "xMinYMin slice", "xMidYMin meet", "xMidYMin slice", "xMaxYMin meet", "xMaxYMin slice", "xMinYMid meet", "xMinYMid slice", "xMaxYMid meet", "xMaxYMid slice", "xMinYMax meet", "xMinYMax slice", "xMidYMax meet", "xMidYMax slice", "xMaxYMax meet", "xMaxYMax slice"] },
+    { "name": "refX", "type": "text" },
+    { "name": "refY", "type": "text" },
+    { "name": "x", "type": "text" },
+    { "name": "y", "type": "text" },
+    { "name": "width", "type": "text" },
+    { "name": "height", "type": "text" }
+  ],
+
+  "viewSpecs": [
+    { "name": "viewBox", "type": "text" },
+    { "name": "preserveAspectRatio", "type": "select", "options": ["", "none", "xMidYMid meet", "xMidYMid slice", "xMinYMin meet", "xMinYMin slice", "xMidYMin meet", "xMidYMin slice", "xMaxYMin meet", "xMaxYMin slice", "xMinYMid meet", "xMinYMid slice", "xMaxYMid meet", "xMaxYMid slice", "xMinYMax meet", "xMinYMax slice", "xMidYMax meet", "xMidYMax slice", "xMaxYMax meet", "xMaxYMax slice"] }
+  ],
+
+  "switchSpecs": [
+    { "name": "requiredFeatures", "type": "text" },
+    { "name": "requiredExtensions", "type": "text" },
+    { "name": "systemLanguage", "type": "text" }
+  ],
+
   "transformSpecs": [
     {
       "key": "tx", "labelKey": "field.translateX", "step": 1,
       "preset": {
         "kind": "animateTransform",
-        "attrs": { "attributeName": "transform", "type": "translate",
-                   "values": "0,0;20,0;0,0", "dur": "2s", "repeatCount": "indefinite" }
+        "attrs": { "attributeName": "transform", "type": "translate", "values": "0,0;20,0;0,0", "dur": "2s", "repeatCount": "indefinite" }
       }
     },
     {
       "key": "ty", "labelKey": "field.translateY", "step": 1,
       "preset": {
         "kind": "animateTransform",
-        "attrs": { "attributeName": "transform", "type": "translate",
-                   "values": "0,0;0,20;0,0", "dur": "2s", "repeatCount": "indefinite" }
+        "attrs": { "attributeName": "transform", "type": "translate", "values": "0,0;0,20;0,0", "dur": "2s", "repeatCount": "indefinite" }
       }
     },
     {
       "key": "rot", "labelKey": "field.rotation", "step": 1,
       "preset": {
         "kind": "animateTransform", "dynamic": "rotateCenter",
-        "attrs": { "attributeName": "transform", "type": "rotate",
-                   "dur": "4s", "repeatCount": "indefinite" }
+        "attrs": { "attributeName": "transform", "type": "rotate", "dur": "4s", "repeatCount": "indefinite" }
       }
     },
     { "key": "rotCx", "labelKey": "field.rotCenterX", "step": 1 },
@@ -190,38 +251,35 @@
       "key": "scale", "labelKey": "field.scale", "step": 0.1, "min": 0,
       "preset": {
         "kind": "animateTransform",
-        "attrs": { "attributeName": "transform", "type": "scale",
-                   "values": "1;1.2;1", "dur": "2s", "repeatCount": "indefinite" }
+        "attrs": { "attributeName": "transform", "type": "scale", "values": "1;1.2;1", "dur": "2s", "repeatCount": "indefinite" }
       }
     },
     {
       "key": "skewX", "labelKey": "field.skewX", "step": 1,
       "preset": {
         "kind": "animateTransform",
-        "attrs": { "attributeName": "transform", "type": "skewX",
-                   "values": "0;20;0", "dur": "2s", "repeatCount": "indefinite" }
+        "attrs": { "attributeName": "transform", "type": "skewX", "values": "0;20;0", "dur": "2s", "repeatCount": "indefinite" }
       }
     },
     {
       "key": "skewY", "labelKey": "field.skewY", "step": 1,
       "preset": {
         "kind": "animateTransform",
-        "attrs": { "attributeName": "transform", "type": "skewY",
-                   "values": "0;20;0", "dur": "2s", "repeatCount": "indefinite" }
+        "attrs": { "attributeName": "transform", "type": "skewY", "values": "0;20;0", "dur": "2s", "repeatCount": "indefinite" }
       }
     }
   ],
 
   "canvasPresets": [
     { "key": "ratio16_9", "mode": "ratio", "ratio": 1.7778 },
-    { "key": "ratio4_3",  "mode": "ratio", "ratio": 1.3333 },
-    { "key": "ratio1_1",  "mode": "ratio", "ratio": 1 },
-    { "key": "a4",        "mode": "fixed", "width": 794, "height": 1123 },
-    { "key": "size24",    "mode": "square", "size": 24 },
-    { "key": "size32",    "mode": "square", "size": 32 },
-    { "key": "size64",    "mode": "square", "size": 64 },
-    { "key": "size128",   "mode": "square", "size": 128 },
-    { "key": "size256",   "mode": "square", "size": 256 }
+    { "key": "ratio4_3", "mode": "ratio", "ratio": 1.3333 },
+    { "key": "ratio1_1", "mode": "ratio", "ratio": 1 },
+    { "key": "a4", "mode": "fixed", "width": 794, "height": 1123 },
+    { "key": "size24", "mode": "square", "size": 24 },
+    { "key": "size32", "mode": "square", "size": 32 },
+    { "key": "size64", "mode": "square", "size": 64 },
+    { "key": "size128", "mode": "square", "size": 128 },
+    { "key": "size256", "mode": "square", "size": 256 }
   ],
 
   "presetColors": [
@@ -246,61 +304,66 @@
   "shapes": {
     "order": ["rect", "roundrect", "circle", "ellipse", "triangle", "polygon", "star", "line", "polyline"],
     "builders": {
-      "rect":      { "kind": "rect",         "defaults": { "sizeRatio": 1.0 } },
-      "roundrect": { "kind": "rect",         "defaults": { "sizeRatio": 1.0, "rxRatio": 0.08 } },
-      "circle":    { "kind": "circle",       "defaults": { "radiusRatio": 0.5 } },
-      "ellipse":   { "kind": "ellipse",      "defaults": { "rxRatio": 0.5, "ryRatio": 0.35 } },
-      "triangle":  { "kind": "polygon",      "defaults": { "sides": 3, "radiusRatio": 0.5 } },
-      "polygon":   { "kind": "polygon",      "defaults": { "sides": 6, "radiusRatio": 0.5 } },
-      "star":      { "kind": "polygon-star", "defaults": { "points": 5, "ratio": 0.45, "radiusRatio": 0.5 } },
-      "line":      { "kind": "line",         "defaults": { "lengthRatio": 1.0 } },
-      "polyline":  { "kind": "polyline",     "defaults": { "sizeRatio": 1.0 } }
+      "rect": { "kind": "rect", "defaults": { "sizeRatio": 1.0 } },
+      "roundrect": { "kind": "rect", "defaults": { "sizeRatio": 1.0, "rxRatio": 0.08 } },
+      "circle": { "kind": "circle", "defaults": { "radiusRatio": 0.5 } },
+      "ellipse": { "kind": "ellipse", "defaults": { "rxRatio": 0.5, "ryRatio": 0.35 } },
+      "triangle": { "kind": "polygon", "defaults": { "sides": 3, "radiusRatio": 0.5 } },
+      "polygon": { "kind": "polygon", "defaults": { "sides": 6, "radiusRatio": 0.5 } },
+      "star": { "kind": "polygon-star", "defaults": { "points": 5, "ratio": 0.45, "radiusRatio": 0.5 } },
+      "line": { "kind": "line", "defaults": { "lengthRatio": 1.0 } },
+      "polyline": { "kind": "polyline", "defaults": { "sizeRatio": 1.0 } }
     }
   },
 
   "animTemplates": {
     "order": ["fade", "rotate", "scale", "translate", "color", "stroke", "motion", "pulse", "custom"],
     "builders": {
-      "fade":      { "kind": "animate",          "attrs": { "attributeName": "opacity", "values": "1;0;1", "dur": "2s", "repeatCount": "indefinite" } },
-      "rotate":    { "kind": "animateTransform", "dynamic": "rotateCenter", "attrs": { "attributeName": "transform", "type": "rotate", "dur": "4s", "repeatCount": "indefinite", "additive": "sum" } },
-      "scale":     { "kind": "animateTransform", "attrs": { "attributeName": "transform", "type": "scale", "values": "1;1.2;1", "dur": "2s", "repeatCount": "indefinite" } },
+      "fade": { "kind": "animate", "attrs": { "attributeName": "opacity", "values": "1;0;1", "dur": "2s", "repeatCount": "indefinite" } },
+      "rotate": { "kind": "animateTransform", "dynamic": "rotateCenter", "attrs": { "attributeName": "transform", "type": "rotate", "dur": "4s", "repeatCount": "indefinite", "additive": "sum" } },
+      "scale": { "kind": "animateTransform", "attrs": { "attributeName": "transform", "type": "scale", "values": "1;1.2;1", "dur": "2s", "repeatCount": "indefinite" } },
       "translate": { "kind": "animateTransform", "attrs": { "attributeName": "transform", "type": "translate", "values": "0,0;20,0;0,0", "dur": "2s", "repeatCount": "indefinite" } },
-      "color":     { "kind": "animate",          "attrs": { "attributeName": "fill", "values": "#ff0000;#00ff00;#ff0000", "dur": "3s", "repeatCount": "indefinite" } },
-      "stroke":    { "kind": "animate",          "attrs": { "attributeName": "stroke-dashoffset", "from": "100", "to": "0", "dur": "2s", "fill": "freeze" } },
-      "motion":    { "kind": "animateMotion",    "attrs": { "path": "M0,0 C 20,-20 40,20 60,0", "dur": "4s", "repeatCount": "indefinite" } },
-      "pulse":     { "kind": "animate",          "attrs": { "attributeName": "opacity", "values": "1;0.4;1", "dur": "1s", "repeatCount": "indefinite" } },
-      "custom":    { "kind": "animate",          "attrs": { "attributeName": "", "dur": "2s", "repeatCount": "indefinite" }, "isCustom": true }
+      "color": { "kind": "animate", "attrs": { "attributeName": "fill", "values": "#ff0000;#00ff00;#ff0000", "dur": "3s", "repeatCount": "indefinite" } },
+      "stroke": { "kind": "animate", "attrs": { "attributeName": "stroke-dashoffset", "from": "100", "to": "0", "dur": "2s", "fill": "freeze" } },
+      "motion": { "kind": "animateMotion", "attrs": { "path": "M0,0 C 20,-20 40,20 60,0", "dur": "4s", "repeatCount": "indefinite" } },
+      "pulse": { "kind": "animate", "attrs": { "attributeName": "opacity", "values": "1;0.4;1", "dur": "1s", "repeatCount": "indefinite" } },
+      "custom": { "kind": "animate", "attrs": { "attributeName": "", "dur": "2s", "repeatCount": "indefinite" }, "isCustom": true }
     }
   },
 
   "fieldAnims": {
-    "x":                 { "kind": "valuePulse", "delta": 20 },
-    "y":                 { "kind": "valuePulse", "delta": 20 },
-    "cx":                { "kind": "valuePulse", "delta": 20 },
-    "cy":                { "kind": "valuePulse", "delta": 20 },
-    "x1":                { "kind": "valuePulse", "delta": 20 },
-    "y1":                { "kind": "valuePulse", "delta": 20 },
-    "x2":                { "kind": "valuePulse", "delta": 20 },
-    "y2":                { "kind": "valuePulse", "delta": 20 },
-    "dx":                { "kind": "valuePulse", "delta": 10 },
-    "dy":                { "kind": "valuePulse", "delta": 10 },
-    "width":             { "kind": "scalePulse", "factor": 1.3 },
-    "height":            { "kind": "scalePulse", "factor": 1.3 },
-    "r":                 { "kind": "scalePulse", "factor": 1.3 },
-    "rx":                { "kind": "scalePulse", "factor": 1.3 },
-    "ry":                { "kind": "scalePulse", "factor": 1.3 },
-    "fill":              { "kind": "colorLoop" },
-    "stroke":            { "kind": "colorLoop" },
-    "opacity":           { "kind": "opacityPulse" },
-    "fill-opacity":      { "kind": "opacityPulse" },
-    "stroke-opacity":    { "kind": "opacityPulse" },
-    "stroke-width":      { "kind": "scalePulse", "factor": 2 },
+    "x": { "kind": "valuePulse", "delta": 20 },
+    "y": { "kind": "valuePulse", "delta": 20 },
+    "cx": { "kind": "valuePulse", "delta": 20 },
+    "cy": { "kind": "valuePulse", "delta": 20 },
+    "x1": { "kind": "valuePulse", "delta": 20 },
+    "y1": { "kind": "valuePulse", "delta": 20 },
+    "x2": { "kind": "valuePulse", "delta": 20 },
+    "y2": { "kind": "valuePulse", "delta": 20 },
+    "dx": { "kind": "valuePulse", "delta": 10 },
+    "dy": { "kind": "valuePulse", "delta": 10 },
+    "width": { "kind": "scalePulse", "factor": 1.3 },
+    "height": { "kind": "scalePulse", "factor": 1.3 },
+    "r": { "kind": "scalePulse", "factor": 1.3 },
+    "rx": { "kind": "scalePulse", "factor": 1.3 },
+    "ry": { "kind": "scalePulse", "factor": 1.3 },
+    "fill": { "kind": "colorLoop" },
+    "stroke": { "kind": "colorLoop" },
+    "opacity": { "kind": "opacityPulse" },
+    "fill-opacity": { "kind": "opacityPulse" },
+    "stroke-opacity": { "kind": "opacityPulse" },
+    "stroke-width": { "kind": "scalePulse", "factor": 2 },
     "stroke-dashoffset": { "kind": "dashoffset" },
-    "font-size":         { "kind": "scalePulse", "factor": 1.3 }
+    "font-size": { "kind": "scalePulse", "factor": 1.3 }
   },
 
   "filterPrimitives": {
-    "order": ["feGaussianBlur", "feDropShadow", "feFlood", "feMorphology", "feOffset", "feBlend", "feColorMatrix", "feTurbulence", "feComposite", "feMerge"],
+    "order": [
+      "feGaussianBlur", "feDropShadow", "feFlood", "feMorphology",
+      "feOffset", "feTile", "feImage", "feBlend", "feColorMatrix",
+      "feComponentTransfer", "feConvolveMatrix", "feDisplacementMap",
+      "feTurbulence", "feComposite", "feMerge"
+    ],
     "defs": {
       "feGaussianBlur": {
         "fields": [
@@ -343,10 +406,24 @@
           { "name": "result", "type": "text", "default": "", "placeholder": "result" }
         ]
       },
+      "feTile": {
+        "fields": [
+          { "name": "in", "type": "text", "default": "SourceGraphic", "placeholder": "SourceGraphic" },
+          { "name": "result", "type": "text", "default": "", "placeholder": "result" }
+        ]
+      },
+      "feImage": {
+        "fields": [
+          { "name": "href", "type": "text", "default": "", "placeholder": "https://..." },
+          { "name": "preserveAspectRatio", "type": "select", "options": ["", "none", "xMidYMid meet", "xMidYMid slice", "xMinYMin meet", "xMinYMin slice", "xMidYMin meet", "xMidYMin slice", "xMaxYMin meet", "xMaxYMin slice", "xMinYMid meet", "xMinYMid slice", "xMaxYMid meet", "xMaxYMid slice", "xMinYMax meet", "xMinYMax slice", "xMidYMax meet", "xMidYMax slice", "xMaxYMax meet", "xMaxYMax slice"] },
+          { "name": "crossorigin", "type": "select", "options": ["", "anonymous", "use-credentials"] },
+          { "name": "result", "type": "text", "default": "", "placeholder": "result" }
+        ]
+      },
       "feBlend": {
         "fields": [
           { "name": "mode", "type": "select", "options": ["normal", "multiply", "screen", "overlay", "darken", "lighten"], "default": "normal" },
-          { "name": "in",  "type": "text", "default": "SourceGraphic", "placeholder": "SourceGraphic" },
+          { "name": "in", "type": "text", "default": "SourceGraphic", "placeholder": "SourceGraphic" },
           { "name": "in2", "type": "text", "default": "", "placeholder": "in2" },
           { "name": "result", "type": "text", "default": "", "placeholder": "result" }
         ]
@@ -356,6 +433,32 @@
           { "name": "in", "type": "text", "default": "SourceGraphic", "placeholder": "SourceGraphic" },
           { "name": "type", "type": "select", "options": ["matrix", "saturate", "hueRotate", "luminanceToAlpha"], "default": "saturate", "labelKey": "attr.colorMatrixType" },
           { "name": "values", "type": "text", "default": "0.5", "placeholder": "0.5", "full": true },
+          { "name": "result", "type": "text", "default": "", "placeholder": "result" }
+        ]
+      },
+      "feComponentTransfer": {
+        "fields": [
+          { "name": "in", "type": "text", "default": "SourceGraphic", "placeholder": "SourceGraphic" },
+          { "name": "result", "type": "text", "default": "", "placeholder": "result" }
+        ]
+      },
+      "feConvolveMatrix": {
+        "fields": [
+          { "name": "in", "type": "text", "default": "SourceGraphic", "placeholder": "SourceGraphic" },
+          { "name": "order", "type": "text", "default": "3", "placeholder": "3" },
+          { "name": "kernelMatrix", "type": "text", "default": "0 0 0 0 1 0 0 0 0", "placeholder": "0 0 0 0 1 0 0 0 0" },
+          { "name": "divisor", "type": "number", "default": 1 },
+          { "name": "bias", "type": "number", "default": 0 },
+          { "name": "result", "type": "text", "default": "", "placeholder": "result" }
+        ]
+      },
+      "feDisplacementMap": {
+        "fields": [
+          { "name": "in", "type": "text", "default": "SourceGraphic", "placeholder": "SourceGraphic" },
+          { "name": "in2", "type": "text", "default": "", "placeholder": "in2" },
+          { "name": "scale", "type": "number", "default": 0 },
+          { "name": "xChannelSelector", "type": "select", "options": ["R", "G", "B", "A"], "default": "R" },
+          { "name": "yChannelSelector", "type": "select", "options": ["R", "G", "B", "A"], "default": "R" },
           { "name": "result", "type": "text", "default": "", "placeholder": "result" }
         ]
       },
@@ -370,7 +473,7 @@
       "feComposite": {
         "fields": [
           { "name": "operator", "type": "select", "options": ["over", "in", "out", "atop", "xor"], "default": "over" },
-          { "name": "in",  "type": "text", "default": "SourceGraphic", "placeholder": "SourceGraphic" },
+          { "name": "in", "type": "text", "default": "SourceGraphic", "placeholder": "SourceGraphic" },
           { "name": "in2", "type": "text", "default": "", "placeholder": "in2" },
           { "name": "result", "type": "text", "default": "", "placeholder": "result" }
         ]
