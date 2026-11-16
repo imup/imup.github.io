@@ -497,6 +497,21 @@
       "feConvolveMatrix": "卷积矩阵",
       "feDisplacementMap": "置换映射"
     },
+    
+    "filterPreset": {
+      "blur": "模糊",
+      "glow": "发光",
+      "innerShadow": "内阴影",
+      "outline": "描边",
+      "emboss": "浮雕",
+      "noise": "噪点",
+      "sepia": "棕褐色",
+      "grayscale": "灰度",
+      "invert": "反色",
+      "motionBlur": "动感模糊",
+      "dropShadow": "投影",
+      "applied": "已应用预设：{label}"
+    },
 
     "marker": {
       "triangle": "三角形 ▶",
@@ -1128,7 +1143,22 @@
       "feConvolveMatrix": "Convolve Matrix",
       "feDisplacementMap": "Displacement Map"
     },
-
+    
+    "filterPreset": {
+      "blur": "Blur",
+      "glow": "Glow",
+      "innerShadow": "Inner Shadow",
+      "outline": "Outline",
+      "emboss": "Emboss",
+      "noise": "Noise",
+      "sepia": "Sepia",
+      "grayscale": "Grayscale",
+      "invert": "Invert",
+      "motionBlur": "Motion Blur",
+      "dropShadow": "Drop Shadow",
+      "applied": "Applied preset: {label}"
+    },
+    
     "marker": {
       "triangle": "Triangle ▶",
       "circle": "Circle ●",
