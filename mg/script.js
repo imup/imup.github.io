@@ -2469,6 +2469,44 @@ if (window.visualViewport) {
   document.addEventListener('gesturechange', preventGesture, { passive: false });
   document.addEventListener('gestureend',    preventGesture, { passive: false });
 })();
+function getSpecsBySource(source, tagName) {
+  const result = [];
+  for (const key of String(source).split('+')) {
+    if (key === 'posAttrs') {
+      getPosAttrs(tagName).forEach(spec => result.push({ spec, rowType: 'row' }));
+    } else if (key === 'refSpecs') {
+      (CONFIG.refSpecs || []).forEach(spec => result.push({ spec, rowType: 'ref' }));
+    } else {
+      (CONFIG[key] || []).forEach(spec => result.push({ spec, rowType: 'row' }));
+    }
+  }
+  return result;
+}
+function evalPanelWhen(item, ctx) {
+  if (item.tags && !item.tags.some(tg => tg.toLowerCase() === ctx.tagName.toLowerCase())) return false;
+  const w = item.when ? String(item.when).trim() : '';
+  if (!w) return true;
+  if (w === '!isReadOnly') return !ctx.isReadOnly;
+  if (w === 'isReadOnly')  return ctx.isReadOnly;
+  if (w === 'hasSpecs')    return getSpecsBySource(item.source, ctx.tagName).length > 0;
+  return true;
+}
+function renderPanelItem(item, ctx) {
+  if (item.type === 'group') {
+    const specs = getSpecsBySource(item.source, ctx.tagName);
+    if (specs.length === 0) return null;
+    const rows = specs.map(({ spec, rowType }) =>
+      rowType === 'ref'
+        ? makeRefRow(ctx.el, spec, ctx.isReadOnly, false)
+        : makeRow(ctx.el, spec, ctx.isReadOnly, false)
+    );
+    return makeGroup(t(item.titleKey), rows);
+  }
+  if (item.type === 'transform')  return makeTransformGroup(ctx.el, ctx.isReadOnly);
+  if (item.type === 'childAnims') return makeChildAnimsGroup(ctx.el, ctx.isReadOnly);
+  if (item.type === 'structure')  return makeStructureGroup(ctx.el, ctx.isReadOnly);
+  return null;
+}
 function makeGroup(title, rows) {
   const g = document.createElement('div');
   g.className = 'attr-group';
@@ -3429,6 +3467,66 @@ function makeStructureGroup(el, isReadOnly) {
   group.appendChild(items);
   return group;
 }
+function makeChildAnimsGroup(el, isReadOnly) {
+  const animChildren = [];
+  Array.from(el.children || []).forEach((child, idx) => {
+    if (ANIM_TAGS.has(child.localName.toLowerCase())) animChildren.push({ child, idx });
+  });
+  if (animChildren.length === 0) return null;
+  const animGroup = document.createElement('div');
+  animGroup.className = 'attr-group';
+  const animTitle = document.createElement('div');
+  animTitle.className = 'attr-group__title';
+  animTitle.textContent = t('group.animation');
+  const animItems = document.createElement('div');
+  animItems.className = 'attr-group__items';
+  animItems.style.gridTemplateColumns = '1fr';
+  animChildren.forEach(({ child, idx }) => {
+    const row = document.createElement('div');
+    row.className = 'attr-anim-row';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'attr-anim-item';
+    const an = child.getAttribute('attributeName') || '';
+    btn.textContent = `<${child.localName}>${an ? ' ' + an : ''}`;
+    btn.addEventListener('click', () => {
+      const newPath = [...selectedPath, idx];
+      const svgVisible = canvasEl.firstElementChild;
+      const target = svgVisible ? resolvePath(svgVisible, newPath) : null;
+      if (target) {
+        selectedPath = newPath;
+        _selectedElementTag = target.localName;
+        _selectedElementId  = target.getAttribute('id') || null;
+        applySelectionOutline(target);
+        rebuildAttrPanel();
+      }
+    });
+    row.appendChild(btn);
+    if (!isReadOnly) {
+      const rmBtn = document.createElement('button');
+      rmBtn.type = 'button';
+      rmBtn.className = 'attr-anim-remove';
+      rmBtn.title = t('anim.removeAnim');
+      rmBtn.textContent = '−';
+      rmBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const animPath = [...selectedPath, idx];
+        if (!deleteElementAtPath(animPath)) return;
+        suppressAttrRebuild = true;
+        setTimeout(() => {
+          suppressAttrRebuild = false;
+          if (attrPanelOpen && !canvasRootMode && selectedPath) rebuildAttrPanel();
+        }, 120);
+        showToast(t('anim.deletedAnim') || t('toast.deleted'));
+      });
+      row.appendChild(rmBtn);
+    }
+    animItems.appendChild(row);
+  });
+  animGroup.appendChild(animTitle);
+  animGroup.appendChild(animItems);
+  return animGroup;
+}
 function buildAnimFromSpecPreset(preset, el) {
   if (!preset) return '';
   const attrs = { ...(preset.attrs || {}) };
@@ -3827,14 +3925,14 @@ function commitAttrChange(el, name, value) {
   recordSnapshot();
   setTimeout(() => { if (!wasSuppressed) suppressAttrRebuild = false; }, 800);
 }
-function deleteSelectedElement() {
-  if (!selectedPath) return;
-  const loc = findTagOffsetByPath(codeEl.value, selectedPath);
-  if (!loc) { showToast(t('toast.srcMissing')); return; }
+function deleteElementAtPath(path) {
+  if (!path || !path.length) return false;
+  const loc = findTagOffsetByPath(codeEl.value, path);
+  if (!loc) { showToast(t('toast.srcMissing')); return false; }
   let endOffset = loc.end;
   if (!loc.isSelfClosing) {
     const end = skipElementContent(codeEl.value, loc.start, loc.tag);
-    if (end < 0) { showToast(t('toast.deleteFailed')); return; }
+    if (end < 0) { showToast(t('toast.deleteFailed')); return false; }
     endOffset = end;
   }
   let start = loc.start;
@@ -3845,10 +3943,17 @@ function deleteSelectedElement() {
     break;
   }
   codeEl.value = codeEl.value.slice(0, start) + codeEl.value.slice(endOffset);
+  invalidateLineOffsets();
+  renderPreview();
+  saveDraftDebounced();
+  recordSnapshot(true);
+  return true;
+}
+function deleteSelectedElement() {
+  if (!selectedPath) return;
+  if (!deleteElementAtPath(selectedPath)) return;
   selectedPath = null;
   if (selectionOverlayEl) selectionOverlayEl.innerHTML = '';
-  invalidateLineOffsets();
-  renderEditor(); schedulePreviewRender(); saveDraftDebounced(); recordSnapshot(true);
   closeAttrPanel();
   showToast(t('toast.deleted'));
 }
@@ -5053,6 +5158,130 @@ function updateAttrPanelTop() {
   attrPanel.style.setProperty('--attr-panel-top', rect.bottom + 'px');
 }
 
+function hookAnimPanel(ctx) {
+  const { el, isReadOnly } = ctx;
+  const nodes = [];
+  const animGroup = makeGroup(t('group.animation'), getAnimSpecs().map(a => makeRow(el, a, isReadOnly, false)));
+  if (selectedPath && selectedPath.length > 0) {
+    const animTitle = animGroup.querySelector('.attr-group__title');
+    if (animTitle) {
+      animTitle.classList.add('attr-group__title--with-action');
+      const backBtn = document.createElement('button');
+      backBtn.type = 'button';
+      backBtn.className = 'attr-back-btn';
+      backBtn.textContent = t('attrPanel.backToParent');
+      backBtn.addEventListener('click', () => {
+        const parentPath = selectedPath.slice(0, -1);
+        const svgVisible = canvasEl.firstElementChild;
+        const parentEl = svgVisible ? resolvePath(svgVisible, parentPath) : null;
+        if (parentEl) {
+          selectedPath = parentPath;
+          _selectedElementTag = parentEl.localName;
+          _selectedElementId  = parentEl.getAttribute('id') || null;
+          applySelectionOutline(parentEl);
+          rebuildAttrPanel();
+        }
+      });
+      animTitle.appendChild(backBtn);
+    }
+  }
+  nodes.push(animGroup);
+  if (!isReadOnly) nodes.push(makeStructureGroup(el, isReadOnly));
+  return nodes;
+}
+
+function hookImagePreview(ctx) {
+  const { el, isReadOnly } = ctx;
+  const nodes = [];
+  const href = el.getAttribute('href') || el.getAttribute('xlink:href');
+  const clipAttr = el.getAttribute('clip-path') || '';
+
+  if (href) {
+    const wrap = document.createElement('div');
+    wrap.className = 'attr-image-preview';
+    const img = document.createElement('img');
+    img.src = href; img.alt = '';
+    wrap.appendChild(img);
+
+    if (!isReadOnly && clipAttr && /^url\(#clip-/.test(clipAttr)) {
+      const reconfigBtn = document.createElement('button');
+      reconfigBtn.type = 'button';
+      reconfigBtn.className = 'attr-image-reconfig';
+      reconfigBtn.title = t('attrPanel.reconfigImage');
+      reconfigBtn.setAttribute('aria-label', t('attrPanel.reconfigImage'));
+      reconfigBtn.innerHTML =
+        '<svg viewBox="0 0 24 24" aria-hidden="true"' +
+        ' fill="none" stroke="currentColor" stroke-width="2"' +
+        ' stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M12 20h9"/>' +
+        '<path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>' +
+        '</svg>';
+      reconfigBtn.addEventListener('click', () => {
+        const href2 = el.getAttribute('href') || el.getAttribute('xlink:href');
+        if (!href2) { showToast(t('attrPanel.imageMissing')); return; }
+        try {
+          const arr = href2.split(',');
+          const mime = arr[0].match(/:(.*?);/)[1];
+          const bstr = atob(arr[1]);
+          let n = bstr.length;
+          const u8 = new Uint8Array(n);
+          while (n--) u8[n] = bstr.charCodeAt(n);
+          const blob = new Blob([u8], { type: mime });
+          const file = new File([blob], 'reconfig.' + (mime === 'image/png' ? 'png' : 'jpg'), { type: mime });
+          loadImageForConfig(file);
+        } catch (err) {
+          showToast(t('toast.imageInsertFailed', { msg: err.message || '' }));
+        }
+      });
+      wrap.appendChild(reconfigBtn);
+    }
+    nodes.push(wrap);
+  }
+  if (/url\(#clip-/.test(clipAttr)) {
+    nodes.push(makeImageClipShapeGroup(el, isReadOnly));
+  }
+  return nodes;
+}
+
+function hookGradientEdit(ctx) {
+  const { el, isReadOnly } = ctx;
+  const editBtn = document.createElement('button');
+  editBtn.type = 'button';
+  editBtn.className = 'attr-fit-btn';
+  editBtn.textContent = t('attrPanel.editGradient');
+  editBtn.style.marginBottom = '10px';
+  editBtn.disabled = isReadOnly;
+  editBtn.addEventListener('click', () => {
+    const id = el.getAttribute('id');
+    if (!id) { showToast(t('attrPanel.gradientNoId')); return; }
+    openGradientEditor({ mode: 'edit', existingId: id, existingPath: [...selectedPath] });
+  });
+  return [editBtn];
+}
+
+function hookFilterEdit(ctx) {
+  const { el, isReadOnly } = ctx;
+  const editBtn = document.createElement('button');
+  editBtn.type = 'button';
+  editBtn.className = 'attr-fit-btn';
+  editBtn.textContent = t('attrPanel.editFilter');
+  editBtn.style.marginBottom = '10px';
+  editBtn.disabled = isReadOnly;
+  editBtn.addEventListener('click', () => {
+    const id = el.getAttribute('id');
+    if (!id) { showToast(t('attrPanel.filterNoId')); return; }
+    openFilterEditor({ mode: 'edit', existingId: id, existingPath: [...selectedPath] });
+  });
+  return [editBtn];
+}
+
+const PANEL_SPECIAL_HOOKS = {
+  animPanel:    hookAnimPanel,
+  imagePreview: hookImagePreview,
+  gradientEdit: hookGradientEdit,
+  filterEdit:   hookFilterEdit
+};
+
 function openAttrPanel() {
   if (isMobileViewport() && document.activeElement === codeEl) {
     try { codeEl.blur(); } catch (_) {}
@@ -5090,6 +5319,7 @@ function closeAttrPanel() {
     }, 0);
   }
 }
+
 function rebuildAttrPanel() {
   if (!attrPanelOpen) return;
   const activeEl = document.activeElement;
@@ -5117,208 +5347,31 @@ function rebuildAttrPanel() {
   const loc = findTagOffsetByPath(codeEl.value, selectedPath);
   const isReadOnly = !loc;
   renderHeaderId(el, isReadOnly);
-
   ensureHeaderAddBtn(isAnim);
   attrPanelWarning.hidden = !isReadOnly;
   attrPanelBody.innerHTML = '';
 
-  if (tagName === 'image') {
-    const href = el.getAttribute('href') || el.getAttribute('xlink:href');
-    const clipAttr = el.getAttribute('clip-path') || '';
+  const ctx = { el, tagName, isAnim, isReadOnly };
+  const layout = (CONFIG && CONFIG.panelLayout) || [];
 
-    if (href) {
-      const wrap = document.createElement('div');
-      wrap.className = 'attr-image-preview';
-      const img = document.createElement('img');
-      img.src = href; img.alt = '';
-      wrap.appendChild(img);
-
-      if (!isReadOnly && clipAttr && /^url\(#clip-/.test(clipAttr)) {
-        const reconfigBtn = document.createElement('button');
-        reconfigBtn.type = 'button';
-        reconfigBtn.className = 'attr-image-reconfig';
-        reconfigBtn.title = t('attrPanel.reconfigImage');
-        reconfigBtn.setAttribute('aria-label', t('attrPanel.reconfigImage'));
-        reconfigBtn.innerHTML =
-          '<svg viewBox="0 0 24 24" aria-hidden="true"' +
-          ' fill="none" stroke="currentColor" stroke-width="2"' +
-          ' stroke-linecap="round" stroke-linejoin="round">' +
-          '<path d="M12 20h9"/>' +
-          '<path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>' +
-          '</svg>';
-        reconfigBtn.addEventListener('click', () => {
-          const href2 = el.getAttribute('href') || el.getAttribute('xlink:href');
-          if (!href2) { showToast(t('attrPanel.imageMissing')); return; }
-          try {
-            const arr = href2.split(',');
-            const mime = arr[0].match(/:(.*?);/)[1];
-            const bstr = atob(arr[1]);
-            let n = bstr.length;
-            const u8 = new Uint8Array(n);
-            while (n--) u8[n] = bstr.charCodeAt(n);
-            const blob = new Blob([u8], { type: mime });
-            const file = new File([blob], 'reconfig.' + (mime === 'image/png' ? 'png' : 'jpg'), { type: mime });
-            loadImageForConfig(file);
-          } catch (err) {
-            showToast(t('toast.imageInsertFailed', { msg: err.message || '' }));
-          }
-        });
-        wrap.appendChild(reconfigBtn);
+  for (const item of layout) {
+    if (!evalPanelWhen(item, ctx)) continue;
+    if (item.type === 'special') {
+      const hook = PANEL_SPECIAL_HOOKS[item.hook];
+      if (hook) {
+        const nodes = hook(ctx);
+        if (nodes) nodes.forEach(n => n && attrPanelBody.appendChild(n));
       }
-      attrPanelBody.appendChild(wrap);
-    }
-    if (/url\(#clip-/.test(clipAttr)) {
-      attrPanelBody.appendChild(makeImageClipShapeGroup(el, isReadOnly));
-    }
-  }
-  if (isAnim) {
-    if (selectedPath && selectedPath.length > 0) {
-      const animGroup = makeGroup(t('group.animation'), getAnimSpecs().map(a => makeRow(el, a, isReadOnly, false)));
-      const animTitle = animGroup.querySelector('.attr-group__title');
-      if (animTitle) {
-        animTitle.classList.add('attr-group__title--with-action');
-        const backBtn = document.createElement('button');
-        backBtn.type = 'button';
-        backBtn.className = 'attr-back-btn';
-        backBtn.textContent = t('attrPanel.backToParent');
-        backBtn.addEventListener('click', () => {
-          const parentPath = selectedPath.slice(0, -1);
-          const svgVisible = canvasEl.firstElementChild;
-          const parentEl = svgVisible ? resolvePath(svgVisible, parentPath) : null;
-          if (parentEl) {
-            selectedPath = parentPath;
-            _selectedElementTag = parentEl.localName;
-            _selectedElementId  = parentEl.getAttribute('id') || null;
-            applySelectionOutline(parentEl);
-            rebuildAttrPanel();
-          }
-        });
-        animTitle.appendChild(backBtn);
+      if (item.exclusive) {
+        attrPanel.dataset.readonly = isReadOnly ? '1' : '';
+        return;
       }
-      attrPanelBody.appendChild(animGroup);
-    } else {
-      attrPanelBody.appendChild(makeGroup(t('group.animation'), getAnimSpecs().map(a => makeRow(el, a, isReadOnly, false))));
+      continue;
     }
-    if (!isReadOnly) attrPanelBody.appendChild(makeStructureGroup(el, isReadOnly));
-    attrPanel.dataset.readonly = isReadOnly ? '1' : '';
-    return;
+    const node = renderPanelItem(item, ctx);
+    if (node) attrPanelBody.appendChild(node);
   }
 
-  if (tagName === 'linearGradient' || tagName === 'radialGradient') {
-    const editBtn = document.createElement('button');
-    editBtn.type = 'button';
-    editBtn.className = 'attr-fit-btn';
-    editBtn.textContent = t('attrPanel.editGradient');
-    editBtn.style.marginBottom = '10px';
-    editBtn.disabled = isReadOnly;
-    editBtn.addEventListener('click', () => {
-      const id = el.getAttribute('id');
-      if (!id) { showToast(t('attrPanel.gradientNoId')); return; }
-      openGradientEditor({
-        mode: 'edit',
-        existingId: id,
-        existingPath: [...selectedPath]
-      });
-    });
-    attrPanelBody.appendChild(editBtn);
-  }
-
-  if (tagName === 'filter') {
-    const editBtn = document.createElement('button');
-    editBtn.type = 'button';
-    editBtn.className = 'attr-fit-btn';
-    editBtn.textContent = t('attrPanel.editFilter');
-    editBtn.style.marginBottom = '10px';
-    editBtn.disabled = isReadOnly;
-    editBtn.addEventListener('click', () => {
-      const id = el.getAttribute('id');
-      if (!id) { showToast(t('attrPanel.filterNoId')); return; }
-      openFilterEditor({
-        mode: 'edit',
-        existingId: id,
-        existingPath: [...selectedPath]
-      });
-    });
-    attrPanelBody.appendChild(editBtn);
-  }
-
-  const posAttrs = getPosAttrs(tagName);
-  if (posAttrs.length) {
-    attrPanelBody.appendChild(makeGroup(t('group.position'), posAttrs.map(a => makeRow(el, a, isReadOnly, false))));
-  }
-  attrPanelBody.appendChild(makeTransformGroup(el, isReadOnly));
-
-  attrPanelBody.appendChild(makeGroup(t('group.appearance'), (CONFIG.fillSpecs || []).map(a => makeRow(el, a, isReadOnly, false))));
-  attrPanelBody.appendChild(makeGroup(t('group.strokeAdvanced'), (CONFIG.strokeAdvSpecs || []).map(a => makeRow(el, a, isReadOnly, false))));
-
-  const refRows = (CONFIG.refSpecs || []).map(a => makeRefRow(el, a, isReadOnly, false))
-    .concat((CONFIG.refUnitSpecs || []).map(a => makeRow(el, a, isReadOnly, false)));
-  attrPanelBody.appendChild(makeGroup(t('group.reference'), refRows));
-
-  attrPanelBody.appendChild(makeGroup(t('group.render'), (CONFIG.renderSpecs || []).map(a => makeRow(el, a, isReadOnly, false))));
-  attrPanelBody.appendChild(makeGroup(t('group.interact'), (CONFIG.interactSpecs || []).map(a => makeRow(el, a, isReadOnly, false))));
-
-  if (tagName === 'text' || tagName === 'tspan') {
-    attrPanelBody.appendChild(makeGroup(t('group.text'), (CONFIG.textBaseSpecs || []).map(a => makeRow(el, a, isReadOnly, false))));
-    attrPanelBody.appendChild(makeGroup(t('group.textAdv'), (CONFIG.textAdvSpecs || []).map(a => makeRow(el, a, isReadOnly, false))));
-  }
-
-  const animChildren = [];
-  Array.from(el.children || []).forEach((child, idx) => {
-    if (ANIM_TAGS.has(child.localName.toLowerCase())) animChildren.push({ child, idx });
-  });
-  if (animChildren.length > 0) {
-    const animGroup = document.createElement('div');
-    animGroup.className = 'attr-group';
-    const animTitle = document.createElement('div');
-    animTitle.className = 'attr-group__title';
-    animTitle.textContent = t('group.animation');
-    const animItems = document.createElement('div');
-    animItems.className = 'attr-group__items';
-    animItems.style.gridTemplateColumns = '1fr';
-    animChildren.forEach(({ child, idx }) => {
-      const row = document.createElement('div');
-      row.className = 'attr-anim-row';
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'attr-anim-item';
-      const an = child.getAttribute('attributeName') || '';
-      btn.textContent = `<${child.localName}>${an ? ' ' + an : ''}`;
-      btn.addEventListener('click', () => {
-        const newPath = [...selectedPath, idx];
-        const svgVisible = canvasEl.firstElementChild;
-        const target = svgVisible ? resolvePath(svgVisible, newPath) : null;
-        if (target) {
-          selectedPath = newPath;
-          _selectedElementTag = target.localName;
-          _selectedElementId  = target.getAttribute('id') || null;
-          applySelectionOutline(target);
-          rebuildAttrPanel();
-        }
-      });
-      row.appendChild(btn);
-      if (!isReadOnly) {
-        const rmBtn = document.createElement('button');
-        rmBtn.type = 'button';
-        rmBtn.className = 'attr-anim-remove';
-        rmBtn.title = t('anim.removeAnim');
-        rmBtn.textContent = '−';
-        rmBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
-          deleteSelectedElement();
-        });
-        row.appendChild(rmBtn);
-      }
-      animItems.appendChild(row);
-    });
-    animGroup.appendChild(animTitle);
-    animGroup.appendChild(animItems);
-    attrPanelBody.appendChild(animGroup);
-  }
-
-  if (!isReadOnly) {
-    attrPanelBody.appendChild(makeStructureGroup(el, isReadOnly));
-  }
   attrPanel.dataset.readonly = isReadOnly ? '1' : '';
 }
 
