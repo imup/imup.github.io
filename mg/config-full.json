@@ -62,7 +62,12 @@
     "textPath": ["startOffset"],
     "path": ["d"],
     "polyline": ["points"],
-    "polygon": ["points"]
+    "polygon": ["points"],
+    "stop": [
+      { "name": "offset", "type": "text", "animatable": true },
+      { "name": "stop-color", "type": "color", "animatable": true },
+      { "name": "stop-opacity", "type": "number", "step": 0.1, "min": 0, "max": 1, "animatable": true }
+    ]
   },
 
   "posAttrTextarea": ["d", "points", "startOffset"],
@@ -317,17 +322,98 @@
   },
 
   "animTemplates": {
-    "order": ["fade", "rotate", "scale", "translate", "color", "stroke", "motion", "pulse", "custom"],
+    "order": [
+      "fade", "rotate", "scale", "translate", "color", "fillGradient",
+      "pulse", "blink", "heartbeat", "shake", "bounce", "swing",
+      "flip", "glow", "outline", "stroke", "drawPath", "dashFlow",
+      "skewPulse", "motion", "custom"
+    ],
     "builders": {
-      "fade": { "kind": "animate", "attrs": { "attributeName": "opacity", "values": "1;0;1", "dur": "2s", "repeatCount": "indefinite" } },
-      "rotate": { "kind": "animateTransform", "dynamic": "rotateCenter", "attrs": { "attributeName": "transform", "type": "rotate", "dur": "4s", "repeatCount": "indefinite", "additive": "sum" } },
-      "scale": { "kind": "animateTransform", "attrs": { "attributeName": "transform", "type": "scale", "values": "1;1.2;1", "dur": "2s", "repeatCount": "indefinite" } },
-      "translate": { "kind": "animateTransform", "attrs": { "attributeName": "transform", "type": "translate", "values": "0,0;20,0;0,0", "dur": "2s", "repeatCount": "indefinite" } },
-      "color": { "kind": "animate", "attrs": { "attributeName": "fill", "values": "#ff0000;#00ff00;#ff0000", "dur": "3s", "repeatCount": "indefinite" } },
-      "stroke": { "kind": "animate", "attrs": { "attributeName": "stroke-dashoffset", "from": "100", "to": "0", "dur": "2s", "fill": "freeze" } },
-      "motion": { "kind": "animateMotion", "attrs": { "path": "M0,0 C 20,-20 40,20 60,0", "dur": "4s", "repeatCount": "indefinite" } },
-      "pulse": { "kind": "animate", "attrs": { "attributeName": "opacity", "values": "1;0.4;1", "dur": "1s", "repeatCount": "indefinite" } },
-      "custom": { "kind": "animate", "attrs": { "attributeName": "", "dur": "2s", "repeatCount": "indefinite" }, "isCustom": true }
+      "fade": {
+        "kind": "animate",
+        "attrs": { "attributeName": "opacity", "values": "1;0;1", "dur": "2s", "repeatCount": "indefinite" }
+      },
+      "rotate": {
+        "kind": "animateTransform", "dynamic": "rotateCenter",
+        "attrs": { "attributeName": "transform", "type": "rotate", "dur": "4s", "repeatCount": "indefinite", "additive": "sum" }
+      },
+      "scale": {
+        "kind": "animateTransform",
+        "attrs": { "attributeName": "transform", "type": "scale", "values": "1;1.2;1", "dur": "2s", "repeatCount": "indefinite" }
+      },
+      "translate": {
+        "kind": "animateTransform",
+        "attrs": { "attributeName": "transform", "type": "translate", "values": "0,0;20,0;0,0", "dur": "2s", "repeatCount": "indefinite" }
+      },
+      "color": {
+        "kind": "animate",
+        "attrs": { "attributeName": "fill", "values": "#ff0000;#00ff00;#ff0000", "dur": "3s", "repeatCount": "indefinite" }
+      },
+      "fillGradient": {
+        "kind": "animate",
+        "attrs": { "attributeName": "fill", "from": "#3b82f6", "to": "#ef4444", "dur": "2s", "fill": "freeze" }
+      },
+      "pulse": {
+        "kind": "animate",
+        "attrs": { "attributeName": "opacity", "values": "1;0.4;1", "dur": "1s", "repeatCount": "indefinite" }
+      },
+      "blink": {
+        "kind": "animate",
+        "attrs": { "attributeName": "opacity", "values": "1;0;1", "dur": "0.8s", "repeatCount": "indefinite" }
+      },
+      "heartbeat": {
+        "kind": "animateTransform",
+        "attrs": { "attributeName": "transform", "type": "scale", "values": "1;1.15;1;1.1;1", "dur": "1.2s", "repeatCount": "indefinite" }
+      },
+      "shake": {
+        "kind": "animateTransform",
+        "attrs": { "attributeName": "transform", "type": "translate", "values": "0,0;3,0;-3,0;2,0;-2,0;0,0", "dur": "0.4s", "repeatCount": "indefinite", "additive": "sum" }
+      },
+      "bounce": {
+        "kind": "animateTransform",
+        "attrs": { "attributeName": "transform", "type": "translate", "values": "0,0;0,-15;0,0", "dur": "0.6s", "repeatCount": "indefinite", "additive": "sum" }
+      },
+      "swing": {
+        "kind": "animateTransform",
+        "attrs": { "attributeName": "transform", "type": "rotate", "values": "-10;10;-10", "dur": "1s", "repeatCount": "indefinite", "additive": "sum" }
+      },
+      "flip": {
+        "kind": "animateTransform",
+        "attrs": { "attributeName": "transform", "type": "scale", "values": "1,1;-1,1;1,1", "dur": "2s", "repeatCount": "indefinite" }
+      },
+      "glow": {
+        "kind": "animate",
+        "attrs": { "attributeName": "stroke-width", "values": "1;4;1", "dur": "2s", "repeatCount": "indefinite" }
+      },
+      "outline": {
+        "kind": "animate",
+        "attrs": { "attributeName": "stroke-opacity", "values": "1;0.2;1", "dur": "1.5s", "repeatCount": "indefinite" }
+      },
+      "stroke": {
+        "kind": "animate",
+        "attrs": { "attributeName": "stroke-dashoffset", "from": "100", "to": "0", "dur": "2s", "fill": "freeze" }
+      },
+      "drawPath": {
+        "kind": "animate",
+        "attrs": { "attributeName": "stroke-dashoffset", "from": "1000", "to": "0", "dur": "2s", "fill": "freeze" }
+      },
+      "dashFlow": {
+        "kind": "animate",
+        "attrs": { "attributeName": "stroke-dashoffset", "from": "0", "to": "-20", "dur": "1s", "repeatCount": "indefinite" }
+      },
+      "skewPulse": {
+        "kind": "animateTransform",
+        "attrs": { "attributeName": "transform", "type": "skewX", "values": "0;15;0", "dur": "2s", "repeatCount": "indefinite", "additive": "sum" }
+      },
+      "motion": {
+        "kind": "animateMotion",
+        "attrs": { "path": "M0,0 C 20,-20 40,20 60,0", "dur": "4s", "repeatCount": "indefinite" }
+      },
+      "custom": {
+        "kind": "animate",
+        "attrs": { "attributeName": "", "dur": "2s", "repeatCount": "indefinite" },
+        "isCustom": true
+      }
     }
   },
 
@@ -349,9 +435,11 @@
     "ry": { "kind": "scalePulse", "factor": 1.3 },
     "fill": { "kind": "colorLoop" },
     "stroke": { "kind": "colorLoop" },
+    "stop-color": { "kind": "colorLoop" },
     "opacity": { "kind": "opacityPulse" },
     "fill-opacity": { "kind": "opacityPulse" },
     "stroke-opacity": { "kind": "opacityPulse" },
+    "stop-opacity": { "kind": "opacityPulse" },
     "stroke-width": { "kind": "scalePulse", "factor": 2 },
     "stroke-dashoffset": { "kind": "dashoffset" },
     "font-size": { "kind": "scalePulse", "factor": 1.3 }
