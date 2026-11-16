@@ -11,6 +11,7 @@
     { "type": "group", "source": "refSpecs+refUnitSpecs", "titleKey": "group.reference" },
     { "type": "group", "source": "renderSpecs", "titleKey": "group.render" },
     { "type": "group", "source": "interactSpecs", "titleKey": "group.interact" },
+    { "type": "special", "hook": "textContent", "tags": ["text", "tspan", "textPath"] },
     { "type": "group", "source": "textBaseSpecs", "titleKey": "group.text", "tags": ["text", "tspan", "textPath"] },
     { "type": "group", "source": "textAdvSpecs", "titleKey": "group.textAdv", "tags": ["text", "tspan", "textPath"] },
     { "type": "group", "source": "textPathSpecs", "titleKey": "group.textPath", "tags": ["textPath"] },
