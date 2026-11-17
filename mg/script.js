@@ -302,10 +302,10 @@ async function loadContentAndConfig() {
   try { localStorage.setItem(LOCALE_KEY, currentLocale); } catch (_) {}
   try {
     const [contentRes, configRes] = await Promise.all([
-      fetch('./content.json', { cache: 'no-cache' }),
+      fetch('./i18n.json', { cache: 'no-cache' }),
       fetch('./config.json', { cache: 'no-cache' })
     ]);
-    if (!contentRes.ok) throw new Error('content.json HTTP ' + contentRes.status);
+    if (!contentRes.ok) throw new Error('i18n.json HTTP ' + contentRes.status);
     if (!configRes.ok) throw new Error('config.json HTTP ' + configRes.status);
     content = await contentRes.json();
     CONFIG  = await configRes.json();
