@@ -281,6 +281,7 @@
     { "key": "ratio4_3", "mode": "ratio", "ratio": 1.3333 },
     { "key": "ratio1_1", "mode": "ratio", "ratio": 1 },
     { "key": "a4", "mode": "fixed", "width": 794, "height": 1123 },
+    { "key": "size24", "mode": "square", "size": 24 },
     { "key": "size32", "mode": "square", "size": 32 },
     { "key": "size64", "mode": "square", "size": 64 },
     { "key": "size128", "mode": "square", "size": 128 },
