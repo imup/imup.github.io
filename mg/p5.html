@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>p5.js 编辑器</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/theme/material-darker.min.css" />
+<style>
+:root {
+  --bg: #f8fafc;
+  --panel: #ffffff;
+  --border: #e2e8f0;
+  --border-hover: #cbd5e1;
+  --text: #0f172a;
+  --text-dim: #64748b;
+  --text-muted: #94a3b8;
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-bg: #eff6ff;
+  --accent-border: #bfdbfe;
+  --hover: #f1f5f9;
+  --shadow: 0 2px 8px rgba(15,23,42,.08);
+}
+*,*::before,*::after { box-sizing: border-box; }
+html, body {
+  margin: 0; height: 100%; overflow: hidden;
+  font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--bg); color: var(--text);
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 工具栏 */
+.toolbar {
+  height: 44px; display: flex; align-items: center; gap: 8px;
+  padding: 0 12px; background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  flex: 0 0 auto;
+}
+.toolbar button {
+  height: 28px; padding: 0 12px;
+  font-family: inherit; font-size: 12.5px; font-weight: 500;
+  color: var(--text); background: var(--hover);
+  border: 1px solid var(--border); border-radius: 6px;
+  cursor: pointer; transition: background .14s, border-color .14s;
+}
+.toolbar button:hover { background: var(--bg); border-color: var(--border-hover); }
+.toolbar button.primary { color: #fff; background: var(--accent); border-color: var(--accent); }
+.toolbar button.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.toolbar .title {
+  font-weight: 600; color: var(--accent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  margin-right: 8px;
+}
+.toolbar .spacer { flex: 1; }
+.toolbar .hint {
+  font-size: 11.5px; color: var(--text-muted);
+}
+
+/* 主布局 */
+.app {
+  display: grid;
+  grid-template-columns: 1fr 300px;
+  grid-template-rows: minmax(120px, 1fr) 6px minmax(120px, 1fr);
+  height: calc(100% - 44px);
+  overflow: hidden;
+}
+.app.no-panel { grid-template-columns: 1fr 0; }
+
+/* 预览区 */
+.preview-wrap {
+  grid-column: 1; grid-row: 1;
+  background: #f1f5f9;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden; position: relative;
+  min-height: 0;
+}
+#preview {
+  width: 100%; height: 100%; border: 0;
+  background: #ffffff;
+}
+.preview-meta {
+  position: absolute; top: 8px; left: 8px;
+  padding: 3px 8px; border-radius: 4px;
+  background: rgba(15,23,42,.72); color: #e2e8f0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px; pointer-events: none;
+}
+
+/* 分栏 */
+.splitter {
+  grid-column: 1; grid-row: 2;
+  background: var(--border);
+  cursor: row-resize;
+  position: relative;
+}
+.splitter::after {
+  content: ''; position: absolute; left: 50%; top: 50%;
+  width: 40px; height: 3px; border-radius: 2px;
+  background: var(--border-hover);
+  transform: translate(-50%, -50%);
+  transition: background .14s, width .14s;
+}
+.splitter:hover::after { background: var(--accent); width: 56px; }
+
+/* 编辑器 */
+.editor-wrap {
+  grid-column: 1; grid-row: 3;
+  overflow: hidden; background: #0f172a;
+  min-height: 0;
+}
+.CodeMirror {
+  height: 100% !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+/* 属性面板 */
+.attr-panel {
+  grid-column: 2; grid-row: 1 / 4;
+  background: var(--panel);
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px;
+}
+.app.no-panel .attr-panel { display: none; }
+.attr-panel::-webkit-scrollbar { width: 6px; }
+.attr-panel::-webkit-scrollbar-thumb { background: var(--border-hover); border-radius: 3px; }
+
+.group { margin-bottom: 14px; }
+.group__title {
+  font-size: 11px; font-weight: 600;
+  color: var(--text-muted); text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-bottom: 8px;
+  user-select: none;
+}
+.group__items { display: flex; flex-direction: column; gap: 8px; }
+
+.field { display: flex; flex-direction: column; gap: 3px; }
+.field__label {
+  font-size: 11px; color: var(--text-dim);
+}
+.field__input,
+.field__select {
+  width: 100%; height: 30px; padding: 0 8px;
+  font-family: inherit; font-size: 12.5px; color: var(--text);
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 6px; outline: none;
+  transition: border-color .14s, box-shadow .14s;
+}
+.field__input:focus,
+.field__select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(37,99,235,.15);
+}
+.field__row { display: flex; align-items: center; gap: 6px; }
+.field__color {
+  flex: 0 0 auto; width: 36px; height: 30px; padding: 2px;
+  border: 1px solid var(--border); border-radius: 6px;
+  background: transparent; cursor: pointer;
+}
+.field__color::-webkit-color-swatch-wrapper { padding: 0; }
+.field__color::-webkit-color-swatch { border: 0; border-radius: 4px; }
+.field__text { flex: 1; min-width: 0; }
+.field__range { flex: 1; height: 24px; accent-color: var(--accent); }
+.field__num { flex: 0 0 64px; height: 28px; padding: 0 6px; font-size: 12px; }
+
+/* 提示 */
+.toast {
+  position: fixed; left: 50%; bottom: 24px;
+  transform: translate(-50%, 14px);
+  padding: 8px 16px; border-radius: 999px;
+  background: rgba(15,23,42,.94); color: #f8fafc;
+  font-size: 12.5px; opacity: 0; pointer-events: none;
+  transition: opacity .22s, transform .22s;
+  z-index: 100;
+}
+.toast.is-show { opacity: 1; transform: translate(-50%, 0); }
+
+/* 移动端 */
+@media (max-width: 720px) {
+  .app { grid-template-columns: 1fr 260px; }
+  .toolbar { height: 40px; padding: 0 8px; gap: 6px; }
+  .toolbar button { height: 26px; padding: 0 8px; font-size: 12px; }
+  .toolbar .hint { display: none; }
+}
+</style>
+</head>
+<body>
+
+<header class="toolbar">
+  <span class="title">p5.js</span>
+  <button id="btnSave" class="primary" type="button">保存 HTML</button>
+  <button id="btnReset" type="button">恢复模板</button>
+  <button id="btnTogglePanel" type="button">隐藏面板</button>
+  <span class="spacer"></span>
+  <span class="hint">改属性 → 实时刷新预览</span>
+</header>
+
+<main class="app" id="app">
+  <section class="preview-wrap">
+    <iframe id="preview" sandbox="allow-scripts allow-same-origin" title="p5.js 预览"></iframe>
+    <div class="preview-meta" id="previewMeta">400 × 400</div>
+  </section>
+  <div class="splitter" id="splitter"></div>
+  <section class="editor-wrap">
+    <textarea id="code"></textarea>
+  </section>
+  <aside class="attr-panel" id="attrPanel"></aside>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/javascript/javascript.min.js"></script>
+<script>
+(function () {
+'use strict';
+
+// ============ 常量 ============
+const P5_CDN = 'https://cdn.jsdelivr.net/npm/p5@1.11.3/lib/p5.min.js';
+const DRAFT_KEY = 'p5-editor.draft.v1';
+const SPLIT_KEY = 'p5-editor.split.v1';
+
+// ============ 参数分组配置 ============
+const PARAM_GROUPS = [
+  {
+    title: '画布',
+    fields: [
+      { key: 'canvasW', label: '宽度', type: 'number', min: 1, max: 2000, step: 1 },
+      { key: 'canvasH', label: '高度', type: 'number', min: 1, max: 2000, step: 1 },
+      { key: 'bg', label: '背景色', type: 'color' }
+    ]
+  },
+  {
+    title: '形状',
+    fields: [
+      { key: 'shapeType', label: '类型', type: 'select',
+        options: [
+          { value: 'rect', label: '矩形' },
+          { value: 'ellipse', label: '椭圆' },
+          { value: 'triangle', label: '三角形' }
+        ] },
+      { key: 'x', label: 'X', type: 'number', min: -2000, max: 2000, step: 1 },
+      { key: 'y', label: 'Y', type: 'number', min: -2000, max: 2000, step: 1 },
+      { key: 'w', label: '宽度', type: 'number', min: 1, max: 2000, step: 1 },
+      { key: 'h', label: '高度', type: 'number', min: 1, max: 2000, step: 1 }
+    ]
+  },
+  {
+    title: '样式',
+    fields: [
+      { key: 'fill', label: '填充', type: 'color' },
+      { key: 'stroke', label: '描边', type: 'color' },
+      { key: 'strokeWeight', label: '描边宽度', type: 'number', min: 0, max: 20, step: 0.5 }
+    ]
+  },
+  {
+    title: '动画',
+    fields: [
+      { key: 'animX', label: '水平速度', type: 'number', min: -20, max: 20, step: 0.5 },
+      { key: 'animY', label: '垂直速度', type: 'number', min: -20, max: 20, step: 0.5 },
+      { key: 'animRot', label: '旋转速度', type: 'number', min: -10, max: 10, step: 0.5 }
+    ]
+  }
+];
+
+// ============ 默认参数 ============
+const DEFAULT_PARAMS = {
+  canvasW: 400,
+  canvasH: 400,
+  bg: '#ffffff',
+  shapeType: 'rect',
+  x: 100,
+  y: 100,
+  w: 200,
+  h: 200,
+  fill: '#3b82f6',
+  stroke: '#000000',
+  strokeWeight: 0,
+  animX: 1,
+  animY: 0,
+  animRot: 0
+};
+
+// ============ DOM ============
+const $ = id => document.getElementById(id);
+const appEl = $('app');
+const previewEl = $('preview');
+const previewMeta = $('previewMeta');
+const splitterEl = $('splitter');
+const attrPanelEl = $('attrPanel');
+const toastEl = $('toast');
+const btnSave = $('btnSave');
+const btnReset = $('btnReset');
+const btnTogglePanel = $('btnTogglePanel');
+
+// ============ 状态 ============
+let params = { ...DEFAULT_PARAMS };
+let editor = null;
+let renderTimer = null;
+let toastTimer = null;
+
+// ============ 工具 ============
+function showToast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('is-show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove('is-show'), 2200);
+}
+
+function buildParamsLine(p) {
+  return `const p = ${JSON.stringify(p, null, 2)};`;
+}
+
+function buildTemplate(p) {
+  return `// ===== 参数区（由属性面板自动同步）=====
+${buildParamsLine(p)}
+// ===== 参数区结束 =====
+
+let s = JSON.parse(JSON.stringify(p)); // 运行时状态
+
+function setup() {
+  createCanvas(p.canvasW, p.canvasH);
+  if (p.animX === 0 && p.animY === 0 && p.animRot === 0) {
+    noLoop();
+  }
+}
+
+function draw() {
+  background(p.bg);
+  push();
+  translate(s.x + p.w / 2, s.y + p.h / 2);
+  rotate(radians(p.animRot * frameCount));
+  translate(-p.w / 2, -p.h / 2);
+  fill(p.fill);
+  if (p.stroke && p.strokeWeight > 0) {
+    stroke(p.stroke);
+    strokeWeight(p.strokeWeight);
+  } else {
+    noStroke();
+  }
+  if (p.shapeType === 'rect') {
+    rect(0, 0, p.w, p.h);
+  } else if (p.shapeType === 'ellipse') {
+    ellipse(p.w / 2, p.h / 2, p.w, p.h);
+  } else if (p.shapeType === 'triangle') {
+    triangle(p.w / 2, 0, p.w, p.h, 0, p.h);
+  }
+  pop();
+
+  // 边缘循环
+  s.x += p.animX;
+  s.y += p.animY;
+  if (p.animX > 0 && s.x > width) s.x = -p.w;
+  if (p.animX < 0 && s.x + p.w < 0) s.x = width;
+  if (p.animY > 0 && s.y > height) s.y = -p.h;
+  if (p.animY < 0 && s.y + p.h < 0) s.y = height;
+}
+`;
+}
+
+function buildRuntimeHTML(userCode) {
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>p5.js Sketch</title>
+<style>
+  html,body { margin:0; padding:0; height:100%; background:#f1f5f9; display:flex; align-items:center; justify-content:center; }
+  canvas { display:block; box-shadow: 0 4px 16px rgba(15,23,42,.15); border-radius:4px; }
+</style>
+<script src="${P5_CDN}"><\/script>
+</head>
+<body>
+<script>
+${userCode}
+<\/script>
+</body>
+</html>`;
+}
+
+// ============ 代码同步 ============
+function replaceParamsInCode(code, newParams) {
+  const re = /const p = \{[\s\S]*?\};/;
+  const newLine = buildParamsLine(newParams);
+  if (re.test(code)) {
+    return code.replace(re, newLine);
+  }
+  return newLine + '\n\n' + code;
+}
+
+// ============ 预览渲染 ============
+function updatePreview() {
+  const code = editor ? editor.getValue() : buildTemplate(params);
+  previewMeta.textContent = `${params.canvasW} × ${params.canvasH}`;
+  previewEl.srcdoc = buildRuntimeHTML(code);
+}
+
+function schedulePreview() {
+  clearTimeout(renderTimer);
+  renderTimer = setTimeout(updatePreview, 300);
+}
+
+// ============ 属性面板 ============
+function makeField(field) {
+  const wrap = document.createElement('div');
+  wrap.className = 'field';
+
+  const label = document.createElement('label');
+  label.className = 'field__label';
+  label.textContent = field.label;
+  wrap.appendChild(label);
+
+  if (field.type === 'color') {
+    const row = document.createElement('div');
+    row.className = 'field__row';
+    const picker = document.createElement('input');
+    picker.type = 'color';
+    picker.className = 'field__color';
+    picker.value = /^#[0-9a-f]{6}$/i.test(params[field.key]) ? params[field.key] : '#000000';
+    const text = document.createElement('input');
+    text.type = 'text';
+    text.className = 'field__input field__text';
+    text.value = params[field.key];
+    text.placeholder = '#000000';
+    picker.addEventListener('input', () => {
+      text.value = picker.value;
+      applyParam(field.key, picker.value);
+    });
+    text.addEventListener('input', () => {
+      if (/^#[0-9a-f]{6}$/i.test(text.value)) picker.value = text.value;
+      applyParam(field.key, text.value);
+    });
+    row.appendChild(picker);
+    row.appendChild(text);
+    wrap.appendChild(row);
+    return wrap;
+  }
+
+  if (field.type === 'select') {
+    const sel = document.createElement('select');
+    sel.className = 'field__select';
+    field.options.forEach(opt => {
+      const o = document.createElement('option');
+      o.value = opt.value;
+      o.textContent = opt.label;
+      sel.appendChild(o);
+    });
+    sel.value = params[field.key];
+    sel.addEventListener('change', () => applyParam(field.key, sel.value));
+    wrap.appendChild(sel);
+    return wrap;
+  }
+
+  // number
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.className = 'field__input';
+  input.value = params[field.key];
+  if (field.min != null) input.min = field.min;
+  if (field.max != null) input.max = field.max;
+  if (field.step != null) input.step = field.step;
+  input.addEventListener('input', () => {
+    const v = parseFloat(input.value);
+    if (isFinite(v)) applyParam(field.key, v);
+  });
+  wrap.appendChild(input);
+  return wrap;
+}
+
+function renderPanel() {
+  attrPanelEl.innerHTML = '';
+  PARAM_GROUPS.forEach(group => {
+    const g = document.createElement('div');
+    g.className = 'group';
+    const title = document.createElement('div');
+    title.className = 'group__title';
+    title.textContent = group.title;
+    g.appendChild(title);
+    const items = document.createElement('div');
+    items.className = 'group__items';
+    group.fields.forEach(field => items.appendChild(makeField(field)));
+    g.appendChild(items);
+    attrPanelEl.appendChild(g);
+  });
+}
+
+function applyParam(key, value) {
+  params[key] = value;
+  if (editor) {
+    const newCode = replaceParamsInCode(editor.getValue(), params);
+    editor.setValue(newCode);
+  }
+  saveDraft();
+  schedulePreview();
+}
+
+// ============ 草稿 ============
+function saveDraft() {
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({ params, code: editor ? editor.getValue() : '' }));
+  } catch (_) {}
+}
+function loadDraft() {
+  try {
+    const s = localStorage.getItem(DRAFT_KEY);
+    if (!s) return null;
+    const d = JSON.parse(s);
+    if (d && d.code && d.params) return d;
+  } catch (_) {}
+  return null;
+}
+
+// ============ 保存 HTML ============
+function saveHTML() {
+  const code = editor.getValue();
+  const html = buildRuntimeHTML(code);
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'sketch.html';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  showToast('已保存 sketch.html');
+}
+
+// ============ 分栏拖拽 ============
+let isDragging = false;
+function onSplitDown(e) {
+  isDragging = true;
+  try { splitterEl.setPointerCapture(e.pointerId); } catch (_) {}
+  document.body.style.cursor = 'row-resize';
+  document.body.style.userSelect = 'none';
+}
+function onSplitMove(e) {
+  if (!isDragging) return;
+  const appRect = appEl.getBoundingClientRect();
+  const splitterH = 6;
+  const totalH = appRect.height - splitterH;
+  const rel = e.clientY - appRect.top;
+  const ratio = Math.max(0.15, Math.min(0.85, rel / totalH));
+  appEl.style.gridTemplateRows = `${ratio}fr 6px ${1 - ratio}fr`;
+  try { localStorage.setItem(SPLIT_KEY, String(ratio)); } catch (_) {}
+}
+function onSplitUp(e) {
+  if (!isDragging) return;
+  isDragging = false;
+  try { splitterEl.releasePointerCapture(e.pointerId); } catch (_) {}
+  document.body.style.cursor = '';
+  document.body.style.userSelect = '';
+}
+splitterEl.addEventListener('pointerdown', onSplitDown);
+splitterEl.addEventListener('pointermove', onSplitMove);
+splitterEl.addEventListener('pointerup', onSplitUp);
+splitterEl.addEventListener('pointercancel', onSplitUp);
+
+function loadSplit() {
+  try {
+    const v = parseFloat(localStorage.getItem(SPLIT_KEY));
+    if (isFinite(v) && v > 0.1 && v < 0.9) {
+      appEl.style.gridTemplateRows = `${v}fr 6px ${1 - v}fr`;
+    }
+  } catch (_) {}
+}
+
+// ============ 事件绑定 ============
+btnSave.addEventListener('click', saveHTML);
+btnReset.addEventListener('click', () => {
+  if (!confirm('恢复模板将丢失当前代码，确定？')) return;
+  params = { ...DEFAULT_PARAMS };
+  editor.setValue(buildTemplate(params));
+  renderPanel();
+  updatePreview();
+  saveDraft();
+  showToast('已恢复模板');
+});
+btnTogglePanel.addEventListener('click', () => {
+  const hidden = appEl.classList.toggle('no-panel');
+  btnTogglePanel.textContent = hidden ? '显示面板' : '隐藏面板';
+});
+
+// ============ 启动 ============
+function init() {
+  // 初始化 CodeMirror
+  editor = CodeMirror.fromTextArea($('code'), {
+    mode: 'javascript',
+    theme: 'material-darker',
+    lineNumbers: true,
+    indentUnit: 2,
+    tabSize: 2,
+    lineWrapping: false
+  });
+  editor.setSize('100%', '100%');
+
+  // 加载草稿或默认模板
+  const draft = loadDraft();
+  if (draft) {
+    params = { ...DEFAULT_PARAMS, ...draft.params };
+    editor.setValue(draft.code);
+  } else {
+    params = { ...DEFAULT_PARAMS };
+    editor.setValue(buildTemplate(params));
+  }
+
+  // 代码变化 → 延迟刷新预览 + 保存草稿
+  let inputTimer = 0;
+  editor.on('change', () => {
+    clearTimeout(inputTimer);
+    inputTimer = setTimeout(() => {
+      saveDraft();
+      schedulePreview();
+    }, 500);
+  });
+
+  // 首次渲染
+  renderPanel();
+  loadSplit();
+  updatePreview();
+}
+
+init();
+
+})();
+</script>
+</body>
+</html>
