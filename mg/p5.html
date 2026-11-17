@@ -45,16 +45,29 @@ body {
   background: #f1f5f9;
   touch-action: none;
   user-select: none; -webkit-user-select: none;
+  transition: background-color .2s;
 }
+.preview-wrap.bg-checker {
+  background-color: #f8fafc;
+  background-image:
+    linear-gradient(45deg, #e2e8f0 25%, transparent 25%),
+    linear-gradient(-45deg, #e2e8f0 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #e2e8f0 75%),
+    linear-gradient(-45deg, transparent 75%, #e2e8f0 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+}
+.preview-wrap.bg-white { background: #ffffff; }
+.preview-wrap.bg-dark { background: #0f172a; }
+
 .preview-stage {
   position: absolute; left: 50%; top: 50%;
   transform-origin: center center;
   will-change: transform;
 }
 .preview-stage iframe {
-  display: block; border: 0; background: white;
-  box-shadow: 0 4px 16px rgba(15,23,42,.15);
-  border-radius: 4px;
+  display: block; border: 0;
+  background: transparent;
 }
 .preview-badge {
   position: absolute; right: 14px; bottom: 12px;
@@ -65,17 +78,47 @@ body {
   backdrop-filter: blur(4px);
 }
 
-/* 视图控制 */
+/* ===== 视图控制 ===== */
 .view-controls {
   position: absolute; left: 14px; bottom: 12px; z-index: 8;
-  display: flex; align-items: center; gap: 4px;
-  padding: 6px 8px;
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px;
   background: rgba(255,255,255,.94);
   border: 1px solid var(--border);
   border-radius: 10px;
   box-shadow: var(--shadow-sm);
   backdrop-filter: blur(8px);
 }
+.bg-switcher { display: flex; gap: 4px; }
+.bg-btn {
+  width: 20px; height: 20px; padding: 0;
+  border: 1px solid var(--border-hover);
+  border-radius: 4px; cursor: pointer;
+  touch-action: manipulation;
+  transition: box-shadow .14s, border-color .14s;
+}
+.bg-btn[data-bg="checker"] {
+  background-image:
+    linear-gradient(45deg, #cbd5e1 25%, transparent 25%),
+    linear-gradient(-45deg, #cbd5e1 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #cbd5e1 75%),
+    linear-gradient(-45deg, transparent 75%, #cbd5e1 75%);
+  background-size: 8px 8px;
+  background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+  background-color: #f8fafc;
+}
+.bg-btn[data-bg="white"] { background: #fff; }
+.bg-btn[data-bg="dark"] { background: #1e293b; border-color: #334155; }
+.bg-btn.is-active {
+  box-shadow: 0 0 0 2px var(--accent);
+  border-color: var(--accent);
+}
+.view-controls__sep {
+  width: 1px; height: 18px;
+  background: var(--border);
+  margin: 0 2px;
+}
+
 .zoom-btn {
   min-width: 26px; height: 26px; padding: 0 6px;
   display: grid; place-items: center;
@@ -86,6 +129,8 @@ body {
   transition: background .14s, color .14s;
 }
 .zoom-btn:hover { background: var(--hover); color: var(--text); }
+.zoom-btn:disabled { opacity: .4; cursor: not-allowed; }
+.zoom-btn svg { display: block; }
 .zoom-label {
   min-width: 48px; height: 26px; padding: 0 4px;
   font-family: inherit; font-size: 11.5px; font-weight: 600;
@@ -95,6 +140,9 @@ body {
   cursor: pointer; touch-action: manipulation;
 }
 .zoom-label:hover { background: var(--hover); color: var(--text); }
+.anim-btn { margin-left: 2px; }
+.anim-btn.is-playing { color: var(--accent); }
+.anim-btn.is-stopped { color: #dc2626; }
 
 /* ===== 分栏 ===== */
 .splitter {
@@ -245,9 +293,10 @@ body {
 
   .CodeMirror { font-size: 14px; }
 
-  .view-controls { left: 8px; bottom: 8px; gap: 2px; padding: 4px 6px; }
+  .view-controls { left: 8px; bottom: 8px; gap: 4px; padding: 4px 6px; }
   .zoom-label { min-width: 42px; font-size: 11px; }
-  .zoom-btn { min-width: 22px; height: 22px; font-size: 13px; }
+  .zoom-btn { min-width: 22px; height: 22px; font-size: 12px; }
+  .bg-btn { width: 16px; height: 16px; }
 
   .attr-panel {
     position: static;
@@ -268,16 +317,28 @@ body {
 <body>
 
 <div class="app" id="app">
-  <section class="preview-wrap" id="previewWrap">
+  <section class="preview-wrap bg-checker" id="previewWrap">
     <div class="preview-stage" id="previewStage">
       <iframe id="preview" sandbox="allow-scripts allow-same-origin" title="p5.js 预览"></iframe>
     </div>
     <div class="preview-badge" id="previewBadge">400 × 400</div>
     <div class="view-controls">
-      <button class="zoom-btn" id="zoomOut" type="button" title="缩小">−</button>
+      <div class="bg-switcher" role="group" aria-label="预览背景">
+        <button class="bg-btn is-active" data-bg="checker" type="button" title="棋盘格背景" aria-label="棋盘格背景"></button>
+        <button class="bg-btn" data-bg="white" type="button" title="白色背景" aria-label="白色背景"></button>
+        <button class="bg-btn" data-bg="dark" type="button" title="深色背景" aria-label="深色背景"></button>
+      </div>
+      <span class="view-controls__sep"></span>
+      <button class="zoom-btn" id="zoomOut" type="button" title="缩小" aria-label="缩小">−</button>
       <button class="zoom-label" id="zoomReset" type="button" title="重置为 100%">100%</button>
-      <button class="zoom-btn" id="zoomIn" type="button" title="放大">+</button>
-      <button class="zoom-btn" id="zoomFit" type="button" title="适应窗口">⊡</button>
+      <button class="zoom-btn" id="zoomIn" type="button" title="放大" aria-label="放大">+</button>
+      <button class="zoom-btn" id="zoomFit" type="button" title="适应窗口" aria-label="适应窗口">⊡</button>
+      <span class="view-controls__sep"></span>
+      <button class="zoom-btn anim-btn is-playing" id="btnAnimCycle" type="button" title="单次播放" aria-label="单次播放">
+        <svg id="animIcon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+          <polygon points="7,5 19,12 7,19" fill="currentColor" stroke="none"/>
+        </svg>
+      </button>
     </div>
   </section>
 
@@ -318,6 +379,7 @@ body {
 const P5_CDN = 'https://cdn.jsdelivr.net/npm/p5@1.11.3/lib/p5.min.js';
 const DRAFT_KEY = 'p5-editor.draft.v1';
 const SPLIT_KEY = 'p5-editor.split.v1';
+const BG_KEY = 'p5-editor.bg.v1';
 
 const PARAM_GROUPS = [
   { title: '画布', fields: [
@@ -375,6 +437,9 @@ const zoomInBtn = $('zoomIn');
 const zoomOutBtn = $('zoomOut');
 const zoomResetBtn = $('zoomReset');
 const zoomFitBtn = $('zoomFit');
+const btnAnimCycle = $('btnAnimCycle');
+const animIcon = $('animIcon');
+const bgBtns = Array.from(document.querySelectorAll('.bg-btn'));
 
 let params = { ...DEFAULT_PARAMS };
 let editor = null;
@@ -389,6 +454,9 @@ let isFitMode = true;
 let splitRatio = 0.8;
 let splitState = 'default';
 
+let animState = 'playing';   // 'playing' | 'looping' | 'stopped'
+let previewBg = 'checker';
+
 function showToast(msg) {
   toastEl.textContent = msg;
   toastEl.classList.add('is-show');
@@ -398,14 +466,14 @@ function showToast(msg) {
 function isMobileViewport() { return window.innerWidth <= 720; }
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
-function buildParamsLine(p) { return `const p = ${JSON.stringify(p, null, 2)};`; }
+function buildParamsLine(p) { return `var p = window.p = ${JSON.stringify(p, null, 2)};`; }
 
 function buildTemplate(p) {
   return `// ===== 参数区（由属性面板自动同步）=====
 ${buildParamsLine(p)}
 // ===== 参数区结束 =====
 
-let s = JSON.parse(JSON.stringify(p));
+var s = window.s = JSON.parse(JSON.stringify(p));
 
 function setup() {
   createCanvas(p.canvasW, p.canvasH);
@@ -450,23 +518,44 @@ function buildRuntimeHTML(userCode) {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>p5.js Sketch</title>
 <style>
-  html,body { margin:0; padding:0; height:100%; background:#f1f5f9; display:flex; align-items:center; justify-content:center; overflow:hidden; }
-  canvas { display:block; box-shadow: 0 4px 16px rgba(15,23,42,.15); border-radius:4px; }
+  html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:transparent; }
+  canvas { display:block; }
 </style>
 <script src="${P5_CDN}"><\/script>
 </head>
 <body>
 <script>
 ${userCode}
+
+window.addEventListener('message', function (e) {
+  var cmd = e.data && e.data.type;
+  try {
+    if (cmd === 'play') {
+      if (typeof loop === 'function') loop();
+    } else if (cmd === 'stop') {
+      if (typeof noLoop === 'function') noLoop();
+    } else if (cmd === 'loop-reset') {
+      if (window.s && window.p) {
+        Object.keys(window.p).forEach(function (k) {
+          if (k in window.s) window.s[k] = window.p[k];
+        });
+      }
+      if (typeof loop === 'function') loop();
+    }
+  } catch (_) {}
+});
 <\/script>
 </body>
 </html>`;
 }
 
 function replaceParamsInCode(code, newParams) {
-  const re = /const p = \{[\s\S]*?\};/;
+  const re = /var p = window\.p = \{[\s\S]*?\};/;
   const newLine = buildParamsLine(newParams);
   if (re.test(code)) return code.replace(re, newLine);
+  // 兼容旧草稿（const p = {...}）
+  const reOld = /const p = \{[\s\S]*?\};/;
+  if (reOld.test(code)) return code.replace(reOld, newLine);
   return newLine + '\n\n' + code;
 }
 
@@ -520,94 +609,56 @@ function zoomByButton(factor) {
   zoomAt(factor, rect.width / 2, rect.height / 2);
 }
 
-let activePointers = new Map();
-let isPanning = false;
-let panStartX = 0, panStartY = 0, panStartTx = 0, panStartTy = 0;
-let pinchStartDist = 0, pinchStartScale = 1, pinchStartPanX = 0, pinchStartPanY = 0;
-let pinchCenterX = 0, pinchCenterY = 0;
-
-previewWrap.addEventListener('pointerdown', e => {
-  if (e.target.closest('.view-controls, .preview-badge')) return;
-  if (e.pointerType === 'mouse' && e.button !== 0) return;
-  activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-  if (activePointers.size === 2) {
-    const pts = Array.from(activePointers.values());
-    pinchStartDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
-    pinchStartScale = stageScale;
-    pinchStartPanX = stagePanX;
-    pinchStartPanY = stagePanY;
-    const rect = previewWrap.getBoundingClientRect();
-    pinchCenterX = (pts[0].x + pts[1].x) / 2 - rect.left;
-    pinchCenterY = (pts[0].y + pts[1].y) / 2 - rect.top;
-    isPanning = false;
-    try { previewWrap.setPointerCapture(e.pointerId); } catch (_) {}
-    return;
-  }
-  isPanning = true;
-  panStartX = e.clientX; panStartY = e.clientY;
-  panStartTx = stagePanX; panStartTy = stagePanY;
-  try { previewWrap.setPointerCapture(e.pointerId); } catch (_) {}
-});
-
-previewWrap.addEventListener('pointermove', e => {
-  if (activePointers.has(e.pointerId)) {
-    activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-  }
-  if (activePointers.size === 2 && pinchStartDist > 0) {
-    const pts = Array.from(activePointers.values());
-    const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
-    const newScale = clamp(pinchStartScale * (dist / pinchStartDist), 0.05, 20);
-    if (newScale !== stageScale) {
-      const rect = previewWrap.getBoundingClientRect();
-      const s0 = pinchStartScale, s1 = newScale;
-      const offsetX0 = (rect.width - params.canvasW * s0) / 2 + pinchStartPanX;
-      const offsetY0 = (rect.height - params.canvasH * s0) / 2 + pinchStartPanY;
-      const px = (pinchCenterX - offsetX0) / s0;
-      const py = (pinchCenterY - offsetY0) / s0;
-      stagePanX = pinchCenterX - px * s1 - (rect.width - params.canvasW * s1) / 2;
-      stagePanY = pinchCenterY - py * s1 - (rect.height - params.canvasH * s1) / 2;
-      stageScale = s1;
-      isFitMode = false;
-      applyStageTransform();
-    }
-    return;
-  }
-  if (!isPanning) return;
-  const dx = e.clientX - panStartX, dy = e.clientY - panStartY;
-  if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
-    stagePanX = panStartTx + dx;
-    stagePanY = panStartTy + dy;
-    isFitMode = false;
-    applyStageTransform();
-  }
-});
-
-function endPan(e) {
-  if (activePointers.has(e.pointerId)) activePointers.delete(e.pointerId);
-  if (activePointers.size < 2) pinchStartDist = 0;
-  if (activePointers.size === 1) {
-    const p = activePointers.values().next().value;
-    isPanning = true;
-    panStartX = p.x; panStartY = p.y;
-    panStartTx = stagePanX; panStartTy = stagePanY;
-    return;
-  }
-  if (!isPanning) return;
-  isPanning = false;
-  try { previewWrap.releasePointerCapture(e.pointerId); } catch (_) {}
+function setPreviewBg(bg) {
+  previewBg = bg;
+  previewWrap.className = 'preview-wrap bg-' + bg;
+  bgBtns.forEach(b => b.classList.toggle('is-active', b.dataset.bg === bg));
+  try { localStorage.setItem(BG_KEY, bg); } catch (_) {}
 }
-previewWrap.addEventListener('pointerup', endPan);
-previewWrap.addEventListener('pointercancel', endPan);
-previewWrap.addEventListener('wheel', e => {
-  if (e.target.closest('.view-controls, .preview-badge')) return;
-  e.preventDefault();
-  const rect = previewWrap.getBoundingClientRect();
-  zoomAt(e.deltaY < 0 ? 1.15 : 1/1.15, e.clientX - rect.left, e.clientY - rect.top);
-}, { passive: false });
-previewWrap.addEventListener('dblclick', e => {
-  if (e.target.closest('.view-controls, .preview-badge')) return;
-  fitToView();
-});
+
+function postToIframe(type) {
+  try {
+    if (previewEl.contentWindow) {
+      previewEl.contentWindow.postMessage({ type }, '*');
+    }
+  } catch (_) {}
+}
+
+function updateAnimIcon() {
+  if (animState === 'playing') {
+    animIcon.innerHTML = '<polygon points="7,5 19,12 7,19" fill="currentColor" stroke="none"/>';
+    btnAnimCycle.title = '单次播放';
+    btnAnimCycle.setAttribute('aria-label', '单次播放');
+    btnAnimCycle.classList.add('is-playing');
+    btnAnimCycle.classList.remove('is-stopped');
+  } else if (animState === 'looping') {
+    animIcon.innerHTML = '<path d="M17 2l4 4-4 4 M3 11v-1a4 4 0 0 1 4-4h14 M7 22l-4-4 4-4 M21 13v1a4 4 0 0 1-4 4H3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>';
+    btnAnimCycle.title = '循环播放';
+    btnAnimCycle.setAttribute('aria-label', '循环播放');
+    btnAnimCycle.classList.remove('is-playing', 'is-stopped');
+  } else {
+    animIcon.innerHTML = '<rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor" stroke="none"/>';
+    btnAnimCycle.title = '停止播放';
+    btnAnimCycle.setAttribute('aria-label', '停止播放');
+    btnAnimCycle.classList.add('is-stopped');
+    btnAnimCycle.classList.remove('is-playing');
+  }
+}
+
+function applyAnimState() {
+  if (animState === 'stopped') postToIframe('stop');
+  else if (animState === 'looping') postToIframe('loop-reset');
+  else postToIframe('play');
+  updateAnimIcon();
+}
+
+function cycleAnimState() {
+  if (animState === 'playing') animState = 'looping';
+  else if (animState === 'looping') animState = 'stopped';
+  else animState = 'playing';
+  applyAnimState();
+  showToast(animState === 'playing' ? '单次播放' : animState === 'looping' ? '循环播放' : '停止播放');
+}
 
 function makeField(field) {
   const wrap = document.createElement('div');
@@ -818,6 +869,96 @@ splitterEl.addEventListener('pointermove', onSplitMove);
 splitterEl.addEventListener('pointerup', onSplitUp);
 splitterEl.addEventListener('pointercancel', onSplitUp);
 
+/* 预览区缩放/平移/捏合 */
+let activePointers = new Map();
+let isPanning = false;
+let panStartX = 0, panStartY = 0, panStartTx = 0, panStartTy = 0;
+let pinchStartDist = 0, pinchStartScale = 1, pinchStartPanX = 0, pinchStartPanY = 0;
+let pinchCenterX = 0, pinchCenterY = 0;
+
+previewWrap.addEventListener('pointerdown', e => {
+  if (e.target.closest('.view-controls, .preview-badge')) return;
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (activePointers.size === 2) {
+    const pts = Array.from(activePointers.values());
+    pinchStartDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+    pinchStartScale = stageScale;
+    pinchStartPanX = stagePanX;
+    pinchStartPanY = stagePanY;
+    const rect = previewWrap.getBoundingClientRect();
+    pinchCenterX = (pts[0].x + pts[1].x) / 2 - rect.left;
+    pinchCenterY = (pts[0].y + pts[1].y) / 2 - rect.top;
+    isPanning = false;
+    try { previewWrap.setPointerCapture(e.pointerId); } catch (_) {}
+    return;
+  }
+  isPanning = true;
+  panStartX = e.clientX; panStartY = e.clientY;
+  panStartTx = stagePanX; panStartTy = stagePanY;
+  try { previewWrap.setPointerCapture(e.pointerId); } catch (_) {}
+});
+
+previewWrap.addEventListener('pointermove', e => {
+  if (activePointers.has(e.pointerId)) {
+    activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  }
+  if (activePointers.size === 2 && pinchStartDist > 0) {
+    const pts = Array.from(activePointers.values());
+    const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+    const newScale = clamp(pinchStartScale * (dist / pinchStartDist), 0.05, 20);
+    if (newScale !== stageScale) {
+      const rect = previewWrap.getBoundingClientRect();
+      const s0 = pinchStartScale, s1 = newScale;
+      const offsetX0 = (rect.width - params.canvasW * s0) / 2 + pinchStartPanX;
+      const offsetY0 = (rect.height - params.canvasH * s0) / 2 + pinchStartPanY;
+      const px = (pinchCenterX - offsetX0) / s0;
+      const py = (pinchCenterY - offsetY0) / s0;
+      stagePanX = pinchCenterX - px * s1 - (rect.width - params.canvasW * s1) / 2;
+      stagePanY = pinchCenterY - py * s1 - (rect.height - params.canvasH * s1) / 2;
+      stageScale = s1;
+      isFitMode = false;
+      applyStageTransform();
+    }
+    return;
+  }
+  if (!isPanning) return;
+  const dx = e.clientX - panStartX, dy = e.clientY - panStartY;
+  if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
+    stagePanX = panStartTx + dx;
+    stagePanY = panStartTy + dy;
+    isFitMode = false;
+    applyStageTransform();
+  }
+});
+
+function endPan(e) {
+  if (activePointers.has(e.pointerId)) activePointers.delete(e.pointerId);
+  if (activePointers.size < 2) pinchStartDist = 0;
+  if (activePointers.size === 1) {
+    const p = activePointers.values().next().value;
+    isPanning = true;
+    panStartX = p.x; panStartY = p.y;
+    panStartTx = stagePanX; panStartTy = stagePanY;
+    return;
+  }
+  if (!isPanning) return;
+  isPanning = false;
+  try { previewWrap.releasePointerCapture(e.pointerId); } catch (_) {}
+}
+previewWrap.addEventListener('pointerup', endPan);
+previewWrap.addEventListener('pointercancel', endPan);
+previewWrap.addEventListener('wheel', e => {
+  if (e.target.closest('.view-controls, .preview-badge')) return;
+  e.preventDefault();
+  const rect = previewWrap.getBoundingClientRect();
+  zoomAt(e.deltaY < 0 ? 1.15 : 1/1.15, e.clientX - rect.left, e.clientY - rect.top);
+}, { passive: false });
+previewWrap.addEventListener('dblclick', e => {
+  if (e.target.closest('.view-controls, .preview-badge')) return;
+  fitToView();
+});
+
 function saveDraft() {
   try {
     localStorage.setItem(DRAFT_KEY, JSON.stringify({
@@ -863,6 +1004,10 @@ btnTogglePanel.addEventListener('click', () => {
 });
 attrPanelClose.addEventListener('click', closeAttrPanel);
 
+bgBtns.forEach(btn => {
+  btn.addEventListener('click', () => setPreviewBg(btn.dataset.bg));
+});
+
 zoomInBtn.addEventListener('click', () => zoomByButton(1.25));
 zoomOutBtn.addEventListener('click', () => zoomByButton(1 / 1.25));
 zoomResetBtn.addEventListener('click', () => {
@@ -871,6 +1016,13 @@ zoomResetBtn.addEventListener('click', () => {
   applyStageTransform();
 });
 zoomFitBtn.addEventListener('click', fitToView);
+
+btnAnimCycle.addEventListener('click', cycleAnimState);
+
+/* iframe 每次重载后恢复 animState */
+previewEl.addEventListener('load', () => {
+  setTimeout(applyAnimState, 150);
+});
 
 document.addEventListener('gesturestart', e => {
   if (previewWrap.contains(e.target)) return;
@@ -936,7 +1088,14 @@ function init() {
     if (isFinite(v) && v > 0.1 && v < 0.9) splitRatio = v;
   } catch (_) {}
 
+  try {
+    const bg = localStorage.getItem(BG_KEY);
+    if (bg === 'checker' || bg === 'white' || bg === 'dark') previewBg = bg;
+  } catch (_) {}
+
   applySplit();
+  setPreviewBg(previewBg);
+  updateAnimIcon();
   renderPanel();
   updatePreview();
 }
