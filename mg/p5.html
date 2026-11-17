@@ -60,15 +60,17 @@ body {
 .preview-wrap.bg-white { background: #ffffff; }
 .preview-wrap.bg-dark { background: #0f172a; }
 
+/* stage 填满预览区 */
 .preview-stage {
-  position: absolute; left: 50%; top: 50%;
+  position: absolute; inset: 0;
   transform-origin: center center;
   will-change: transform;
 }
 .preview-stage iframe {
-  display: block; border: 0;
-  background: transparent;
+  display: block; width: 100%; height: 100%;
+  border: 0; background: transparent;
 }
+
 .preview-badge {
   position: absolute; right: 14px; bottom: 12px;
   padding: 4px 9px; border-radius: 6px;
@@ -76,6 +78,7 @@ body {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 11px; pointer-events: none;
   backdrop-filter: blur(4px);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ===== 视图控制 ===== */
@@ -321,7 +324,7 @@ body {
     <div class="preview-stage" id="previewStage">
       <iframe id="preview" sandbox="allow-scripts allow-same-origin" title="p5.js 预览"></iframe>
     </div>
-    <div class="preview-badge" id="previewBadge">400 × 400</div>
+    <div class="preview-badge" id="previewBadge">—</div>
     <div class="view-controls">
       <div class="bg-switcher" role="group" aria-label="预览背景">
         <button class="bg-btn is-active" data-bg="checker" type="button" title="棋盘格背景" aria-label="棋盘格背景"></button>
@@ -332,7 +335,7 @@ body {
       <button class="zoom-btn" id="zoomOut" type="button" title="缩小" aria-label="缩小">−</button>
       <button class="zoom-label" id="zoomReset" type="button" title="重置为 100%">100%</button>
       <button class="zoom-btn" id="zoomIn" type="button" title="放大" aria-label="放大">+</button>
-      <button class="zoom-btn" id="zoomFit" type="button" title="适应窗口" aria-label="适应窗口">⊡</button>
+      <button class="zoom-btn" id="zoomFit" type="button" title="重置画布" aria-label="重置画布">⊡</button>
       <span class="view-controls__sep"></span>
       <button class="zoom-btn anim-btn is-playing" id="btnAnimCycle" type="button" title="单次播放" aria-label="单次播放">
         <svg id="animIcon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
@@ -381,10 +384,9 @@ const DRAFT_KEY = 'p5-editor.draft.v1';
 const SPLIT_KEY = 'p5-editor.split.v1';
 const BG_KEY = 'p5-editor.bg.v1';
 
+/* ===== 参数分组（移除画布宽高，画布自动跟随预览区） ===== */
 const PARAM_GROUPS = [
   { title: '画布', fields: [
-    { key: 'canvasW', label: '宽度', type: 'number', min: 1, max: 2000, step: 1 },
-    { key: 'canvasH', label: '高度', type: 'number', min: 1, max: 2000, step: 1 },
     { key: 'bg', label: '背景色', type: 'color' }
   ]},
   { title: '形状', fields: [
@@ -410,9 +412,11 @@ const PARAM_GROUPS = [
   ]}
 ];
 
+/* 默认参数：位置/尺寸改为相对居中（首次加载时基于预览区计算） */
 const DEFAULT_PARAMS = {
-  canvasW: 400, canvasH: 400, bg: '#ffffff',
-  shapeType: 'rect', x: 100, y: 100, w: 200, h: 200,
+  bg: '#ffffff',
+  shapeType: 'rect',
+  x: 100, y: 100, w: 200, h: 200,
   fill: '#3b82f6', stroke: '#000000', strokeWeight: 0,
   animX: 1, animY: 0, animRot: 0
 };
@@ -449,12 +453,11 @@ let attrPanelOpen = false;
 let mobileView = 'code';
 
 let stageScale = 1, stagePanX = 0, stagePanY = 0;
-let isFitMode = true;
 
 let splitRatio = 0.8;
 let splitState = 'default';
 
-let animState = 'playing';   // 'playing' | 'looping' | 'stopped'
+let animState = 'playing';
 let previewBg = 'checker';
 
 function showToast(msg) {
@@ -476,8 +479,19 @@ ${buildParamsLine(p)}
 var s = window.s = JSON.parse(JSON.stringify(p));
 
 function setup() {
-  createCanvas(p.canvasW, p.canvasH);
+  createCanvas(windowWidth, windowHeight);
   if (p.animX === 0 && p.animY === 0 && p.animRot === 0) noLoop();
+  reportSize();
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  if (p.animX === 0 && p.animY === 0 && p.animRot === 0) noLoop();
+  reportSize();
+}
+
+function reportSize() {
+  try { parent.postMessage({ type: 'size', width: windowWidth, height: windowHeight }, '*'); } catch (_) {}
 }
 
 function draw() {
@@ -553,7 +567,6 @@ function replaceParamsInCode(code, newParams) {
   const re = /var p = window\.p = \{[\s\S]*?\};/;
   const newLine = buildParamsLine(newParams);
   if (re.test(code)) return code.replace(re, newLine);
-  // 兼容旧草稿（const p = {...}）
   const reOld = /const p = \{[\s\S]*?\};/;
   if (reOld.test(code)) return code.replace(reOld, newLine);
   return newLine + '\n\n' + code;
@@ -561,11 +574,10 @@ function replaceParamsInCode(code, newParams) {
 
 function updatePreview() {
   const code = editor ? editor.getValue() : buildTemplate(params);
-  previewEl.style.width = params.canvasW + 'px';
-  previewEl.style.height = params.canvasH + 'px';
   previewEl.srcdoc = buildRuntimeHTML(code);
-  previewBadge.textContent = `${params.canvasW} × ${params.canvasH}`;
-  if (isFitMode) requestAnimationFrame(fitToView);
+  if (stageScale === 1 && stagePanX === 0 && stagePanY === 0) {
+    previewBadge.textContent = '加载中…';
+  }
 }
 
 function schedulePreview() {
@@ -575,24 +587,21 @@ function schedulePreview() {
 
 function applyStageTransform() {
   previewStage.style.transform =
-    `translate(calc(-50% + ${stagePanX}px), calc(-50% + ${stagePanY}px)) scale(${stageScale})`;
+    `translate(${stagePanX}px, ${stagePanY}px) scale(${stageScale})`;
   zoomResetBtn.textContent = Math.round(stageScale * 100) + '%';
 }
 
+/* 画布 = 预览区，"fit" 即重置为 1:1 */
 function fitToView() {
-  const rect = previewWrap.getBoundingClientRect();
-  const pad = 40;
-  const sx = (rect.width - pad) / params.canvasW;
-  const sy = (rect.height - pad) / params.canvasH;
-  stageScale = clamp(Math.min(sx, sy, 1), 0.05, 20);
-  stagePanX = 0; stagePanY = 0;
-  isFitMode = true;
+  stageScale = 1;
+  stagePanX = 0;
+  stagePanY = 0;
   applyStageTransform();
 }
 
 function zoomAt(factor, localX, localY) {
   const rect = previewWrap.getBoundingClientRect();
-  const newScale = clamp(stageScale * factor, 0.05, 20);
+  const newScale = clamp(stageScale * factor, 0.25, 8);
   if (newScale === stageScale) return;
   const ratio = newScale / stageScale;
   const relX = localX - rect.width / 2 - stagePanX;
@@ -600,7 +609,6 @@ function zoomAt(factor, localX, localY) {
   stagePanX = localX - rect.width / 2 - relX * ratio;
   stagePanY = localY - rect.height / 2 - relY * ratio;
   stageScale = newScale;
-  isFitMode = false;
   applyStageTransform();
 }
 
@@ -745,12 +753,6 @@ function applyParam(key, value) {
     editor.setValue(replaceParamsInCode(editor.getValue(), params));
   }
   saveDraft();
-  if (key === 'canvasW' || key === 'canvasH') {
-    previewEl.style.width = params.canvasW + 'px';
-    previewEl.style.height = params.canvasH + 'px';
-    previewBadge.textContent = `${params.canvasW} × ${params.canvasH}`;
-    if (isFitMode) requestAnimationFrame(fitToView);
-  }
   schedulePreview();
 }
 
@@ -805,7 +807,6 @@ function applySplit() {
   }
   previewWrap.style.minHeight = '80px';
   editorWrap.style.minHeight = '100px';
-  if (isFitMode) requestAnimationFrame(fitToView);
   updateAttrPanelTop();
 }
 
@@ -906,18 +907,17 @@ previewWrap.addEventListener('pointermove', e => {
   if (activePointers.size === 2 && pinchStartDist > 0) {
     const pts = Array.from(activePointers.values());
     const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
-    const newScale = clamp(pinchStartScale * (dist / pinchStartDist), 0.05, 20);
+    const newScale = clamp(pinchStartScale * (dist / pinchStartDist), 0.25, 8);
     if (newScale !== stageScale) {
       const rect = previewWrap.getBoundingClientRect();
       const s0 = pinchStartScale, s1 = newScale;
-      const offsetX0 = (rect.width - params.canvasW * s0) / 2 + pinchStartPanX;
-      const offsetY0 = (rect.height - params.canvasH * s0) / 2 + pinchStartPanY;
+      const offsetX0 = rect.width * (1 - s0) / 2 + pinchStartPanX;
+      const offsetY0 = rect.height * (1 - s0) / 2 + pinchStartPanY;
       const px = (pinchCenterX - offsetX0) / s0;
       const py = (pinchCenterY - offsetY0) / s0;
-      stagePanX = pinchCenterX - px * s1 - (rect.width - params.canvasW * s1) / 2;
-      stagePanY = pinchCenterY - py * s1 - (rect.height - params.canvasH * s1) / 2;
+      stagePanX = pinchCenterX - px * s1 - rect.width * (1 - s1) / 2;
+      stagePanY = pinchCenterY - py * s1 - rect.height * (1 - s1) / 2;
       stageScale = s1;
-      isFitMode = false;
       applyStageTransform();
     }
     return;
@@ -927,7 +927,6 @@ previewWrap.addEventListener('pointermove', e => {
   if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
     stagePanX = panStartTx + dx;
     stagePanY = panStartTy + dy;
-    isFitMode = false;
     applyStageTransform();
   }
 });
@@ -1012,16 +1011,25 @@ zoomInBtn.addEventListener('click', () => zoomByButton(1.25));
 zoomOutBtn.addEventListener('click', () => zoomByButton(1 / 1.25));
 zoomResetBtn.addEventListener('click', () => {
   stageScale = 1; stagePanX = 0; stagePanY = 0;
-  isFitMode = false;
   applyStageTransform();
 });
-zoomFitBtn.addEventListener('click', fitToView);
+zoomFitBtn.addEventListener('click', () => {
+  fitToView();
+  showToast('画布已重置');
+});
 
 btnAnimCycle.addEventListener('click', cycleAnimState);
 
-/* iframe 每次重载后恢复 animState */
+/* iframe 汇报尺寸 → 更新 badge */
+window.addEventListener('message', e => {
+  if (e.data && e.data.type === 'size') {
+    previewBadge.textContent = `${Math.round(e.data.width)} × ${Math.round(e.data.height)}`;
+  }
+});
+
+/* iframe 重载后恢复播放状态 */
 previewEl.addEventListener('load', () => {
-  setTimeout(applyAnimState, 150);
+  setTimeout(applyAnimState, 200);
 });
 
 document.addEventListener('gesturestart', e => {
@@ -1046,7 +1054,6 @@ if (window.visualViewport) {
 }
 
 window.addEventListener('resize', () => {
-  if (isFitMode) fitToView();
   updateAttrPanelTop();
   if (!isMobileViewport()) {
     editorWrap.hidden = false;
