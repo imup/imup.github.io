@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
+<title>p5.js 编辑器</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/theme/material-darker.min.css" />
+<style>
+:root {
+  --bg: #f8fafc; --panel: #ffffff;
+  --border: #e2e8f0; --border-hover: #cbd5e1;
+  --text: #0f172a; --text-dim: #64748b; --text-muted: #94a3b8;
+  --accent: #2563eb; --accent-hover: #1d4ed8;
+  --hover: #f1f5f9; --active: #e2e8f0;
+  --splitter-bg: #f1f5f9; --grip: #cbd5e1; --grip-hover: #94a3b8;
+  --shadow-sm: 0 2px 8px rgba(15,23,42,.08);
+  --ed-bg: #0f172a;
+}
+*,*::before,*::after { box-sizing: border-box; }
+html {
+  height: 100%;
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%; text-size-adjust: 100%;
+}
+body {
+  margin: 0; height: 100%;
+  font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--bg); color: var(--text);
+  font-size: 13px; overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  touch-action: manipulation;
+}
+
+.app {
+  display: flex; flex-direction: column;
+  width: 100%; height: 100vh; height: 100dvh;
+  position: relative;
+}
+
+/* ===== 预览区 ===== */
+.preview-wrap {
+  flex: 80 1 0; min-height: 80px;
+  position: relative; overflow: hidden;
+  background: #f1f5f9;
+  touch-action: none;
+  user-select: none; -webkit-user-select: none;
+  transition: background-color .2s;
+}
+.preview-wrap.bg-checker {
+  background-color: #f8fafc;
+  background-image:
+    linear-gradient(45deg, #e2e8f0 25%, transparent 25%),
+    linear-gradient(-45deg, #e2e8f0 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #e2e8f0 75%),
+    linear-gradient(-45deg, transparent 75%, #e2e8f0 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+}
+.preview-wrap.bg-white { background: #ffffff; }
+.preview-wrap.bg-dark { background: #0f172a; }
+
+/* stage 填满预览区 */
+.preview-stage {
+  position: absolute; inset: 0;
+  transform-origin: center center;
+  will-change: transform;
+}
+.preview-stage iframe {
+  display: block; width: 100%; height: 100%;
+  border: 0; background: transparent;
+  pointer-events: none;   /* 让遮罩接事件 */
+}
+/* 透明遮罩层：拦截所有指针事件，防止 iframe 吞掉 */
+.preview-mask {
+  position: absolute; inset: 0;
+  z-index: 1;
+  background: transparent;
+  cursor: grab;
+  touch-action: none;
+}
+.preview-mask:active { cursor: grabbing; }
+
+.preview-badge {
+  position: absolute; right: 14px; bottom: 12px;
+  padding: 4px 9px; border-radius: 6px;
+  background: rgba(15,23,42,.72); color: #e2e8f0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px; pointer-events: none;
+  backdrop-filter: blur(4px);
+  font-variant-numeric: tabular-nums;
+  z-index: 2;
+}
+
+/* ===== 视图控制 ===== */
+.view-controls {
+  position: absolute; left: 14px; bottom: 12px; z-index: 8;
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 10px;
+  background: rgba(255,255,255,.94);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(8px);
+}
+.bg-switcher { display: flex; gap: 4px; }
+.bg-btn {
+  width: 20px; height: 20px; padding: 0;
+  border: 1px solid var(--border-hover);
+  border-radius: 4px; cursor: pointer;
+  touch-action: manipulation;
+  transition: box-shadow .14s, border-color .14s;
+}
+.bg-btn[data-bg="checker"] {
+  background-image:
+    linear-gradient(45deg, #cbd5e1 25%, transparent 25%),
+    linear-gradient(-45deg, #cbd5e1 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #cbd5e1 75%),
+    linear-gradient(-45deg, transparent 75%, #cbd5e1 75%);
+  background-size: 8px 8px;
+  background-position: 0 0, 0 4px, 4px -4px, -4px 0;
+  background-color: #f8fafc;
+}
+.bg-btn[data-bg="white"] { background: #fff; }
+.bg-btn[data-bg="dark"] { background: #1e293b; border-color: #334155; }
+.bg-btn.is-active {
+  box-shadow: 0 0 0 2px var(--accent);
+  border-color: var(--accent);
+}
+.view-controls__sep {
+  width: 1px; height: 18px;
+  background: var(--border);
+  margin: 0 2px;
+}
+
+.zoom-btn {
+  min-width: 26px; height: 26px; padding: 0 6px;
+  display: grid; place-items: center;
+  font-family: inherit; font-size: 14px; font-weight: 600;
+  color: var(--text-dim);
+  background: transparent; border: 0; border-radius: 5px;
+  cursor: pointer; touch-action: manipulation;
+  transition: background .14s, color .14s;
+}
+.zoom-btn:hover { background: var(--hover); color: var(--text); }
+.zoom-btn:disabled { opacity: .4; cursor: not-allowed; }
+.zoom-btn svg { display: block; }
+.zoom-label {
+  min-width: 48px; height: 26px; padding: 0 4px;
+  font-family: inherit; font-size: 11.5px; font-weight: 600;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  background: transparent; border: 0; border-radius: 5px;
+  cursor: pointer; touch-action: manipulation;
+}
+.zoom-label:hover { background: var(--hover); color: var(--text); }
+
+/* 两态播放按钮：playing=红色停止，stopped=蓝色播放 */
+.anim-btn { margin-left: 2px; color: var(--accent); }
+.anim-btn.is-playing { color: #dc2626; }
+
+/* ===== 分栏 ===== */
+.splitter {
+  flex: 0 0 34px;
+  display: flex; align-items: center;
+  padding: 0 8px;
+  background: var(--splitter-bg);
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  user-select: none; -webkit-user-select: none;
+  position: relative; z-index: 20;
+  touch-action: none;
+}
+.tool-group { flex: 0 0 auto; display: flex; align-items: center; gap: 2px; }
+.tool-center { flex: 1 1 auto; min-width: 60px; display: flex; align-items: center; justify-content: center; }
+.tool-btn {
+  flex: 0 0 auto;
+  min-width: 28px; height: 24px;
+  display: grid; place-items: center;
+  padding: 0 8px;
+  font-family: inherit; font-size: 12px; font-weight: 500;
+  color: var(--text-dim);
+  background: transparent; border: 1px solid transparent; border-radius: 5px;
+  cursor: pointer; touch-action: manipulation;
+  transition: background .14s, color .14s, border-color .14s;
+}
+.tool-btn:hover { color: var(--text); background: var(--active); }
+.tool-btn:active:not(:disabled) { transform: scale(.94); }
+.tool-btn.primary { color: #fff; background: var(--accent); border-color: var(--accent); }
+.tool-btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+
+.splitter-grip {
+  flex: 1 1 auto; min-width: 20px; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  cursor: ns-resize; touch-action: none; position: relative;
+}
+.splitter-grip::before {
+  content: ''; width: 40px; height: 4px;
+  background: var(--grip); border-radius: 2px;
+  transition: background .14s, width .14s;
+}
+.splitter-grip:hover::before { background: var(--grip-hover); width: 52px; }
+.splitter-grip.is-snap-code::before { background: var(--accent); width: 60px; }
+
+/* ===== 编辑器 ===== */
+.editor-wrap {
+  flex: 20 1 0; min-height: 100px;
+  position: relative; overflow: hidden;
+  background: var(--ed-bg);
+}
+.CodeMirror {
+  height: 100% !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px; line-height: 1.55;
+}
+.editor-wrap[hidden] { display: none !important; }
+
+/* ===== 属性面板 ===== */
+.attr-panel {
+  position: fixed;
+  top: var(--attr-top, 0); right: 0; bottom: 0;
+  z-index: 95;
+  width: 320px; max-width: calc(100vw - 24px);
+  display: flex; flex-direction: column;
+  background: var(--panel);
+  border-left: 1px solid var(--border);
+  box-shadow: -8px 0 32px rgba(15,23,42,.16);
+  transform: translateX(100%);
+  transition: transform .22s cubic-bezier(.2,.9,.4,1.1);
+}
+.attr-panel:not([hidden]) { transform: translateX(0); }
+.attr-panel[hidden] { display: none; }
+.attr-panel__header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  gap: 8px;
+}
+.attr-panel__title { font-size: 13px; font-weight: 600; color: var(--accent); }
+.attr-panel__close {
+  width: 28px; height: 28px; padding: 0;
+  display: grid; place-items: center;
+  font-size: 14px; color: var(--text-dim);
+  background: transparent; border: 0; border-radius: 6px;
+  cursor: pointer;
+  transition: background .14s, color .14s;
+}
+.attr-panel__close:hover { background: var(--hover); color: var(--text); }
+.attr-panel__body {
+  flex: 1; overflow-y: auto;
+  padding: 12px 16px 16px;
+}
+.attr-panel__body::-webkit-scrollbar { width: 8px; }
+.attr-panel__body::-webkit-scrollbar-thumb { background: var(--border-hover); border-radius: 4px; }
+
+.group { margin-bottom: 14px; }
+.group__title {
+  font-size: 11.5px; font-weight: 600;
+  color: var(--text-muted); text-transform: uppercase;
+  letter-spacing: .04em; margin-bottom: 8px;
+  user-select: none;
+}
+.group__items { display: flex; flex-direction: column; gap: 8px; }
+
+.field { display: flex; flex-direction: column; gap: 3px; }
+.field__label { font-size: 11px; color: var(--text-dim); }
+.field__input, .field__select {
+  width: 100%; height: 30px; padding: 0 8px;
+  font-family: inherit; font-size: 12.5px; color: var(--text);
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 6px; outline: none;
+  transition: border-color .14s, box-shadow .14s;
+}
+.field__input:focus, .field__select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(37,99,235,.15);
+}
+.field__row { display: flex; align-items: center; gap: 6px; }
+.field__color {
+  flex: 0 0 auto; width: 36px; height: 30px; padding: 2px;
+  border: 1px solid var(--border); border-radius: 6px;
+  background: transparent; cursor: pointer;
+}
+.field__color::-webkit-color-swatch-wrapper { padding: 0; }
+.field__color::-webkit-color-swatch { border: 0; border-radius: 4px; }
+.field__text { flex: 1; min-width: 0; }
+
+/* ===== Toast ===== */
+.toast {
+  position: fixed; left: 50%; bottom: 24px;
+  transform: translate(-50%, 14px);
+  padding: 10px 18px; border-radius: 999px;
+  background: rgba(15,23,42,.94); color: #f8fafc;
+  font-size: 13px; text-align: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity .22s, transform .22s;
+  z-index: 999;
+}
+.toast.is-show { opacity: 1; transform: translate(-50%, 0); }
+
+/* ===== 移动端 ===== */
+@media (max-width: 720px) {
+  .splitter { flex-basis: 32px; padding: 0 4px; }
+  .tool-btn { min-width: 26px; height: 22px; font-size: 11.5px; padding: 0 6px; }
+  .splitter-grip::before { width: 28px; height: 3px; }
+  .splitter-grip:hover::before { width: 38px; }
+  .splitter-grip.is-snap-code::before { width: 44px; }
+
+  .CodeMirror { font-size: 14px; }
+
+  .view-controls { left: 8px; bottom: 8px; gap: 4px; padding: 4px 6px; }
+  .zoom-label { min-width: 42px; font-size: 11px; }
+  .zoom-btn { min-width: 22px; height: 22px; font-size: 12px; }
+  .bg-btn { width: 16px; height: 16px; }
+
+  .attr-panel {
+    position: static;
+    width: 100%; max-width: none;
+    flex: 80 1 0;
+    min-height: 100px;
+    border-left: 0;
+    box-shadow: none;
+    transform: none;
+    transition: none;
+  }
+  .attr-panel:not([hidden]) { transform: none; }
+  .attr-panel__header { padding: 10px 12px; }
+  .attr-panel__body { padding: 10px 14px 12px; }
+}
+</style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <section class="preview-wrap bg-checker" id="previewWrap">
+    <div class="preview-stage" id="previewStage">
+      <iframe id="preview" sandbox="allow-scripts allow-same-origin" title="p5.js 预览"></iframe>
+      <div class="preview-mask" id="previewMask"></div>
+    </div>
+    <div class="preview-badge" id="previewBadge">—</div>
+    <div class="view-controls">
+      <div class="bg-switcher" role="group" aria-label="预览背景">
+        <button class="bg-btn is-active" data-bg="checker" type="button" title="棋盘格背景" aria-label="棋盘格背景"></button>
+        <button class="bg-btn" data-bg="white" type="button" title="白色背景" aria-label="白色背景"></button>
+        <button class="bg-btn" data-bg="dark" type="button" title="深色背景" aria-label="深色背景"></button>
+      </div>
+      <span class="view-controls__sep"></span>
+      <button class="zoom-btn" id="zoomOut" type="button" title="缩小" aria-label="缩小">−</button>
+      <button class="zoom-label" id="zoomReset" type="button" title="重置为 100%">100%</button>
+      <button class="zoom-btn" id="zoomIn" type="button" title="放大" aria-label="放大">+</button>
+      <button class="zoom-btn" id="zoomFit" type="button" title="重置画布" aria-label="重置画布">⊡</button>
+      <span class="view-controls__sep"></span>
+      <button class="zoom-btn anim-btn is-playing" id="btnAnimCycle" type="button" title="停止" aria-label="停止">
+        <svg id="animIcon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+          <rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor" stroke="none"/>
+        </svg>
+      </button>
+    </div>
+  </section>
+
+  <div class="splitter" id="splitter">
+    <div class="tool-group">
+      <button class="tool-btn primary" id="btnSave" type="button" title="保存 HTML">保存</button>
+      <button class="tool-btn" id="btnReset" type="button" title="恢复模板">重置</button>
+    </div>
+    <div class="tool-center">
+      <div class="splitter-grip" id="splitterGrip" title="拖动调整布局 · 双击恢复默认"></div>
+    </div>
+    <div class="tool-group">
+      <button class="tool-btn" id="btnTogglePanel" type="button" title="属性面板">属性</button>
+    </div>
+  </div>
+
+  <section class="editor-wrap" id="editorWrap">
+    <textarea id="code"></textarea>
+  </section>
+
+  <aside class="attr-panel" id="attrPanel" hidden>
+    <div class="attr-panel__header">
+      <span class="attr-panel__title">属性</span>
+      <button class="attr-panel__close" id="attrPanelClose" type="button" aria-label="关闭">✕</button>
+    </div>
+    <div class="attr-panel__body" id="attrPanelBody"></div>
+  </aside>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/javascript/javascript.min.js"></script>
+<script>
+(function () {
+'use strict';
+
+const P5_CDN = 'https://cdn.jsdelivr.net/npm/p5@1.11.3/lib/p5.min.js';
+const DRAFT_KEY = 'p5-editor.draft.v1';
+const SPLIT_KEY = 'p5-editor.split.v1';
+const BG_KEY = 'p5-editor.bg.v1';
+
+const PARAM_GROUPS = [
+  { title: '画布', fields: [
+    { key: 'bg', label: '背景色', type: 'color' }
+  ]},
+  { title: '形状', fields: [
+    { key: 'shapeType', label: '类型', type: 'select', options: [
+      { value: 'rect', label: '矩形' },
+      { value: 'ellipse', label: '椭圆' },
+      { value: 'triangle', label: '三角形' }
+    ]},
+    { key: 'x', label: 'X', type: 'number', min: -2000, max: 2000, step: 1 },
+    { key: 'y', label: 'Y', type: 'number', min: -2000, max: 2000, step: 1 },
+    { key: 'w', label: '宽度', type: 'number', min: 1, max: 2000, step: 1 },
+    { key: 'h', label: '高度', type: 'number', min: 1, max: 2000, step: 1 }
+  ]},
+  { title: '样式', fields: [
+    { key: 'fill', label: '填充', type: 'color' },
+    { key: 'stroke', label: '描边', type: 'color' },
+    { key: 'strokeWeight', label: '描边宽度', type: 'number', min: 0, max: 20, step: 0.5 }
+  ]},
+  { title: '动画', fields: [
+    { key: 'animX', label: '水平速度', type: 'number', min: -20, max: 20, step: 0.5 },
+    { key: 'animY', label: '垂直速度', type: 'number', min: -20, max: 20, step: 0.5 },
+    { key: 'animRot', label: '旋转速度', type: 'number', min: -10, max: 10, step: 0.5 }
+  ]}
+];
+
+const DEFAULT_PARAMS = {
+  bg: '#ffffff',
+  shapeType: 'rect',
+  x: 100, y: 100, w: 200, h: 200,
+  fill: '#3b82f6', stroke: '#000000', strokeWeight: 0,
+  animX: 1, animY: 0, animRot: 0
+};
+
+const $ = id => document.getElementById(id);
+const appEl = $('app');
+const previewWrap = $('previewWrap');
+const previewStage = $('previewStage');
+const previewEl = $('preview');
+const previewMask = $('previewMask');
+const previewBadge = $('previewBadge');
+const splitterEl = $('splitter');
+const splitterGrip = $('splitterGrip');
+const editorWrap = $('editorWrap');
+const attrPanel = $('attrPanel');
+const attrPanelBody = $('attrPanelBody');
+const attrPanelClose = $('attrPanelClose');
+const toastEl = $('toast');
+const btnSave = $('btnSave');
+const btnReset = $('btnReset');
+const btnTogglePanel = $('btnTogglePanel');
+const zoomInBtn = $('zoomIn');
+const zoomOutBtn = $('zoomOut');
+const zoomResetBtn = $('zoomReset');
+const zoomFitBtn = $('zoomFit');
+const btnAnimCycle = $('btnAnimCycle');
+const animIcon = $('animIcon');
+const bgBtns = Array.from(document.querySelectorAll('.bg-btn'));
+
+let params = { ...DEFAULT_PARAMS };
+let editor = null;
+let renderTimer = null;
+let toastTimer = null;
+let attrPanelOpen = false;
+let mobileView = 'code';
+
+let stageScale = 1, stagePanX = 0, stagePanY = 0;
+
+let splitRatio = 0.8;
+let splitState = 'default';
+
+let animState = 'playing';   // 'playing' | 'stopped'
+let previewBg = 'checker';
+
+function showToast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('is-show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toastEl.classList.remove('is-show'), 2200);
+}
+function isMobileViewport() { return window.innerWidth <= 720; }
+const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
+
+function buildParamsLine(p) { return `var p = window.p = ${JSON.stringify(p, null, 2)};`; }
+
+function buildTemplate(p) {
+  return `// ===== 参数区（由属性面板自动同步）=====
+${buildParamsLine(p)}
+// ===== 参数区结束 =====
+
+var s = window.s = JSON.parse(JSON.stringify(p));
+
+function setup() {
+  createCanvas(windowWidth, windowHeight);
+  if (p.animX === 0 && p.animY === 0 && p.animRot === 0) noLoop();
+  reportSize();
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+  if (p.animX === 0 && p.animY === 0 && p.animRot === 0) noLoop();
+  reportSize();
+}
+
+function reportSize() {
+  try { parent.postMessage({ type: 'size', width: windowWidth, height: windowHeight }, '*'); } catch (_) {}
+}
+
+function draw() {
+  background(p.bg);
+  push();
+  translate(s.x + p.w / 2, s.y + p.h / 2);
+  rotate(radians(p.animRot * frameCount));
+  translate(-p.w / 2, -p.h / 2);
+  fill(p.fill);
+  if (p.stroke && p.strokeWeight > 0) {
+    stroke(p.stroke); strokeWeight(p.strokeWeight);
+  } else {
+    noStroke();
+  }
+  if (p.shapeType === 'rect') {
+    rect(0, 0, p.w, p.h);
+  } else if (p.shapeType === 'ellipse') {
+    ellipse(p.w / 2, p.h / 2, p.w, p.h);
+  } else if (p.shapeType === 'triangle') {
+    triangle(p.w / 2, 0, p.w, p.h, 0, p.h);
+  }
+  pop();
+  s.x += p.animX;
+  s.y += p.animY;
+  if (p.animX > 0 && s.x > width) s.x = -p.w;
+  if (p.animX < 0 && s.x + p.w < 0) s.x = width;
+  if (p.animY > 0 && s.y > height) s.y = -p.h;
+  if (p.animY < 0 && s.y + p.h < 0) s.y = height;
+}
+`;
+}
+
+function buildRuntimeHTML(userCode) {
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>p5.js Sketch</title>
+<style>
+  html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:transparent; }
+  canvas { display:block; }
+</style>
+<script src="${P5_CDN}"><\/script>
+</head>
+<body>
+<script>
+${userCode}
+
+window.addEventListener('message', function (e) {
+  var cmd = e.data && e.data.type;
+  try {
+    if (cmd === 'play') {
+      if (typeof loop === 'function') loop();
+    } else if (cmd === 'stop') {
+      if (typeof noLoop === 'function') noLoop();
+    }
+  } catch (_) {}
+});
+<\/script>
+</body>
+</html>`;
+}
+
+function replaceParamsInCode(code, newParams) {
+  const re = /var p = window\.p = \{[\s\S]*?\};/;
+  const newLine = buildParamsLine(newParams);
+  if (re.test(code)) return code.replace(re, newLine);
+  const reOld = /const p = \{[\s\S]*?\};/;
+  if (reOld.test(code)) return code.replace(reOld, newLine);
+  return newLine + '\n\n' + code;
+}
+
+function updatePreview() {
+  const code = editor ? editor.getValue() : buildTemplate(params);
+  previewEl.srcdoc = buildRuntimeHTML(code);
+  if (stageScale === 1 && stagePanX === 0 && stagePanY === 0) {
+    previewBadge.textContent = '加载中…';
+  }
+}
+
+function schedulePreview() {
+  clearTimeout(renderTimer);
+  renderTimer = setTimeout(updatePreview, 300);
+}
+
+function applyStageTransform() {
+  previewStage.style.transform =
+    `translate(${stagePanX}px, ${stagePanY}px) scale(${stageScale})`;
+  zoomResetBtn.textContent = Math.round(stageScale * 100) + '%';
+}
+
+function fitToView() {
+  stageScale = 1;
+  stagePanX = 0;
+  stagePanY = 0;
+  applyStageTransform();
+}
+
+function zoomAt(factor, localX, localY) {
+  const rect = previewWrap.getBoundingClientRect();
+  const newScale = clamp(stageScale * factor, 0.25, 8);
+  if (newScale === stageScale) return;
+  const ratio = newScale / stageScale;
+  const relX = localX - rect.width / 2 - stagePanX;
+  const relY = localY - rect.height / 2 - stagePanY;
+  stagePanX = localX - rect.width / 2 - relX * ratio;
+  stagePanY = localY - rect.height / 2 - relY * ratio;
+  stageScale = newScale;
+  applyStageTransform();
+}
+
+function zoomByButton(factor) {
+  const rect = previewWrap.getBoundingClientRect();
+  zoomAt(factor, rect.width / 2, rect.height / 2);
+}
+
+function setPreviewBg(bg) {
+  previewBg = bg;
+  previewWrap.className = 'preview-wrap bg-' + bg;
+  bgBtns.forEach(b => b.classList.toggle('is-active', b.dataset.bg === bg));
+  try { localStorage.setItem(BG_KEY, bg); } catch (_) {}
+}
+
+function postToIframe(type) {
+  try {
+    if (previewEl.contentWindow) {
+      previewEl.contentWindow.postMessage({ type }, '*');
+    }
+  } catch (_) {}
+}
+
+/* 两态：playing=停止图标（点击停止），stopped=播放图标（点击播放） */
+function updateAnimIcon() {
+  if (animState === 'playing') {
+    animIcon.innerHTML = '<rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor" stroke="none"/>';
+    btnAnimCycle.title = '停止';
+    btnAnimCycle.setAttribute('aria-label', '停止');
+    btnAnimCycle.classList.add('is-playing');
+  } else {
+    animIcon.innerHTML = '<polygon points="7,5 19,12 7,19" fill="currentColor" stroke="none"/>';
+    btnAnimCycle.title = '播放';
+    btnAnimCycle.setAttribute('aria-label', '播放');
+    btnAnimCycle.classList.remove('is-playing');
+  }
+}
+
+function applyAnimState() {
+  if (animState === 'playing') postToIframe('play');
+  else postToIframe('stop');
+  updateAnimIcon();
+}
+
+function toggleAnimState() {
+  animState = (animState === 'playing') ? 'stopped' : 'playing';
+  applyAnimState();
+  showToast(animState === 'playing' ? '播放' : '已停止');
+}
+
+function makeField(field) {
+  const wrap = document.createElement('div');
+  wrap.className = 'field';
+  const label = document.createElement('label');
+  label.className = 'field__label';
+  label.textContent = field.label;
+  wrap.appendChild(label);
+
+  if (field.type === 'color') {
+    const row = document.createElement('div');
+    row.className = 'field__row';
+    const picker = document.createElement('input');
+    picker.type = 'color';
+    picker.className = 'field__color';
+    picker.value = /^#[0-9a-f]{6}$/i.test(params[field.key]) ? params[field.key] : '#000000';
+    const text = document.createElement('input');
+    text.type = 'text';
+    text.className = 'field__input field__text';
+    text.value = params[field.key];
+    text.placeholder = '#000000';
+    picker.addEventListener('input', () => {
+      text.value = picker.value;
+      applyParam(field.key, picker.value);
+    });
+    text.addEventListener('input', () => {
+      if (/^#[0-9a-f]{6}$/i.test(text.value)) picker.value = text.value;
+      applyParam(field.key, text.value);
+    });
+    row.appendChild(picker); row.appendChild(text);
+    wrap.appendChild(row);
+    return wrap;
+  }
+
+  if (field.type === 'select') {
+    const sel = document.createElement('select');
+    sel.className = 'field__select';
+    field.options.forEach(opt => {
+      const o = document.createElement('option');
+      o.value = opt.value; o.textContent = opt.label;
+      sel.appendChild(o);
+    });
+    sel.value = params[field.key];
+    sel.addEventListener('change', () => applyParam(field.key, sel.value));
+    wrap.appendChild(sel);
+    return wrap;
+  }
+
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.className = 'field__input';
+  input.value = params[field.key];
+  if (field.min != null) input.min = field.min;
+  if (field.max != null) input.max = field.max;
+  if (field.step != null) input.step = field.step;
+  input.addEventListener('input', () => {
+    const v = parseFloat(input.value);
+    if (isFinite(v)) applyParam(field.key, v);
+  });
+  wrap.appendChild(input);
+  return wrap;
+}
+
+function renderPanel() {
+  attrPanelBody.innerHTML = '';
+  PARAM_GROUPS.forEach(group => {
+    const g = document.createElement('div');
+    g.className = 'group';
+    const title = document.createElement('div');
+    title.className = 'group__title';
+    title.textContent = group.title;
+    g.appendChild(title);
+    const items = document.createElement('div');
+    items.className = 'group__items';
+    group.fields.forEach(field => items.appendChild(makeField(field)));
+    g.appendChild(items);
+    attrPanelBody.appendChild(g);
+  });
+}
+
+function applyParam(key, value) {
+  params[key] = value;
+  if (editor) {
+    editor.setValue(replaceParamsInCode(editor.getValue(), params));
+  }
+  saveDraft();
+  schedulePreview();
+}
+
+function updateAttrPanelTop() {
+  if (!attrPanelOpen) return;
+  if (isMobileViewport()) {
+    attrPanel.style.removeProperty('--attr-top');
+    return;
+  }
+  const rect = splitterEl.getBoundingClientRect();
+  attrPanel.style.setProperty('--attr-top', rect.bottom + 'px');
+}
+
+function openAttrPanel() {
+  attrPanelOpen = true;
+  if (document.activeElement && document.activeElement.blur) {
+    try { document.activeElement.blur(); } catch (_) {}
+  }
+  updateAttrPanelTop();
+  renderPanel();
+  if (isMobileViewport()) setMobileView('attr');
+  else attrPanel.hidden = false;
+  btnTogglePanel.textContent = '关闭';
+}
+
+function closeAttrPanel() {
+  attrPanelOpen = false;
+  attrPanel.hidden = true;
+  btnTogglePanel.textContent = '属性';
+  if (isMobileViewport()) setMobileView('code');
+}
+
+function setMobileView(view) {
+  if (!isMobileViewport()) return;
+  mobileView = view;
+  if (view === 'attr') {
+    editorWrap.hidden = true;
+    attrPanel.hidden = false;
+  } else {
+    editorWrap.hidden = false;
+    attrPanel.hidden = true;
+  }
+}
+
+function applySplit() {
+  if (splitState === 'code-max') {
+    previewWrap.style.flex = '0 0 80px';
+    editorWrap.style.flex = '1 1 0';
+  } else {
+    previewWrap.style.flex = (splitRatio * 100) + ' 1 0';
+    editorWrap.style.flex = ((1 - splitRatio) * 100) + ' 1 0';
+  }
+  previewWrap.style.minHeight = '80px';
+  editorWrap.style.minHeight = '100px';
+  updateAttrPanelTop();
+}
+
+let splitDragging = false, splitMoved = false;
+let splitStartY = 0, splitStartH = 0;
+let lastDownTime = 0, lastDownY = 0;
+const DBLCLICK_MS = 350, DBLCLICK_DIST = 10;
+
+function onSplitDown(e) {
+  if (e.target.closest('.tool-btn')) return;
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  const now = Date.now();
+  if (now - lastDownTime < DBLCLICK_MS && Math.abs(e.clientY - lastDownY) < DBLCLICK_DIST) {
+    lastDownTime = 0; lastDownY = 0; splitDragging = false;
+    splitState = 'default'; splitRatio = 0.8;
+    applySplit();
+    showToast('已恢复 80/20 布局');
+    return;
+  }
+  lastDownTime = now; lastDownY = e.clientY;
+  splitDragging = true; splitMoved = false;
+  splitStartY = e.clientY;
+  splitStartH = previewWrap.getBoundingClientRect().height;
+  try { splitterEl.setPointerCapture(e.pointerId); } catch (_) {}
+  document.body.style.cursor = 'ns-resize';
+  document.body.style.userSelect = 'none';
+}
+
+function onSplitMove(e) {
+  if (!splitDragging) return;
+  const dy = e.clientY - splitStartY;
+  if (!splitMoved && Math.abs(dy) < 3) return;
+  splitMoved = true;
+  const appRect = appEl.getBoundingClientRect();
+  const splitterH = splitterEl.getBoundingClientRect().height;
+  const totalH = appRect.height - splitterH;
+  const ratio = clamp((splitStartH + dy) / totalH, 0.05, 0.95);
+  splitRatio = ratio; splitState = 'default';
+  splitterGrip.classList.toggle('is-snap-code', ratio >= 0.90);
+  applySplit();
+}
+
+function onSplitUp(e) {
+  if (!splitDragging) return;
+  splitDragging = false;
+  try { splitterEl.releasePointerCapture(e.pointerId); } catch (_) {}
+  document.body.style.cursor = '';
+  document.body.style.userSelect = '';
+  splitterGrip.classList.remove('is-snap-code');
+  if (splitMoved) {
+    lastDownTime = 0; lastDownY = 0; splitMoved = false;
+    if (splitRatio >= 0.90) {
+      splitState = 'code-max';
+      applySplit();
+      showToast('代码已最大化');
+    }
+  }
+}
+splitterEl.addEventListener('pointerdown', onSplitDown);
+splitterEl.addEventListener('pointermove', onSplitMove);
+splitterEl.addEventListener('pointerup', onSplitUp);
+splitterEl.addEventListener('pointercancel', onSplitUp);
+
+/* ===== 预览区交互（事件绑定在 previewWrap 上，遮罩上的事件会冒泡） ===== */
+let activePointers = new Map();
+let isPanning = false;
+let panStartX = 0, panStartY = 0, panStartTx = 0, panStartTy = 0;
+let pinchStartDist = 0, pinchStartScale = 1, pinchStartPanX = 0, pinchStartPanY = 0;
+let pinchCenterX = 0, pinchCenterY = 0;
+
+previewWrap.addEventListener('pointerdown', e => {
+  if (e.target.closest('.view-controls, .preview-badge')) return;
+  if (e.pointerType === 'mouse' && e.button !== 0) return;
+  e.preventDefault();
+  activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (activePointers.size === 2) {
+    const pts = Array.from(activePointers.values());
+    pinchStartDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+    pinchStartScale = stageScale;
+    pinchStartPanX = stagePanX;
+    pinchStartPanY = stagePanY;
+    const rect = previewWrap.getBoundingClientRect();
+    pinchCenterX = (pts[0].x + pts[1].x) / 2 - rect.left;
+    pinchCenterY = (pts[0].y + pts[1].y) / 2 - rect.top;
+    isPanning = false;
+    try { previewWrap.setPointerCapture(e.pointerId); } catch (_) {}
+    return;
+  }
+  isPanning = true;
+  panStartX = e.clientX; panStartY = e.clientY;
+  panStartTx = stagePanX; panStartTy = stagePanY;
+  try { previewWrap.setPointerCapture(e.pointerId); } catch (_) {}
+});
+
+previewWrap.addEventListener('pointermove', e => {
+  if (activePointers.has(e.pointerId)) {
+    activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  }
+  if (activePointers.size === 2 && pinchStartDist > 0) {
+    e.preventDefault();
+    const pts = Array.from(activePointers.values());
+    const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+    const newScale = clamp(pinchStartScale * (dist / pinchStartDist), 0.25, 8);
+    if (newScale !== stageScale) {
+      const rect = previewWrap.getBoundingClientRect();
+      const s0 = pinchStartScale, s1 = newScale;
+      const offsetX0 = rect.width * (1 - s0) / 2 + pinchStartPanX;
+      const offsetY0 = rect.height * (1 - s0) / 2 + pinchStartPanY;
+      const px = (pinchCenterX - offsetX0) / s0;
+      const py = (pinchCenterY - offsetY0) / s0;
+      stagePanX = pinchCenterX - px * s1 - rect.width * (1 - s1) / 2;
+      stagePanY = pinchCenterY - py * s1 - rect.height * (1 - s1) / 2;
+      stageScale = s1;
+      applyStageTransform();
+    }
+    return;
+  }
+  if (!isPanning) return;
+  const dx = e.clientX - panStartX, dy = e.clientY - panStartY;
+  if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
+    stagePanX = panStartTx + dx;
+    stagePanY = panStartTy + dy;
+    applyStageTransform();
+  }
+});
+
+function endPan(e) {
+  if (activePointers.has(e.pointerId)) activePointers.delete(e.pointerId);
+  if (activePointers.size < 2) pinchStartDist = 0;
+  if (activePointers.size === 1) {
+    const p = activePointers.values().next().value;
+    isPanning = true;
+    panStartX = p.x; panStartY = p.y;
+    panStartTx = stagePanX; panStartTy = stagePanY;
+    return;
+  }
+  if (!isPanning) return;
+  isPanning = false;
+  try { previewWrap.releasePointerCapture(e.pointerId); } catch (_) {}
+}
+previewWrap.addEventListener('pointerup', endPan);
+previewWrap.addEventListener('pointercancel', endPan);
+
+previewWrap.addEventListener('wheel', e => {
+  if (e.target.closest('.view-controls, .preview-badge')) return;
+  e.preventDefault();
+  const rect = previewWrap.getBoundingClientRect();
+  zoomAt(e.deltaY < 0 ? 1.15 : 1/1.15, e.clientX - rect.left, e.clientY - rect.top);
+}, { passive: false });
+
+previewWrap.addEventListener('dblclick', e => {
+  if (e.target.closest('.view-controls, .preview-badge')) return;
+  e.preventDefault();
+  fitToView();
+});
+
+/* ===== 阻止浏览器双指缩放（全局，iOS Safari 必须） ===== */
+['gesturestart', 'gesturechange', 'gestureend'].forEach(evt => {
+  document.addEventListener(evt, e => e.preventDefault(), { passive: false });
+});
+/* 阻止 touchmove 双指缩放（部分 Android 浏览器） */
+document.addEventListener('touchmove', e => {
+  if (e.touches.length > 1) e.preventDefault();
+}, { passive: false });
+
+function saveDraft() {
+  try {
+    localStorage.setItem(DRAFT_KEY, JSON.stringify({
+      params, code: editor ? editor.getValue() : ''
+    }));
+  } catch (_) {}
+}
+function loadDraft() {
+  try {
+    const s = localStorage.getItem(DRAFT_KEY);
+    if (!s) return null;
+    const d = JSON.parse(s);
+    if (d && d.code && d.params) return d;
+  } catch (_) {}
+  return null;
+}
+
+function saveHTML() {
+  const code = editor.getValue();
+  const html = buildRuntimeHTML(code);
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'sketch.html';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+  showToast('已保存 sketch.html');
+}
+
+btnSave.addEventListener('click', saveHTML);
+btnReset.addEventListener('click', () => {
+  if (!confirm('恢复模板将丢失当前代码，确定？')) return;
+  params = { ...DEFAULT_PARAMS };
+  editor.setValue(buildTemplate(params));
+  renderPanel();
+  updatePreview();
+  saveDraft();
+  showToast('已恢复模板');
+});
+btnTogglePanel.addEventListener('click', () => {
+  if (attrPanelOpen) closeAttrPanel();
+  else openAttrPanel();
+});
+attrPanelClose.addEventListener('click', closeAttrPanel);
+
+bgBtns.forEach(btn => {
+  btn.addEventListener('click', () => setPreviewBg(btn.dataset.bg));
+});
+
+zoomInBtn.addEventListener('click', () => zoomByButton(1.25));
+zoomOutBtn.addEventListener('click', () => zoomByButton(1 / 1.25));
+zoomResetBtn.addEventListener('click', () => {
+  stageScale = 1; stagePanX = 0; stagePanY = 0;
+  applyStageTransform();
+});
+zoomFitBtn.addEventListener('click', () => {
+  fitToView();
+  showToast('画布已重置');
+});
+
+btnAnimCycle.addEventListener('click', toggleAnimState);
+
+/* iframe 汇报尺寸 */
+window.addEventListener('message', e => {
+  if (e.data && e.data.type === 'size') {
+    previewBadge.textContent = `${Math.round(e.data.width)} × ${Math.round(e.data.height)}`;
+  }
+});
+
+/* iframe 重载后恢复播放状态 */
+previewEl.addEventListener('load', () => {
+  setTimeout(applyAnimState, 200);
+});
+
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('scroll', () => {
+    if (window.visualViewport.offsetTop === 0 && Math.abs(window.scrollY) > 1) {
+      window.scrollTo(0, 0);
+    }
+  });
+}
+
+window.addEventListener('resize', () => {
+  updateAttrPanelTop();
+  if (!isMobileViewport()) {
+    editorWrap.hidden = false;
+    if (attrPanelOpen) attrPanel.hidden = false;
+  }
+});
+
+function init() {
+  editor = CodeMirror.fromTextArea($('code'), {
+    mode: 'javascript',
+    theme: 'material-darker',
+    lineNumbers: true,
+    indentUnit: 2,
+    tabSize: 2,
+    lineWrapping: false
+  });
+  editor.setSize('100%', '100%');
+
+  const draft = loadDraft();
+  if (draft) {
+    params = { ...DEFAULT_PARAMS, ...draft.params };
+    editor.setValue(draft.code);
+  } else {
+    params = { ...DEFAULT_PARAMS };
+    editor.setValue(buildTemplate(params));
+  }
+
+  let inputTimer = 0;
+  editor.on('change', () => {
+    clearTimeout(inputTimer);
+    inputTimer = setTimeout(() => {
+      saveDraft();
+      schedulePreview();
+    }, 500);
+  });
+
+  try {
+    const v = parseFloat(localStorage.getItem(SPLIT_KEY));
+    if (isFinite(v) && v > 0.1 && v < 0.9) splitRatio = v;
+  } catch (_) {}
+
+  try {
+    const bg = localStorage.getItem(BG_KEY);
+    if (bg === 'checker' || bg === 'white' || bg === 'dark') previewBg = bg;
+  } catch (_) {}
+
+  applySplit();
+  setPreviewBg(previewBg);
+  updateAnimIcon();
+  renderPanel();
+  updatePreview();
+}
+
+init();
+
+})();
+</script>
+</body>
+</html>
