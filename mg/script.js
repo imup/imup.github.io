@@ -5276,6 +5276,65 @@ function hookFilterEdit(ctx) {
   });
   return [editBtn];
 }
+function hookStyleContent(ctx) {
+  const { el, isReadOnly } = ctx;
+  const row = document.createElement('div');
+  row.className = 'attr-row attr-row--full';
+  const label = document.createElement('label');
+  label.className = 'attr-row__label';
+  label.textContent = t('attr.styleContent') || '样式内容';
+  const _id = nextRowUid();
+  label.htmlFor = _id;
+  row.appendChild(label);
+
+  const ctrl = document.createElement('div');
+  ctrl.className = 'attr-row__control';
+  const input = document.createElement('textarea');
+  input.className = 'attr-row__textarea';
+  input.rows = 10;
+  input.id = _id;
+  input.value = el.textContent || '';
+  input.placeholder = t('attr.styleContentPlaceholder') || '';
+  input.style.cssText = 'font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11.5px;min-height:180px;';
+  if (isReadOnly) input.disabled = true;
+  input.addEventListener('input', () => {
+    scheduleStyleContentCommit(input.value);
+  });
+  ctrl.appendChild(input);
+  row.appendChild(ctrl);
+  return [row];
+}
+
+let styleContentCommitTimer = 0;
+function scheduleStyleContentCommit(css) {
+  clearTimeout(styleContentCommitTimer);
+  styleContentCommitTimer = setTimeout(() => commitStyleContent(css), 400);
+}
+
+function commitStyleContent(css) {
+  if (!selectedPath) return;
+  const loc = findTagOffsetByPath(codeEl.value, selectedPath);
+  if (!loc) { showToast(t('toast.srcMissing')); return; }
+  if (loc.isSelfClosing) return;
+  if (css.indexOf('</style>') >= 0) {
+    showToast('CSS 内容不能包含 </style>');
+    return;
+  }
+  const code = codeEl.value;
+  const closeEnd = skipElementContent(code, loc.start, loc.tag);
+  if (closeEnd < 0) { showToast(t('toast.structError')); return; }
+  const closeStart = code.lastIndexOf('</', closeEnd - 1);
+  if (closeStart < 0) return;
+  const openEnd = loc.start + loc.tag.length;
+  const newCode = code.slice(0, openEnd) + css + code.slice(closeStart);
+  if (newCode === code) return;
+  codeEl.value = newCode;
+  invalidateLineOffsets();
+  renderEditor();
+  schedulePreviewRender();
+  saveDraftDebounced();
+  recordSnapshot();
+}
 
 function hookTextContent(ctx) {
   const { el, isReadOnly } = ctx;
@@ -5364,7 +5423,8 @@ const PANEL_SPECIAL_HOOKS = {
   imagePreview: hookImagePreview,
   gradientEdit: hookGradientEdit,
   filterEdit:   hookFilterEdit,
-  textContent:  hookTextContent
+  textContent:  hookTextContent,
+  styleContent: hookStyleContent
 };
 
 function openAttrPanel() {
