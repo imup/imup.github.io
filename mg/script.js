@@ -3980,21 +3980,53 @@ function duplicateSelectedElement() {
   renderEditor(); schedulePreviewRender(); saveDraftDebounced(); recordSnapshot(true);
   showToast(t('toast.duplicated') || t('toast.copied'));
 }
+
+function scrollCodeToLine(lineNo) {
+  const lineHeight = parseFloat(getComputedStyle(codeEl).lineHeight) || 21;
+  const padTop = parseFloat(getComputedStyle(codeEl).paddingTop) || 0;
+  const target = Math.max(0, (lineNo - 2) * lineHeight - codeEl.clientHeight / 3 + padTop);
+  lockedScrollTop = target;
+  codeEl.scrollTop = target;
+  syncScroll();
+}
+
+function flashLocatedLine(lineNo) {
+  if (currentLineEl) {
+    currentLineEl.classList.remove('current', 'is-located');
+    currentLineEl = null;
+  }
+  const target = lineNodes[lineNo - 1] || null;
+  if (!target) return;
+  target.classList.add('current', 'is-located');
+  currentLineEl = target;
+  setTimeout(() => target.classList.remove('is-located'), 1600);
+}
+
+function doLocate(startPos, endPos) {
+  const isMobile = isMobileViewport();
+  if (isMobile && mobileView === 'attr') setMobileView('code');
+  const lineNo = posToLineNo(startPos);
+  if (isMobile) {
+    try { codeEl.setSelectionRange(startPos, endPos); } catch (_) {}
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        scrollCodeToLine(lineNo);
+        flashLocatedLine(lineNo);
+      });
+    });
+  } else {
+    codeEl.focus({ preventScroll: true });
+    try { codeEl.setSelectionRange(startPos, endPos); } catch (_) {}
+    scrollCodeToLine(lineNo);
+    flashLocatedLine(lineNo);
+  }
+}
+
 function locateSelectedInSource() {
   if (canvasRootMode) {
     const rootLoc = findRootSvgTag(codeEl.value);
     if (!rootLoc) { showToast(t('toast.noSourceLocate')); return; }
-    if (isMobileViewport() && mobileView === 'attr') setMobileView('code');
-    try {
-      codeEl.setSelectionRange(rootLoc.start, rootLoc.end);
-      if (!isMobileViewport()) codeEl.focus();
-    } catch(_) {}
-    const lineNo = posToLineNo(rootLoc.start);
-    const lineHeight = parseFloat(getComputedStyle(codeEl).lineHeight) || 21;
-    const padTop = parseFloat(getComputedStyle(codeEl).paddingTop) || 0;
-    codeEl.scrollTop = Math.max(0, (lineNo - 2) * lineHeight - codeEl.clientHeight / 3 + padTop);
-    syncScroll();
-    updateCurrentLineHighlight();
+    doLocate(rootLoc.start, rootLoc.end);
     return;
   }
   if (!selectedPath) return;
@@ -4005,18 +4037,9 @@ function locateSelectedInSource() {
     const e = skipElementContent(codeEl.value, loc.start, loc.tag);
     if (e > 0) end = e;
   }
-  if (isMobileViewport() && mobileView === 'attr') setMobileView('code');
-  try {
-    codeEl.setSelectionRange(loc.start, end);
-    if (!isMobileViewport()) codeEl.focus();
-  } catch(_) {}
-  const lineNo = posToLineNo(loc.start);
-  const lineHeight = parseFloat(getComputedStyle(codeEl).lineHeight) || 21;
-  const padTop = parseFloat(getComputedStyle(codeEl).paddingTop) || 0;
-  codeEl.scrollTop = Math.max(0, (lineNo - 2) * lineHeight - codeEl.clientHeight / 3 + padTop);
-  syncScroll();
-  updateCurrentLineHighlight();
+  doLocate(loc.start, end);
 }
+
 function rebuildCanvasAttrPanel() {
   if (!currentSvg) { clearSelection(); return; }
   closeAnimAddMenu();
