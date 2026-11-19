@@ -1370,6 +1370,7 @@ function updateCurrentLineHighlight() {
   if (target) target.classList.add('current');
   currentLineEl = target;
 }
+
 function renderEditor() {
   const code = codeEl.value;
   const lineCount = code.split('\n').length;
@@ -1380,15 +1381,23 @@ function renderEditor() {
   const container = highlightCode;
   const newLen = lineHtmls.length, oldLen = lineNodes.length;
   const minLen = Math.min(newLen, oldLen);
+  const markB64 = (node, h) => {
+    if (h.length > 1000 && h.indexOf('data:') >= 0) node.classList.add('b64-heavy');
+    else node.classList.remove('b64-heavy');
+  };
   for (let i = 0; i < minLen; i++) {
     if (lastLineHtmls[i] !== lineHtmls[i]) {
-      lineNodes[i].innerHTML = lineHtmls[i] || '';
+      const h = lineHtmls[i] || '';
+      lineNodes[i].innerHTML = h;
+      markB64(lineNodes[i], h);
     }
   }
   for (let i = oldLen; i < newLen; i++) {
     const sp = document.createElement('span');
     sp.className = 'line';
-    sp.innerHTML = lineHtmls[i] || '';
+    const h = lineHtmls[i] || '';
+    sp.innerHTML = h;
+    markB64(sp, h);
     container.appendChild(sp);
     lineNodes.push(sp);
   }
@@ -1427,9 +1436,12 @@ function highlightTag(tag) {
   const [, open, name, attrs, close] = m;
   return esc(open) + '<span class="tok-tag">' + esc(name) + '</span>' + highlightAttrs(attrs) + esc(close);
 }
+
 function highlightAttrs(attrs) {
   if (!attrs) return '';
   if (attrs.length > 1500 && /data:[^"']{500,}/.test(attrs)) {
+    if (!/[<>&]/.test(attrs)) return attrs;
+    if (!/[<>]/.test(attrs)) return attrs.replace(/&/g, '&amp;');
     return esc(attrs);
   }
   let out = '', i = 0;
@@ -5848,10 +5860,8 @@ async function confirmImageInsert() {
     }
     let finalCode;
     if (imageImportState.insertMode === 'replace') {
-      const defsPart = fragment.defs ? `<defs>${fragment.defs}</defs>\n` : '';
-      finalCode = formatXML(
-        `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${fragment.box.width} ${fragment.box.height}" width="${fragment.box.width}" height="${fragment.box.height}">\n${defsPart}${fragment.image}\n</svg>`
-      );
+      const defsPart = fragment.defs ? `  <defs>${fragment.defs}</defs>\n` : '';
+      finalCode = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${fragment.box.width} ${fragment.box.height}" width="${fragment.box.width}" height="${fragment.box.height}">\n${defsPart}  ${fragment.image}\n</svg>`;
     } else {
       if (!currentSvg) throw new Error('no-svg');
       finalCode = appendImageToSource(fragment.defs, fragment.image);
@@ -5897,13 +5907,13 @@ function appendImageToSource(defsStr, imageStr) {
       });
     }
   }
+  
   const tmpImgDoc = new DOMParser().parseFromString(
     `<svg xmlns="${SVG_NS_L}">${imageStr}</svg>`, 'image/svg+xml'
   );
   const tmpImage = tmpImgDoc.documentElement.querySelector('image');
   if (tmpImage) clone.appendChild(document.importNode(tmpImage, true));
-
-  return formatXML(serializeSVG(clone));
+  return serializeSVG(clone);
 }
 
 function readImageClipShape(imageEl) {
