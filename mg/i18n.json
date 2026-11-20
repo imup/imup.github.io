@@ -195,25 +195,6 @@
       "view": "视图",
       "switch": "条件切换"
     },
-    
-    "tree": {
-      "title": "结构与图层",
-      "titleLabel": "标题",
-      "descLabel": "描述",
-      "toggleExpand": "展开",
-      "toggleCollapse": "折叠",
-      "moveUp": "上移",
-      "moveDown": "下移",
-      "duplicate": "复制",
-      "delete": "删除",
-      "movedUp": "已上移",
-      "movedDown": "已下移",
-      "firstItem": "已经是第一个",
-      "lastItem": "已经是最后一个",
-      "duplicated": "已复制",
-      "deleted": "已删除",
-      "emptyTree": "画布为空"
-    },
 
     "fieldAnim": {
       "title": "设置字段动画",
@@ -859,25 +840,6 @@
       "symbol": "Symbol",
       "view": "View",
       "switch": "Switch"
-    },
-    
-    "tree": {
-      "title": "Structure & Layers",
-      "titleLabel": "Title",
-      "descLabel": "Description",
-      "toggleExpand": "Expand",
-      "toggleCollapse": "Collapse",
-      "moveUp": "Move Up",
-      "moveDown": "Move Down",
-      "duplicate": "Duplicate",
-      "delete": "Delete",
-      "movedUp": "Moved up",
-      "movedDown": "Moved down",
-      "firstItem": "Already first",
-      "lastItem": "Already last",
-      "duplicated": "Duplicated",
-      "deleted": "Deleted",
-      "emptyTree": "Canvas is empty"
     },
 
     "fieldAnim": {
