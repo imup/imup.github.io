@@ -1,4 +1,149 @@
 {
+  "cssAnimTemplates": {
+    "order": [
+      "spin", "spinReverse", "pulse", "heartbeat", "shake", "bounce", "swing", "flip",
+      "fade", "fadeIn", "fadeOut", "blink", "colorLoop", "glow", "dashFlow"
+    ],
+    "builders": {
+      "spin": {
+        "field": "transform",
+        "frames": [
+          { "percent": 0, "value": "rotate(0deg)" },
+          { "percent": 100, "value": "rotate(360deg)" }
+        ],
+        "dur": 2, "easing": "linear", "loop": true
+      },
+      "spinReverse": {
+        "field": "transform",
+        "frames": [
+          { "percent": 0, "value": "rotate(0deg)" },
+          { "percent": 100, "value": "rotate(-360deg)" }
+        ],
+        "dur": 2, "easing": "linear", "loop": true
+      },
+      "pulse": {
+        "field": "transform",
+        "frames": [
+          { "percent": 0, "value": "scale(1)" },
+          { "percent": 50, "value": "scale(1.2)" },
+          { "percent": 100, "value": "scale(1)" }
+        ],
+        "dur": 1.5, "easing": "ease-in-out", "loop": true
+      },
+      "heartbeat": {
+        "field": "transform",
+        "frames": [
+          { "percent": 0, "value": "scale(1)" },
+          { "percent": 25, "value": "scale(1.15)" },
+          { "percent": 50, "value": "scale(1)" },
+          { "percent": 75, "value": "scale(1.1)" },
+          { "percent": 100, "value": "scale(1)" }
+        ],
+        "dur": 1.2, "easing": "ease-in-out", "loop": true
+      },
+      "shake": {
+        "field": "transform",
+        "frames": [
+          { "percent": 0, "value": "translateX(0)" },
+          { "percent": 20, "value": "translateX(3px)" },
+          { "percent": 40, "value": "translateX(-3px)" },
+          { "percent": 60, "value": "translateX(2px)" },
+          { "percent": 80, "value": "translateX(-2px)" },
+          { "percent": 100, "value": "translateX(0)" }
+        ],
+        "dur": 0.4, "easing": "linear", "loop": true
+      },
+      "bounce": {
+        "field": "transform",
+        "frames": [
+          { "percent": 0, "value": "translateY(0)" },
+          { "percent": 50, "value": "translateY(-15px)" },
+          { "percent": 100, "value": "translateY(0)" }
+        ],
+        "dur": 0.6, "easing": "ease-in-out", "loop": true
+      },
+      "swing": {
+        "field": "transform",
+        "frames": [
+          { "percent": 0, "value": "rotate(-10deg)" },
+          { "percent": 50, "value": "rotate(10deg)" },
+          { "percent": 100, "value": "rotate(-10deg)" }
+        ],
+        "dur": 1, "easing": "ease-in-out", "loop": true
+      },
+      "flip": {
+        "field": "transform",
+        "frames": [
+          { "percent": 0, "value": "scaleX(1)" },
+          { "percent": 50, "value": "scaleX(-1)" },
+          { "percent": 100, "value": "scaleX(1)" }
+        ],
+        "dur": 2, "easing": "ease-in-out", "loop": true
+      },
+      "fade": {
+        "field": "opacity",
+        "frames": [
+          { "percent": 0, "value": "1" },
+          { "percent": 50, "value": "0" },
+          { "percent": 100, "value": "1" }
+        ],
+        "dur": 2, "easing": "ease-in-out", "loop": true
+      },
+      "fadeIn": {
+        "field": "opacity",
+        "frames": [
+          { "percent": 0, "value": "0" },
+          { "percent": 100, "value": "1" }
+        ],
+        "dur": 1, "easing": "ease-out", "loop": false
+      },
+      "fadeOut": {
+        "field": "opacity",
+        "frames": [
+          { "percent": 0, "value": "1" },
+          { "percent": 100, "value": "0" }
+        ],
+        "dur": 1, "easing": "ease-in", "loop": false
+      },
+      "blink": {
+        "field": "opacity",
+        "frames": [
+          { "percent": 0, "value": "1" },
+          { "percent": 50, "value": "0" },
+          { "percent": 100, "value": "1" }
+        ],
+        "dur": 0.8, "easing": "linear", "loop": true
+      },
+      "colorLoop": {
+        "field": "fill",
+        "frames": [
+          { "percent": 0, "value": "#ff0000" },
+          { "percent": 33, "value": "#00ff00" },
+          { "percent": 66, "value": "#0000ff" },
+          { "percent": 100, "value": "#ff0000" }
+        ],
+        "dur": 3, "easing": "linear", "loop": true
+      },
+      "glow": {
+        "field": "stroke-width",
+        "frames": [
+          { "percent": 0, "value": "1" },
+          { "percent": 50, "value": "4" },
+          { "percent": 100, "value": "1" }
+        ],
+        "dur": 2, "easing": "ease-in-out", "loop": true
+      },
+      "dashFlow": {
+        "field": "stroke-dashoffset",
+        "frames": [
+          { "percent": 0, "value": "0" },
+          { "percent": 100, "value": "-20" }
+        ],
+        "dur": 1, "easing": "linear", "loop": true
+      }
+    }
+  },
+
   "panelLayout": [
     { "type": "special", "hook": "animPanel", "tags": ["animate", "animatetransform", "animatemotion", "animatecolor", "set"], "exclusive": true },
     { "type": "special", "hook": "imagePreview", "tags": ["image"] },
@@ -11,6 +156,7 @@
     { "type": "group", "source": "refSpecs+refUnitSpecs", "titleKey": "group.reference" },
     { "type": "group", "source": "renderSpecs", "titleKey": "group.render" },
     { "type": "group", "source": "interactSpecs", "titleKey": "group.interact" },
+    { "type": "special", "hook": "cssAnimations", "when": "!isReadOnly" },
     { "type": "special", "hook": "textContent", "tags": ["text", "tspan", "textPath"] },
     { "type": "group", "source": "textBaseSpecs", "titleKey": "group.text", "tags": ["text", "tspan", "textPath"] },
     { "type": "group", "source": "textAdvSpecs", "titleKey": "group.textAdv", "tags": ["text", "tspan", "textPath"] },
