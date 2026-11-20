@@ -453,7 +453,26 @@ body{
 .editor.is-wrap .code-input{overflow-x:hidden;}
 
 .highlight .line{display:block;min-height:calc(var(--ed-size)*var(--ed-lh));}
+/*
 .highlight .line.current{background:var(--ed-line-bg);box-shadow:inset 3px 0 0 var(--ed-line-accent);}
+*/
+
+.highlight .line.current{background:var(--ed-line-bg);box-shadow:inset 3px 0 0 var(--ed-line-accent);}
+.highlight .line.is-located{animation:locateFlash 1.5s ease-out;}
+@keyframes locateFlash{
+  0%{background:rgba(245,158,11,.6);box-shadow:inset 3px 0 0 #f59e0b;}
+  30%{background:rgba(245,158,11,.35);box-shadow:inset 3px 0 0 #f59e0b;}
+  100%{background:transparent;box-shadow:none;}
+}
+.highlight .line.b64-heavy{
+  content-visibility:auto;
+  contain-intrinsic-size:auto calc(var(--ed-size) * var(--ed-lh));
+}
+.editor.is-wrap .highlight .line.b64-heavy{
+  white-space:pre;
+  overflow-x:hidden;
+  text-overflow:ellipsis;
+}
 
 .tok-comment{color:var(--tok-comment);font-style:italic;}
 .tok-tag{color:var(--tok-tag);}
