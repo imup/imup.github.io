@@ -3994,9 +3994,15 @@ function duplicateSelectedElement() {
 }
 
 function scrollCodeToLine(lineNo) {
-  const lineHeight = parseFloat(getComputedStyle(codeEl).lineHeight) || 21;
-  const padTop = parseFloat(getComputedStyle(codeEl).paddingTop) || 0;
-  const target = Math.max(0, (lineNo - 2) * lineHeight - codeEl.clientHeight / 3 + padTop);
+  const targetLine = lineNodes[lineNo - 1];
+  let target;
+  if (targetLine) {
+    target = Math.max(0, targetLine.offsetTop - codeEl.clientHeight / 3);
+  } else {
+    const lineHeight = parseFloat(getComputedStyle(codeEl).lineHeight) || 21;
+    const padTop = parseFloat(getComputedStyle(codeEl).paddingTop) || 0;
+    target = Math.max(0, (lineNo - 2) * lineHeight - codeEl.clientHeight / 3 + padTop);
+  }
   lockedScrollTop = target;
   codeEl.scrollTop = target;
   syncScroll();
@@ -4018,19 +4024,17 @@ function doLocate(startPos, endPos) {
   const isMobile = isMobileViewport();
   if (isMobile && mobileView === 'attr') setMobileView('code');
   const lineNo = posToLineNo(startPos);
+  const run = () => {
+    scrollCodeToLine(lineNo);
+    flashLocatedLine(lineNo);
+  };
   if (isMobile) {
     try { codeEl.setSelectionRange(startPos, endPos); } catch (_) {}
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        scrollCodeToLine(lineNo);
-        flashLocatedLine(lineNo);
-      });
-    });
+    requestAnimationFrame(() => requestAnimationFrame(run));
   } else {
     codeEl.focus({ preventScroll: true });
     try { codeEl.setSelectionRange(startPos, endPos); } catch (_) {}
-    scrollCodeToLine(lineNo);
-    flashLocatedLine(lineNo);
+    requestAnimationFrame(run);
   }
 }
 
