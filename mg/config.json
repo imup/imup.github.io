@@ -21,7 +21,7 @@
     { "type": "group", "source": "viewSpecs", "titleKey": "group.view", "tags": ["view"] },
     { "type": "group", "source": "switchSpecs", "titleKey": "group.switch", "tags": ["switch"] },
     { "type": "childAnims" },
-    { "type": "structure", "when": "!isReadOnly" }
+    { "type": "special", "hook": "treeLayers", "when": "!isReadOnly" }
   ],
 
   "animSpecs": [
