@@ -3752,7 +3752,9 @@ function suppressRebuildForSliders() {
   clearTimeout(sliderSuppressTimer);
   sliderSuppressTimer = setTimeout(() => { suppressAttrRebuild = false; }, 1500);
 }
+
 let sliderSuppressTimer = 0;
+const _treeCollapsed = new Set();
 
 function makeValuesSliders(valuesStr, onCommit) {
   const wrap = document.createElement('div');
@@ -5365,6 +5367,312 @@ function scheduleTextContentCommit(text) {
   textContentCommitTimer = setTimeout(() => commitTextContent(text), 400);
 }
 
+/* ===== 树状层 ===== */
+function samePath(a, b) {
+  if (!a || !b || a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
+
+function buildTreeData(rootEl, basePath) {
+  const nodes = [];
+  const children = Array.from(rootEl.children || []);
+  children.forEach((child, idx) => {
+    const path = [...basePath, idx];
+    nodes.push({
+      el: child,
+      path,
+      tagName: child.localName,
+      id: child.getAttribute('id') || '',
+      cls: child.getAttribute('class') || '',
+      children: buildTreeData(child, path)
+    });
+  });
+  return nodes;
+}
+
+function toggleTreePath(path) {
+  const key = JSON.stringify(path);
+  if (_treeCollapsed.has(key)) _treeCollapsed.delete(key);
+  else _treeCollapsed.add(key);
+}
+
+function renderTreeRow(node, depth, container) {
+  const row = document.createElement('div');
+  row.className = 'tree-row';
+  row.style.paddingLeft = (6 + depth * 14) + 'px';
+  const isSelected = selectedPath && samePath(selectedPath, node.path);
+  if (isSelected) row.classList.add('is-selected');
+
+  const key = JSON.stringify(node.path);
+  const isCollapsed = _treeCollapsed.has(key);
+  const hasChildren = node.children.length > 0;
+
+  const toggle = document.createElement('span');
+  toggle.className = 'tree-toggle' + (hasChildren ? '' : ' tree-toggle--empty');
+  toggle.textContent = hasChildren ? (isCollapsed ? '▸' : '▾') : '·';
+  if (hasChildren) {
+    toggle.title = isCollapsed ? t('tree.toggleExpand') : t('tree.toggleCollapse');
+    toggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleTreePath(node.path);
+      rebuildAttrPanel();
+    });
+  }
+  row.appendChild(toggle);
+
+  const label = document.createElement('span');
+  label.className = 'tree-label';
+  const tagSpan = document.createElement('span');
+  tagSpan.className = 'tree-tag';
+  tagSpan.textContent = '<' + node.tagName + '>';
+  label.appendChild(tagSpan);
+  if (node.id) {
+    const idSpan = document.createElement('span');
+    idSpan.className = 'tree-id';
+    idSpan.textContent = '#' + node.id;
+    label.appendChild(idSpan);
+  }
+  if (node.cls) {
+    const clsSpan = document.createElement('span');
+    clsSpan.className = 'tree-cls';
+    clsSpan.textContent = '.' + node.cls.split(/\s+/).filter(Boolean).slice(0, 2).join('.');
+    label.appendChild(clsSpan);
+  }
+  row.appendChild(label);
+
+  const actions = document.createElement('div');
+  actions.className = 'tree-actions';
+
+  const upBtn = document.createElement('button');
+  upBtn.type = 'button';
+  upBtn.className = 'tree-btn';
+  upBtn.textContent = '↑';
+  upBtn.title = t('tree.moveUp');
+  upBtn.addEventListener('click', (e) => { e.stopPropagation(); moveElementUp(node.path); });
+  actions.appendChild(upBtn);
+
+  const downBtn = document.createElement('button');
+  downBtn.type = 'button';
+  downBtn.className = 'tree-btn';
+  downBtn.textContent = '↓';
+  downBtn.title = t('tree.moveDown');
+  downBtn.addEventListener('click', (e) => { e.stopPropagation(); moveElementDown(node.path); });
+  actions.appendChild(downBtn);
+
+  const dupBtn = document.createElement('button');
+  dupBtn.type = 'button';
+  dupBtn.className = 'tree-btn tree-btn--dup';
+  dupBtn.textContent = '+';
+  dupBtn.title = t('tree.duplicate');
+  dupBtn.addEventListener('click', (e) => { e.stopPropagation(); duplicateElementAtPath(node.path); });
+  actions.appendChild(dupBtn);
+
+  const delBtn = document.createElement('button');
+  delBtn.type = 'button';
+  delBtn.className = 'tree-btn tree-btn--danger';
+  delBtn.textContent = '−';
+  delBtn.title = t('tree.delete');
+  delBtn.addEventListener('click', (e) => { e.stopPropagation(); deleteTreeElement(node.path); });
+  actions.appendChild(delBtn);
+
+  row.appendChild(actions);
+
+  row.addEventListener('click', () => {
+    if (selectedPath && samePath(selectedPath, node.path)) return;
+    const svgVisible = canvasEl.firstElementChild;
+    const target = svgVisible ? resolvePath(svgVisible, node.path) : null;
+    if (target && target !== svgVisible) {
+      selectedPath = node.path;
+      _selectedElementTag = target.localName;
+      _selectedElementId = target.getAttribute('id') || null;
+      applySelectionOutline(target);
+      rebuildAttrPanel();
+    }
+  });
+
+  container.appendChild(row);
+
+  if (hasChildren && !isCollapsed) {
+    node.children.forEach(child => renderTreeRow(child, depth + 1, container));
+  }
+}
+
+function hookTreeLayers(ctx) {
+  const { el, isReadOnly } = ctx;
+  if (isReadOnly) return null;
+  const wrap = document.createElement('div');
+  wrap.className = 'tree-container';
+
+  const title = document.createElement('div');
+  title.className = 'attr-group__title';
+  title.textContent = t('tree.title');
+  wrap.appendChild(title);
+
+  // title / desc 编辑
+  const meta = document.createElement('div');
+  meta.className = 'tree-meta';
+
+  const titleRow = document.createElement('div');
+  titleRow.className = 'tree-meta__row';
+  const titleLbl = document.createElement('label');
+  titleLbl.className = 'tree-meta__label';
+  titleLbl.textContent = t('tree.titleLabel');
+  titleRow.appendChild(titleLbl);
+  const titleInput = document.createElement('input');
+  titleInput.type = 'text';
+  titleInput.className = 'attr-row__input';
+  const titleChild = el.querySelector(':scope > title');
+  titleInput.value = titleChild ? (titleChild.textContent || '') : '';
+  titleInput.addEventListener('input', () => {
+    scheduleChildTextCommit(el, 'title', titleInput.value);
+  });
+  titleRow.appendChild(titleInput);
+  meta.appendChild(titleRow);
+
+  const descRow = document.createElement('div');
+  descRow.className = 'tree-meta__row';
+  const descLbl = document.createElement('label');
+  descLbl.className = 'tree-meta__label';
+  descLbl.textContent = t('tree.descLabel');
+  descRow.appendChild(descLbl);
+  const descInput = document.createElement('textarea');
+  descInput.className = 'attr-row__textarea';
+  descInput.rows = 2;
+  const descChild = el.querySelector(':scope > desc');
+  descInput.value = descChild ? (descChild.textContent || '') : '';
+  descInput.addEventListener('input', () => {
+    scheduleChildTextCommit(el, 'desc', descInput.value);
+  });
+  descRow.appendChild(descInput);
+  meta.appendChild(descRow);
+
+  wrap.appendChild(meta);
+
+  // 树
+  const list = document.createElement('div');
+  list.className = 'tree-list';
+  const treeData = buildTreeData(currentSvg, []);
+  if (treeData.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'tree-empty';
+    empty.textContent = t('tree.emptyTree');
+    list.appendChild(empty);
+  } else {
+    treeData.forEach(node => renderTreeRow(node, 0, list));
+  }
+  wrap.appendChild(list);
+
+  return [wrap];
+}
+
+/* ===== 上移 / 下移 ===== */
+function getElementBlockByPath(path) {
+  const loc = findTagOffsetByPath(codeEl.value, path);
+  if (!loc) return null;
+  if (loc.isSelfClosing) {
+    return { start: loc.start, end: loc.end, block: codeEl.value.slice(loc.start, loc.end) };
+  }
+  const end = skipElementContent(codeEl.value, loc.start, loc.tag);
+  if (end < 0) return null;
+  return { start: loc.start, end, block: codeEl.value.slice(loc.start, end) };
+}
+
+function swapAdjacentElements(pathA, pathB) {
+  const blockA = getElementBlockByPath(pathA);
+  const blockB = getElementBlockByPath(pathB);
+  if (!blockA || !blockB) return false;
+  let first = blockA, second = blockB;
+  if (blockA.start > blockB.start) { first = blockB; second = blockA; }
+  const code = codeEl.value;
+  codeEl.value =
+    code.slice(0, first.start) +
+    second.block +
+    code.slice(first.end, second.start) +
+    first.block +
+    code.slice(second.end);
+  return true;
+}
+
+function afterTreeMove(newPath) {
+  selectedPath = newPath;
+  invalidateLineOffsets();
+  renderPreview();
+  saveDraftDebounced();
+  recordSnapshot(true);
+  const svgVisible = canvasEl.firstElementChild;
+  const target = svgVisible ? resolvePath(svgVisible, newPath) : null;
+  if (target && target !== svgVisible) {
+    _selectedElementTag = target.localName;
+    _selectedElementId = target.getAttribute('id') || null;
+    applySelectionOutline(target);
+  }
+  setTimeout(() => { if (attrPanelOpen) rebuildAttrPanel(); }, 80);
+}
+
+function moveElementUp(path) {
+  if (!path || !path.length) return;
+  const idx = path[path.length - 1];
+  if (idx <= 0) { showToast(t('tree.firstItem')); return; }
+  const parentPath = path.slice(0, -1);
+  const prevPath = [...parentPath, idx - 1];
+  if (!swapAdjacentElements(path, prevPath)) return;
+  afterTreeMove([...parentPath, idx - 1]);
+  showToast(t('tree.movedUp'));
+}
+
+function moveElementDown(path) {
+  if (!path || !path.length) return;
+  const idx = path[path.length - 1];
+  const parentPath = path.slice(0, -1);
+  const parentEl = resolvePath(currentSvg, parentPath);
+  if (!parentEl) return;
+  if (idx >= parentEl.children.length - 1) { showToast(t('tree.lastItem')); return; }
+  const nextPath = [...parentPath, idx + 1];
+  if (!swapAdjacentElements(path, nextPath)) return;
+  afterTreeMove([...parentPath, idx + 1]);
+  showToast(t('tree.movedDown'));
+}
+
+function duplicateElementAtPath(path) {
+  if (!path || !path.length) return;
+  const block = getElementBlockByPath(path);
+  if (!block) return;
+  let newBlock = block.block;
+  const m = newBlock.match(/\sid="([^"]+)"/);
+  if (m) newBlock = newBlock.replace(/\sid="[^"]+"/, ` id="${m[1]}-copy"`);
+  const code = codeEl.value;
+  codeEl.value = code.slice(0, block.end) + '\n' + newBlock + code.slice(block.end);
+  const parentPath = path.slice(0, -1);
+  const newPath = [...parentPath, path[path.length - 1] + 1];
+  afterTreeMove(newPath);
+  showToast(t('tree.duplicated'));
+}
+
+function deleteTreeElement(path) {
+  if (!path || !path.length) return;
+  if (!deleteElementAtPath(path)) return;
+  // 修正 selectedPath
+  if (selectedPath) {
+    if (samePath(selectedPath, path)) {
+      selectedPath = null;
+      if (selectionOverlayEl) selectionOverlayEl.innerHTML = '';
+      closeAttrPanel();
+      return;
+    }
+    const sp = selectedPath, dp = path;
+    const spParent = sp.slice(0, -1), dpParent = dp.slice(0, -1);
+    if (samePath(spParent, dpParent)) {
+      const spIdx = sp[sp.length - 1], dpIdx = dp[dp.length - 1];
+      if (spIdx > dpIdx) {
+        selectedPath = [...spParent, spIdx - 1];
+      }
+    }
+  }
+  setTimeout(() => { if (attrPanelOpen) rebuildAttrPanel(); }, 80);
+  showToast(t('tree.deleted'));
+}
+
 function commitTextContent(text) {
   if (!selectedPath) return;
   const loc = findTagOffsetByPath(codeEl.value, selectedPath);
@@ -5404,6 +5712,7 @@ const PANEL_SPECIAL_HOOKS = {
   gradientEdit: hookGradientEdit,
   filterEdit:   hookFilterEdit,
   textContent:  hookTextContent
+  treeLayers:   hookTreeLayers
 };
 
 function openAttrPanel() {
