@@ -2158,6 +2158,7 @@ document.addEventListener('click', e => {
   if (!e.target.closest('#editorActions')) {
     editorMenu.hidden = true; btnEditorMenu.setAttribute('aria-expanded', 'false');
   }
+  closeCssAnimPicker();
   closeFilterPicker();
   closeAnimAddMenu();
   closeCreateShapeMenu();
@@ -2165,6 +2166,7 @@ document.addEventListener('click', e => {
 document.addEventListener('keydown', e => {
   if (e.key !== 'Escape') return;
   if (createShapeMenuEl) { closeCreateShapeMenu(); return; }
+  if (cssAnimPickerEl) { closeCssAnimPicker(); return; }
   if (filterPickerEl) { closeFilterPicker(); return; }
   if (markerPickerEl) { closeMarkerPicker(); return; }
   if (colorPopoverEl) { closeColorPopover(); return; }
@@ -5319,6 +5321,239 @@ function hookTextContent(ctx) {
   row.appendChild(ctrl);
   return [row];
 }
+function collectAppliedCssAnims(el) {
+  const cls = (el.getAttribute('class') || '').split(/\s+/).filter(Boolean);
+  const result = [];
+  cls.forEach(c => {
+    if (c.startsWith('css-anim-')) result.push(c.slice('css-anim-'.length));
+  });
+  return result;
+}
+
+function hookCssAnimations(ctx) {
+  const { el, tagName, isReadOnly } = ctx;
+  if (isReadOnly) return null;
+  const EXCLUDED = new Set(['animate','animatetransform','animatemotion','animatecolor','set',
+    'style','defs','clippath','mask','filter','lineargradient','radialgradient',
+    'pattern','symbol','marker','title','desc','metadata','svg']);
+  if (EXCLUDED.has(tagName.toLowerCase())) return null;
+
+  const applied = collectAppliedCssAnims(el);
+  const templates = (CONFIG && CONFIG.cssAnimTemplates && CONFIG.cssAnimTemplates.builders) || {};
+
+  const group = document.createElement('div');
+  group.className = 'attr-group';
+  const title = document.createElement('div');
+  title.className = 'attr-group__title';
+  title.textContent = t('group.cssAnimation') || 'CSS 动画';
+  group.appendChild(title);
+
+  const items = document.createElement('div');
+  items.className = 'attr-group__items';
+  items.style.gridTemplateColumns = '1fr';
+
+  applied.forEach(field => {
+    let label = field;
+    const order = (CONFIG.cssAnimTemplates && CONFIG.cssAnimTemplates.order) || [];
+    for (const id of order) {
+      const tmpl = templates[id];
+      if (tmpl && tmpl.field === field) { label = t('cssAnimPreset.' + id); break; }
+    }
+    const row = document.createElement('div');
+    row.className = 'attr-anim-row';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'attr-anim-item';
+    btn.textContent = label;
+    btn.disabled = true;
+    row.appendChild(btn);
+
+    const rmBtn = document.createElement('button');
+    rmBtn.type = 'button';
+    rmBtn.className = 'attr-anim-remove';
+    rmBtn.title = t('anim.removeAnim');
+    rmBtn.textContent = '−';
+    rmBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      removeCssAnimation(field);
+    });
+    row.appendChild(rmBtn);
+    items.appendChild(row);
+  });
+
+  const addBtn = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.className = 'attr-fit-btn';
+  addBtn.style.marginTop = applied.length ? '4px' : '0';
+  addBtn.textContent = t('cssAnimPreset.addBtn') || '+ 添加 CSS 动画';
+  addBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openCssAnimPicker(addBtn);
+  });
+  items.appendChild(addBtn);
+
+  group.appendChild(items);
+  return [group];
+}
+
+function openCssAnimPicker(anchorEl) {
+  closeCssAnimPicker();
+  const menu = document.createElement('div');
+  menu.className = 'attr-anim-menu';
+  const order = (CONFIG.cssAnimTemplates && CONFIG.cssAnimTemplates.order) || [];
+  order.forEach(id => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = t('cssAnimPreset.' + id) || id;
+    btn.addEventListener('click', () => {
+      closeCssAnimPicker();
+      applyCssAnimPreset(id);
+    });
+    menu.appendChild(btn);
+  });
+  const sep = document.createElement('div');
+  sep.className = 'dropdown__sep';
+  menu.appendChild(sep);
+  const customBtn = document.createElement('button');
+  customBtn.type = 'button';
+  customBtn.textContent = t('cssAnimPreset.custom') || '自定义…';
+  customBtn.addEventListener('click', () => {
+    closeCssAnimPicker();
+    if (typeof openCssAnimFieldPicker === 'function') {
+      openCssAnimFieldPicker(anchorEl);
+    } else {
+      showToast(t('cssAnimPreset.customNotAvailable') || '多帧编辑未启用');
+    }
+  });
+  menu.appendChild(customBtn);
+
+  document.body.appendChild(menu);
+  const rect = anchorEl.getBoundingClientRect();
+  const menuRect = menu.getBoundingClientRect();
+  const vw = window.innerWidth, vh = window.innerHeight;
+  let left = rect.left;
+  if (left + menuRect.width > vw - 8) left = vw - menuRect.width - 8;
+  if (left < 8) left = 8;
+  let top = rect.bottom + 4;
+  if (top + menuRect.height > vh - 8) top = Math.max(8, rect.top - menuRect.height - 4);
+  menu.style.position = 'fixed';
+  menu.style.left = left + 'px';
+  menu.style.top = top + 'px';
+  menu.style.zIndex = '250';
+  cssAnimPickerEl = menu;
+
+  const outside = (e) => {
+    if (!menu.contains(e.target) && e.target !== anchorEl && !anchorEl.contains(e.target)) {
+      closeCssAnimPicker();
+      document.removeEventListener('mousedown', outside, true);
+    }
+  };
+  setTimeout(() => document.addEventListener('mousedown', outside, true), 0);
+}
+function closeCssAnimPicker() {
+  if (cssAnimPickerEl && cssAnimPickerEl.parentNode) {
+    cssAnimPickerEl.parentNode.removeChild(cssAnimPickerEl);
+  }
+  cssAnimPickerEl = null;
+}
+
+function applyCssAnimPreset(templateId) {
+  if (!selectedPath) return;
+  const templates = CONFIG.cssAnimTemplates && CONFIG.cssAnimTemplates.builders;
+  const tmpl = templates && templates[templateId];
+  if (!tmpl) return;
+  let svgRoot;
+  try { svgRoot = parseSVG(codeEl.value); }
+  catch (err) { showToast(t('toast.parseFailed', { msg: err.message || '' })); return; }
+  const el = resolvePath(svgRoot, selectedPath);
+  if (!el) return;
+
+  const cls = 'css-anim-' + tmpl.field;
+  const kfName = tmpl.field + '-kf';
+  const animValue = `${kfName} ${tmpl.dur}s ${tmpl.easing} ${tmpl.loop ? 'infinite' : '1'}`;
+
+  let classes = (el.getAttribute('class') || '').split(/\s+/).filter(Boolean);
+  if (!classes.includes(cls)) classes.push(cls);
+  el.setAttribute('class', classes.join(' '));
+
+  let styleEl = svgRoot.querySelector('style');
+  if (!styleEl) {
+    styleEl = document.createElementNS(SVG_NS, 'style');
+    let defs = null;
+    for (let i = 0; i < svgRoot.children.length; i++) {
+      if (svgRoot.children[i].localName === 'defs') { defs = svgRoot.children[i]; break; }
+    }
+    if (defs) defs.insertBefore(styleEl, defs.firstChild);
+    else svgRoot.insertBefore(styleEl, svgRoot.firstChild);
+  }
+
+  let css = styleEl.textContent || '';
+  css = css.replace(new RegExp('\\.' + escapeReg(cls) + '\\s*\\{[^}]*\\}\\s*', 'g'), '');
+  css = css.replace(new RegExp('@keyframes\\s+' + escapeReg(kfName) + '\\s*\\{[\\s\\S]*?\\n\\}\\s*', 'g'), '');
+  css = css.trim();
+
+  const isTransform = tmpl.field === 'transform';
+  const extraProps = isTransform ? ' transform-box: fill-box; transform-origin: center;' : '';
+  css += `\n.${cls} {${extraProps} animation: ${animValue}; }\n`;
+
+  const sortedFrames = [...tmpl.frames].sort((a, b) => a.percent - b.percent);
+  let kfBody = '';
+  sortedFrames.forEach(f => {
+    kfBody += `  ${f.percent}% { ${tmpl.field}: ${f.value}; }\n`;
+  });
+  css += `@keyframes ${kfName} {\n${kfBody}}\n`;
+  styleEl.textContent = css.trim() + '\n';
+
+  codeEl.value = serializeSVG(svgRoot);
+  invalidateLineOffsets();
+  suppressAttrRebuild = true;
+  renderEditor();
+  renderPreview();
+  saveDraftDebounced();
+  recordSnapshot(true);
+  setTimeout(() => {
+    suppressAttrRebuild = false;
+    if (attrPanelOpen && !canvasRootMode && selectedPath) rebuildAttrPanel();
+  }, 120);
+  showToast(t('cssAnimPreset.applied', { label: t('cssAnimPreset.' + templateId) }));
+}
+
+function removeCssAnimation(field) {
+  if (!selectedPath) return;
+  let svgRoot;
+  try { svgRoot = parseSVG(codeEl.value); }
+  catch (err) { showToast(t('toast.parseFailed', { msg: err.message || '' })); return; }
+  const el = resolvePath(svgRoot, selectedPath);
+  if (!el) return;
+  const cls = 'css-anim-' + field;
+  const kfName = field + '-kf';
+
+  let classes = (el.getAttribute('class') || '').split(/\s+/).filter(Boolean);
+  classes = classes.filter(c => c !== cls);
+  if (classes.length) el.setAttribute('class', classes.join(' '));
+  else el.removeAttribute('class');
+
+  const styleEl = svgRoot.querySelector('style');
+  if (styleEl) {
+    let css = styleEl.textContent || '';
+    css = css.replace(new RegExp('\\.' + escapeReg(cls) + '\\s*\\{[^}]*\\}\\s*', 'g'), '');
+    css = css.replace(new RegExp('@keyframes\\s+' + escapeReg(kfName) + '\\s*\\{[\\s\\S]*?\\n\\}\\s*', 'g'), '');
+    styleEl.textContent = css.trim() + (css.trim() ? '\n' : '');
+  }
+
+  codeEl.value = serializeSVG(svgRoot);
+  invalidateLineOffsets();
+  suppressAttrRebuild = true;
+  renderEditor();
+  renderPreview();
+  saveDraftDebounced();
+  recordSnapshot(true);
+  setTimeout(() => {
+    suppressAttrRebuild = false;
+    if (attrPanelOpen && !canvasRootMode && selectedPath) rebuildAttrPanel();
+  }, 120);
+  showToast(t('cssAnimPreset.removed') || '已移除 CSS 动画');
+}
 
 let textContentCommitTimer = 0;
 function scheduleTextContentCommit(text) {
@@ -5360,11 +5595,13 @@ function commitTextContent(text) {
 }
 
 const PANEL_SPECIAL_HOOKS = {
-  animPanel:    hookAnimPanel,
-  imagePreview: hookImagePreview,
-  gradientEdit: hookGradientEdit,
-  filterEdit:   hookFilterEdit,
-  textContent:  hookTextContent
+  animPanel:     hookAnimPanel,
+  imagePreview:  hookImagePreview,
+  gradientEdit:  hookGradientEdit,
+  filterEdit:    hookFilterEdit,
+  textContent:   hookTextContent,
+  styleContent:  hookStyleContent,
+  cssAnimations: hookCssAnimations
 };
 
 function openAttrPanel() {
@@ -7197,6 +7434,7 @@ Array.from(filterEl.attributes).forEach(a => filterEl.removeAttribute(a.name));
   showToast(mode === 'edit' ? t('filterEditor.updated') : t('filterEditor.created'));
 }
 
+let cssAnimPickerEl = null;
 let filterPickerEl = null;
 function openFilterPicker(anchorEl, targetPath, attrName) {
   closeFilterPicker();
