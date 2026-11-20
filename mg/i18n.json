@@ -178,7 +178,6 @@
       "reference": "引用",
       "render": "渲染",
       "interact": "交互",
-      "cssAnimation": "CSS动画",
       "text": "文本",
       "textAdv": "文本高级",
       "animation": "动画",
@@ -467,29 +466,6 @@
       "noAnim": "该元素无动画",
       "mixedValues": "含坐标对/单位等复合值，不支持拉杆，请编辑上方文本",
       "tooManyValues": "值数量 {count}，仅前 10 个可拉杆"
-    },
-
-    "cssAnimPreset": {
-      "spin": "旋转",
-      "spinReverse": "反向旋转",
-      "pulse": "脉冲",
-      "heartbeat": "心跳",
-      "shake": "抖动",
-      "bounce": "弹跳",
-      "swing": "摇摆",
-      "flip": "翻转",
-      "fade": "淡入淡出",
-      "fadeIn": "淡入",
-      "fadeOut": "淡出",
-      "blink": "闪烁",
-      "colorLoop": "颜色循环",
-      "glow": "描边发光",
-      "dashFlow": "虚线流动",
-      "custom": "自定义…",
-      "addBtn": "+ 添加 CSS 动画",
-      "applied": "已应用：{label}",
-      "removed": "已移除 CSS 动画",
-      "customNotAvailable": "多帧编辑未启用"
     },
 
     "canvasPreset": {
@@ -848,7 +824,6 @@
       "reference": "Reference",
       "render": "Render",
       "interact": "Interact",
-      "cssAnimation": "CSS Animation",
       "text": "Text",
       "textAdv": "Text Advanced",
       "animation": "Animation",
@@ -1137,29 +1112,6 @@
       "noAnim": "This element has no animation",
       "mixedValues": "Contains compound values, sliders unavailable; edit text above",
       "tooManyValues": "{count} values, only first 10 have sliders"
-    },
-
-    "cssAnimPreset": {
-      "spin": "Spin",
-      "spinReverse": "Spin (Reverse)",
-      "pulse": "Pulse",
-      "heartbeat": "Heartbeat",
-      "shake": "Shake",
-      "bounce": "Bounce",
-      "swing": "Swing",
-      "flip": "Flip",
-      "fade": "Fade",
-      "fadeIn": "Fade In",
-      "fadeOut": "Fade Out",
-      "blink": "Blink",
-      "colorLoop": "Color Loop",
-      "glow": "Stroke Glow",
-      "dashFlow": "Dash Flow",
-      "custom": "Custom…",
-      "addBtn": "+ Add CSS Animation",
-      "applied": "Applied: {label}",
-      "removed": "CSS animation removed",
-      "customNotAvailable": "Multi-frame editor not enabled"
     },
 
     "canvasPreset": {
