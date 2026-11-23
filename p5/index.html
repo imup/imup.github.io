@@ -20,7 +20,7 @@
 *,*::before,*::after { box-sizing: border-box; }
 html {
   height: 100%;
-  touch-action: manipulation;
+  touch-action: pan-x pan-y;
   -webkit-text-size-adjust: 100%; text-size-adjust: 100%;
 }
 body {
@@ -29,7 +29,7 @@ body {
   background: var(--bg); color: var(--text);
   font-size: 13px; overflow: hidden;
   -webkit-font-smoothing: antialiased;
-  touch-action: manipulation;
+  touch-action: pan-x pan-y;
 }
 
 .app {
@@ -69,17 +69,7 @@ body {
 .preview-stage iframe {
   display: block; width: 100%; height: 100%;
   border: 0; background: transparent;
-  pointer-events: none;   /* 让遮罩接事件 */
 }
-/* 透明遮罩层：拦截所有指针事件，防止 iframe 吞掉 */
-.preview-mask {
-  position: absolute; inset: 0;
-  z-index: 1;
-  background: transparent;
-  cursor: grab;
-  touch-action: none;
-}
-.preview-mask:active { cursor: grabbing; }
 
 .preview-badge {
   position: absolute; right: 14px; bottom: 12px;
@@ -89,7 +79,6 @@ body {
   font-size: 11px; pointer-events: none;
   backdrop-filter: blur(4px);
   font-variant-numeric: tabular-nums;
-  z-index: 2;
 }
 
 /* ===== 视图控制 ===== */
@@ -154,10 +143,9 @@ body {
   cursor: pointer; touch-action: manipulation;
 }
 .zoom-label:hover { background: var(--hover); color: var(--text); }
-
-/* 两态播放按钮：playing=红色停止，stopped=蓝色播放 */
-.anim-btn { margin-left: 2px; color: var(--accent); }
-.anim-btn.is-playing { color: #dc2626; }
+.anim-btn { margin-left: 2px; }
+.anim-btn.is-playing { color: var(--accent); }
+.anim-btn.is-stopped { color: #dc2626; }
 
 /* ===== 分栏 ===== */
 .splitter {
@@ -335,7 +323,6 @@ body {
   <section class="preview-wrap bg-checker" id="previewWrap">
     <div class="preview-stage" id="previewStage">
       <iframe id="preview" sandbox="allow-scripts allow-same-origin" title="p5.js 预览"></iframe>
-      <div class="preview-mask" id="previewMask"></div>
     </div>
     <div class="preview-badge" id="previewBadge">—</div>
     <div class="view-controls">
@@ -350,9 +337,9 @@ body {
       <button class="zoom-btn" id="zoomIn" type="button" title="放大" aria-label="放大">+</button>
       <button class="zoom-btn" id="zoomFit" type="button" title="重置画布" aria-label="重置画布">⊡</button>
       <span class="view-controls__sep"></span>
-      <button class="zoom-btn anim-btn is-playing" id="btnAnimCycle" type="button" title="停止" aria-label="停止">
+      <button class="zoom-btn anim-btn is-playing" id="btnAnimCycle" type="button" title="单次播放" aria-label="单次播放">
         <svg id="animIcon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-          <rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor" stroke="none"/>
+          <polygon points="7,5 19,12 7,19" fill="currentColor" stroke="none"/>
         </svg>
       </button>
     </div>
@@ -397,6 +384,7 @@ const DRAFT_KEY = 'p5-editor.draft.v1';
 const SPLIT_KEY = 'p5-editor.split.v1';
 const BG_KEY = 'p5-editor.bg.v1';
 
+/* ===== 参数分组（移除画布宽高，画布自动跟随预览区） ===== */
 const PARAM_GROUPS = [
   { title: '画布', fields: [
     { key: 'bg', label: '背景色', type: 'color' }
@@ -424,6 +412,7 @@ const PARAM_GROUPS = [
   ]}
 ];
 
+/* 默认参数：位置/尺寸改为相对居中（首次加载时基于预览区计算） */
 const DEFAULT_PARAMS = {
   bg: '#ffffff',
   shapeType: 'rect',
@@ -437,7 +426,6 @@ const appEl = $('app');
 const previewWrap = $('previewWrap');
 const previewStage = $('previewStage');
 const previewEl = $('preview');
-const previewMask = $('previewMask');
 const previewBadge = $('previewBadge');
 const splitterEl = $('splitter');
 const splitterGrip = $('splitterGrip');
@@ -469,7 +457,7 @@ let stageScale = 1, stagePanX = 0, stagePanY = 0;
 let splitRatio = 0.8;
 let splitState = 'default';
 
-let animState = 'playing';   // 'playing' | 'stopped'
+let animState = 'playing';
 let previewBg = 'checker';
 
 function showToast(msg) {
@@ -560,6 +548,13 @@ window.addEventListener('message', function (e) {
       if (typeof loop === 'function') loop();
     } else if (cmd === 'stop') {
       if (typeof noLoop === 'function') noLoop();
+    } else if (cmd === 'loop-reset') {
+      if (window.s && window.p) {
+        Object.keys(window.p).forEach(function (k) {
+          if (k in window.s) window.s[k] = window.p[k];
+        });
+      }
+      if (typeof loop === 'function') loop();
     }
   } catch (_) {}
 });
@@ -596,6 +591,7 @@ function applyStageTransform() {
   zoomResetBtn.textContent = Math.round(stageScale * 100) + '%';
 }
 
+/* 画布 = 预览区，"fit" 即重置为 1:1 */
 function fitToView() {
   stageScale = 1;
   stagePanX = 0;
@@ -636,31 +632,40 @@ function postToIframe(type) {
   } catch (_) {}
 }
 
-/* 两态：playing=停止图标（点击停止），stopped=播放图标（点击播放） */
 function updateAnimIcon() {
   if (animState === 'playing') {
-    animIcon.innerHTML = '<rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor" stroke="none"/>';
-    btnAnimCycle.title = '停止';
-    btnAnimCycle.setAttribute('aria-label', '停止');
-    btnAnimCycle.classList.add('is-playing');
-  } else {
     animIcon.innerHTML = '<polygon points="7,5 19,12 7,19" fill="currentColor" stroke="none"/>';
-    btnAnimCycle.title = '播放';
-    btnAnimCycle.setAttribute('aria-label', '播放');
+    btnAnimCycle.title = '单次播放';
+    btnAnimCycle.setAttribute('aria-label', '单次播放');
+    btnAnimCycle.classList.add('is-playing');
+    btnAnimCycle.classList.remove('is-stopped');
+  } else if (animState === 'looping') {
+    animIcon.innerHTML = '<path d="M17 2l4 4-4 4 M3 11v-1a4 4 0 0 1 4-4h14 M7 22l-4-4 4-4 M21 13v1a4 4 0 0 1-4 4H3" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>';
+    btnAnimCycle.title = '循环播放';
+    btnAnimCycle.setAttribute('aria-label', '循环播放');
+    btnAnimCycle.classList.remove('is-playing', 'is-stopped');
+  } else {
+    animIcon.innerHTML = '<rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor" stroke="none"/>';
+    btnAnimCycle.title = '停止播放';
+    btnAnimCycle.setAttribute('aria-label', '停止播放');
+    btnAnimCycle.classList.add('is-stopped');
     btnAnimCycle.classList.remove('is-playing');
   }
 }
 
 function applyAnimState() {
-  if (animState === 'playing') postToIframe('play');
-  else postToIframe('stop');
+  if (animState === 'stopped') postToIframe('stop');
+  else if (animState === 'looping') postToIframe('loop-reset');
+  else postToIframe('play');
   updateAnimIcon();
 }
 
-function toggleAnimState() {
-  animState = (animState === 'playing') ? 'stopped' : 'playing';
+function cycleAnimState() {
+  if (animState === 'playing') animState = 'looping';
+  else if (animState === 'looping') animState = 'stopped';
+  else animState = 'playing';
   applyAnimState();
-  showToast(animState === 'playing' ? '播放' : '已停止');
+  showToast(animState === 'playing' ? '单次播放' : animState === 'looping' ? '循环播放' : '停止播放');
 }
 
 function makeField(field) {
@@ -865,7 +870,7 @@ splitterEl.addEventListener('pointermove', onSplitMove);
 splitterEl.addEventListener('pointerup', onSplitUp);
 splitterEl.addEventListener('pointercancel', onSplitUp);
 
-/* ===== 预览区交互（事件绑定在 previewWrap 上，遮罩上的事件会冒泡） ===== */
+/* 预览区缩放/平移/捏合 */
 let activePointers = new Map();
 let isPanning = false;
 let panStartX = 0, panStartY = 0, panStartTx = 0, panStartTy = 0;
@@ -875,7 +880,6 @@ let pinchCenterX = 0, pinchCenterY = 0;
 previewWrap.addEventListener('pointerdown', e => {
   if (e.target.closest('.view-controls, .preview-badge')) return;
   if (e.pointerType === 'mouse' && e.button !== 0) return;
-  e.preventDefault();
   activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   if (activePointers.size === 2) {
     const pts = Array.from(activePointers.values());
@@ -901,7 +905,6 @@ previewWrap.addEventListener('pointermove', e => {
     activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   }
   if (activePointers.size === 2 && pinchStartDist > 0) {
-    e.preventDefault();
     const pts = Array.from(activePointers.values());
     const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
     const newScale = clamp(pinchStartScale * (dist / pinchStartDist), 0.25, 8);
@@ -944,28 +947,16 @@ function endPan(e) {
 }
 previewWrap.addEventListener('pointerup', endPan);
 previewWrap.addEventListener('pointercancel', endPan);
-
 previewWrap.addEventListener('wheel', e => {
   if (e.target.closest('.view-controls, .preview-badge')) return;
   e.preventDefault();
   const rect = previewWrap.getBoundingClientRect();
   zoomAt(e.deltaY < 0 ? 1.15 : 1/1.15, e.clientX - rect.left, e.clientY - rect.top);
 }, { passive: false });
-
 previewWrap.addEventListener('dblclick', e => {
   if (e.target.closest('.view-controls, .preview-badge')) return;
-  e.preventDefault();
   fitToView();
 });
-
-/* ===== 阻止浏览器双指缩放（全局，iOS Safari 必须） ===== */
-['gesturestart', 'gesturechange', 'gestureend'].forEach(evt => {
-  document.addEventListener(evt, e => e.preventDefault(), { passive: false });
-});
-/* 阻止 touchmove 双指缩放（部分 Android 浏览器） */
-document.addEventListener('touchmove', e => {
-  if (e.touches.length > 1) e.preventDefault();
-}, { passive: false });
 
 function saveDraft() {
   try {
@@ -1027,9 +1018,9 @@ zoomFitBtn.addEventListener('click', () => {
   showToast('画布已重置');
 });
 
-btnAnimCycle.addEventListener('click', toggleAnimState);
+btnAnimCycle.addEventListener('click', cycleAnimState);
 
-/* iframe 汇报尺寸 */
+/* iframe 汇报尺寸 → 更新 badge */
 window.addEventListener('message', e => {
   if (e.data && e.data.type === 'size') {
     previewBadge.textContent = `${Math.round(e.data.width)} × ${Math.round(e.data.height)}`;
@@ -1040,6 +1031,19 @@ window.addEventListener('message', e => {
 previewEl.addEventListener('load', () => {
   setTimeout(applyAnimState, 200);
 });
+
+document.addEventListener('gesturestart', e => {
+  if (previewWrap.contains(e.target)) return;
+  e.preventDefault();
+}, { passive: false });
+document.addEventListener('gesturechange', e => {
+  if (previewWrap.contains(e.target)) return;
+  e.preventDefault();
+}, { passive: false });
+document.addEventListener('gestureend', e => {
+  if (previewWrap.contains(e.target)) return;
+  e.preventDefault();
+}, { passive: false });
 
 if (window.visualViewport) {
   window.visualViewport.addEventListener('scroll', () => {
