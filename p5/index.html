@@ -71,9 +71,6 @@ body {
   pointer-events: auto;
 }
 
-/* 修改 1: 删除 .preview-badge 规则 */
-
-/* 右上角菜单 */
 .preview-menu-wrap {
   position: absolute;
   top: 14px; right: 14px;
@@ -99,9 +96,15 @@ body {
   left: auto; right: 0;
 }
 
-/* 修改 2: 增加 is-ready 状态色，用于"下载录像" */
 .menu__item.is-recording { color: #dc2626; }
 .menu__item.is-ready { color: var(--accent); font-weight: 600; }
+
+/* 自动换行的绿色勾 */
+.menu__item .wrap-check {
+  color: #16a34a;
+  font-weight: 700;
+  margin-left: 2px;
+}
 
 .view-controls {
   position: absolute; left: 14px; bottom: 12px; z-index: 8;
@@ -328,9 +331,7 @@ body {
     <div class="preview-stage" id="previewStage">
       <iframe id="preview" sandbox="allow-scripts allow-same-origin" title="p5.js 预览"></iframe>
     </div>
-    <!-- 修改 3: 删除 preview-badge -->
 
-    <!-- 右上角菜单 -->
     <div class="preview-menu-wrap">
       <button class="preview-menu-btn" id="btnPreviewMenu" type="button" title="更多" aria-label="更多" aria-haspopup="true" aria-expanded="false">⋯</button>
       <div class="menu" id="previewMenu" hidden>
@@ -402,7 +403,6 @@ const appEl = $('app');
 const previewWrap = $('previewWrap');
 const previewStage = $('previewStage');
 const previewEl = $('preview');
-// 修改 4: 删除 previewBadge 引用
 const splitterEl = $('splitter');
 const splitterGrip = $('splitterGrip');
 const editorWrap = $('editorWrap');
@@ -439,9 +439,8 @@ let animState = 'playing';
 let previewBg = 'checker';
 let wrapEnabled = false;
 
-/* 修改 5: 录制状态改为三态 + 暂存录像 */
 let isRecording = false;
-let pendingRecord = null;   // { blob, isMP4 } — 录制完成后暂存，等待用户手势下载
+let pendingRecord = null;
 
 function showToast(msg) {
   toastEl.textContent = msg;
@@ -475,7 +474,6 @@ function draw() {
 `;
 }
 
-/* iframe 运行时：播放/停止 + 录制协议 */
 function buildRuntimeHTML(userCode) {
   return `<!DOCTYPE html>
 <html>
@@ -493,7 +491,6 @@ function buildRuntimeHTML(userCode) {
 <script>
 ${userCode}
 
-/* ============ 录制（iframe 内） ============ */
 var _recorder = null;
 var _chunks = [];
 var _recordMime = '';
@@ -581,7 +578,6 @@ document.addEventListener('dblclick', function (e) { e.preventDefault(); }, { pa
 </html>`;
 }
 
-/* 修改 6: 删除 previewBadge "加载中" 逻辑 */
 function updatePreview() {
   const code = editor ? editor.getValue() : buildTemplate();
   previewEl.srcdoc = buildRuntimeHTML(code);
@@ -653,10 +649,19 @@ function toggleAnimState() {
   showToast(animState === 'playing' ? '播放' : '已停止');
 }
 
+/* ===== 自动换行标签（开 → 绿色勾） ===== */
+function updateWrapLabel() {
+  if (wrapEnabled) {
+    btnWrapToggle.innerHTML = '自动换行：<span class="wrap-check">✓</span>';
+  } else {
+    btnWrapToggle.textContent = '自动换行：关';
+  }
+}
+
 function setWrap(on, silent) {
   wrapEnabled = !!on;
   if (editor) editor.setOption('lineWrapping', wrapEnabled);
-  btnWrapToggle.textContent = '自动换行：' + (wrapEnabled ? '开' : '关');
+  updateWrapLabel();
   try { localStorage.setItem(WRAP_KEY, wrapEnabled ? '1' : '0'); } catch (_) {}
   if (!silent) showToast(wrapEnabled ? '已开启自动换行' : '已关闭自动换行');
 }
@@ -686,7 +691,7 @@ function formatCode() {
   }
 }
 
-/* 保存 PNG（沿用原有逻辑：dataURL + a.download，Safari 可正常保存到文件夹） */
+/* ===== 保存 PNG（保持原路径：data URL 直接落盘） ===== */
 function capturePNG() {
   let canvas = null;
   try {
@@ -705,7 +710,64 @@ function capturePNG() {
   }
 }
 
-/* 修改 7: 录制按钮三态切换 */
+/* ===== 通用分享/下载：优先 Web Share（Safari 才能落盘），回退 a.download ===== */
+function legacyDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.rel = 'noopener';
+  a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+function shareOrDownload(blob, filename, onDone) {
+  let file = null;
+  try {
+    file = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
+  } catch (_) {}
+
+  const canShareFiles = !!(file && navigator.share && navigator.canShare &&
+                          navigator.canShare({ files: [file] }));
+
+  if (canShareFiles) {
+    /* 关键：navigator.share 在 click 同步栈内直接调用，Safari 才能弹系统分享面板
+       用户选择「存储到文件」即可落盘到"下载"文件夹 */
+    navigator.share({ files: [file], title: filename })
+      .then(() => { onDone && onDone('shared'); })
+      .catch(err => {
+        if (err && err.name === 'AbortError') {
+          onDone && onDone('cancelled');
+          return;
+        }
+        /* share 失败时尽力回退（此时可能不在手势中，Safari 可能拦截，尽力而为） */
+        try { legacyDownload(blob, filename); } catch (_) {}
+        onDone && onDone('downloaded');
+      });
+    return;
+  }
+
+  /* 不支持 share 的浏览器（桌面 Chrome/Firefox 等）：a.download */
+  legacyDownload(blob, filename);
+  onDone && onDone('downloaded');
+}
+
+/* ===== 保存 HTML（走 Web Share） ===== */
+function saveHTML() {
+  const code = editor.getValue();
+  const html = buildRuntimeHTML(code);
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  shareOrDownload(blob, 'sketch.html', result => {
+    if (result === 'shared') showToast('已保存 sketch.html');
+    else if (result === 'downloaded') showToast('已保存 sketch.html');
+    else if (result === 'cancelled') showToast('已取消');
+  });
+}
+
+/* ===== 录制三态按钮 ===== */
 function updateRecordButton() {
   if (isRecording) {
     btnRecordMP4.textContent = '停止录制';
@@ -721,31 +783,28 @@ function updateRecordButton() {
   }
 }
 
-/* 修改 8: 录制三态处理 —— 录制 / 停止 / 下载（下载在用户手势中） */
 function handleRecordClick() {
   if (isRecording) {
     postToIframe('record-stop');
     showToast('正在停止录制…');
     return;
   }
+
   if (pendingRecord) {
-    // 关键：此时在 click 事件同步栈里 → Safari 会正常触发下载/另存为
     const { blob, isMP4 } = pendingRecord;
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = isMP4 ? 'sketch.mp4' : 'sketch.webm';
-    a.rel = 'noopener';
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    setTimeout(() => URL.revokeObjectURL(url), 5000);
-    showToast(isMP4 ? '已保存 sketch.mp4' : '已保存 sketch.webm');
-    pendingRecord = null;
-    updateRecordButton();
+    const filename = isMP4 ? 'sketch.mp4' : 'sketch.webm';
+    shareOrDownload(blob, filename, result => {
+      if (result === 'shared' || result === 'downloaded') {
+        pendingRecord = null;
+        updateRecordButton();
+        showToast(isMP4 ? '已保存 sketch.mp4' : '已保存 sketch.webm');
+      } else if (result === 'cancelled') {
+        showToast('已取消，可重新点击下载');
+      }
+    });
     return;
   }
+
   postToIframe('record-start');
 }
 
@@ -895,24 +954,7 @@ function loadDraft() {
   return null;
 }
 
-/* 修改 9: HTML 保存改 octet-stream + 5s revoke，Safari 才能正常落盘 */
-function saveHTML() {
-  const code = editor.getValue();
-  const html = buildRuntimeHTML(code);
-  const blob = new Blob([html], { type: 'application/octet-stream' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'sketch.html';
-  a.rel = 'noopener';
-  a.style.display = 'none';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 5000);
-  showToast('已保存 sketch.html');
-}
-
+/* ===== 菜单项事件 ===== */
 btnSave.addEventListener('click', () => { closeAllMenus(); saveHTML(); });
 btnReset.addEventListener('click', () => {
   closeAllMenus();
@@ -927,7 +969,6 @@ btnFormat.addEventListener('click', () => { closeAllMenus(); formatCode(); });
 btnWrapToggle.addEventListener('click', () => { setWrap(!wrapEnabled); closeAllMenus(); });
 
 btnSavePNG.addEventListener('click', () => { closeAllMenus(); capturePNG(); });
-/* 修改 10: 录制按钮改用 handleRecordClick 三态处理 */
 btnRecordMP4.addEventListener('click', () => { closeAllMenus(); handleRecordClick(); });
 
 bgBtns.forEach(btn => {
@@ -943,7 +984,6 @@ zoomResetBtn.addEventListener('click', () => {
 
 btnAnimCycle.addEventListener('click', toggleAnimState);
 
-/* 修改 11: 删除 size 分支；录制改为暂存 pendingRecord 等用户手势下载 */
 window.addEventListener('message', e => {
   const d = e.data;
   if (!d) return;
@@ -1006,7 +1046,7 @@ function init() {
     if (localStorage.getItem(WRAP_KEY) === '1') wrapEnabled = true;
   } catch (_) {}
   editor.setOption('lineWrapping', wrapEnabled);
-  btnWrapToggle.textContent = '自动换行：' + (wrapEnabled ? '开' : '关');
+  updateWrapLabel();
 
   const savedCode = loadDraft();
   editor.setValue(savedCode != null ? savedCode : buildTemplate());
