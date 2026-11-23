@@ -2,7 +2,6 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8" />
-<!-- 修改 1: viewport 强化，禁用缩放 -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
 <title>p5.js编辑器</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.css" />
@@ -20,7 +19,6 @@
 }
 *,*::before,*::after { box-sizing: border-box; }
 
-/* 修改 2: html/body 用 pan-x pan-y，禁用 pinch-zoom 与双击 zoom */
 html {
   height: 100%;
   touch-action: pan-x pan-y;
@@ -41,7 +39,6 @@ body {
   position: relative;
 }
 
-/* 修改 3: 预览区不再拦截手势 */
 .preview-wrap {
   flex: 80 1 0; min-height: 80px;
   position: relative; overflow: hidden;
@@ -68,14 +65,11 @@ body {
   transform-origin: center center;
   will-change: transform;
 }
-/* 修改 4: iframe 接收鼠标/触摸/滚轮 */
 .preview-stage iframe {
   display: block; width: 100%; height: 100%;
   border: 0; background: transparent;
   pointer-events: auto;
 }
-
-/* 修改 5: 删除 .preview-mask 相关规则 */
 
 .preview-badge {
   position: absolute; right: 14px; bottom: 12px;
@@ -139,7 +133,6 @@ body {
 }
 .zoom-btn:hover { background: var(--hover); color: var(--text); }
 .zoom-btn:disabled { opacity: .4; cursor: not-allowed; }
-.zoom-btn svg { display: block; }
 .zoom-label {
   min-width: 48px; height: 26px; padding: 0 4px;
   font-family: inherit; font-size: 11.5px; font-weight: 600;
@@ -162,7 +155,8 @@ body {
   touch-action: none;
 }
 .tool-group { flex: 0 0 auto; display: flex; align-items: center; gap: 2px; }
-/* 修改 6: tool-center 作为播放按钮定位参照 */
+.tool-group--left, .tool-group--right { position: relative; }
+
 .tool-center {
   flex: 1 1 auto; min-width: 60px;
   display: flex; align-items: center; justify-content: center;
@@ -184,7 +178,7 @@ body {
 .tool-btn.primary { color: #fff; background: var(--accent); border-color: var(--accent); }
 .tool-btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
 
-/* 修改 7: 播放按钮绝对居中，特异性高于 .tool-btn */
+/* 播放按钮：绝对居中 */
 .tool-btn.anim-btn {
   position: absolute;
   left: 50%; top: 50%;
@@ -198,7 +192,42 @@ body {
 .tool-btn.anim-btn:active:not(:disabled) { transform: translate(-50%, -50%) scale(.94); }
 .tool-btn.anim-btn.is-playing { color: #dc2626; }
 
-/* 修改 8: grip 指示条改为中央留白 + 左右双条 */
+/* 菜单按钮与下拉菜单 */
+.menu-btn {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  line-height: 1;
+  padding: 0 4px;
+}
+.menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 110px;
+  padding: 4px;
+  display: flex; flex-direction: column; gap: 2px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(15,23,42,.18);
+  z-index: 30;
+}
+.tool-group--right .menu { left: auto; right: 0; }
+.menu[hidden] { display: none; }
+.menu__item {
+  width: 100%;
+  padding: 8px 12px;
+  text-align: left;
+  font-family: inherit; font-size: 12.5px; color: var(--text);
+  background: transparent; border: 0; border-radius: 5px;
+  cursor: pointer; touch-action: manipulation;
+  transition: background .14s;
+}
+.menu__item:hover { background: var(--hover); }
+.menu__item:active { background: var(--active); }
+
+/* grip 双条（中央留给播放按钮） */
 .splitter-grip {
   flex: 1 1 auto; min-width: 20px; height: 100%;
   cursor: ns-resize; touch-action: none; position: relative;
@@ -230,75 +259,6 @@ body {
 }
 .editor-wrap[hidden] { display: none !important; }
 
-.attr-panel {
-  position: fixed;
-  top: var(--attr-top, 0); right: 0; bottom: 0;
-  z-index: 95;
-  width: 320px; max-width: calc(100vw - 24px);
-  display: flex; flex-direction: column;
-  background: var(--panel);
-  border-left: 1px solid var(--border);
-  box-shadow: -8px 0 32px rgba(15,23,42,.16);
-  transform: translateX(100%);
-  transition: transform .22s cubic-bezier(.2,.9,.4,1.1);
-}
-.attr-panel:not([hidden]) { transform: translateX(0); }
-.attr-panel[hidden] { display: none; }
-.attr-panel__header {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--border);
-  gap: 8px;
-}
-.attr-panel__title { font-size: 13px; font-weight: 600; color: var(--accent); }
-.attr-panel__close {
-  width: 28px; height: 28px; padding: 0;
-  display: grid; place-items: center;
-  font-size: 14px; color: var(--text-dim);
-  background: transparent; border: 0; border-radius: 6px;
-  cursor: pointer;
-  transition: background .14s, color .14s;
-}
-.attr-panel__close:hover { background: var(--hover); color: var(--text); }
-.attr-panel__body {
-  flex: 1; overflow-y: auto;
-  padding: 12px 16px 16px;
-}
-.attr-panel__body::-webkit-scrollbar { width: 8px; }
-.attr-panel__body::-webkit-scrollbar-thumb { background: var(--border-hover); border-radius: 4px; }
-
-.group { margin-bottom: 14px; }
-.group__title {
-  font-size: 11.5px; font-weight: 600;
-  color: var(--text-muted); text-transform: uppercase;
-  letter-spacing: .04em; margin-bottom: 8px;
-  user-select: none;
-}
-.group__items { display: flex; flex-direction: column; gap: 8px; }
-
-.field { display: flex; flex-direction: column; gap: 3px; }
-.field__label { font-size: 11px; color: var(--text-dim); }
-.field__input, .field__select {
-  width: 100%; height: 30px; padding: 0 8px;
-  font-family: inherit; font-size: 12.5px; color: var(--text);
-  background: var(--panel); border: 1px solid var(--border);
-  border-radius: 6px; outline: none;
-  transition: border-color .14s, box-shadow .14s;
-}
-.field__input:focus, .field__select:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(37,99,235,.15);
-}
-.field__row { display: flex; align-items: center; gap: 6px; }
-.field__color {
-  flex: 0 0 auto; width: 36px; height: 30px; padding: 2px;
-  border: 1px solid var(--border); border-radius: 6px;
-  background: transparent; cursor: pointer;
-}
-.field__color::-webkit-color-swatch-wrapper { padding: 0; }
-.field__color::-webkit-color-swatch { border: 0; border-radius: 4px; }
-.field__text { flex: 1; min-width: 0; }
-
 .toast {
   position: fixed; left: 50%; bottom: 24px;
   transform: translate(-50%, 14px);
@@ -314,7 +274,9 @@ body {
 @media (max-width: 720px) {
   .splitter { flex-basis: 32px; padding: 0 4px; }
   .tool-btn { min-width: 26px; height: 22px; font-size: 11.5px; padding: 0 6px; }
-  /* 修改 9: 移动端 grip 双条同步缩小 */
+  .menu-btn { font-size: 16px; }
+  .menu { min-width: 100px; }
+
   .splitter-grip::before,
   .splitter-grip::after { width: 28px; height: 3px; }
   .splitter-grip::before { right: calc(50% + 18px); }
@@ -330,20 +292,6 @@ body {
   .zoom-label { min-width: 42px; font-size: 11px; }
   .zoom-btn { min-width: 22px; height: 22px; font-size: 12px; }
   .bg-btn { width: 16px; height: 16px; }
-
-  .attr-panel {
-    position: static;
-    width: 100%; max-width: none;
-    flex: 80 1 0;
-    min-height: 100px;
-    border-left: 0;
-    box-shadow: none;
-    transform: none;
-    transition: none;
-  }
-  .attr-panel:not([hidden]) { transform: none; }
-  .attr-panel__header { padding: 10px 12px; }
-  .attr-panel__body { padding: 10px 14px 12px; }
 }
 </style>
 </head>
@@ -352,7 +300,6 @@ body {
 <div class="app" id="app">
   <section class="preview-wrap bg-checker" id="previewWrap">
     <div class="preview-stage" id="previewStage">
-      <!-- 修改 10: 移除 preview-mask -->
       <iframe id="preview" sandbox="allow-scripts allow-same-origin" title="p5.js 预览"></iframe>
     </div>
     <div class="preview-badge" id="previewBadge">—</div>
@@ -366,41 +313,35 @@ body {
       <button class="zoom-btn" id="zoomOut" type="button" title="缩小" aria-label="缩小">−</button>
       <button class="zoom-label" id="zoomReset" type="button" title="重置为 100%">100%</button>
       <button class="zoom-btn" id="zoomIn" type="button" title="放大" aria-label="放大">+</button>
-      <button class="zoom-btn" id="zoomFit" type="button" title="重置画布" aria-label="重置画布">⊡</button>
-      <!-- 修改 11: 移除播放按钮（已移至分栏中央） -->
     </div>
   </section>
 
   <div class="splitter" id="splitter">
-    <div class="tool-group">
-      <button class="tool-btn primary" id="btnSave" type="button" title="保存 HTML">保存</button>
-      <button class="tool-btn" id="btnReset" type="button" title="恢复模板">重置</button>
+    <div class="tool-group tool-group--left">
+      <button class="tool-btn menu-btn" id="btnMenuLeft" type="button" title="菜单" aria-label="菜单" aria-haspopup="true" aria-expanded="false">⋯</button>
+      <div class="menu" id="menuLeft" hidden>
+        <button class="menu__item" id="btnSave" type="button">保存</button>
+      </div>
     </div>
     <div class="tool-center">
       <div class="splitter-grip" id="splitterGrip" title="拖动调整布局 · 双击恢复默认"></div>
-      <!-- 修改 12: 播放按钮移入中间工具区中央 -->
       <button class="tool-btn anim-btn is-playing" id="btnAnimCycle" type="button" title="停止" aria-label="停止">
         <svg id="animIcon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
           <rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor" stroke="none"/>
         </svg>
       </button>
     </div>
-    <div class="tool-group">
-      <button class="tool-btn" id="btnTogglePanel" type="button" title="属性面板">属性</button>
+    <div class="tool-group tool-group--right">
+      <button class="tool-btn menu-btn" id="btnMenuRight" type="button" title="菜单" aria-label="菜单" aria-haspopup="true" aria-expanded="false">⋯</button>
+      <div class="menu" id="menuRight" hidden>
+        <button class="menu__item" id="btnReset" type="button">重置</button>
+      </div>
     </div>
   </div>
 
   <section class="editor-wrap" id="editorWrap">
     <textarea id="code"></textarea>
   </section>
-
-  <aside class="attr-panel" id="attrPanel" hidden>
-    <div class="attr-panel__header">
-      <span class="attr-panel__title">属性</span>
-      <button class="attr-panel__close" id="attrPanelClose" type="button" aria-label="关闭">✕</button>
-    </div>
-    <div class="attr-panel__body" id="attrPanelBody"></div>
-  </aside>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -412,76 +353,36 @@ body {
 'use strict';
 
 const P5_CDN = 'https://cdn.jsdelivr.net/npm/p5@1.11.3/lib/p5.min.js';
-const DRAFT_KEY = 'p5-editor.draft.v1';
+const DRAFT_KEY = 'p5-editor.draft.v2';
 const SPLIT_KEY = 'p5-editor.split.v1';
 const BG_KEY = 'p5-editor.bg.v1';
-
-const PARAM_GROUPS = [
-  { title: '画布', fields: [
-    { key: 'bg', label: '背景色', type: 'color' }
-  ]},
-  { title: '形状', fields: [
-    { key: 'shapeType', label: '类型', type: 'select', options: [
-      { value: 'rect', label: '矩形' },
-      { value: 'ellipse', label: '椭圆' },
-      { value: 'triangle', label: '三角形' }
-    ]},
-    { key: 'x', label: 'X', type: 'number', min: -2000, max: 2000, step: 1 },
-    { key: 'y', label: 'Y', type: 'number', min: -2000, max: 2000, step: 1 },
-    { key: 'w', label: '宽度', type: 'number', min: 1, max: 2000, step: 1 },
-    { key: 'h', label: '高度', type: 'number', min: 1, max: 2000, step: 1 }
-  ]},
-  { title: '样式', fields: [
-    { key: 'fill', label: '填充', type: 'color' },
-    { key: 'stroke', label: '描边', type: 'color' },
-    { key: 'strokeWeight', label: '描边宽度', type: 'number', min: 0, max: 20, step: 0.5 }
-  ]},
-  { title: '动画', fields: [
-    { key: 'animX', label: '水平速度', type: 'number', min: -20, max: 20, step: 0.5 },
-    { key: 'animY', label: '垂直速度', type: 'number', min: -20, max: 20, step: 0.5 },
-    { key: 'animRot', label: '旋转速度', type: 'number', min: -10, max: 10, step: 0.5 }
-  ]}
-];
-
-const DEFAULT_PARAMS = {
-  bg: '#ffffff',
-  shapeType: 'rect',
-  x: 100, y: 100, w: 200, h: 200,
-  fill: '#3b82f6', stroke: '#000000', strokeWeight: 0,
-  animX: 1, animY: 0, animRot: 0
-};
 
 const $ = id => document.getElementById(id);
 const appEl = $('app');
 const previewWrap = $('previewWrap');
 const previewStage = $('previewStage');
 const previewEl = $('preview');
-// 修改 13: 删除 previewMask 引用
 const previewBadge = $('previewBadge');
 const splitterEl = $('splitter');
 const splitterGrip = $('splitterGrip');
 const editorWrap = $('editorWrap');
-const attrPanel = $('attrPanel');
-const attrPanelBody = $('attrPanelBody');
-const attrPanelClose = $('attrPanelClose');
 const toastEl = $('toast');
 const btnSave = $('btnSave');
 const btnReset = $('btnReset');
-const btnTogglePanel = $('btnTogglePanel');
+const btnMenuLeft = $('btnMenuLeft');
+const btnMenuRight = $('btnMenuRight');
+const menuLeft = $('menuLeft');
+const menuRight = $('menuRight');
 const zoomInBtn = $('zoomIn');
 const zoomOutBtn = $('zoomOut');
 const zoomResetBtn = $('zoomReset');
-const zoomFitBtn = $('zoomFit');
 const btnAnimCycle = $('btnAnimCycle');
 const animIcon = $('animIcon');
 const bgBtns = Array.from(document.querySelectorAll('.bg-btn'));
 
-let params = { ...DEFAULT_PARAMS };
 let editor = null;
 let renderTimer = null;
 let toastTimer = null;
-let attrPanelOpen = false;
-let mobileView = 'code';
 
 let stageScale = 1, stagePanX = 0, stagePanY = 0;
 
@@ -500,7 +401,6 @@ function showToast(msg) {
 function isMobileViewport() { return window.innerWidth <= 720; }
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
-/* 修改 14: 防止编辑器自动聚焦的工具函数 */
 function blurEditor() {
   if (!editor) return;
   try {
@@ -509,31 +409,22 @@ function blurEditor() {
   } catch (_) {}
 }
 
-function buildParamsLine(p) { return `var p = window.p = ${JSON.stringify(p, null, 2)};`; }
-
-function buildTemplate(p) {
-  return `// ===== 参数区（由属性面板自动同步）=====
-${buildParamsLine(p)}
-// ===== 参数区结束 =====
-
-var s = window.s = JSON.parse(JSON.stringify(p));
-
-function setup() {
+/* 默认透明空白模板（最小 p5 骨架） */
+function buildTemplate() {
+  return `function setup() {
   createCanvas(windowWidth, windowHeight);
-  background(255);
 }
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+
 function draw() {
-  variableEllipse(mouseX, mouseY, pmouseX, pmouseY);
-}
-function variableEllipse(x, y, px, py) {
-  let speed = abs(x - px) + abs(y - py);
-  stroke(speed);
-  ellipse(x, y, speed, speed);
+  clear();
 }
 `;
 }
 
-/* 修改 15: iframe 内注入防缩放脚本 */
 function buildRuntimeHTML(userCode) {
   return `<!DOCTYPE html>
 <html>
@@ -574,17 +465,8 @@ document.addEventListener('dblclick', function (e) { e.preventDefault(); }, { pa
 </html>`;
 }
 
-function replaceParamsInCode(code, newParams) {
-  const re = /var p = window\.p = \{[\s\S]*?\};/;
-  const newLine = buildParamsLine(newParams);
-  if (re.test(code)) return code.replace(re, newLine);
-  const reOld = /const p = \{[\s\S]*?\};/;
-  if (reOld.test(code)) return code.replace(reOld, newLine);
-  return newLine + '\n\n' + code;
-}
-
 function updatePreview() {
-  const code = editor ? editor.getValue() : buildTemplate(params);
+  const code = editor ? editor.getValue() : buildTemplate();
   previewEl.srcdoc = buildRuntimeHTML(code);
   if (stageScale === 1 && stagePanX === 0 && stagePanY === 0) {
     previewBadge.textContent = '加载中…';
@@ -600,13 +482,6 @@ function applyStageTransform() {
   previewStage.style.transform =
     `translate(${stagePanX}px, ${stagePanY}px) scale(${stageScale})`;
   zoomResetBtn.textContent = Math.round(stageScale * 100) + '%';
-}
-
-function fitToView() {
-  stageScale = 1;
-  stagePanX = 0;
-  stagePanY = 0;
-  applyStageTransform();
 }
 
 function zoomAt(factor, localX, localY) {
@@ -668,138 +543,6 @@ function toggleAnimState() {
   showToast(animState === 'playing' ? '播放' : '已停止');
 }
 
-function makeField(field) {
-  const wrap = document.createElement('div');
-  wrap.className = 'field';
-  const label = document.createElement('label');
-  label.className = 'field__label';
-  label.textContent = field.label;
-  wrap.appendChild(label);
-
-  if (field.type === 'color') {
-    const row = document.createElement('div');
-    row.className = 'field__row';
-    const picker = document.createElement('input');
-    picker.type = 'color';
-    picker.className = 'field__color';
-    picker.value = /^#[0-9a-f]{6}$/i.test(params[field.key]) ? params[field.key] : '#000000';
-    const text = document.createElement('input');
-    text.type = 'text';
-    text.className = 'field__input field__text';
-    text.value = params[field.key];
-    text.placeholder = '#000000';
-    picker.addEventListener('input', () => {
-      text.value = picker.value;
-      applyParam(field.key, picker.value);
-    });
-    text.addEventListener('input', () => {
-      if (/^#[0-9a-f]{6}$/i.test(text.value)) picker.value = text.value;
-      applyParam(field.key, text.value);
-    });
-    row.appendChild(picker); row.appendChild(text);
-    wrap.appendChild(row);
-    return wrap;
-  }
-
-  if (field.type === 'select') {
-    const sel = document.createElement('select');
-    sel.className = 'field__select';
-    field.options.forEach(opt => {
-      const o = document.createElement('option');
-      o.value = opt.value; o.textContent = opt.label;
-      sel.appendChild(o);
-    });
-    sel.value = params[field.key];
-    sel.addEventListener('change', () => applyParam(field.key, sel.value));
-    wrap.appendChild(sel);
-    return wrap;
-  }
-
-  const input = document.createElement('input');
-  input.type = 'number';
-  input.className = 'field__input';
-  input.value = params[field.key];
-  if (field.min != null) input.min = field.min;
-  if (field.max != null) input.max = field.max;
-  if (field.step != null) input.step = field.step;
-  input.addEventListener('input', () => {
-    const v = parseFloat(input.value);
-    if (isFinite(v)) applyParam(field.key, v);
-  });
-  wrap.appendChild(input);
-  return wrap;
-}
-
-function renderPanel() {
-  attrPanelBody.innerHTML = '';
-  PARAM_GROUPS.forEach(group => {
-    const g = document.createElement('div');
-    g.className = 'group';
-    const title = document.createElement('div');
-    title.className = 'group__title';
-    title.textContent = group.title;
-    g.appendChild(title);
-    const items = document.createElement('div');
-    items.className = 'group__items';
-    group.fields.forEach(field => items.appendChild(makeField(field)));
-    g.appendChild(items);
-    attrPanelBody.appendChild(g);
-  });
-}
-
-function applyParam(key, value) {
-  params[key] = value;
-  if (editor) {
-    editor.setValue(replaceParamsInCode(editor.getValue(), params));
-  }
-  saveDraft();
-  schedulePreview();
-}
-
-function updateAttrPanelTop() {
-  if (!attrPanelOpen) return;
-  if (isMobileViewport()) {
-    attrPanel.style.removeProperty('--attr-top');
-    return;
-  }
-  const rect = splitterEl.getBoundingClientRect();
-  attrPanel.style.setProperty('--attr-top', rect.bottom + 'px');
-}
-
-function openAttrPanel() {
-  attrPanelOpen = true;
-  if (document.activeElement && document.activeElement.blur) {
-    try { document.activeElement.blur(); } catch (_) {}
-  }
-  updateAttrPanelTop();
-  renderPanel();
-  if (isMobileViewport()) setMobileView('attr');
-  else attrPanel.hidden = false;
-  btnTogglePanel.textContent = '关闭';
-}
-
-function closeAttrPanel() {
-  attrPanelOpen = false;
-  attrPanel.hidden = true;
-  btnTogglePanel.textContent = '属性';
-  if (isMobileViewport()) setMobileView('code');
-}
-
-/* 修改 16: 切换到属性视图时主动让编辑器失去焦点 */
-function setMobileView(view) {
-  if (!isMobileViewport()) return;
-  mobileView = view;
-  if (view === 'attr') {
-    editorWrap.hidden = true;
-    attrPanel.hidden = false;
-    blurEditor();
-  } else {
-    editorWrap.hidden = false;
-    attrPanel.hidden = true;
-    // 修改 17: 进入代码视图时不自动聚焦编辑器（防止键盘弹出）
-  }
-}
-
 function applySplit() {
   if (splitState === 'code-max') {
     previewWrap.style.flex = '0 0 80px';
@@ -810,7 +553,6 @@ function applySplit() {
   }
   previewWrap.style.minHeight = '80px';
   editorWrap.style.minHeight = '100px';
-  updateAttrPanelTop();
 }
 
 let splitDragging = false, splitMoved = false;
@@ -819,7 +561,7 @@ let lastDownTime = 0, lastDownY = 0;
 const DBLCLICK_MS = 350, DBLCLICK_DIST = 10;
 
 function onSplitDown(e) {
-  if (e.target.closest('.tool-btn')) return;
+  if (e.target.closest('.tool-btn, .menu, .menu__item')) return;
   if (e.pointerType === 'mouse' && e.button !== 0) return;
   const now = Date.now();
   if (now - lastDownTime < DBLCLICK_MS && Math.abs(e.clientY - lastDownY) < DBLCLICK_DIST) {
@@ -873,23 +615,64 @@ splitterEl.addEventListener('pointermove', onSplitMove);
 splitterEl.addEventListener('pointerup', onSplitUp);
 splitterEl.addEventListener('pointercancel', onSplitUp);
 
-/* 修改 18: 删除 previewWrap 上的指针/滚轮/双击等视图手势监听 */
-/* 视图缩放仅由 .view-controls 按钮触发 */
-
-/* 修改 19: 禁止 Safari 双指缩放（macOS gesture 事件） */
+/* 禁止 Safari 双指缩放（macOS gesture 事件） */
 ['gesturestart', 'gesturechange', 'gestureend'].forEach(evt => {
   document.addEventListener(evt, e => e.preventDefault(), { passive: false });
 });
 
-/* 修改 20: 禁止 iOS Safari 双指缩放（兜底） */
+/* 禁止 iOS Safari 双指缩放（兜底） */
 document.addEventListener('touchmove', e => {
   if (e.touches.length > 1) e.preventDefault();
 }, { passive: false });
 
+/* ===== 下拉菜单 ===== */
+function closeAllMenus() {
+  menuLeft.hidden = true;
+  menuRight.hidden = true;
+  btnMenuLeft.setAttribute('aria-expanded', 'false');
+  btnMenuRight.setAttribute('aria-expanded', 'false');
+}
+
+function openMenu(menu, btn) {
+  closeAllMenus();
+  menu.hidden = false;
+  btn.setAttribute('aria-expanded', 'true');
+  /* 自动判断向上/向下：底部空间不足时向上弹出 */
+  const btnRect = btn.getBoundingClientRect();
+  const menuH = menu.offsetHeight;
+  const spaceBelow = window.innerHeight - btnRect.bottom;
+  if (spaceBelow < menuH + 12) {
+    menu.style.top = 'auto';
+    menu.style.bottom = 'calc(100% + 6px)';
+  } else {
+    menu.style.top = 'calc(100% + 6px)';
+    menu.style.bottom = 'auto';
+  }
+}
+
+btnMenuLeft.addEventListener('click', e => {
+  e.stopPropagation();
+  if (menuLeft.hidden) openMenu(menuLeft, btnMenuLeft);
+  else closeAllMenus();
+});
+btnMenuRight.addEventListener('click', e => {
+  e.stopPropagation();
+  if (menuRight.hidden) openMenu(menuRight, btnMenuRight);
+  else closeAllMenus();
+});
+
+/* 点击外部关闭菜单 */
+document.addEventListener('pointerdown', e => {
+  if (e.target.closest('.menu')) return;
+  if (e.target.closest('#btnMenuLeft') || e.target.closest('#btnMenuRight')) return;
+  closeAllMenus();
+});
+
+/* ===== 草稿存取（仅代码） ===== */
 function saveDraft() {
   try {
     localStorage.setItem(DRAFT_KEY, JSON.stringify({
-      params, code: editor ? editor.getValue() : ''
+      code: editor ? editor.getValue() : ''
     }));
   } catch (_) {}
 }
@@ -898,7 +681,7 @@ function loadDraft() {
     const s = localStorage.getItem(DRAFT_KEY);
     if (!s) return null;
     const d = JSON.parse(s);
-    if (d && d.code && d.params) return d;
+    if (d && typeof d.code === 'string') return d.code;
   } catch (_) {}
   return null;
 }
@@ -915,21 +698,19 @@ function saveHTML() {
   showToast('已保存 sketch.html');
 }
 
-btnSave.addEventListener('click', saveHTML);
+/* ===== 菜单项事件 ===== */
+btnSave.addEventListener('click', () => {
+  closeAllMenus();
+  saveHTML();
+});
 btnReset.addEventListener('click', () => {
-  if (!confirm('恢复模板将丢失当前代码，确定？')) return;
-  params = { ...DEFAULT_PARAMS };
-  editor.setValue(buildTemplate(params));
-  renderPanel();
+  closeAllMenus();
+  if (!confirm('恢复默认将丢失当前代码，确定？')) return;
+  editor.setValue(buildTemplate());
   updatePreview();
   saveDraft();
-  showToast('已恢复模板');
+  showToast('已重置');
 });
-btnTogglePanel.addEventListener('click', () => {
-  if (attrPanelOpen) closeAttrPanel();
-  else openAttrPanel();
-});
-attrPanelClose.addEventListener('click', closeAttrPanel);
 
 bgBtns.forEach(btn => {
   btn.addEventListener('click', () => setPreviewBg(btn.dataset.bg));
@@ -940,10 +721,6 @@ zoomOutBtn.addEventListener('click', () => zoomByButton(1 / 1.25));
 zoomResetBtn.addEventListener('click', () => {
   stageScale = 1; stagePanX = 0; stagePanY = 0;
   applyStageTransform();
-});
-zoomFitBtn.addEventListener('click', () => {
-  fitToView();
-  showToast('画布已重置');
 });
 
 btnAnimCycle.addEventListener('click', toggleAnimState);
@@ -966,16 +743,12 @@ if (window.visualViewport) {
   });
 }
 
+/* 窗口尺寸变化时关闭菜单，避免错位 */
 window.addEventListener('resize', () => {
-  updateAttrPanelTop();
-  if (!isMobileViewport()) {
-    editorWrap.hidden = false;
-    if (attrPanelOpen) attrPanel.hidden = false;
-  }
+  closeAllMenus();
 });
 
 function init() {
-  /* 修改 21: 显式禁用自动聚焦 */
   editor = CodeMirror.fromTextArea($('code'), {
     mode: 'javascript',
     theme: 'material-darker',
@@ -987,14 +760,8 @@ function init() {
   });
   editor.setSize('100%', '100%');
 
-  const draft = loadDraft();
-  if (draft) {
-    params = { ...DEFAULT_PARAMS, ...draft.params };
-    editor.setValue(draft.code);
-  } else {
-    params = { ...DEFAULT_PARAMS };
-    editor.setValue(buildTemplate(params));
-  }
+  const savedCode = loadDraft();
+  editor.setValue(savedCode != null ? savedCode : buildTemplate());
 
   let inputTimer = 0;
   editor.on('change', () => {
@@ -1018,10 +785,8 @@ function init() {
   applySplit();
   setPreviewBg(previewBg);
   updateAnimIcon();
-  renderPanel();
   updatePreview();
 
-  /* 修改 22: 初始化完成后确保编辑器未获焦 */
   blurEditor();
 }
 
