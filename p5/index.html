@@ -520,46 +520,15 @@ var s = window.s = JSON.parse(JSON.stringify(p));
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
-  if (p.animX === 0 && p.animY === 0 && p.animRot === 0) noLoop();
-  reportSize();
+  background(255);
 }
-
-function windowResized() {
-  resizeCanvas(windowWidth, windowHeight);
-  if (p.animX === 0 && p.animY === 0 && p.animRot === 0) noLoop();
-  reportSize();
-}
-
-function reportSize() {
-  try { parent.postMessage({ type: 'size', width: windowWidth, height: windowHeight }, '*'); } catch (_) {}
-}
-
 function draw() {
-  background(p.bg);
-  push();
-  translate(s.x + p.w / 2, s.y + p.h / 2);
-  rotate(radians(p.animRot * frameCount));
-  translate(-p.w / 2, -p.h / 2);
-  fill(p.fill);
-  if (p.stroke && p.strokeWeight > 0) {
-    stroke(p.stroke); strokeWeight(p.strokeWeight);
-  } else {
-    noStroke();
-  }
-  if (p.shapeType === 'rect') {
-    rect(0, 0, p.w, p.h);
-  } else if (p.shapeType === 'ellipse') {
-    ellipse(p.w / 2, p.h / 2, p.w, p.h);
-  } else if (p.shapeType === 'triangle') {
-    triangle(p.w / 2, 0, p.w, p.h, 0, p.h);
-  }
-  pop();
-  s.x += p.animX;
-  s.y += p.animY;
-  if (p.animX > 0 && s.x > width) s.x = -p.w;
-  if (p.animX < 0 && s.x + p.w < 0) s.x = width;
-  if (p.animY > 0 && s.y > height) s.y = -p.h;
-  if (p.animY < 0 && s.y + p.h < 0) s.y = height;
+  variableEllipse(mouseX, mouseY, pmouseX, pmouseY);
+}
+function variableEllipse(x, y, px, py) {
+  let speed = abs(x - px) + abs(y - py);
+  stroke(speed);
+  ellipse(x, y, speed, speed);
 }
 `;
 }
