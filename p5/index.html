@@ -82,6 +82,33 @@ body {
   z-index: 2;
 }
 
+/* 右上角菜单 */
+.preview-menu-wrap {
+  position: absolute;
+  top: 14px; right: 14px;
+  z-index: 10;
+}
+.preview-menu-btn {
+  width: 32px; height: 32px;
+  display: grid; place-items: center;
+  font-family: inherit; font-size: 18px; font-weight: 700;
+  letter-spacing: 2px; line-height: 1;
+  color: var(--text-dim);
+  background: rgba(255,255,255,.94);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(8px);
+  cursor: pointer; touch-action: manipulation;
+  transition: background .14s, color .14s;
+}
+.preview-menu-btn:hover { background: var(--hover); color: var(--text); }
+.preview-menu-wrap .menu {
+  top: calc(100% + 6px);
+  left: auto; right: 0;
+}
+.menu__item.is-recording { color: #dc2626; }
+
 .view-controls {
   position: absolute; left: 14px; bottom: 12px; z-index: 8;
   display: flex; align-items: center; gap: 8px;
@@ -178,7 +205,6 @@ body {
 .tool-btn.primary { color: #fff; background: var(--accent); border-color: var(--accent); }
 .tool-btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
 
-/* 播放按钮：绝对居中 */
 .tool-btn.anim-btn {
   position: absolute;
   left: 50%; top: 50%;
@@ -192,7 +218,6 @@ body {
 .tool-btn.anim-btn:active:not(:disabled) { transform: translate(-50%, -50%) scale(.94); }
 .tool-btn.anim-btn.is-playing { color: #dc2626; }
 
-/* 菜单按钮与下拉菜单 */
 .menu-btn {
   font-size: 18px;
   font-weight: 700;
@@ -204,7 +229,7 @@ body {
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
-  min-width: 110px;
+  min-width: 120px;
   padding: 4px;
   display: flex; flex-direction: column; gap: 2px;
   background: var(--panel);
@@ -226,8 +251,8 @@ body {
 }
 .menu__item:hover { background: var(--hover); }
 .menu__item:active { background: var(--active); }
+.menu__item[disabled] { opacity: .5; cursor: not-allowed; }
 
-/* grip 双条（中央留给播放按钮） */
 .splitter-grip {
   flex: 1 1 auto; min-width: 20px; height: 100%;
   cursor: ns-resize; touch-action: none; position: relative;
@@ -257,6 +282,12 @@ body {
   font-size: 13px; line-height: 1.55;
   touch-action: pan-x pan-y;
 }
+/* 加强：CM 各层禁止 pinch zoom */
+.CodeMirror-scroll,
+.CodeMirror-lines,
+.CodeMirror textarea {
+  touch-action: pan-x pan-y;
+}
 .editor-wrap[hidden] { display: none !important; }
 
 .toast {
@@ -275,7 +306,7 @@ body {
   .splitter { flex-basis: 32px; padding: 0 4px; }
   .tool-btn { min-width: 26px; height: 22px; font-size: 11.5px; padding: 0 6px; }
   .menu-btn { font-size: 16px; }
-  .menu { min-width: 100px; }
+  .menu { min-width: 110px; }
 
   .splitter-grip::before,
   .splitter-grip::after { width: 28px; height: 3px; }
@@ -292,6 +323,8 @@ body {
   .zoom-label { min-width: 42px; font-size: 11px; }
   .zoom-btn { min-width: 22px; height: 22px; font-size: 12px; }
   .bg-btn { width: 16px; height: 16px; }
+  .preview-menu-wrap { top: 8px; right: 8px; }
+  .preview-menu-btn { width: 28px; height: 28px; font-size: 16px; }
 }
 </style>
 </head>
@@ -303,6 +336,16 @@ body {
       <iframe id="preview" sandbox="allow-scripts allow-same-origin" title="p5.js 预览"></iframe>
     </div>
     <div class="preview-badge" id="previewBadge">—</div>
+
+    <!-- 右上角菜单 -->
+    <div class="preview-menu-wrap">
+      <button class="preview-menu-btn" id="btnPreviewMenu" type="button" title="更多" aria-label="更多" aria-haspopup="true" aria-expanded="false">⋯</button>
+      <div class="menu" id="previewMenu" hidden>
+        <button class="menu__item" id="btnSavePNG" type="button">保存 PNG</button>
+        <button class="menu__item" id="btnRecordMP4" type="button">录制 MP4</button>
+      </div>
+    </div>
+
     <div class="view-controls">
       <div class="bg-switcher" role="group" aria-label="预览背景">
         <button class="bg-btn is-active" data-bg="checker" type="button" title="棋盘格背景" aria-label="棋盘格背景"></button>
@@ -335,6 +378,8 @@ body {
       <button class="tool-btn menu-btn" id="btnMenuRight" type="button" title="菜单" aria-label="菜单" aria-haspopup="true" aria-expanded="false">⋯</button>
       <div class="menu" id="menuRight" hidden>
         <button class="menu__item" id="btnReset" type="button">重置</button>
+        <button class="menu__item" id="btnFormat" type="button">格式化代码</button>
+        <button class="menu__item" id="btnWrapToggle" type="button">自动换行：关</button>
       </div>
     </div>
   </div>
@@ -348,6 +393,7 @@ body {
 
 <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/mode/javascript/javascript.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/js-beautify@1.15.1/js/lib/beautify.min.js"></script>
 <script>
 (function () {
 'use strict';
@@ -356,6 +402,7 @@ const P5_CDN = 'https://cdn.jsdelivr.net/npm/p5@1.11.3/lib/p5.min.js';
 const DRAFT_KEY = 'p5-editor.draft.v2';
 const SPLIT_KEY = 'p5-editor.split.v1';
 const BG_KEY = 'p5-editor.bg.v1';
+const WRAP_KEY = 'p5-editor.wrap.v1';
 
 const $ = id => document.getElementById(id);
 const appEl = $('app');
@@ -369,10 +416,16 @@ const editorWrap = $('editorWrap');
 const toastEl = $('toast');
 const btnSave = $('btnSave');
 const btnReset = $('btnReset');
+const btnFormat = $('btnFormat');
+const btnWrapToggle = $('btnWrapToggle');
 const btnMenuLeft = $('btnMenuLeft');
 const btnMenuRight = $('btnMenuRight');
+const btnPreviewMenu = $('btnPreviewMenu');
+const btnSavePNG = $('btnSavePNG');
+const btnRecordMP4 = $('btnRecordMP4');
 const menuLeft = $('menuLeft');
 const menuRight = $('menuRight');
+const previewMenu = $('previewMenu');
 const zoomInBtn = $('zoomIn');
 const zoomOutBtn = $('zoomOut');
 const zoomResetBtn = $('zoomReset');
@@ -391,6 +444,8 @@ let splitState = 'default';
 
 let animState = 'playing';
 let previewBg = 'checker';
+let wrapEnabled = false;
+let isRecording = false;
 
 function showToast(msg) {
   toastEl.textContent = msg;
@@ -409,7 +464,6 @@ function blurEditor() {
   } catch (_) {}
 }
 
-/* 默认透明空白模板（最小 p5 骨架） */
 function buildTemplate() {
   return `function setup() {
   createCanvas(windowWidth, windowHeight);
@@ -425,6 +479,7 @@ function draw() {
 `;
 }
 
+/* iframe 运行时：注入播放/停止/录制指令 */
 function buildRuntimeHTML(userCode) {
   return `<!DOCTYPE html>
 <html>
@@ -442,6 +497,67 @@ function buildRuntimeHTML(userCode) {
 <script>
 ${userCode}
 
+/* ============ 录制状态（iframe 内） ============ */
+var _recorder = null;
+var _chunks = [];
+var _recordMime = '';
+
+function _startRecording() {
+  var canvas = document.querySelector('canvas');
+  if (!canvas) {
+    parent.postMessage({ type: 'record-error', message: '画布尚未就绪' }, '*');
+    return;
+  }
+  if (!canvas.captureStream || typeof MediaRecorder === 'undefined') {
+    parent.postMessage({ type: 'record-error', message: '此浏览器不支持录制' }, '*');
+    return;
+  }
+  var candidates = [
+    'video/mp4;codecs=avc1',
+    'video/mp4',
+    'video/webm;codecs=vp9',
+    'video/webm;codecs=vp8',
+    'video/webm'
+  ];
+  var mime = '';
+  for (var i = 0; i < candidates.length; i++) {
+    if (MediaRecorder.isTypeSupported(candidates[i])) { mime = candidates[i]; break; }
+  }
+  if (!mime) {
+    parent.postMessage({ type: 'record-error', message: '无可用编码格式' }, '*');
+    return;
+  }
+  _chunks = [];
+  _recordMime = mime;
+  var stream;
+  try {
+    stream = canvas.captureStream(30);
+    _recorder = new MediaRecorder(stream, { mimeType: mime });
+  } catch (err) {
+    parent.postMessage({ type: 'record-error', message: '创建录制器失败：' + err.message }, '*');
+    return;
+  }
+  _recorder.ondataavailable = function (ev) {
+    if (ev.data && ev.data.size > 0) _chunks.push(ev.data);
+  };
+  _recorder.onstop = function () {
+    var isMP4 = _recordMime.indexOf('mp4') >= 0;
+    var blob = new Blob(_chunks, { type: _recordMime });
+    blob.arrayBuffer().then(function (buf) {
+      parent.postMessage({ type: 'record-done', buffer: buf, isMP4: isMP4 }, '*');
+    });
+    try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (_) {}
+  };
+  _recorder.start();
+  parent.postMessage({ type: 'record-started' }, '*');
+}
+
+function _stopRecording() {
+  if (_recorder && _recorder.state !== 'inactive') {
+    try { _recorder.stop(); } catch (_) {}
+  }
+}
+
 window.addEventListener('message', function (e) {
   var cmd = e.data && e.data.type;
   try {
@@ -449,6 +565,10 @@ window.addEventListener('message', function (e) {
       if (typeof loop === 'function') loop();
     } else if (cmd === 'stop') {
       if (typeof noLoop === 'function') noLoop();
+    } else if (cmd === 'record-start') {
+      _startRecording();
+    } else if (cmd === 'record-stop') {
+      _stopRecording();
     }
   } catch (_) {}
 });
@@ -474,6 +594,7 @@ function updatePreview() {
 }
 
 function schedulePreview() {
+  if (isRecording) return;              // 录制中不重建 iframe
   clearTimeout(renderTimer);
   renderTimer = setTimeout(updatePreview, 300);
 }
@@ -496,7 +617,6 @@ function zoomAt(factor, localX, localY) {
   stageScale = newScale;
   applyStageTransform();
 }
-
 function zoomByButton(factor) {
   const rect = previewWrap.getBoundingClientRect();
   zoomAt(factor, rect.width / 2, rect.height / 2);
@@ -520,29 +640,135 @@ function postToIframe(type) {
 function updateAnimIcon() {
   if (animState === 'playing') {
     animIcon.innerHTML = '<rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor" stroke="none"/>';
-    btnAnimCycle.title = '停止';
-    btnAnimCycle.setAttribute('aria-label', '停止');
+    btnAnimCycle.title = '停止'; btnAnimCycle.setAttribute('aria-label', '停止');
     btnAnimCycle.classList.add('is-playing');
   } else {
     animIcon.innerHTML = '<polygon points="7,5 19,12 7,19" fill="currentColor" stroke="none"/>';
-    btnAnimCycle.title = '播放';
-    btnAnimCycle.setAttribute('aria-label', '播放');
+    btnAnimCycle.title = '播放'; btnAnimCycle.setAttribute('aria-label', '播放');
     btnAnimCycle.classList.remove('is-playing');
   }
 }
-
 function applyAnimState() {
   if (animState === 'playing') postToIframe('play');
   else postToIframe('stop');
   updateAnimIcon();
 }
-
 function toggleAnimState() {
   animState = (animState === 'playing') ? 'stopped' : 'playing';
   applyAnimState();
   showToast(animState === 'playing' ? '播放' : '已停止');
 }
 
+/* ===== 自动换行 ===== */
+function setWrap(on, silent) {
+  wrapEnabled = !!on;
+  if (editor) editor.setOption('lineWrapping', wrapEnabled);
+  btnWrapToggle.textContent = '自动换行：' + (wrapEnabled ? '开' : '关');
+  try { localStorage.setItem(WRAP_KEY, wrapEnabled ? '1' : '0'); } catch (_) {}
+  if (!silent) showToast(wrapEnabled ? '已开启自动换行' : '已关闭自动换行');
+}
+
+/* ===== 格式化代码 ===== */
+function formatCode() {
+  if (typeof js_beautify === 'undefined') {
+    showToast('格式化库未加载，请检查网络');
+    return;
+  }
+  try {
+    const code = editor.getValue();
+    const formatted = js_beautify(code, {
+      indent_size: 2,
+      indent_char: ' ',
+      preserve_newlines: true,
+      max_preserve_newlines: 2,
+      end_with_newline: true,
+      wrap_line_length: 0
+    });
+    if (formatted === code) { showToast('代码已是格式化状态'); return; }
+    editor.setValue(formatted);
+    saveDraft();
+    if (!isRecording) schedulePreview();
+    showToast('已格式化');
+  } catch (err) {
+    showToast('格式化失败：' + (err && err.message || '未知错误'));
+  }
+}
+
+/* ===== 保存 PNG ===== */
+function capturePNG() {
+  let canvas = null;
+  try {
+    const doc = previewEl.contentDocument;
+    if (doc) canvas = doc.querySelector('canvas');
+  } catch (_) {}
+  if (!canvas) { showToast('无法获取画布，请稍后重试'); return; }
+  try {
+    const url = canvas.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = url; a.download = 'sketch.png';
+    document.body.appendChild(a); a.click(); a.remove();
+    showToast('已保存 sketch.png');
+  } catch (err) {
+    showToast('保存 PNG 失败：' + (err && err.message || '未知错误'));
+  }
+}
+
+/* ===== 录制 MP4 ===== */
+function toggleRecording() {
+  if (isRecording) {
+    postToIframe('record-stop');
+    showToast('正在停止录制…');
+  } else {
+    postToIframe('record-start');
+  }
+}
+
+/* ===== 下拉菜单 ===== */
+function closeAllMenus() {
+  menuLeft.hidden = true;
+  menuRight.hidden = true;
+  previewMenu.hidden = true;
+  btnMenuLeft.setAttribute('aria-expanded', 'false');
+  btnMenuRight.setAttribute('aria-expanded', 'false');
+  btnPreviewMenu.setAttribute('aria-expanded', 'false');
+}
+
+function openMenu(menu, btn) {
+  closeAllMenus();
+  menu.hidden = false;
+  btn.setAttribute('aria-expanded', 'true');
+  // 上下拉：底部空间不足时向上弹出
+  const btnRect = btn.getBoundingClientRect();
+  const menuH = menu.offsetHeight;
+  const spaceBelow = window.innerHeight - btnRect.bottom;
+  if (spaceBelow < menuH + 12) {
+    menu.style.top = 'auto';
+    menu.style.bottom = 'calc(100% + 6px)';
+  } else {
+    menu.style.top = 'calc(100% + 6px)';
+    menu.style.bottom = 'auto';
+  }
+}
+
+btnMenuLeft.addEventListener('click', e => {
+  e.stopPropagation();
+  if (menuLeft.hidden) openMenu(menuLeft, btnMenuLeft); else closeAllMenus();
+});
+btnMenuRight.addEventListener('click', e => {
+  e.stopPropagation();
+  if (menuRight.hidden) openMenu(menuRight, btnMenuRight); else closeAllMenus();
+});
+btnPreviewMenu.addEventListener('click', e => {
+  e.stopPropagation();
+  if (previewMenu.hidden) openMenu(previewMenu, btnPreviewMenu); else closeAllMenus();
+});
+
+document.addEventListener('pointerdown', e => {
+  if (e.target.closest('.menu, #btnMenuLeft, #btnMenuRight, #btnPreviewMenu')) return;
+  closeAllMenus();
+});
+
+/* ===== 分栏拖动 ===== */
 function applySplit() {
   if (splitState === 'code-max') {
     previewWrap.style.flex = '0 0 80px';
@@ -579,7 +805,6 @@ function onSplitDown(e) {
   document.body.style.cursor = 'ns-resize';
   document.body.style.userSelect = 'none';
 }
-
 function onSplitMove(e) {
   if (!splitDragging) return;
   const dy = e.clientY - splitStartY;
@@ -593,7 +818,6 @@ function onSplitMove(e) {
   splitterGrip.classList.toggle('is-snap-code', ratio >= 0.90);
   applySplit();
 }
-
 function onSplitUp(e) {
   if (!splitDragging) return;
   splitDragging = false;
@@ -615,66 +839,29 @@ splitterEl.addEventListener('pointermove', onSplitMove);
 splitterEl.addEventListener('pointerup', onSplitUp);
 splitterEl.addEventListener('pointercancel', onSplitUp);
 
-/* 禁止 Safari 双指缩放（macOS gesture 事件） */
+/* ===== 防缩放强化 ===== */
+/* 父页面：Safari macOS pinch */
 ['gesturestart', 'gesturechange', 'gestureend'].forEach(evt => {
   document.addEventListener(evt, e => e.preventDefault(), { passive: false });
 });
-
-/* 禁止 iOS Safari 双指缩放（兜底） */
+/* 父页面：iOS 多指 touchmove */
 document.addEventListener('touchmove', e => {
   if (e.touches.length > 1) e.preventDefault();
 }, { passive: false });
-
-/* ===== 下拉菜单 ===== */
-function closeAllMenus() {
-  menuLeft.hidden = true;
-  menuRight.hidden = true;
-  btnMenuLeft.setAttribute('aria-expanded', 'false');
-  btnMenuRight.setAttribute('aria-expanded', 'false');
-}
-
-function openMenu(menu, btn) {
-  closeAllMenus();
-  menu.hidden = false;
-  btn.setAttribute('aria-expanded', 'true');
-  /* 自动判断向上/向下：底部空间不足时向上弹出 */
-  const btnRect = btn.getBoundingClientRect();
-  const menuH = menu.offsetHeight;
-  const spaceBelow = window.innerHeight - btnRect.bottom;
-  if (spaceBelow < menuH + 12) {
-    menu.style.top = 'auto';
-    menu.style.bottom = 'calc(100% + 6px)';
-  } else {
-    menu.style.top = 'calc(100% + 6px)';
-    menu.style.bottom = 'auto';
-  }
-}
-
-btnMenuLeft.addEventListener('click', e => {
-  e.stopPropagation();
-  if (menuLeft.hidden) openMenu(menuLeft, btnMenuLeft);
-  else closeAllMenus();
+/* 禁止工具栏 / 预览区空白处双击缩放（不动 CodeMirror） */
+splitterEl.addEventListener('dblclick', e => {
+  if (e.target.closest('.tool-btn, .menu, .menu__item')) return;
+  e.preventDefault();
 });
-btnMenuRight.addEventListener('click', e => {
-  e.stopPropagation();
-  if (menuRight.hidden) openMenu(menuRight, btnMenuRight);
-  else closeAllMenus();
-});
-
-/* 点击外部关闭菜单 */
-document.addEventListener('pointerdown', e => {
-  if (e.target.closest('.menu')) return;
-  if (e.target.closest('#btnMenuLeft') || e.target.closest('#btnMenuRight')) return;
-  closeAllMenus();
+previewWrap.addEventListener('dblclick', e => {
+  if (e.target.closest('.view-controls, .preview-badge, .preview-menu-wrap')) return;
+  e.preventDefault();
 });
 
 /* ===== 草稿存取（仅代码） ===== */
 function saveDraft() {
-  try {
-    localStorage.setItem(DRAFT_KEY, JSON.stringify({
-      code: editor ? editor.getValue() : ''
-    }));
-  } catch (_) {}
+  try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ code: editor ? editor.getValue() : '' })); }
+  catch (_) {}
 }
 function loadDraft() {
   try {
@@ -699,18 +886,21 @@ function saveHTML() {
 }
 
 /* ===== 菜单项事件 ===== */
-btnSave.addEventListener('click', () => {
-  closeAllMenus();
-  saveHTML();
-});
+btnSave.addEventListener('click', () => { closeAllMenus(); saveHTML(); });
 btnReset.addEventListener('click', () => {
   closeAllMenus();
+  if (isRecording) { showToast('录制中，无法重置'); return; }
   if (!confirm('恢复默认将丢失当前代码，确定？')) return;
   editor.setValue(buildTemplate());
   updatePreview();
   saveDraft();
   showToast('已重置');
 });
+btnFormat.addEventListener('click', () => { closeAllMenus(); formatCode(); });
+btnWrapToggle.addEventListener('click', () => { setWrap(!wrapEnabled); closeAllMenus(); });
+
+btnSavePNG.addEventListener('click', () => { closeAllMenus(); capturePNG(); });
+btnRecordMP4.addEventListener('click', () => { closeAllMenus(); toggleRecording(); });
 
 bgBtns.forEach(btn => {
   btn.addEventListener('click', () => setPreviewBg(btn.dataset.bg));
@@ -725,9 +915,37 @@ zoomResetBtn.addEventListener('click', () => {
 
 btnAnimCycle.addEventListener('click', toggleAnimState);
 
+/* ===== 跨 window 消息 ===== */
 window.addEventListener('message', e => {
-  if (e.data && e.data.type === 'size') {
-    previewBadge.textContent = `${Math.round(e.data.width)} × ${Math.round(e.data.height)}`;
+  const d = e.data;
+  if (!d) return;
+  if (d.type === 'size') {
+    previewBadge.textContent = `${Math.round(d.width)} × ${Math.round(d.height)}`;
+  } else if (d.type === 'record-started') {
+    isRecording = true;
+    btnRecordMP4.textContent = '停止录制';
+    btnRecordMP4.classList.add('is-recording');
+    showToast('开始录制…');
+  } else if (d.type === 'record-done') {
+    isRecording = false;
+    btnRecordMP4.textContent = '录制 MP4';
+    btnRecordMP4.classList.remove('is-recording');
+    const isMP4 = !!d.isMP4;
+    const blob = new Blob([d.buffer], { type: isMP4 ? 'video/mp4' : 'video/webm' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = isMP4 ? 'sketch.mp4' : 'sketch.webm';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    showToast(isMP4 ? '已保存 sketch.mp4' : '已保存 sketch.webm（浏览器不支持 MP4）');
+    // 录制结束后若期间改过代码，刷新预览
+    updatePreview();
+  } else if (d.type === 'record-error') {
+    isRecording = false;
+    btnRecordMP4.textContent = '录制 MP4';
+    btnRecordMP4.classList.remove('is-recording');
+    showToast('录制失败：' + (d.message || '未知错误'));
   }
 });
 
@@ -743,10 +961,7 @@ if (window.visualViewport) {
   });
 }
 
-/* 窗口尺寸变化时关闭菜单，避免错位 */
-window.addEventListener('resize', () => {
-  closeAllMenus();
-});
+window.addEventListener('resize', () => { closeAllMenus(); });
 
 function init() {
   editor = CodeMirror.fromTextArea($('code'), {
@@ -759,6 +974,22 @@ function init() {
     autofocus: false
   });
   editor.setSize('100%', '100%');
+
+  // 禁止编辑器内 pinch zoom（兜底：wrapper 级）
+  const cmWrapper = editor.getWrapperElement();
+  ['gesturestart', 'gesturechange', 'gestureend'].forEach(evt => {
+    cmWrapper.addEventListener(evt, e => e.preventDefault(), { passive: false });
+  });
+  cmWrapper.addEventListener('touchmove', e => {
+    if (e.touches.length > 1) e.preventDefault();
+  }, { passive: false });
+
+  // 恢复自动换行
+  try {
+    if (localStorage.getItem(WRAP_KEY) === '1') wrapEnabled = true;
+  } catch (_) {}
+  editor.setOption('lineWrapping', wrapEnabled);
+  btnWrapToggle.textContent = '自动换行：' + (wrapEnabled ? '开' : '关');
 
   const savedCode = loadDraft();
   editor.setValue(savedCode != null ? savedCode : buildTemplate());
