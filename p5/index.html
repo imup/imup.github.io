@@ -39,11 +39,12 @@ body {
   position: relative;
 }
 
+/* 修改 1: previewWrap touch-action: auto → pan-x pan-y（禁双击缩放与 pinch） */
 .preview-wrap {
   flex: 80 1 0; min-height: 80px;
   position: relative; overflow: hidden;
   background: #f1f5f9;
-  touch-action: auto;
+  touch-action: pan-x pan-y;
   user-select: none; -webkit-user-select: none;
   transition: background-color .2s;
 }
@@ -250,23 +251,11 @@ body {
 .menu__item:active { background: var(--active); }
 .menu__item[disabled] { opacity: .5; cursor: not-allowed; }
 
+/* 修改 2: 删除 .splitter-grip::before / ::after 及 hover / is-snap-code 的灰条样式 */
 .splitter-grip {
   flex: 1 1 auto; min-width: 20px; height: 100%;
   cursor: ns-resize; touch-action: none; position: relative;
 }
-.splitter-grip::before,
-.splitter-grip::after {
-  content: ''; position: absolute; top: 50%; transform: translateY(-50%);
-  width: 40px; height: 4px;
-  background: var(--grip); border-radius: 2px;
-  transition: background .14s, width .14s;
-}
-.splitter-grip::before { right: calc(50% + 22px); }
-.splitter-grip::after  { left:  calc(50% + 22px); }
-.splitter-grip:hover::before,
-.splitter-grip:hover::after { background: var(--grip-hover); width: 52px; }
-.splitter-grip.is-snap-code::before,
-.splitter-grip.is-snap-code::after { background: var(--accent); width: 52px; }
 
 .editor-wrap {
   flex: 20 1 0; min-height: 100px;
@@ -303,15 +292,6 @@ body {
   .tool-btn { min-width: 26px; height: 22px; font-size: 11.5px; padding: 0 6px; }
   .menu-btn { font-size: 16px; }
   .menu { min-width: 110px; }
-
-  .splitter-grip::before,
-  .splitter-grip::after { width: 28px; height: 3px; }
-  .splitter-grip::before { right: calc(50% + 18px); }
-  .splitter-grip::after  { left:  calc(50% + 18px); }
-  .splitter-grip:hover::before,
-  .splitter-grip:hover::after { width: 38px; }
-  .splitter-grip.is-snap-code::before,
-  .splitter-grip.is-snap-code::after { width: 44px; }
 
   .CodeMirror { font-size: 14px; }
 
@@ -373,7 +353,7 @@ body {
       <div class="menu" id="menuRight" hidden>
         <button class="menu__item" id="btnReset" type="button">重置</button>
         <button class="menu__item" id="btnFormat" type="button">格式化代码</button>
-        <button class="menu__item" id="btnWrapToggle" type="button">自动换行：关</button>
+        <button class="menu__item" id="btnWrapToggle" type="button">自动换行</button>
       </div>
     </div>
   </div>
@@ -649,12 +629,12 @@ function toggleAnimState() {
   showToast(animState === 'playing' ? '播放' : '已停止');
 }
 
-/* ===== 自动换行标签（开 → 绿色勾） ===== */
+/* 修改 3: 自动换行——关时无后缀，开时显示绿色勾 */
 function updateWrapLabel() {
   if (wrapEnabled) {
-    btnWrapToggle.innerHTML = '自动换行：<span class="wrap-check">✓</span>';
+    btnWrapToggle.innerHTML = '自动换行 <span class="wrap-check">✓</span>';
   } else {
-    btnWrapToggle.textContent = '自动换行：关';
+    btnWrapToggle.textContent = '自动换行';
   }
 }
 
@@ -691,7 +671,7 @@ function formatCode() {
   }
 }
 
-/* ===== 保存 PNG（保持原路径：data URL 直接落盘） ===== */
+/* 保存 PNG（保持原路径：data URL 直接落盘） */
 function capturePNG() {
   let canvas = null;
   try {
@@ -710,7 +690,7 @@ function capturePNG() {
   }
 }
 
-/* ===== 通用分享/下载：优先 Web Share（Safari 才能落盘），回退 a.download ===== */
+/* 修改 4: legacyDownload 保持（仅不支持 share 的浏览器使用） */
 function legacyDownload(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -724,18 +704,17 @@ function legacyDownload(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
+/* 修改 5: File 用 application/octet-stream 防 Safari 识别错；share 失败不回退 download */
 function shareOrDownload(blob, filename, onDone) {
   let file = null;
   try {
-    file = new File([blob], filename, { type: blob.type || 'application/octet-stream' });
+    file = new File([blob], filename, { type: 'application/octet-stream' });
   } catch (_) {}
 
   const canShareFiles = !!(file && navigator.share && navigator.canShare &&
                           navigator.canShare({ files: [file] }));
 
   if (canShareFiles) {
-    /* 关键：navigator.share 在 click 同步栈内直接调用，Safari 才能弹系统分享面板
-       用户选择「存储到文件」即可落盘到"下载"文件夹 */
     navigator.share({ files: [file], title: filename })
       .then(() => { onDone && onDone('shared'); })
       .catch(err => {
@@ -743,31 +722,33 @@ function shareOrDownload(blob, filename, onDone) {
           onDone && onDone('cancelled');
           return;
         }
-        /* share 失败时尽力回退（此时可能不在手势中，Safari 可能拦截，尽力而为） */
-        try { legacyDownload(blob, filename); } catch (_) {}
-        onDone && onDone('downloaded');
+        /* 修改 6: share 失败不自动回退 download，避免多生成文件 */
+        onDone && onDone('failed', err);
       });
     return;
   }
 
-  /* 不支持 share 的浏览器（桌面 Chrome/Firefox 等）：a.download */
   legacyDownload(blob, filename);
   onDone && onDone('downloaded');
 }
 
-/* ===== 保存 HTML（走 Web Share） ===== */
+/* 修改 7: HTML blob 改 application/octet-stream（避免 Safari 当文本保存为 .txt） */
 function saveHTML() {
   const code = editor.getValue();
   const html = buildRuntimeHTML(code);
-  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-  shareOrDownload(blob, 'sketch.html', result => {
-    if (result === 'shared') showToast('已保存 sketch.html');
-    else if (result === 'downloaded') showToast('已保存 sketch.html');
-    else if (result === 'cancelled') showToast('已取消');
+  const blob = new Blob([html], { type: 'application/octet-stream' });
+  shareOrDownload(blob, 'sketch.html', (result, err) => {
+    if (result === 'shared' || result === 'downloaded') {
+      showToast('已保存 sketch.html');
+    } else if (result === 'cancelled') {
+      showToast('已取消');
+    } else {
+      showToast('保存失败，请重试' + (err && err.message ? '：' + err.message : ''));
+    }
   });
 }
 
-/* ===== 录制三态按钮 ===== */
+/* 录制三态按钮 */
 function updateRecordButton() {
   if (isRecording) {
     btnRecordMP4.textContent = '停止录制';
@@ -793,13 +774,15 @@ function handleRecordClick() {
   if (pendingRecord) {
     const { blob, isMP4 } = pendingRecord;
     const filename = isMP4 ? 'sketch.mp4' : 'sketch.webm';
-    shareOrDownload(blob, filename, result => {
+    shareOrDownload(blob, filename, (result, err) => {
       if (result === 'shared' || result === 'downloaded') {
         pendingRecord = null;
         updateRecordButton();
         showToast(isMP4 ? '已保存 sketch.mp4' : '已保存 sketch.webm');
       } else if (result === 'cancelled') {
         showToast('已取消，可重新点击下载');
+      } else {
+        showToast('保存失败，请重试' + (err && err.message ? '：' + err.message : ''));
       }
     });
     return;
@@ -930,14 +913,24 @@ splitterEl.addEventListener('pointercancel', onSplitUp);
 document.addEventListener('touchmove', e => {
   if (e.touches.length > 1) e.preventDefault();
 }, { passive: false });
-splitterEl.addEventListener('dblclick', e => {
-  if (e.target.closest('.tool-btn, .menu, .menu__item')) return;
-  e.preventDefault();
-});
-previewWrap.addEventListener('dblclick', e => {
-  if (e.target.closest('.view-controls, .preview-menu-wrap')) return;
-  e.preventDefault();
-});
+
+/* 修改 8: dblclick 无条件阻止 + touchend 双击检测兜底（排除按钮/菜单） */
+splitterEl.addEventListener('dblclick', e => { e.preventDefault(); });
+previewWrap.addEventListener('dblclick', e => { e.preventDefault(); });
+
+function installDoubleTapGuard(el) {
+  let lastEnd = 0;
+  el.addEventListener('touchend', e => {
+    if (e.target.closest('.tool-btn, .menu, .menu__item, .view-controls, .preview-menu-wrap, .zoom-btn, .zoom-label, .bg-btn')) return;
+    const now = Date.now();
+    if (now - lastEnd < 300) {
+      e.preventDefault();
+    }
+    lastEnd = now;
+  }, { passive: false });
+}
+installDoubleTapGuard(splitterEl);
+installDoubleTapGuard(previewWrap);
 
 /* ===== 草稿存取 ===== */
 function saveDraft() {
