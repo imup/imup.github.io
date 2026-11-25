@@ -201,6 +201,7 @@ body {
 .tool-btn.primary { color: #fff; background: var(--accent); border-color: var(--accent); }
 .tool-btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
 
+/* 中央运行按钮 */
 .tool-btn.anim-btn {
   position: absolute;
   left: 50%; top: 50%;
@@ -212,7 +213,14 @@ body {
 }
 .tool-btn.anim-btn:hover { background: var(--active); color: var(--accent); }
 .tool-btn.anim-btn:active:not(:disabled) { transform: translate(-50%, -50%) scale(.94); }
-.tool-btn.anim-btn.is-playing { color: #dc2626; }
+/* 运行按钮旋转动画 */
+.tool-btn.anim-btn.spinning svg {
+  animation: runSpin .5s ease;
+}
+@keyframes runSpin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
 
 .menu-btn {
   font-size: 18px;
@@ -225,7 +233,7 @@ body {
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
-  min-width: 120px;
+  min-width: 130px;
   padding: 4px;
   display: flex; flex-direction: column; gap: 2px;
   background: var(--panel);
@@ -288,7 +296,7 @@ body {
   .splitter { flex-basis: 32px; padding: 0 4px; }
   .tool-btn { min-width: 26px; height: 22px; font-size: 11.5px; padding: 0 6px; }
   .menu-btn { font-size: 16px; }
-  .menu { min-width: 110px; }
+  .menu { min-width: 120px; }
 
   .CodeMirror { font-size: 14px; }
 
@@ -339,9 +347,10 @@ body {
     </div>
     <div class="tool-center">
       <div class="splitter-grip" id="splitterGrip" title="拖动调整布局 · 双击恢复默认"></div>
-      <button class="tool-btn anim-btn is-playing" id="btnAnimCycle" type="button" title="停止" aria-label="停止">
-        <svg id="animIcon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
-          <rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor" stroke="none"/>
+      <button class="tool-btn anim-btn" id="btnRun" type="button" title="运行代码" aria-label="运行代码">
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+          <path d="M17.65 6.35A7.95 7.95 0 0 0 12 4a8 8 0 1 0 7.73 10.06l-1.95-.5A6 6 0 1 1 12 6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"
+                fill="currentColor"/>
         </svg>
       </button>
     </div>
@@ -351,6 +360,8 @@ body {
         <button class="menu__item" id="btnReset" type="button">重置</button>
         <button class="menu__item" id="btnFormat" type="button">格式化代码</button>
         <button class="menu__item" id="btnWrapToggle" type="button">自动换行</button>
+        <button class="menu__item" id="btnAutoPreviewToggle" type="button">自动预览 <span class="wrap-check">✓</span></button>
+        <button class="menu__item" id="btnSelectAll" type="button">全选代码</button>
       </div>
     </div>
   </div>
@@ -374,6 +385,7 @@ const DRAFT_KEY = 'p5-editor.draft.v2';
 const SPLIT_KEY = 'p5-editor.split.v1';
 const BG_KEY = 'p5-editor.bg.v1';
 const WRAP_KEY = 'p5-editor.wrap.v1';
+const AUTO_PREVIEW_KEY = 'p5-editor.autopreview.v1';
 
 const $ = id => document.getElementById(id);
 const appEl = $('app');
@@ -388,6 +400,8 @@ const btnSave = $('btnSave');
 const btnReset = $('btnReset');
 const btnFormat = $('btnFormat');
 const btnWrapToggle = $('btnWrapToggle');
+const btnAutoPreviewToggle = $('btnAutoPreviewToggle');
+const btnSelectAll = $('btnSelectAll');
 const btnMenuLeft = $('btnMenuLeft');
 const btnMenuRight = $('btnMenuRight');
 const btnPreviewMenu = $('btnPreviewMenu');
@@ -399,12 +413,12 @@ const previewMenu = $('previewMenu');
 const zoomInBtn = $('zoomIn');
 const zoomOutBtn = $('zoomOut');
 const zoomResetBtn = $('zoomReset');
-const btnAnimCycle = $('btnAnimCycle');
-const animIcon = $('animIcon');
+const btnRun = $('btnRun');
 const bgBtns = Array.from(document.querySelectorAll('.bg-btn'));
 
 let editor = null;
 let renderTimer = null;
+let inputTimer = 0;
 let toastTimer = null;
 
 let stageScale = 1, stagePanX = 0, stagePanY = 0;
@@ -412,9 +426,9 @@ let stageScale = 1, stagePanX = 0, stagePanY = 0;
 let splitRatio = 0.8;
 let splitState = 'default';
 
-let animState = 'playing';
 let previewBg = 'checker';
 let wrapEnabled = false;
+let autoPreviewEnabled = true;
 
 let isRecording = false;
 let pendingRecord = null;
@@ -425,7 +439,6 @@ function showToast(msg) {
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => toastEl.classList.remove('is-show'), 2200);
 }
-function isMobileViewport() { return window.innerWidth <= 720; }
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
 function blurEditor() {
@@ -458,6 +471,7 @@ function draw() {
 `;
 }
 
+/* iframe 运行时：只保留录制协议（删除 play/stop） */
 function buildRuntimeHTML(userCode) {
   return `<!DOCTYPE html>
 <html>
@@ -538,11 +552,7 @@ function _stopRecording() {
 window.addEventListener('message', function (e) {
   var cmd = e.data && e.data.type;
   try {
-    if (cmd === 'play') {
-      if (typeof loop === 'function') loop();
-    } else if (cmd === 'stop') {
-      if (typeof noLoop === 'function') noLoop();
-    } else if (cmd === 'record-start') {
+    if (cmd === 'record-start') {
       _startRecording();
     } else if (cmd === 'record-stop') {
       _stopRecording();
@@ -567,10 +577,26 @@ function updatePreview() {
   previewEl.srcdoc = buildRuntimeHTML(code);
 }
 
+/* 自动预览：录制中、关闭状态下不触发 */
 function schedulePreview() {
   if (isRecording) return;
+  if (!autoPreviewEnabled) return;
   clearTimeout(renderTimer);
   renderTimer = setTimeout(updatePreview, 300);
+}
+
+/* 立即运行：清理所有待触发的定时器，避免二次重建 */
+function runCode() {
+  if (isRecording) { showToast('录制中，无法运行'); return; }
+  clearTimeout(inputTimer);
+  clearTimeout(renderTimer);
+  updatePreview();
+  blurEditor();
+  btnRun.classList.remove('spinning');
+  // 强制重排让动画重新开始
+  void btnRun.offsetWidth;
+  btnRun.classList.add('spinning');
+  setTimeout(() => btnRun.classList.remove('spinning'), 520);
 }
 
 function applyStageTransform() {
@@ -611,28 +637,7 @@ function postToIframe(type) {
   } catch (_) {}
 }
 
-function updateAnimIcon() {
-  if (animState === 'playing') {
-    animIcon.innerHTML = '<rect x="6" y="6" width="12" height="12" rx="1.5" fill="currentColor" stroke="none"/>';
-    btnAnimCycle.title = '停止'; btnAnimCycle.setAttribute('aria-label', '停止');
-    btnAnimCycle.classList.add('is-playing');
-  } else {
-    animIcon.innerHTML = '<polygon points="7,5 19,12 7,19" fill="currentColor" stroke="none"/>';
-    btnAnimCycle.title = '播放'; btnAnimCycle.setAttribute('aria-label', '播放');
-    btnAnimCycle.classList.remove('is-playing');
-  }
-}
-function applyAnimState() {
-  if (animState === 'playing') postToIframe('play');
-  else postToIframe('stop');
-  updateAnimIcon();
-}
-function toggleAnimState() {
-  animState = (animState === 'playing') ? 'stopped' : 'playing';
-  applyAnimState();
-  showToast(animState === 'playing' ? '播放' : '已停止');
-}
-
+/* ===== 自动换行 ===== */
 function updateWrapLabel() {
   if (wrapEnabled) {
     btnWrapToggle.innerHTML = '自动换行 <span class="wrap-check">✓</span>';
@@ -640,7 +645,6 @@ function updateWrapLabel() {
     btnWrapToggle.textContent = '自动换行';
   }
 }
-
 function setWrap(on, silent) {
   wrapEnabled = !!on;
   if (editor) editor.setOption('lineWrapping', wrapEnabled);
@@ -649,6 +653,26 @@ function setWrap(on, silent) {
   if (!silent) showToast(wrapEnabled ? '已开启自动换行' : '已关闭自动换行');
 }
 
+/* ===== 自动预览开关 ===== */
+function updateAutoPreviewLabel() {
+  if (autoPreviewEnabled) {
+    btnAutoPreviewToggle.innerHTML = '自动预览 <span class="wrap-check">✓</span>';
+  } else {
+    btnAutoPreviewToggle.textContent = '自动预览';
+  }
+}
+function setAutoPreview(on, silent) {
+  autoPreviewEnabled = !!on;
+  updateAutoPreviewLabel();
+  try { localStorage.setItem(AUTO_PREVIEW_KEY, autoPreviewEnabled ? '1' : '0'); } catch (_) {}
+  if (!silent) showToast(autoPreviewEnabled ? '已开启自动预览' : '已关闭自动预览');
+  // 从关到开时刷新一次，让用户立即看到最新代码
+  if (autoPreviewEnabled && !isRecording && editor) {
+    updatePreview();
+  }
+}
+
+/* ===== 格式化代码 ===== */
 function formatCode() {
   if (typeof js_beautify === 'undefined') {
     showToast('格式化库未加载，请检查网络');
@@ -667,14 +691,22 @@ function formatCode() {
     if (formatted === code) { showToast('代码已是格式化状态'); return; }
     editor.setValue(formatted);
     saveDraft();
-    if (!isRecording) schedulePreview();
+    // 格式化不自动重建预览（代码语义未变，避免动画重头播放）
     showToast('已格式化');
   } catch (err) {
     showToast('格式化失败：' + (err && err.message || '未知错误'));
   }
 }
 
-/* ===== 保存 PNG（data URL，时间戳命名） ===== */
+/* ===== 全选代码 ===== */
+function selectAllCode() {
+  if (!editor) return;
+  editor.execCommand('selectAll');
+  try { editor.focus(); } catch (_) {}
+  showToast('已全选代码');
+}
+
+/* ===== 保存 PNG ===== */
 function capturePNG() {
   let canvas = null;
   try {
@@ -707,7 +739,7 @@ function legacyDownload(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
-/* ===== 分享/下载（关键修复：share 不传 title，避免 iOS 多出一个内容为文件名的 txt） ===== */
+/* 分享/下载：share 只传 files，避免 iOS 生成多余 txt；失败不回退 download */
 function shareOrDownload(blob, filename, onDone) {
   let file = null;
   try {
@@ -718,7 +750,6 @@ function shareOrDownload(blob, filename, onDone) {
                           navigator.canShare({ files: [file] }));
 
   if (canShareFiles) {
-    /* 只传 files，绝不传 title / text —— 否则 iOS 会额外生成一个内容=title 的 txt */
     navigator.share({ files: [file] })
       .then(() => { onDone && onDone('shared'); })
       .catch(err => {
@@ -735,7 +766,7 @@ function shareOrDownload(blob, filename, onDone) {
   onDone && onDone('downloaded');
 }
 
-/* ===== 保存 HTML（时间戳命名） ===== */
+/* 保存 HTML */
 function saveHTML() {
   const code = editor.getValue();
   const html = buildRuntimeHTML(code);
@@ -752,7 +783,7 @@ function saveHTML() {
   });
 }
 
-/* ===== 录制三态按钮 ===== */
+/* 录制三态按钮（右上角菜单项） */
 function updateRecordButton() {
   if (isRecording) {
     btnRecordMP4.textContent = '停止录制';
@@ -776,7 +807,6 @@ function handleRecordClick() {
   }
 
   if (pendingRecord) {
-    /* 手动重试：用户手势中调用 share，成功率高 */
     const { blob, filename } = pendingRecord;
     shareOrDownload(blob, filename, (result, err) => {
       if (result === 'shared' || result === 'downloaded') {
@@ -918,7 +948,6 @@ document.addEventListener('touchmove', e => {
   if (e.touches.length > 1) e.preventDefault();
 }, { passive: false });
 
-/* 加强：mousedown detail>=2 / dblclick / touchend 三路阻断（排除按钮/菜单） */
 function installDoubleTapGuard(el) {
   el.addEventListener('mousedown', e => {
     if (e.detail >= 2 && !e.target.closest('.tool-btn, .menu, .menu__item')) {
@@ -965,6 +994,8 @@ btnReset.addEventListener('click', () => {
 });
 btnFormat.addEventListener('click', () => { closeAllMenus(); formatCode(); });
 btnWrapToggle.addEventListener('click', () => { setWrap(!wrapEnabled); closeAllMenus(); });
+btnAutoPreviewToggle.addEventListener('click', () => { setAutoPreview(!autoPreviewEnabled); closeAllMenus(); });
+btnSelectAll.addEventListener('click', () => { closeAllMenus(); selectAllCode(); });
 
 btnSavePNG.addEventListener('click', () => { closeAllMenus(); capturePNG(); });
 btnRecordMP4.addEventListener('click', () => { closeAllMenus(); handleRecordClick(); });
@@ -980,9 +1011,10 @@ zoomResetBtn.addEventListener('click', () => {
   applyStageTransform();
 });
 
-btnAnimCycle.addEventListener('click', toggleAnimState);
+/* 中央运行按钮 */
+btnRun.addEventListener('click', runCode);
 
-/* ===== 录制结束自动尝试保存（关键：若浏览器允许不在手势中 share 则自动完成，否则保留按钮） ===== */
+/* ===== 录制消息处理 ===== */
 window.addEventListener('message', e => {
   const d = e.data;
   if (!d) return;
@@ -996,14 +1028,12 @@ window.addEventListener('message', e => {
     const blob = new Blob([d.buffer], { type: isMP4 ? 'video/mp4' : 'video/webm' });
     const filename = timestampFilename('sketch', isMP4 ? 'mp4' : 'webm');
 
-    /* 立即自动尝试 share/download */
     shareOrDownload(blob, filename, (result) => {
       if (result === 'shared' || result === 'downloaded') {
         pendingRecord = null;
         updateRecordButton();
         showToast('已保存 ' + filename);
       } else {
-        /* 失败（多半因不在用户手势中）→ 保留 pendingRecord 让用户手动点 */
         pendingRecord = { blob, isMP4, filename };
         updateRecordButton();
         if (result === 'cancelled') {
@@ -1013,16 +1043,13 @@ window.addEventListener('message', e => {
         }
       }
     });
+    // 录制结束后刷新预览，追平录制期间改过的代码
     updatePreview();
   } else if (d.type === 'record-error') {
     isRecording = false;
     updateRecordButton();
     showToast('录制失败：' + (d.message || '未知错误'));
   }
-});
-
-previewEl.addEventListener('load', () => {
-  setTimeout(applyAnimState, 200);
 });
 
 if (window.visualViewport) {
@@ -1055,21 +1082,28 @@ function init() {
     if (e.touches.length > 1) e.preventDefault();
   }, { passive: false });
 
+  // 恢复自动换行
   try {
     if (localStorage.getItem(WRAP_KEY) === '1') wrapEnabled = true;
   } catch (_) {}
   editor.setOption('lineWrapping', wrapEnabled);
   updateWrapLabel();
 
+  // 恢复自动预览（默认开）
+  try {
+    const v = localStorage.getItem(AUTO_PREVIEW_KEY);
+    autoPreviewEnabled = (v !== '0');
+  } catch (_) {}
+  updateAutoPreviewLabel();
+
   const savedCode = loadDraft();
   editor.setValue(savedCode != null ? savedCode : buildTemplate());
 
-  let inputTimer = 0;
   editor.on('change', () => {
     clearTimeout(inputTimer);
     inputTimer = setTimeout(() => {
       saveDraft();
-      schedulePreview();
+      schedulePreview();   // 内部判断 isRecording / autoPreviewEnabled
     }, 500);
   });
 
@@ -1085,7 +1119,6 @@ function init() {
 
   applySplit();
   setPreviewBg(previewBg);
-  updateAnimIcon();
   updateRecordButton();
   updatePreview();
 
