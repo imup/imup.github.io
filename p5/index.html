@@ -39,7 +39,6 @@ body {
   position: relative;
 }
 
-/* 修改 1: previewWrap touch-action: auto → pan-x pan-y（禁双击缩放与 pinch） */
 .preview-wrap {
   flex: 80 1 0; min-height: 80px;
   position: relative; overflow: hidden;
@@ -100,7 +99,6 @@ body {
 .menu__item.is-recording { color: #dc2626; }
 .menu__item.is-ready { color: var(--accent); font-weight: 600; }
 
-/* 自动换行的绿色勾 */
 .menu__item .wrap-check {
   color: #16a34a;
   font-weight: 700;
@@ -251,7 +249,6 @@ body {
 .menu__item:active { background: var(--active); }
 .menu__item[disabled] { opacity: .5; cursor: not-allowed; }
 
-/* 修改 2: 删除 .splitter-grip::before / ::after 及 hover / is-snap-code 的灰条样式 */
 .splitter-grip {
   flex: 1 1 auto; min-width: 20px; height: 100%;
   cursor: ns-resize; touch-action: none; position: relative;
@@ -437,6 +434,13 @@ function blurEditor() {
     const input = editor.getInputField();
     if (input && document.activeElement === input) input.blur();
   } catch (_) {}
+}
+
+/* ===== 时间戳文件名 ===== */
+function timestampFilename(prefix, ext) {
+  const d = new Date();
+  const p = n => String(n).padStart(2, '0');
+  return `${prefix}_${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.${ext}`;
 }
 
 function buildTemplate() {
@@ -629,7 +633,6 @@ function toggleAnimState() {
   showToast(animState === 'playing' ? '播放' : '已停止');
 }
 
-/* 修改 3: 自动换行——关时无后缀，开时显示绿色勾 */
 function updateWrapLabel() {
   if (wrapEnabled) {
     btnWrapToggle.innerHTML = '自动换行 <span class="wrap-check">✓</span>';
@@ -671,7 +674,7 @@ function formatCode() {
   }
 }
 
-/* 保存 PNG（保持原路径：data URL 直接落盘） */
+/* ===== 保存 PNG（data URL，时间戳命名） ===== */
 function capturePNG() {
   let canvas = null;
   try {
@@ -680,17 +683,17 @@ function capturePNG() {
   } catch (_) {}
   if (!canvas) { showToast('无法获取画布，请稍后重试'); return; }
   try {
+    const filename = timestampFilename('sketch', 'png');
     const url = canvas.toDataURL('image/png');
     const a = document.createElement('a');
-    a.href = url; a.download = 'sketch.png';
+    a.href = url; a.download = filename;
     document.body.appendChild(a); a.click(); a.remove();
-    showToast('已保存 sketch.png');
+    showToast('已保存 ' + filename);
   } catch (err) {
     showToast('保存 PNG 失败：' + (err && err.message || '未知错误'));
   }
 }
 
-/* 修改 4: legacyDownload 保持（仅不支持 share 的浏览器使用） */
 function legacyDownload(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -704,7 +707,7 @@ function legacyDownload(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
-/* 修改 5: File 用 application/octet-stream 防 Safari 识别错；share 失败不回退 download */
+/* ===== 分享/下载（关键修复：share 不传 title，避免 iOS 多出一个内容为文件名的 txt） ===== */
 function shareOrDownload(blob, filename, onDone) {
   let file = null;
   try {
@@ -715,14 +718,14 @@ function shareOrDownload(blob, filename, onDone) {
                           navigator.canShare({ files: [file] }));
 
   if (canShareFiles) {
-    navigator.share({ files: [file], title: filename })
+    /* 只传 files，绝不传 title / text —— 否则 iOS 会额外生成一个内容=title 的 txt */
+    navigator.share({ files: [file] })
       .then(() => { onDone && onDone('shared'); })
       .catch(err => {
         if (err && err.name === 'AbortError') {
           onDone && onDone('cancelled');
           return;
         }
-        /* 修改 6: share 失败不自动回退 download，避免多生成文件 */
         onDone && onDone('failed', err);
       });
     return;
@@ -732,14 +735,15 @@ function shareOrDownload(blob, filename, onDone) {
   onDone && onDone('downloaded');
 }
 
-/* 修改 7: HTML blob 改 application/octet-stream（避免 Safari 当文本保存为 .txt） */
+/* ===== 保存 HTML（时间戳命名） ===== */
 function saveHTML() {
   const code = editor.getValue();
   const html = buildRuntimeHTML(code);
   const blob = new Blob([html], { type: 'application/octet-stream' });
-  shareOrDownload(blob, 'sketch.html', (result, err) => {
+  const filename = timestampFilename('sketch', 'html');
+  shareOrDownload(blob, filename, (result, err) => {
     if (result === 'shared' || result === 'downloaded') {
-      showToast('已保存 sketch.html');
+      showToast('已保存 ' + filename);
     } else if (result === 'cancelled') {
       showToast('已取消');
     } else {
@@ -748,7 +752,7 @@ function saveHTML() {
   });
 }
 
-/* 录制三态按钮 */
+/* ===== 录制三态按钮 ===== */
 function updateRecordButton() {
   if (isRecording) {
     btnRecordMP4.textContent = '停止录制';
@@ -772,13 +776,13 @@ function handleRecordClick() {
   }
 
   if (pendingRecord) {
-    const { blob, isMP4 } = pendingRecord;
-    const filename = isMP4 ? 'sketch.mp4' : 'sketch.webm';
+    /* 手动重试：用户手势中调用 share，成功率高 */
+    const { blob, filename } = pendingRecord;
     shareOrDownload(blob, filename, (result, err) => {
       if (result === 'shared' || result === 'downloaded') {
         pendingRecord = null;
         updateRecordButton();
-        showToast(isMP4 ? '已保存 sketch.mp4' : '已保存 sketch.webm');
+        showToast('已保存 ' + filename);
       } else if (result === 'cancelled') {
         showToast('已取消，可重新点击下载');
       } else {
@@ -914,18 +918,19 @@ document.addEventListener('touchmove', e => {
   if (e.touches.length > 1) e.preventDefault();
 }, { passive: false });
 
-/* 修改 8: dblclick 无条件阻止 + touchend 双击检测兜底（排除按钮/菜单） */
-splitterEl.addEventListener('dblclick', e => { e.preventDefault(); });
-previewWrap.addEventListener('dblclick', e => { e.preventDefault(); });
-
+/* 加强：mousedown detail>=2 / dblclick / touchend 三路阻断（排除按钮/菜单） */
 function installDoubleTapGuard(el) {
+  el.addEventListener('mousedown', e => {
+    if (e.detail >= 2 && !e.target.closest('.tool-btn, .menu, .menu__item')) {
+      e.preventDefault();
+    }
+  });
+  el.addEventListener('dblclick', e => { e.preventDefault(); });
   let lastEnd = 0;
   el.addEventListener('touchend', e => {
     if (e.target.closest('.tool-btn, .menu, .menu__item, .view-controls, .preview-menu-wrap, .zoom-btn, .zoom-label, .bg-btn')) return;
     const now = Date.now();
-    if (now - lastEnd < 300) {
-      e.preventDefault();
-    }
+    if (now - lastEnd < 300) e.preventDefault();
     lastEnd = now;
   }, { passive: false });
 }
@@ -977,6 +982,7 @@ zoomResetBtn.addEventListener('click', () => {
 
 btnAnimCycle.addEventListener('click', toggleAnimState);
 
+/* ===== 录制结束自动尝试保存（关键：若浏览器允许不在手势中 share 则自动完成，否则保留按钮） ===== */
 window.addEventListener('message', e => {
   const d = e.data;
   if (!d) return;
@@ -987,12 +993,26 @@ window.addEventListener('message', e => {
   } else if (d.type === 'record-done') {
     isRecording = false;
     const isMP4 = !!d.isMP4;
-    pendingRecord = {
-      blob: new Blob([d.buffer], { type: isMP4 ? 'video/mp4' : 'video/webm' }),
-      isMP4
-    };
-    updateRecordButton();
-    showToast('录制完成，点击「' + (isMP4 ? '下载 MP4' : '下载 WebM') + '」保存');
+    const blob = new Blob([d.buffer], { type: isMP4 ? 'video/mp4' : 'video/webm' });
+    const filename = timestampFilename('sketch', isMP4 ? 'mp4' : 'webm');
+
+    /* 立即自动尝试 share/download */
+    shareOrDownload(blob, filename, (result) => {
+      if (result === 'shared' || result === 'downloaded') {
+        pendingRecord = null;
+        updateRecordButton();
+        showToast('已保存 ' + filename);
+      } else {
+        /* 失败（多半因不在用户手势中）→ 保留 pendingRecord 让用户手动点 */
+        pendingRecord = { blob, isMP4, filename };
+        updateRecordButton();
+        if (result === 'cancelled') {
+          showToast('已取消，点击「下载」可保存');
+        } else {
+          showToast('请点击「' + (isMP4 ? '下载 MP4' : '下载 WebM') + '」保存');
+        }
+      }
+    });
     updatePreview();
   } else if (d.type === 'record-error') {
     isRecording = false;
