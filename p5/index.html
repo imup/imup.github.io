@@ -105,6 +105,13 @@ body {
   margin-left: 2px;
 }
 
+/* 下拉菜单分隔线 */
+.menu__sep {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 2px;
+}
+
 .view-controls {
   position: absolute; left: 14px; bottom: 12px; z-index: 8;
   display: flex; align-items: center; gap: 8px;
@@ -201,6 +208,15 @@ body {
 .tool-btn.primary { color: #fff; background: var(--accent); border-color: var(--accent); }
 .tool-btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
 
+/* 左侧 AI 按钮（预留） */
+.tool-btn.ai-btn {
+  color: var(--accent);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+}
+.tool-btn.ai-btn:hover { background: var(--active); color: var(--accent); }
+
 /* 中央运行按钮 */
 .tool-btn.anim-btn {
   position: absolute;
@@ -213,7 +229,6 @@ body {
 }
 .tool-btn.anim-btn:hover { background: var(--active); color: var(--accent); }
 .tool-btn.anim-btn:active:not(:disabled) { transform: translate(-50%, -50%) scale(.94); }
-/* 运行按钮旋转动画 */
 .tool-btn.anim-btn.spinning svg {
   animation: runSpin .5s ease;
 }
@@ -256,6 +271,8 @@ body {
 .menu__item:hover { background: var(--hover); }
 .menu__item:active { background: var(--active); }
 .menu__item[disabled] { opacity: .5; cursor: not-allowed; }
+.menu__item.danger { color: #dc2626; }
+.menu__item.danger:hover { background: #fef2f2; }
 
 .splitter-grip {
   flex: 1 1 auto; min-width: 20px; height: 100%;
@@ -295,6 +312,7 @@ body {
 @media (max-width: 720px) {
   .splitter { flex-basis: 32px; padding: 0 4px; }
   .tool-btn { min-width: 26px; height: 22px; font-size: 11.5px; padding: 0 6px; }
+  .tool-btn.ai-btn { font-size: 14px; }
   .menu-btn { font-size: 16px; }
   .menu { min-width: 120px; }
 
@@ -317,10 +335,13 @@ body {
       <iframe id="preview" sandbox="allow-scripts allow-same-origin" title="p5.js 预览"></iframe>
     </div>
 
+    <!-- 右上角菜单：保存 HTML / 保存 PNG / 录制 MP4 -->
     <div class="preview-menu-wrap">
       <button class="preview-menu-btn" id="btnPreviewMenu" type="button" title="更多" aria-label="更多" aria-haspopup="true" aria-expanded="false">⋯</button>
       <div class="menu" id="previewMenu" hidden>
+        <button class="menu__item" id="btnSave" type="button">保存 HTML</button>
         <button class="menu__item" id="btnSavePNG" type="button">保存 PNG</button>
+        <div class="menu__sep"></div>
         <button class="menu__item" id="btnRecordMP4" type="button">录制 MP4</button>
       </div>
     </div>
@@ -339,11 +360,9 @@ body {
   </section>
 
   <div class="splitter" id="splitter">
+    <!-- 左侧：AI 按钮（预留） -->
     <div class="tool-group tool-group--left">
-      <button class="tool-btn menu-btn" id="btnMenuLeft" type="button" title="菜单" aria-label="菜单" aria-haspopup="true" aria-expanded="false">⋯</button>
-      <div class="menu" id="menuLeft" hidden>
-        <button class="menu__item" id="btnSave" type="button">保存</button>
-      </div>
+      <button class="tool-btn ai-btn" id="btnAI" type="button" title="AI 助手（即将推出）" aria-label="AI 助手">✦</button>
     </div>
     <div class="tool-center">
       <div class="splitter-grip" id="splitterGrip" title="拖动调整布局 · 双击恢复默认"></div>
@@ -354,14 +373,17 @@ body {
         </svg>
       </button>
     </div>
+    <!-- 右侧：编辑菜单 -->
     <div class="tool-group tool-group--right">
       <button class="tool-btn menu-btn" id="btnMenuRight" type="button" title="菜单" aria-label="菜单" aria-haspopup="true" aria-expanded="false">⋯</button>
       <div class="menu" id="menuRight" hidden>
         <button class="menu__item" id="btnReset" type="button">重置</button>
         <button class="menu__item" id="btnFormat" type="button">格式化代码</button>
+        <div class="menu__sep"></div>
         <button class="menu__item" id="btnWrapToggle" type="button">自动换行</button>
         <button class="menu__item" id="btnAutoPreviewToggle" type="button">自动预览 <span class="wrap-check">✓</span></button>
-        <button class="menu__item" id="btnSelectAll" type="button">全选代码</button>
+        <div class="menu__sep"></div>
+        <button class="menu__item danger" id="btnClearCode" type="button">清空代码</button>
       </div>
     </div>
   </div>
@@ -401,19 +423,18 @@ const btnReset = $('btnReset');
 const btnFormat = $('btnFormat');
 const btnWrapToggle = $('btnWrapToggle');
 const btnAutoPreviewToggle = $('btnAutoPreviewToggle');
-const btnSelectAll = $('btnSelectAll');
-const btnMenuLeft = $('btnMenuLeft');
+const btnClearCode = $('btnClearCode');
 const btnMenuRight = $('btnMenuRight');
 const btnPreviewMenu = $('btnPreviewMenu');
 const btnSavePNG = $('btnSavePNG');
 const btnRecordMP4 = $('btnRecordMP4');
-const menuLeft = $('menuLeft');
 const menuRight = $('menuRight');
 const previewMenu = $('previewMenu');
 const zoomInBtn = $('zoomIn');
 const zoomOutBtn = $('zoomOut');
 const zoomResetBtn = $('zoomReset');
 const btnRun = $('btnRun');
+const btnAI = $('btnAI');
 const bgBtns = Array.from(document.querySelectorAll('.bg-btn'));
 
 let editor = null;
@@ -449,6 +470,15 @@ function blurEditor() {
   } catch (_) {}
 }
 
+/* 主动让当前焦点元素失焦（用于收起键盘） */
+function blurActiveElement() {
+  const ae = document.activeElement;
+  if (ae && ae !== document.body) {
+    try { ae.blur(); } catch (_) {}
+  }
+  blurEditor();
+}
+
 /* ===== 时间戳文件名 ===== */
 function timestampFilename(prefix, ext) {
   const d = new Date();
@@ -471,7 +501,7 @@ function draw() {
 `;
 }
 
-/* iframe 运行时：只保留录制协议（删除 play/stop） */
+/* iframe 运行时：录制协议 + 点击外部通知（父页面用于关闭菜单/收键盘） */
 function buildRuntimeHTML(userCode) {
   return `<!DOCTYPE html>
 <html>
@@ -560,6 +590,12 @@ window.addEventListener('message', function (e) {
   } catch (_) {}
 });
 
+/* 关键：iframe 是独立文档，父页面收不到其中点击。
+   这里在 capture 阶段主动通知父页面关闭菜单/收起键盘。 */
+document.addEventListener('pointerdown', function (e) {
+  try { parent.postMessage({ type: 'outside-click' }, '*'); } catch (_) {}
+}, { passive: true, capture: true });
+
 ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (evt) {
   document.addEventListener(evt, function (e) { e.preventDefault(); }, { passive: false });
 });
@@ -585,7 +621,7 @@ function schedulePreview() {
   renderTimer = setTimeout(updatePreview, 300);
 }
 
-/* 立即运行：清理所有待触发的定时器，避免二次重建 */
+/* 立即运行 */
 function runCode() {
   if (isRecording) { showToast('录制中，无法运行'); return; }
   clearTimeout(inputTimer);
@@ -593,7 +629,6 @@ function runCode() {
   updatePreview();
   blurEditor();
   btnRun.classList.remove('spinning');
-  // 强制重排让动画重新开始
   void btnRun.offsetWidth;
   btnRun.classList.add('spinning');
   setTimeout(() => btnRun.classList.remove('spinning'), 520);
@@ -666,7 +701,6 @@ function setAutoPreview(on, silent) {
   updateAutoPreviewLabel();
   try { localStorage.setItem(AUTO_PREVIEW_KEY, autoPreviewEnabled ? '1' : '0'); } catch (_) {}
   if (!silent) showToast(autoPreviewEnabled ? '已开启自动预览' : '已关闭自动预览');
-  // 从关到开时刷新一次，让用户立即看到最新代码
   if (autoPreviewEnabled && !isRecording && editor) {
     updatePreview();
   }
@@ -691,19 +725,24 @@ function formatCode() {
     if (formatted === code) { showToast('代码已是格式化状态'); return; }
     editor.setValue(formatted);
     saveDraft();
-    // 格式化不自动重建预览（代码语义未变，避免动画重头播放）
     showToast('已格式化');
   } catch (err) {
     showToast('格式化失败：' + (err && err.message || '未知错误'));
   }
 }
 
-/* ===== 全选代码 ===== */
-function selectAllCode() {
+/* ===== 清空代码（保留撤销栈，可 Ctrl/Cmd+Z 恢复） ===== */
+function clearCode() {
+  if (isRecording) { showToast('录制中，无法清空'); return; }
   if (!editor) return;
-  editor.execCommand('selectAll');
-  try { editor.focus(); } catch (_) {}
-  showToast('已全选代码');
+  const lastLine = editor.lineCount() - 1;
+  if (lastLine === 0 && editor.getLine(0) === '') {
+    showToast('代码已是空的');
+    return;
+  }
+  const lastCh = editor.getLine(lastLine).length;
+  editor.replaceRange('', { line: 0, ch: 0 }, { line: lastLine, ch: lastCh });
+  showToast('已清空代码（可撤销）');
 }
 
 /* ===== 保存 PNG ===== */
@@ -739,7 +778,6 @@ function legacyDownload(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
-/* 分享/下载：share 只传 files，避免 iOS 生成多余 txt；失败不回退 download */
 function shareOrDownload(blob, filename, onDone) {
   let file = null;
   try {
@@ -783,7 +821,7 @@ function saveHTML() {
   });
 }
 
-/* 录制三态按钮（右上角菜单项） */
+/* 录制三态按钮 */
 function updateRecordButton() {
   if (isRecording) {
     btnRecordMP4.textContent = '停止录制';
@@ -827,10 +865,8 @@ function handleRecordClick() {
 
 /* ===== 下拉菜单 ===== */
 function closeAllMenus() {
-  menuLeft.hidden = true;
   menuRight.hidden = true;
   previewMenu.hidden = true;
-  btnMenuLeft.setAttribute('aria-expanded', 'false');
   btnMenuRight.setAttribute('aria-expanded', 'false');
   btnPreviewMenu.setAttribute('aria-expanded', 'false');
 }
@@ -851,10 +887,6 @@ function openMenu(menu, btn) {
   }
 }
 
-btnMenuLeft.addEventListener('click', e => {
-  e.stopPropagation();
-  if (menuLeft.hidden) openMenu(menuLeft, btnMenuLeft); else closeAllMenus();
-});
 btnMenuRight.addEventListener('click', e => {
   e.stopPropagation();
   if (menuRight.hidden) openMenu(menuRight, btnMenuRight); else closeAllMenus();
@@ -864,9 +896,12 @@ btnPreviewMenu.addEventListener('click', e => {
   if (previewMenu.hidden) openMenu(previewMenu, btnPreviewMenu); else closeAllMenus();
 });
 
+/* 父页面点击外部：关闭菜单 + 收键盘 */
 document.addEventListener('pointerdown', e => {
-  if (e.target.closest('.menu, #btnMenuLeft, #btnMenuRight, #btnPreviewMenu')) return;
+  if (e.target.closest('.menu, #btnMenuRight, #btnPreviewMenu')) return;
+  const anyOpen = !menuRight.hidden || !previewMenu.hidden;
   closeAllMenus();
+  if (anyOpen) blurActiveElement();
 });
 
 /* ===== 分栏拖动 ===== */
@@ -995,7 +1030,7 @@ btnReset.addEventListener('click', () => {
 btnFormat.addEventListener('click', () => { closeAllMenus(); formatCode(); });
 btnWrapToggle.addEventListener('click', () => { setWrap(!wrapEnabled); closeAllMenus(); });
 btnAutoPreviewToggle.addEventListener('click', () => { setAutoPreview(!autoPreviewEnabled); closeAllMenus(); });
-btnSelectAll.addEventListener('click', () => { closeAllMenus(); selectAllCode(); });
+btnClearCode.addEventListener('click', () => { closeAllMenus(); clearCode(); });
 
 btnSavePNG.addEventListener('click', () => { closeAllMenus(); capturePNG(); });
 btnRecordMP4.addEventListener('click', () => { closeAllMenus(); handleRecordClick(); });
@@ -1011,13 +1046,23 @@ zoomResetBtn.addEventListener('click', () => {
   applyStageTransform();
 });
 
-/* 中央运行按钮 */
 btnRun.addEventListener('click', runCode);
 
-/* ===== 录制消息处理 ===== */
+/* AI 按钮：预留，点击提示即将推出 */
+btnAI.addEventListener('click', () => {
+  showToast('AI 助手即将推出');
+});
+
+/* ===== 消息处理 ===== */
 window.addEventListener('message', e => {
   const d = e.data;
   if (!d) return;
+  if (d.type === 'outside-click') {
+    /* iframe 内点击：关闭下拉菜单 + 收起键盘 */
+    closeAllMenus();
+    blurActiveElement();
+    return;
+  }
   if (d.type === 'record-started') {
     isRecording = true;
     updateRecordButton();
@@ -1043,7 +1088,6 @@ window.addEventListener('message', e => {
         }
       }
     });
-    // 录制结束后刷新预览，追平录制期间改过的代码
     updatePreview();
   } else if (d.type === 'record-error') {
     isRecording = false;
@@ -1082,14 +1126,12 @@ function init() {
     if (e.touches.length > 1) e.preventDefault();
   }, { passive: false });
 
-  // 恢复自动换行
   try {
     if (localStorage.getItem(WRAP_KEY) === '1') wrapEnabled = true;
   } catch (_) {}
   editor.setOption('lineWrapping', wrapEnabled);
   updateWrapLabel();
 
-  // 恢复自动预览（默认开）
   try {
     const v = localStorage.getItem(AUTO_PREVIEW_KEY);
     autoPreviewEnabled = (v !== '0');
@@ -1103,7 +1145,7 @@ function init() {
     clearTimeout(inputTimer);
     inputTimer = setTimeout(() => {
       saveDraft();
-      schedulePreview();   // 内部判断 isRecording / autoPreviewEnabled
+      schedulePreview();
     }, 500);
   });
 
