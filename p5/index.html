@@ -73,27 +73,9 @@ body {
 .preview-menu-btn:hover { background: var(--hover); color: var(--text); }
 .preview-menu-wrap .menu { top: calc(100% + 6px); left: auto; right: 0; }
 
-.stale-badge {
-  position: absolute; top: 14px; left: 14px; z-index: 9;
-  padding: 5px 11px;
-  font-size: 11.5px; font-weight: 600;
-  color: #92400e;
-  background: rgba(254, 243, 199, .94);
-  border: 1px solid #fcd34d;
-  border-radius: 999px;
-  cursor: pointer;
-  backdrop-filter: blur(8px);
-  box-shadow: var(--shadow-sm);
-  touch-action: manipulation;
-  user-select: none; -webkit-user-select: none;
-}
-.stale-badge:hover { background: #fef3c7; }
-.stale-badge[hidden] { display: none; }
-
 .menu__item.is-recording { color: #dc2626; }
 .menu__item.is-ready { color: var(--accent); font-weight: 600; }
 .menu__item .wrap-check { color: #16a34a; font-weight: 700; margin-left: 2px; }
-.menu__item.ai-item { color: var(--accent); font-weight: 600; }
 
 .menu__sep { height: 1px; background: var(--border); margin: 4px 2px; }
 
@@ -239,6 +221,15 @@ body {
 .tool-btn:hover { color: var(--text); background: var(--active); }
 .tool-btn:active:not(:disabled) { transform: scale(.94); }
 
+/* AI 助手图标按钮（工具栏上与"⋯"并列） */
+.tool-btn.ai-btn {
+  color: var(--accent);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+}
+.tool-btn.ai-btn:hover { background: var(--active); color: var(--accent); }
+
 .tool-btn.anim-btn {
   position: absolute; left: 50%; top: 50%;
   transform: translate(-50%, -50%);
@@ -306,6 +297,7 @@ body {
 @media (max-width: 720px) {
   .splitter { flex-basis: 32px; padding: 0 4px; }
   .tool-btn { min-width: 26px; height: 22px; font-size: 11.5px; padding: 0 6px; }
+  .tool-btn.ai-btn { font-size: 14px; }
   .menu-btn { font-size: 16px; }
   .menu { min-width: 120px; }
   .CodeMirror { font-size: 14px; }
@@ -315,7 +307,6 @@ body {
   .bg-btn { width: 18px; height: 18px; }
   .preview-menu-wrap { top: 8px; right: 8px; }
   .preview-menu-btn { width: 28px; height: 28px; font-size: 16px; }
-  .stale-badge { top: 8px; left: 8px; font-size: 11px; padding: 4px 9px; }
 }
 </style>
 </head>
@@ -326,8 +317,6 @@ body {
     <div class="preview-stage" id="previewStage">
       <iframe id="preview" sandbox="allow-scripts allow-same-origin" title="p5.js 预览"></iframe>
     </div>
-
-    <div class="stale-badge" id="staleBadge" role="button" tabindex="0" title="点击运行最新代码" hidden>预览未更新，点击运行</div>
 
     <div class="preview-menu-wrap">
       <button class="preview-menu-btn" id="btnPreviewMenu" type="button" title="更多" aria-label="更多" aria-haspopup="true" aria-expanded="false">⋯</button>
@@ -353,11 +342,11 @@ body {
   </section>
 
   <div class="splitter" id="splitter">
+    <!-- 左侧：菜单"⋯" + AI 助手"✦"并列 -->
     <div class="tool-group tool-group--left">
       <button class="tool-btn menu-btn" id="btnMenuLeft" type="button" title="菜单" aria-label="菜单" aria-haspopup="true" aria-expanded="false">⋯</button>
+      <button class="tool-btn ai-btn" id="btnAI" type="button" title="AI 助手（即将推出）" aria-label="AI 助手">✦</button>
       <div class="menu" id="menuLeft" hidden>
-        <button class="menu__item ai-item" id="btnAI" type="button">✦ AI 助手（即将推出）</button>
-        <div class="menu__sep"></div>
         <button class="menu__item" id="btnUploadImage" type="button">上传图片</button>
         <div class="img-list" id="imgList" hidden></div>
       </div>
@@ -424,7 +413,6 @@ const splitterEl = $('splitter');
 const splitterGrip = $('splitterGrip');
 const editorWrap = $('editorWrap');
 const toastEl = $('toast');
-const staleBadge = $('staleBadge');
 const btnSave = $('btnSave');
 const btnReset = $('btnReset');
 const btnFormat = $('btnFormat');
@@ -469,7 +457,6 @@ let isRecording = false;
 let pendingRecord = null;
 
 /* 图片：上传时压缩一次，三档共享同一张 dataURL */
-/* { name, dataURL, type, selected } */
 let uploadedImages = [];
 let imgSeq = 0;
 
@@ -503,19 +490,13 @@ function timestampFilename(prefix, ext) {
   return `${prefix}_${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.${ext}`;
 }
 
+/* 默认模板：不引用图片，首次打开即可看到动画，不会卡加载 */
 function buildTemplate() {
-  return `// 图片调用三种显示模式：
-//   imageUrl['name']  → 原图状态（p5 默认，按原尺寸绘制）
-//   imageMax['name']  → 最大化填满画布，超出裁剪，不变形（cover）
-//   imageMin['name']  → 完整显示在画布内，留边不裁剪（contain）
-//
-// 用法：image(img) 会自动按模式适配整块画布。
-// 若指定位置或尺寸（如 image(img, x, y)），则按 p5 原生行为绘制。
-let img;
-
-function preload() {
-  img = loadImage(imageMax['c3.jpg']);
-}
+  return `// 上传图片后（左侧 ⋯ 菜单），可在 preload 中按三种方式调用：
+//   imageUrl['name']  → 原图状态
+//   imageMax['name']  → 填满画布（cover，超出裁剪，不变形）
+//   imageMin['name']  → 完整显示（contain，居中留边，不变形）
+// 例：let img; function preload(){ img = loadImage(imageMax['c3.jpg']); }
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
@@ -523,11 +504,32 @@ function setup() {
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
+  pixelDensity(Math.min(window.devicePixelRatio || 1, 2));
 }
 
 function draw() {
-  background(255);
-  if (img) image(img);
+  background(15, 23, 42);
+
+  const t = millis() / 1000;
+  const base = Math.min(width, height) * 0.28;
+
+  noFill();
+  stroke(96, 165, 250);
+  strokeWeight(2);
+
+  for (let i = 0; i < 3; i++) {
+    const a = t * 0.8 + (i * Math.PI * 2) / 3;
+    const r = base * (0.6 + 0.4 * Math.sin(t + i));
+    ellipse(
+      width / 2 + Math.cos(a) * base * 0.7,
+      height / 2 + Math.sin(a) * base * 0.7,
+      r
+    );
+  }
+
+  noStroke();
+  fill(96, 165, 250);
+  ellipse(width / 2, height / 2, 10);
 }
 `;
 }
@@ -563,7 +565,6 @@ function sanitizeImageName(originalName, existingNames) {
   return candidate;
 }
 
-/* 单档压缩：最大边 2048，JPEG 0.85；PNG/GIF 保留格式 */
 function compressImage(file) {
   return new Promise((resolve, reject) => {
     if (!file.type || !file.type.startsWith('image/')) { reject(new Error('不是图片文件')); return; }
@@ -788,9 +789,7 @@ function buildRuntimeHTML(userCode) {
 </head>
 <body>
 <script>
-/* 图片资源注入 + hook。
-   关键：hook p5.prototype.loadImage / p5.prototype.image，
-   因为 window.loadImage 是 p5 实例化后才挂上的，此刻还不存在。 */
+/* 图片资源注入 + hook p5.prototype.loadImage / p5.prototype.image */
 (function () {
   var _images = ${imageDataJSON};
 
@@ -983,21 +982,14 @@ document.addEventListener('dblclick', function (e) { e.preventDefault(); }, { pa
 function updatePreview() {
   const code = editor ? editor.getValue() : buildTemplate();
   previewEl.srcdoc = buildRuntimeHTML(code);
-  clearPreviewStale();
 }
 
 function schedulePreview() {
   if (isRecording) return;
-  if (!autoPreviewEnabled) { markPreviewStale(); return; }
+  if (!autoPreviewEnabled) return;  /* 关闭自动预览时不再提示，静默等待手动运行 */
   clearTimeout(renderTimer);
   renderTimer = setTimeout(updatePreview, 300);
 }
-
-function markPreviewStale() {
-  if (autoPreviewEnabled || isRecording) { staleBadge.hidden = true; return; }
-  staleBadge.hidden = false;
-}
-function clearPreviewStale() { staleBadge.hidden = true; }
 
 function runCode() {
   if (isRecording) { showToast('录制中，无法运行'); return; }
@@ -1056,7 +1048,6 @@ function setAutoPreview(on) {
   updateAutoPreviewLabel();
   try { localStorage.setItem(AUTO_PREVIEW_KEY, autoPreviewEnabled ? '1' : '0'); } catch (_) {}
   if (autoPreviewEnabled && !isRecording && editor) updatePreview();
-  else if (!autoPreviewEnabled) markPreviewStale();
 }
 
 function formatCode() {
@@ -1246,7 +1237,7 @@ btnPreviewMenu.addEventListener('click', e => {
 });
 
 document.addEventListener('pointerdown', e => {
-  if (e.target.closest('.menu, #btnMenuRight, #btnPreviewMenu, #btnMenuLeft')) return;
+  if (e.target.closest('.menu, #btnMenuRight, #btnPreviewMenu, #btnMenuLeft, #btnAI')) return;
   const anyOpen = !menuRight.hidden || !previewMenu.hidden || !menuLeft.hidden;
   closeAllMenus();
   if (anyOpen) blurActiveElement();
@@ -1362,7 +1353,7 @@ function installDoubleTapGuard(el, opts) {
   if (opts.touch) {
     let lastEnd = 0;
     el.addEventListener('touchend', e => {
-      if (e.target.closest('.tool-btn, .menu, .menu__item, .view-controls, .preview-menu-wrap, .zoom-btn, .zoom-label, .bg-btn, .stale-badge')) return;
+      if (e.target.closest('.tool-btn, .menu, .menu__item, .view-controls, .preview-menu-wrap, .zoom-btn, .zoom-label, .bg-btn')) return;
       const now = Date.now();
       if (now - lastEnd < 300) e.preventDefault();
       lastEnd = now;
@@ -1421,8 +1412,11 @@ zoomOutBtn.addEventListener('click', () => zoomByButton(1 / 1.25));
 zoomResetBtn.addEventListener('click', () => { stageScale = 1; applyStageTransform(); });
 
 btnRun.addEventListener('click', runCode);
-staleBadge.addEventListener('click', () => { runCode(); });
-btnAI.addEventListener('click', () => { closeAllMenus(); showToast('AI 助手即将推出'); });
+
+/* AI 助手按钮：工具栏图标按钮，点击提示即将推出 */
+btnAI.addEventListener('click', () => {
+  showToast('AI 助手即将推出');
+});
 
 window.addEventListener('message', e => {
   const d = e.data;
