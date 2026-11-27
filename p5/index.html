@@ -96,7 +96,6 @@ body {
   left: auto; right: 0;
 }
 
-/* 预览过期角标 */
 .stale-badge {
   position: absolute;
   top: 14px; left: 14px;
@@ -132,6 +131,68 @@ body {
   background: var(--border);
   margin: 4px 2px;
 }
+
+/* ===== 图片资源列表 ===== */
+.img-list {
+  display: flex; flex-direction: column;
+  gap: 1px;
+  max-height: 220px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 2px 0;
+  border-top: 1px solid var(--border);
+  margin-top: 2px;
+}
+.img-list[hidden] { display: none; }
+.img-list__header {
+  padding: 6px 8px 2px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.img-item {
+  display: flex; align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 5px;
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+  user-select: none; -webkit-user-select: none;
+  touch-action: manipulation;
+  transition: background .14s;
+}
+.img-item:hover { background: var(--hover); }
+.img-item__check {
+  flex: 0 0 auto;
+  width: 16px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 13px;
+  color: #cbd5e1;
+}
+.img-item.is-selected .img-item__check { color: #16a34a; }
+.img-item__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11.5px;
+}
+.img-item__del {
+  flex: 0 0 auto;
+  width: 20px; height: 20px;
+  display: grid; place-items: center;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--text-dim);
+  background: transparent; border: 0; border-radius: 4px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.img-item__del:hover { background: #fee2e2; color: #dc2626; }
 
 .view-controls {
   position: absolute; left: 14px; bottom: 12px; z-index: 8;
@@ -229,7 +290,6 @@ body {
 .tool-btn.primary { color: #fff; background: var(--accent); border-color: var(--accent); }
 .tool-btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
 
-/* 中央运行按钮 */
 .tool-btn.anim-btn {
   position: absolute;
   left: 50%; top: 50%;
@@ -256,7 +316,6 @@ body {
   line-height: 1;
   padding: 0 4px;
 }
-/* 菜单限制高度防止溢出视口 */
 .menu {
   position: absolute;
   top: calc(100% + 6px);
@@ -313,7 +372,6 @@ body {
 }
 .editor-wrap[hidden] { display: none !important; }
 
-/* toast 避开 iPhone 底部安全区 */
 .toast {
   position: fixed; left: 50%;
   bottom: calc(24px + env(safe-area-inset-bottom, 0px));
@@ -353,10 +411,8 @@ body {
       <iframe id="preview" sandbox="allow-scripts allow-same-origin" title="p5.js 预览"></iframe>
     </div>
 
-    <!-- 自动预览关闭时提示"预览未更新" -->
     <div class="stale-badge" id="staleBadge" role="button" tabindex="0" title="点击运行最新代码" hidden>预览未更新，点击运行</div>
 
-    <!-- 右上角菜单 -->
     <div class="preview-menu-wrap">
       <button class="preview-menu-btn" id="btnPreviewMenu" type="button" title="更多" aria-label="更多" aria-haspopup="true" aria-expanded="false">⋯</button>
       <div class="menu" id="previewMenu" hidden>
@@ -381,13 +437,19 @@ body {
   </section>
 
   <div class="splitter" id="splitter">
-    <!-- 左侧"⋯"菜单，AI 助手入口 -->
+    <!-- 左侧"⋯"菜单：AI + 上传图片 + 图片列表 -->
     <div class="tool-group tool-group--left">
       <button class="tool-btn menu-btn" id="btnMenuLeft" type="button" title="菜单" aria-label="菜单" aria-haspopup="true" aria-expanded="false">⋯</button>
       <div class="menu" id="menuLeft" hidden>
         <button class="menu__item ai-item" id="btnAI" type="button">✦ AI 助手（即将推出）</button>
+        <div class="menu__sep"></div>
+        <button class="menu__item" id="btnUploadImage" type="button">上传图片</button>
+        <div class="img-list" id="imgList" hidden></div>
       </div>
     </div>
+    <!-- 隐藏的 file input -->
+    <input type="file" id="imageInput" accept="image/*" multiple hidden>
+
     <div class="tool-center">
       <div class="splitter-grip" id="splitterGrip" title="拖动调整布局 · 双击恢复默认"></div>
       <button class="tool-btn anim-btn" id="btnRun" type="button" title="运行代码" aria-label="运行代码">
@@ -397,7 +459,6 @@ body {
         </svg>
       </button>
     </div>
-    <!-- 右侧：编辑菜单 -->
     <div class="tool-group tool-group--right">
       <button class="tool-btn menu-btn" id="btnMenuRight" type="button" title="菜单" aria-label="菜单" aria-haspopup="true" aria-expanded="false">⋯</button>
       <div class="menu" id="menuRight" hidden>
@@ -436,6 +497,9 @@ const SPLIT_KEY = 'p5-editor.split.v1';
 const BG_KEY = 'p5-editor.bg.v1';
 const WRAP_KEY = 'p5-editor.wrap.v1';
 const AUTO_PREVIEW_KEY = 'p5-editor.autopreview.v1';
+const IMG_DB_NAME = 'p5-editor-images';
+const IMG_DB_STORE = 'images';
+const IMG_DB_VERSION = 1;
 
 const $ = id => document.getElementById(id);
 const appEl = $('app');
@@ -469,6 +533,9 @@ const btnAI = $('btnAI');
 const btnLayoutDefault = $('btnLayoutDefault');
 const btnLayoutCodeMax = $('btnLayoutCodeMax');
 const btnLayoutPreviewMax = $('btnLayoutPreviewMax');
+const btnUploadImage = $('btnUploadImage');
+const imageInput = $('imageInput');
+const imgList = $('imgList');
 const bgBtns = Array.from(document.querySelectorAll('.bg-btn'));
 
 let editor = null;
@@ -476,11 +543,8 @@ let renderTimer = null;
 let inputTimer = 0;
 let toastTimer = null;
 
-// 视图缩放：仅由下方按钮控制，围绕预览区中心缩放
 let stageScale = 1;
 
-// splitRatio = 预览区占比
-// 0 = 代码最大化；1 = 预览最大化；0.8 = 默认
 let splitRatio = 0.8;
 let lastEditorVisible = true;
 
@@ -490,6 +554,10 @@ let autoPreviewEnabled = true;
 
 let isRecording = false;
 let pendingRecord = null;
+
+/* 图片资源：数组保序，selected 控制是否注入到 p5 */
+let uploadedImages = []; // { name, dataURL, selected, type }
+let imgSeq = 0;
 
 function showToast(msg) {
   toastEl.textContent = msg;
@@ -537,13 +605,271 @@ function draw() {
 `;
 }
 
-/* 转义用户代码中的 script 闭合标签，防止 srcdoc 提前截断 */
 function escapeUserCode(code) {
   return String(code).replace(/<\/script/gi, '<\\/script');
 }
 
+/* ================= 图片上传 & 压缩 & 管理 ================= */
+
+/* 自动改名：ASCII 安全字符保留；含中文/特殊字符则改为 img_N */
+function sanitizeImageName(originalName, existingNames) {
+  const dotIdx = originalName.lastIndexOf('.');
+  const rawExt = dotIdx >= 0 ? originalName.slice(dotIdx).toLowerCase() : '';
+  const allowedExt = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp'];
+  const ext = allowedExt.includes(rawExt) ? rawExt : '.png';
+  const base = originalName.slice(0, dotIdx >= 0 ? dotIdx : originalName.length);
+
+  // 全部是 [A-Za-z0-9_-] 才保留原名
+  if (/^[A-Za-z0-9_-]+$/.test(base)) {
+    let name = base + ext;
+    let i = 1;
+    while (existingNames.has(name)) {
+      name = base + '(' + i + ')' + ext;
+      i++;
+    }
+    return name;
+  }
+
+  // 含非 ASCII 或特殊字符 → 自动命名 img_N
+  let candidate;
+  do {
+    imgSeq++;
+    candidate = 'img_' + imgSeq + ext;
+  } while (existingNames.has(candidate));
+  return candidate;
+}
+
+/* 压缩：限制最大边 2048，JPEG 0.82，超 400KB 降质；PNG 保留透明 */
+function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    if (!file.type || !file.type.startsWith('image/')) {
+      reject(new Error('不是图片文件'));
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      reject(new Error('超过 20MB'));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('读取失败'));
+    reader.onload = () => {
+      const originalDataURL = reader.result;
+      const img = new Image();
+      img.onerror = () => reject(new Error('图片解码失败'));
+      img.onload = () => {
+        const MAX = 2048;
+        let w = img.naturalWidth;
+        let h = img.naturalHeight;
+        const scale = Math.min(1, MAX / Math.max(w, h));
+        const needResize = scale < 1;
+        const needRecompress = file.size >= 200 * 1024;
+
+        if (!needResize && !needRecompress) {
+          resolve({ dataURL: originalDataURL, type: file.type });
+          return;
+        }
+
+        w = Math.round(w * scale);
+        h = Math.round(h * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+
+        const usePNG = file.type === 'image/png';
+        let mime, dataURL;
+        if (usePNG) {
+          mime = 'image/png';
+          dataURL = canvas.toDataURL('image/png');
+        } else {
+          mime = 'image/jpeg';
+          let q = 0.82;
+          dataURL = canvas.toDataURL(mime, q);
+          let tries = 0;
+          while (dataURL.length * 0.75 > 400 * 1024 && q > 0.5 && tries < 4) {
+            q -= 0.1;
+            dataURL = canvas.toDataURL(mime, q);
+            tries++;
+          }
+        }
+        resolve({ dataURL, type: mime });
+      };
+      img.src = originalDataURL;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+/* IndexedDB 持久化 */
+let dbPromise = null;
+function openImageDB() {
+  if (dbPromise) return dbPromise;
+  dbPromise = new Promise((resolve, reject) => {
+    if (!window.indexedDB) { reject(new Error('无 IndexedDB')); return; }
+    const req = indexedDB.open(IMG_DB_NAME, IMG_DB_VERSION);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(IMG_DB_STORE)) {
+        db.createObjectStore(IMG_DB_STORE, { keyPath: 'name' });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  return dbPromise;
+}
+async function loadImagesFromDB() {
+  try {
+    const db = await openImageDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(IMG_DB_STORE, 'readonly');
+      const req = tx.objectStore(IMG_DB_STORE).getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
+  } catch (_) {
+    return [];
+  }
+}
+async function saveImagesToDB() {
+  try {
+    const db = await openImageDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction(IMG_DB_STORE, 'readwrite');
+      const store = tx.objectStore(IMG_DB_STORE);
+      store.clear();
+      uploadedImages.forEach(img => {
+        store.put({
+          name: img.name,
+          dataURL: img.dataURL,
+          selected: img.selected,
+          type: img.type
+        });
+      });
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+    });
+  } catch (_) {}
+}
+
+/* 列表渲染 */
+function renderImageList() {
+  if (uploadedImages.length === 0) {
+    imgList.hidden = true;
+    imgList.innerHTML = '';
+    return;
+  }
+  imgList.hidden = false;
+  imgList.innerHTML = '';
+
+  const selectedCount = uploadedImages.filter(i => i.selected).length;
+  const header = document.createElement('div');
+  header.className = 'img-list__header';
+  header.textContent = '图片（' + selectedCount + '/' + uploadedImages.length + ' 已选）';
+  imgList.appendChild(header);
+
+  uploadedImages.forEach(img => {
+    const item = document.createElement('div');
+    item.className = 'img-item' + (img.selected ? ' is-selected' : '');
+
+    const check = document.createElement('span');
+    check.className = 'img-item__check';
+    check.textContent = img.selected ? '✓' : '□';
+    item.appendChild(check);
+
+    const name = document.createElement('span');
+    name.className = 'img-item__name';
+    name.textContent = img.name;
+    name.title = img.name;
+    item.appendChild(name);
+
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'img-item__del';
+    del.textContent = '×';
+    del.title = '删除';
+    del.addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteImage(img.name);
+    });
+    item.appendChild(del);
+
+    item.addEventListener('click', (e) => {
+      if (e.target === del || del.contains(e.target)) return;
+      toggleImage(img.name);
+    });
+
+    imgList.appendChild(item);
+  });
+}
+
+function toggleImage(name) {
+  const img = uploadedImages.find(i => i.name === name);
+  if (!img) return;
+  img.selected = !img.selected;
+  renderImageList();
+  saveImagesToDB();
+}
+
+function deleteImage(name) {
+  const idx = uploadedImages.findIndex(i => i.name === name);
+  if (idx < 0) return;
+  uploadedImages.splice(idx, 1);
+  renderImageList();
+  saveImagesToDB();
+}
+
+/* 上传按钮 → 触发文件选择 */
+btnUploadImage.addEventListener('click', () => {
+  imageInput.value = '';
+  imageInput.click();
+});
+
+imageInput.addEventListener('change', async (e) => {
+  const files = Array.from(e.target.files || []);
+  if (files.length === 0) return;
+
+  btnUploadImage.disabled = true;
+  const originalText = btnUploadImage.textContent;
+
+  for (const file of files) {
+    btnUploadImage.textContent = '压缩中…';
+    try {
+      const result = await compressImage(file);
+      const existingNames = new Set(uploadedImages.map(i => i.name));
+      const safeName = sanitizeImageName(file.name, existingNames);
+      uploadedImages.push({
+        name: safeName,
+        dataURL: result.dataURL,
+        selected: true,
+        type: result.type
+      });
+    } catch (err) {
+      showToast('「' + file.name + '」上传失败：' + err.message);
+    }
+  }
+
+  btnUploadImage.textContent = originalText;
+  btnUploadImage.disabled = false;
+  imageInput.value = '';
+  renderImageList();
+  saveImagesToDB();
+});
+
+/* 注入到 srcdoc：只包含勾选的图片 */
+function buildImageInjection() {
+  const obj = {};
+  uploadedImages.forEach(img => {
+    if (img.selected) obj[img.name] = img.dataURL;
+  });
+  return obj;
+}
+
+/* ================= 运行时 HTML ================= */
 function buildRuntimeHTML(userCode) {
   const safeCode = escapeUserCode(userCode);
+  const imagesJSON = JSON.stringify(buildImageInjection());
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -558,6 +884,7 @@ function buildRuntimeHTML(userCode) {
 </head>
 <body>
 <script>
+window.UPLOADED_IMAGES = ${imagesJSON};
 ${safeCode}
 
 var _recorder = null;
@@ -635,13 +962,10 @@ window.addEventListener('message', function (e) {
   } catch (_) {}
 });
 
-/* iframe 内点击：通知父页面关闭菜单/收键盘 */
 document.addEventListener('pointerdown', function (e) {
   try { parent.postMessage({ type: 'outside-click' }, '*'); } catch (_) {}
 }, { passive: true, capture: true });
 
-/* 所有触摸/鼠标/滚轮/键盘事件完整交给 p5，父页面不再做手势视图操作。
-   这里仅保留"防页面缩放/滚动"的基础拦截，不影响 p5 接收事件。 */
 ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (evt) {
   document.addEventListener(evt, function (e) { e.preventDefault(); }, { passive: false });
 });
@@ -687,7 +1011,6 @@ function runCode() {
   setTimeout(() => btnRun.classList.remove('spinning'), 520);
 }
 
-/* 视图缩放：只由下方按钮驱动，围绕预览区中心缩放 */
 function applyStageTransform() {
   previewStage.style.transform = `scale(${stageScale})`;
   zoomResetBtn.textContent = Math.round(stageScale * 100) + '%';
@@ -783,16 +1106,11 @@ function clearCode() {
   if (isRecording) { showToast('录制中，无法清空'); return; }
   if (!editor) return;
   const lastLine = editor.lineCount() - 1;
-  if (lastLine === 0 && editor.getLine(0) === '') {
-    return;
-  }
+  if (lastLine === 0 && editor.getLine(0) === '') { return; }
   const lastCh = editor.getLine(lastLine).length;
   editor.replaceRange('', { line: 0, ch: 0 }, { line: lastLine, ch: lastCh });
 }
 
-/* Safari 修复：必须在用户手势同步栈内触发下载。
-   异步 toBlob 回调会丢失手势上下文，Safari 会拦截下载。
-   因此使用同步 toDataURL，在 click handler 内立即触发 <a download>。 */
 function capturePNG() {
   let canvas = null;
   try {
@@ -832,13 +1150,9 @@ function legacyDownload(blob, filename) {
 function guessMime(filename, fallback) {
   const ext = String(filename).split('.').pop().toLowerCase();
   const map = {
-    html: 'text/html',
-    htm: 'text/html',
-    mp4: 'video/mp4',
-    webm: 'video/webm',
-    png: 'image/png',
-    jpg: 'image/jpeg',
-    jpeg: 'image/jpeg'
+    html: 'text/html', htm: 'text/html',
+    mp4: 'video/mp4', webm: 'video/webm',
+    png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg'
   };
   return map[ext] || fallback || 'application/octet-stream';
 }
@@ -848,9 +1162,7 @@ function shareOrDownload(blob, filename, onDone) {
     ? blob.type
     : guessMime(filename, blob.type);
   let file = null;
-  try {
-    file = new File([blob], filename, { type: mime });
-  } catch (_) {}
+  try { file = new File([blob], filename, { type: mime }); } catch (_) {}
 
   const canShareFiles = !!(file && navigator.share && navigator.canShare &&
                           navigator.canShare({ files: [file] }));
@@ -859,10 +1171,7 @@ function shareOrDownload(blob, filename, onDone) {
     navigator.share({ files: [file] })
       .then(() => { onDone && onDone('shared'); })
       .catch(err => {
-        if (err && err.name === 'AbortError') {
-          onDone && onDone('cancelled');
-          return;
-        }
+        if (err && err.name === 'AbortError') { onDone && onDone('cancelled'); return; }
         try {
           legacyDownload(blob, filename);
           onDone && onDone('downloaded');
@@ -909,11 +1218,7 @@ function updateRecordButton() {
 }
 
 function handleRecordClick() {
-  if (isRecording) {
-    postToIframe('record-stop');
-    return;
-  }
-
+  if (isRecording) { postToIframe('record-stop'); return; }
   if (pendingRecord) {
     const { blob, filename } = pendingRecord;
     shareOrDownload(blob, filename, (result, err) => {
@@ -926,7 +1231,6 @@ function handleRecordClick() {
     });
     return;
   }
-
   postToIframe('record-start');
 }
 
@@ -981,8 +1285,7 @@ document.addEventListener('pointerdown', e => {
   if (anyOpen) blurActiveElement();
 });
 
-/* ===== 分栏布局 =====
-   splitRatio: 0 = 代码最大化；1 = 预览最大化；0.8 = 默认 */
+/* ===== 分栏布局 ===== */
 function applySplit() {
   const EPS = 0.0001;
   const dragging = splitDragging;
@@ -1032,7 +1335,6 @@ function onSplitDown(e) {
   if (e.pointerType === 'mouse' && e.button !== 0) return;
   const now = Date.now();
   if (now - lastDownTime < DBLCLICK_MS && Math.abs(e.clientY - lastDownY) < DBLCLICK_DIST) {
-    // 双击任意位置 → 恢复 0.8
     lastDownTime = 0; lastDownY = 0; splitDragging = false;
     splitRatio = 0.8;
     applySplit();
@@ -1069,7 +1371,6 @@ function onSplitUp(e) {
   document.body.style.userSelect = '';
   if (splitMoved) {
     lastDownTime = 0; lastDownY = 0; splitMoved = false;
-    // 双向吸附
     if (splitRatio <= 0.10) {
       splitRatio = 0;
       applySplit();
@@ -1189,7 +1490,6 @@ btnAI.addEventListener('click', () => {
 window.addEventListener('message', e => {
   const d = e.data;
   if (!d) return;
-  // 仅信任来自本 iframe 的消息
   if (e.source !== previewEl.contentWindow) return;
 
   if (d.type === 'outside-click') {
@@ -1235,6 +1535,24 @@ window.addEventListener('message', e => {
 });
 
 window.addEventListener('resize', () => { closeAllMenus(); });
+
+async function initImages() {
+  const saved = await loadImagesFromDB();
+  if (saved && saved.length) {
+    uploadedImages = saved.map(img => ({
+      name: img.name,
+      dataURL: img.dataURL,
+      selected: !!img.selected,
+      type: img.type
+    }));
+    // 恢复 imgSeq（避免自动命名冲突）
+    imgSeq = uploadedImages.reduce((max, img) => {
+      const m = img.name.match(/^img_(\d+)/);
+      return m ? Math.max(max, parseInt(m[1], 10)) : max;
+    }, 0);
+    renderImageList();
+  }
+}
 
 function init() {
   editor = CodeMirror.fromTextArea($('code'), {
@@ -1295,6 +1613,9 @@ function init() {
   updatePreview();
 
   blurEditor();
+
+  // 异步加载已保存的图片（不阻塞首次渲染）
+  initImages();
 }
 
 init();
