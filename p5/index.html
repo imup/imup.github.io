@@ -56,11 +56,14 @@ body {
 .preview-stage iframe { display: block; width: 100%; height: 100%; border: 0; background: transparent; pointer-events: auto; }
 
 .preview-menu-wrap { position: absolute; top: 14px; right: 14px; z-index: 10; }
+/* [FIX-②] 移除 letter-spacing，grid 居中修复 */
 .preview-menu-btn {
   width: 32px; height: 32px;
   display: grid; place-items: center;
   font-family: inherit; font-size: 18px; font-weight: 700;
-  letter-spacing: 2px; line-height: 1;
+  letter-spacing: 0;
+  line-height: 1;
+  padding: 0;
   color: var(--text-dim);
   background: rgba(255,255,255,.94);
   border: 1px solid var(--border);
@@ -139,7 +142,6 @@ body {
 }
 .img-item__del:hover { background: #fee2e2; color: #dc2626; }
 
-/* 压缩中 spinner */
 .menu__item.is-loading { pointer-events: none; opacity: 0.7; }
 .menu__item.is-loading::after {
   content: '';
@@ -248,7 +250,8 @@ body {
 .tool-btn.anim-btn.spinning svg { animation: runSpin .5s ease; }
 @keyframes runSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-.menu-btn { font-size: 18px; font-weight: 700; letter-spacing: 2px; line-height: 1; padding: 0 4px; }
+/* [FIX-②] 移除 letter-spacing */
+.menu-btn { font-size: 18px; font-weight: 700; letter-spacing: 0; line-height: 1; padding: 0 4px; }
 .menu {
   position: absolute; top: calc(100% + 6px); left: 0;
   min-width: 130px;
@@ -286,6 +289,16 @@ body {
 .CodeMirror { height: 100% !important; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.55; touch-action: pan-x pan-y; }
 .CodeMirror-scroll, .CodeMirror-lines, .CodeMirror textarea { touch-action: pan-x pan-y; }
 .editor-wrap[hidden] { display: none !important; }
+
+/* [FIX-③] 占位示例的灰色样式 */
+.cm-placeholder-code {
+  color: #64748b !important;
+  font-style: italic;
+}
+.cm-placeholder-code * {
+  color: #64748b !important;
+  font-style: italic;
+}
 
 .toast {
   position: fixed; left: 50%;
@@ -458,12 +471,14 @@ let autoPreviewEnabled = true;
 let isRecording = false;
 let pendingRecord = null;
 
-/* 图片：上传时压缩一次，三档共享同一张 dataURL */
 let uploadedImages = [];
 let imgSeq = 0;
 
-/* 图片 dataURL JSON 缓存 */
 let _imageJSONCache = { key: '', json: '{}' };
+
+/* [FIX-③] 占位标记 */
+let placeholderMarks = [];
+let settingEditorValue = false;
 
 function showToast(msg) {
   toastEl.textContent = msg;
@@ -495,13 +510,19 @@ function timestampFilename(prefix, ext) {
   return `${prefix}_${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.${ext}`;
 }
 
-/* 默认模板：不引用图片，首次打开即可看到动画，不会卡加载 */
+/* 标准 p5 结构示例：含图片加载说明，直接可跑（无图时显示动画） */
 function buildTemplate() {
-  return `// 上传图片后（左侧 ⋯ 菜单），可在 preload 中按三种方式调用：
-//   imageUrl['name']  → 原图状态
-//   imageMax['name']  → 填满画布（cover，超出裁剪，不变形）
-//   imageMin['name']  → 完整显示（contain，居中留边，不变形）
-// 例：let img; function preload(){ img = loadImage(imageMax['c3.jpg']); }
+  return `// 上传图片后（左侧 ⋯ 菜单），把 'your-image.jpg' 换成实际图片名：
+//   img = loadImage(imageMax['your-image.jpg']);   // cover 填满（裁边，不变形）
+//   img = loadImage(imageMin['your-image.jpg']);   // contain 完整显示（留边）
+//   img = loadImage(imageUrl['your-image.jpg']);   // 原图
+// 取消下一行注释即可启用。
+
+let img;
+
+function preload() {
+  // img = loadImage(imageMax['your-image.jpg']);
+}
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
@@ -515,13 +536,25 @@ function windowResized() {
 function draw() {
   background(15, 23, 42);
 
+  if (img) {
+    // 有图片：等比居中，不拉伸
+    const s = Math.min(width / img.width, height / img.height);
+    image(
+      img,
+      (width - img.width * s) / 2,
+      (height - img.height * s) / 2,
+      img.width * s,
+      img.height * s
+    );
+    return;
+  }
+
+  // 无图片：占位动画
   const t = millis() / 1000;
   const base = Math.min(width, height) * 0.28;
-
   noFill();
   stroke(96, 165, 250);
   strokeWeight(2);
-
   for (let i = 0; i < 3; i++) {
     const a = t * 0.8 + (i * Math.PI * 2) / 3;
     const r = base * (0.6 + 0.4 * Math.sin(t + i));
@@ -531,7 +564,6 @@ function draw() {
       r
     );
   }
-
   noStroke();
   fill(96, 165, 250);
   ellipse(width / 2, height / 2, 10);
@@ -541,6 +573,34 @@ function draw() {
 
 function escapeUserCode(code) {
   return String(code).replace(/<\/script/gi, '<\\/script');
+}
+
+/* [FIX-③] 占位标记管理 */
+function clearPlaceholderMarks() {
+  placeholderMarks.forEach(m => { try { m.clear(); } catch (_) {} });
+  placeholderMarks = [];
+}
+function markPlaceholder() {
+  clearPlaceholderMarks();
+  if (!editor) return;
+  const lastLine = editor.lastLine();
+  const lastCh = editor.getLine(lastLine).length;
+  if (lastLine === 0 && lastCh === 0) return;
+  try {
+    const m = editor.markText(
+      { line: 0, ch: 0 },
+      { line: lastLine, ch: lastCh },
+      { className: 'cm-placeholder-code' }
+    );
+    placeholderMarks.push(m);
+  } catch (_) {}
+}
+function setEditorValueWithPlaceholder(value, asPlaceholder) {
+  settingEditorValue = true;
+  editor.setValue(value);
+  settingEditorValue = false;
+  if (asPlaceholder) markPlaceholder();
+  else clearPlaceholderMarks();
 }
 
 /* ================= 图片上传 & 压缩 ================= */
@@ -586,12 +646,10 @@ function compressImage(file) {
           const iw = imgEl.naturalWidth;
           const ih = imgEl.naturalHeight;
           const maxSide = Math.max(iw, ih);
-
           if (file.type === 'image/gif' || maxSide <= MAX) {
             resolve({ dataURL: originalDataURL, type: file.type });
             return;
           }
-
           const scale = MAX / maxSide;
           const w = Math.round(iw * scale);
           const h = Math.round(ih * scale);
@@ -600,7 +658,6 @@ function compressImage(file) {
           canvas.height = h;
           const ctx = canvas.getContext('2d');
           ctx.drawImage(imgEl, 0, 0, w, h);
-
           let dataURL, type;
           if (file.type === 'image/png') {
             type = 'image/png';
@@ -618,7 +675,6 @@ function compressImage(file) {
   });
 }
 
-/* IndexedDB 持久化 */
 let dbPromise = null;
 function openImageDB() {
   if (dbPromise) return dbPromise;
@@ -724,7 +780,6 @@ function toggleImage(name) {
   img.selected = !img.selected;
   renderImageList();
   saveImagesToDB();
-  /* 勾选状态变化 → 刷新预览（自动预览开启时） */
   schedulePreview();
 }
 
@@ -735,7 +790,6 @@ function deleteImage(name) {
   uploadedImages.splice(idx, 1);
   renderImageList();
   saveImagesToDB();
-  /* 删除图片 → 刷新预览 */
   schedulePreview();
 }
 
@@ -775,11 +829,9 @@ imageInput.addEventListener('change', async (e) => {
   imageInput.value = '';
   renderImageList();
   saveImagesToDB();
-  /* 上传完成 → 刷新预览 */
   schedulePreview();
 });
 
-/* 图片 dataURL JSON：图片集合不变则复用缓存 */
 function getImageDataJSON() {
   const keyParts = [];
   uploadedImages.forEach(img => {
@@ -816,7 +868,6 @@ function buildRuntimeHTML(userCode) {
 </head>
 <body>
 <script>
-/* 用户代码错误上报 */
 window.addEventListener('error', function (e) {
   try {
     parent.postMessage({
@@ -834,7 +885,6 @@ window.addEventListener('unhandledrejection', function (e) {
   } catch (_) {}
 });
 
-/* 图片资源注入 + hook p5.prototype.loadImage / p5.prototype.image */
 (function () {
   var _images = ${imageDataJSON};
 
@@ -1114,6 +1164,7 @@ function formatCode() {
       const safeCh = Math.min(cur.ch, editor.getLine(safeLine).length);
       editor.setCursor({ line: safeLine, ch: safeCh });
     });
+    clearPlaceholderMarks();
     saveDraft();
   } catch (err) {
     showToast('格式化失败：' + (err && err.message || '未知错误'));
@@ -1126,9 +1177,39 @@ function clearCode() {
   const lastLine = editor.lineCount() - 1;
   if (lastLine === 0 && editor.getLine(0) === '') return;
   const lastCh = editor.getLine(lastLine).length;
+  clearPlaceholderMarks();
   editor.replaceRange('', { line: 0, ch: 0 }, { line: lastLine, ch: lastCh });
 }
 
+/* [FIX-①] dataURL → Blob 同步转换 */
+function dataURLToBlob(dataURL) {
+  const parts = dataURL.split(',');
+  const m = parts[0].match(/:(.*?);/);
+  const mime = m ? m[1] : 'image/png';
+  const bstr = atob(parts[1]);
+  const n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  for (let i = 0; i < n; i++) u8arr[i] = bstr.charCodeAt(i);
+  return new Blob([u8arr], { type: mime });
+}
+
+function isIOSDevice() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+function fallbackDownloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  a.rel = 'noopener'; a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+/* [FIX-①] PNG 保存：iOS 用 Web Share（可"存储到文件"），其他用 Blob 下载 */
 function capturePNG() {
   let canvas = null;
   try {
@@ -1137,24 +1218,37 @@ function capturePNG() {
   } catch (_) {}
   if (!canvas) { showToast('无法获取画布，请稍后重试'); return; }
   const filename = timestampFilename('sketch', 'png');
+
   try {
-    const url = canvas.toDataURL('image/png');
-    const a = document.createElement('a');
-    a.href = url; a.download = filename;
-    a.rel = 'noopener'; a.style.display = 'none';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    const dataURL = canvas.toDataURL('image/png');
+    if (!dataURL || dataURL === 'data:,' || dataURL.length < 100) {
+      showToast('画布过大，无法导出');
+      return;
+    }
+    const blob = dataURLToBlob(dataURL);
+
+    if (isIOSDevice()) {
+      try {
+        const file = new File([blob], filename, { type: 'image/png' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          navigator.share({ files: [file] })
+            .catch((err) => {
+              if (err && err.name === 'AbortError') return;
+              fallbackDownloadBlob(blob, filename);
+            });
+          return;
+        }
+      } catch (_) {}
+    }
+
+    fallbackDownloadBlob(blob, filename);
   } catch (err) {
     showToast('保存 PNG 失败：' + (err && err.message || '未知错误'));
   }
 }
 
 function legacyDownload(blob, filename) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = filename;
-  a.rel = 'noopener'; a.style.display = 'none';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  fallbackDownloadBlob(blob, filename);
 }
 
 function guessMime(filename, fallback) {
@@ -1167,7 +1261,6 @@ function guessMime(filename, fallback) {
   return map[ext] || fallback || 'application/octet-stream';
 }
 
-/* 桌面端跳过 navigator.share，直接下载 */
 function shareOrDownload(blob, filename, onDone) {
   const mime = blob.type && blob.type.indexOf('application/octet-stream') === -1
     ? blob.type : guessMime(filename, blob.type);
@@ -1290,7 +1383,6 @@ document.addEventListener('pointerdown', e => {
   if (anyOpen) blurActiveElement();
 });
 
-/* ===== 分栏布局 ===== */
 function applySplit() {
   const EPS = 0.0001;
   const dragging = splitDragging;
@@ -1325,7 +1417,6 @@ function applySplit() {
     if (visible) requestAnimationFrame(() => { try { editor.refresh(); } catch (_) {} });
   }
 
-  /* 非拖拽状态下持久化比例 */
   if (!dragging) {
     try { localStorage.setItem(SPLIT_KEY, String(splitRatio)); } catch (_) {}
   }
@@ -1435,7 +1526,7 @@ btnReset.addEventListener('click', () => {
   closeAllMenus();
   if (isRecording) { showToast('录制中，无法重置'); return; }
   if (!confirm('恢复默认将丢失当前代码，确定？')) return;
-  editor.setValue(buildTemplate());
+  setEditorValueWithPlaceholder(buildTemplate(), true);
   updatePreview();
   saveDraft();
 });
@@ -1467,7 +1558,6 @@ zoomResetBtn.addEventListener('click', () => { stageScale = 1; applyStageTransfo
 
 btnRun.addEventListener('click', runCode);
 
-/* 键盘快捷键：Ctrl/Cmd+S 保存、Ctrl/Cmd+Enter 运行、Ctrl/Cmd+Shift+F 格式化、Escape 关闭菜单 */
 document.addEventListener('keydown', (e) => {
   const mod = e.ctrlKey || e.metaKey;
   if (mod && !e.shiftKey && (e.key === 's' || e.key === 'S')) {
@@ -1544,8 +1634,6 @@ async function initImages() {
       return m ? Math.max(max, parseInt(m[1], 10)) : max;
     }, 0);
     renderImageList();
-
-    /* 图片加载完成后刷新预览，避免引用图片的草稿首次渲染为空 */
     updatePreview();
   }
 }
@@ -1581,9 +1669,20 @@ function init() {
   updateAutoPreviewLabel();
 
   const savedCode = loadDraft();
-  editor.setValue(savedCode != null ? savedCode : buildTemplate());
+  if (savedCode !== null && savedCode !== undefined) {
+    /* 用户编辑过：直接用保存内容，无灰色标记 */
+    setEditorValueWithPlaceholder(savedCode, false);
+  } else {
+    /* 首次打开：填入示例，灰色标记 */
+    setEditorValueWithPlaceholder(buildTemplate(), true);
+  }
+
+  /* 用户聚焦或输入时，清除占位灰色 */
+  editor.on('focus', () => { clearPlaceholderMarks(); });
 
   editor.on('change', () => {
+    if (settingEditorValue) return;
+    clearPlaceholderMarks();
     clearTimeout(inputTimer);
     inputTimer = setTimeout(() => {
       saveDraft();
