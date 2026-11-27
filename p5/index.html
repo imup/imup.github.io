@@ -476,7 +476,8 @@ let renderTimer = null;
 let inputTimer = 0;
 let toastTimer = null;
 
-let stageScale = 1, stagePanX = 0, stagePanY = 0;
+// 视图缩放：仅由下方按钮控制，围绕预览区中心缩放
+let stageScale = 1;
 
 // splitRatio = 预览区占比
 // 0 = 代码最大化；1 = 预览最大化；0.8 = 默认
@@ -639,87 +640,8 @@ document.addEventListener('pointerdown', function (e) {
   try { parent.postMessage({ type: 'outside-click' }, '*'); } catch (_) {}
 }, { passive: true, capture: true });
 
-/* 手势：pinch 缩放 + 平移 + Ctrl/⌘+wheel + Alt/中键拖拽 */
-var _pinchState = null;
-var _panState = null;
-
-function _dist(a, b) {
-  var dx = a.clientX - b.clientX, dy = a.clientY - b.clientY;
-  return Math.sqrt(dx * dx + dy * dy);
-}
-
-document.addEventListener('touchstart', function (e) {
-  if (e.touches.length === 2) {
-    _pinchState = {
-      dist: _dist(e.touches[0], e.touches[1]),
-      cx: (e.touches[0].clientX + e.touches[1].clientX) / 2,
-      cy: (e.touches[0].clientY + e.touches[1].clientY) / 2
-    };
-  } else {
-    _pinchState = null;
-  }
-}, { passive: true, capture: true });
-
-document.addEventListener('touchmove', function (e) {
-  if (e.touches.length === 2 && _pinchState) {
-    var dist = _dist(e.touches[0], e.touches[1]);
-    var cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-    var cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-    var scaleFactor = _pinchState.dist > 0 ? (dist / _pinchState.dist) : 1;
-    var dcx = cx - _pinchState.cx;
-    var dcy = cy - _pinchState.cy;
-    try {
-      parent.postMessage({
-        type: 'gesture-pinch',
-        scaleFactor: scaleFactor,
-        cx: cx, cy: cy, dcx: dcx, dcy: dcy
-      }, '*');
-    } catch (_) {}
-    _pinchState.dist = dist;
-    _pinchState.cx = cx;
-    _pinchState.cy = cy;
-    e.preventDefault();
-    e.stopPropagation();
-  }
-}, { passive: false, capture: true });
-
-document.addEventListener('touchend', function (e) {
-  if (e.touches.length < 2) _pinchState = null;
-}, { passive: true, capture: true });
-document.addEventListener('touchcancel', function () { _pinchState = null; }, { passive: true, capture: true });
-
-document.addEventListener('wheel', function (e) {
-  if (e.ctrlKey || e.metaKey) {
-    e.preventDefault();
-    try {
-      parent.postMessage({ type: 'gesture-wheel', deltaY: e.deltaY, x: e.clientX, y: e.clientY }, '*');
-    } catch (_) {}
-  }
-}, { passive: false, capture: true });
-
-document.addEventListener('pointerdown', function (e) {
-  var wantPan = (e.button === 1) || (e.button === 0 && e.altKey);
-  if (wantPan) {
-    _panState = { x: e.clientX, y: e.clientY };
-    e.preventDefault();
-    try { if (e.target && e.target.setPointerCapture) e.target.setPointerCapture(e.pointerId); } catch (_) {}
-  }
-}, { passive: false, capture: true });
-
-document.addEventListener('pointermove', function (e) {
-  if (_panState) {
-    var dx = e.clientX - _panState.x;
-    var dy = e.clientY - _panState.y;
-    _panState.x = e.clientX;
-    _panState.y = e.clientY;
-    try { parent.postMessage({ type: 'gesture-pan', dx: dx, dy: dy }, '*'); } catch (_) {}
-    e.preventDefault();
-  }
-}, { passive: false, capture: true });
-
-document.addEventListener('pointerup', function () { _panState = null; }, { capture: true });
-document.addEventListener('pointercancel', function () { _panState = null; }, { capture: true });
-
+/* 所有触摸/鼠标/滚轮/键盘事件完整交给 p5，父页面不再做手势视图操作。
+   这里仅保留"防页面缩放/滚动"的基础拦截，不影响 p5 接收事件。 */
 ['gesturestart', 'gesturechange', 'gestureend'].forEach(function (evt) {
   document.addEventListener(evt, function (e) { e.preventDefault(); }, { passive: false });
 });
@@ -765,27 +687,17 @@ function runCode() {
   setTimeout(() => btnRun.classList.remove('spinning'), 520);
 }
 
+/* 视图缩放：只由下方按钮驱动，围绕预览区中心缩放 */
 function applyStageTransform() {
-  previewStage.style.transform =
-    `translate(${stagePanX}px, ${stagePanY}px) scale(${stageScale})`;
+  previewStage.style.transform = `scale(${stageScale})`;
   zoomResetBtn.textContent = Math.round(stageScale * 100) + '%';
 }
 
-function zoomAt(factor, localX, localY) {
-  const rect = previewWrap.getBoundingClientRect();
+function zoomByButton(factor) {
   const newScale = clamp(stageScale * factor, 0.25, 8);
   if (newScale === stageScale) return;
-  const ratio = newScale / stageScale;
-  const relX = localX - rect.width / 2 - stagePanX;
-  const relY = localY - rect.height / 2 - stagePanY;
-  stagePanX = localX - rect.width / 2 - relX * ratio;
-  stagePanY = localY - rect.height / 2 - relY * ratio;
   stageScale = newScale;
   applyStageTransform();
-}
-function zoomByButton(factor) {
-  const rect = previewWrap.getBoundingClientRect();
-  zoomAt(factor, rect.width / 2, rect.height / 2);
 }
 
 function setPreviewBg(bg) {
@@ -971,7 +883,6 @@ function saveHTML() {
   const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
   const filename = timestampFilename('sketch', 'html');
   shareOrDownload(blob, filename, (result, err) => {
-    // 保存成功不提示；仅失败时反馈
     if (result === 'failed') {
       showToast('保存失败，请重试' + (err && err.message ? '：' + err.message : ''));
     }
@@ -1012,7 +923,6 @@ function handleRecordClick() {
       } else if (result === 'failed') {
         showToast('保存失败，请重试' + (err && err.message ? '：' + err.message : ''));
       }
-      // 取消静默，pendingRecord 保留，可再次点击下载
     });
     return;
   }
@@ -1262,7 +1172,7 @@ bgBtns.forEach(btn => {
 zoomInBtn.addEventListener('click', () => zoomByButton(1.25));
 zoomOutBtn.addEventListener('click', () => zoomByButton(1 / 1.25));
 zoomResetBtn.addEventListener('click', () => {
-  stageScale = 1; stagePanX = 0; stagePanY = 0;
+  stageScale = 1;
   applyStageTransform();
 });
 
@@ -1292,35 +1202,6 @@ window.addEventListener('message', e => {
     return;
   }
 
-  if (d.type === 'gesture-pinch') {
-    const W = previewWrap.clientWidth;
-    const H = previewWrap.clientHeight;
-    stagePanX += (d.dcx || 0) * stageScale;
-    stagePanY += (d.dcy || 0) * stageScale;
-    if (d.scaleFactor && d.scaleFactor !== 1) {
-      const px = W / 2 + stagePanX + (d.cx - W / 2) * stageScale;
-      const py = H / 2 + stagePanY + (d.cy - H / 2) * stageScale;
-      zoomAt(d.scaleFactor, px, py);
-    } else {
-      applyStageTransform();
-    }
-    return;
-  }
-  if (d.type === 'gesture-wheel') {
-    const W = previewWrap.clientWidth;
-    const H = previewWrap.clientHeight;
-    const px = W / 2 + stagePanX + (d.x - W / 2) * stageScale;
-    const py = H / 2 + stagePanY + (d.y - H / 2) * stageScale;
-    zoomAt(d.deltaY < 0 ? 1.1 : (1 / 1.1), px, py);
-    return;
-  }
-  if (d.type === 'gesture-pan') {
-    stagePanX += (d.dx || 0) * stageScale;
-    stagePanY += (d.dy || 0) * stageScale;
-    applyStageTransform();
-    return;
-  }
-
   if (d.type === 'record-started') {
     isRecording = true;
     setEditorReadOnly(true);
@@ -1337,14 +1218,12 @@ window.addEventListener('message', e => {
       if (result === 'shared' || result === 'downloaded') {
         pendingRecord = null;
         updateRecordButton();
-        // 保存成功不提示
       } else {
         pendingRecord = { blob, isMP4, filename };
         updateRecordButton();
         if (result === 'failed') {
           showToast('请点击「' + (isMP4 ? '下载 MP4' : '下载 WebM') + '」保存');
         }
-        // 取消静默，pendingRecord 保留，可点击按钮再下载
       }
     });
   } else if (d.type === 'record-error') {
