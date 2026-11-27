@@ -125,10 +125,8 @@ body {
   margin-left: 2px;
 }
 
-/* AI 菜单项样式 */
 .menu__item.ai-item { color: var(--accent); font-weight: 600; }
 
-/* 下拉菜单分隔线 */
 .menu__sep {
   height: 1px;
   background: var(--border);
@@ -297,27 +295,6 @@ body {
   cursor: ns-resize; touch-action: none; position: relative;
 }
 
-/* 拖拽吸附提示：定位在 splitter 上方，避开运行按钮 */
-.snap-hint {
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 8px);
-  transform: translateX(-50%);
-  padding: 4px 12px;
-  font-size: 11px; font-weight: 600;
-  color: #fff;
-  background: var(--accent);
-  border-radius: 999px;
-  white-space: nowrap;
-  pointer-events: none;
-  box-shadow: var(--shadow-sm);
-  z-index: 25;
-  opacity: 0;
-  transition: opacity .12s;
-}
-.snap-hint.is-show { opacity: 1; }
-.snap-hint[hidden] { display: none; }
-
 .editor-wrap {
   flex: 20 1 0; min-height: 100px;
   position: relative; overflow: hidden;
@@ -365,7 +342,6 @@ body {
   .preview-menu-wrap { top: 8px; right: 8px; }
   .preview-menu-btn { width: 28px; height: 28px; font-size: 16px; }
   .stale-badge { top: 8px; left: 8px; font-size: 11px; padding: 4px 9px; }
-  .snap-hint { font-size: 10.5px; padding: 3px 10px; }
 }
 </style>
 </head>
@@ -421,8 +397,6 @@ body {
         </svg>
       </button>
     </div>
-    <!-- 拖拽吸附提示 -->
-    <div class="snap-hint" id="snapHint" hidden></div>
     <!-- 右侧：编辑菜单 -->
     <div class="tool-group tool-group--right">
       <button class="tool-btn menu-btn" id="btnMenuRight" type="button" title="菜单" aria-label="菜单" aria-haspopup="true" aria-expanded="false">⋯</button>
@@ -470,7 +444,6 @@ const previewStage = $('previewStage');
 const previewEl = $('preview');
 const splitterEl = $('splitter');
 const splitterGrip = $('splitterGrip');
-const snapHint = $('snapHint');
 const editorWrap = $('editorWrap');
 const toastEl = $('toast');
 const staleBadge = $('staleBadge');
@@ -506,7 +479,7 @@ let toastTimer = null;
 let stageScale = 1, stagePanX = 0, stagePanY = 0;
 
 // splitRatio = 预览区占比
-// 0 = 代码最大化（preview 0 高）；1 = 预览最大化（editor 0 高）；0.8 = 默认
+// 0 = 代码最大化；1 = 预览最大化；0.8 = 默认
 let splitRatio = 0.8;
 let lastEditorVisible = true;
 
@@ -877,7 +850,7 @@ function formatCode() {
       end_with_newline: true,
       wrap_line_length: 0
     });
-    if (formatted === code) { showToast('代码已是格式化状态'); return; }
+    if (formatted === code) { return; }
     const lastLine = editor.lastLine();
     const lastCh = editor.getLine(lastLine).length;
     const cur = editor.getCursor();
@@ -889,7 +862,6 @@ function formatCode() {
       editor.setCursor({ line: safeLine, ch: safeCh });
     });
     saveDraft();
-    showToast('已格式化（可撤销）');
   } catch (err) {
     showToast('格式化失败：' + (err && err.message || '未知错误'));
   }
@@ -900,14 +872,15 @@ function clearCode() {
   if (!editor) return;
   const lastLine = editor.lineCount() - 1;
   if (lastLine === 0 && editor.getLine(0) === '') {
-    showToast('代码已是空的');
     return;
   }
   const lastCh = editor.getLine(lastLine).length;
   editor.replaceRange('', { line: 0, ch: 0 }, { line: lastLine, ch: lastCh });
-  showToast('已清空代码（可撤销）');
 }
 
+/* Safari 修复：必须在用户手势同步栈内触发下载。
+   异步 toBlob 回调会丢失手势上下文，Safari 会拦截下载。
+   因此使用同步 toDataURL，在 click handler 内立即触发 <a download>。 */
 function capturePNG() {
   let canvas = null;
   try {
@@ -917,19 +890,15 @@ function capturePNG() {
   if (!canvas) { showToast('无法获取画布，请稍后重试'); return; }
   const filename = timestampFilename('sketch', 'png');
   try {
-    if (typeof canvas.toBlob === 'function') {
-      canvas.toBlob((blob) => {
-        if (!blob) { showToast('保存 PNG 失败'); return; }
-        legacyDownload(blob, filename);
-        showToast('已保存 ' + filename);
-      }, 'image/png');
-    } else {
-      const url = canvas.toDataURL('image/png');
-      const a = document.createElement('a');
-      a.href = url; a.download = filename;
-      document.body.appendChild(a); a.click(); a.remove();
-      showToast('已保存 ' + filename);
-    }
+    const url = canvas.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.rel = 'noopener';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   } catch (err) {
     showToast('保存 PNG 失败：' + (err && err.message || '未知错误'));
   }
@@ -1002,11 +971,8 @@ function saveHTML() {
   const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
   const filename = timestampFilename('sketch', 'html');
   shareOrDownload(blob, filename, (result, err) => {
-    if (result === 'shared' || result === 'downloaded') {
-      showToast('已保存 ' + filename);
-    } else if (result === 'cancelled') {
-      showToast('已取消');
-    } else {
+    // 保存成功不提示；仅失败时反馈
+    if (result === 'failed') {
       showToast('保存失败，请重试' + (err && err.message ? '：' + err.message : ''));
     }
   });
@@ -1034,7 +1000,6 @@ function updateRecordButton() {
 function handleRecordClick() {
   if (isRecording) {
     postToIframe('record-stop');
-    showToast('正在停止录制…');
     return;
   }
 
@@ -1044,12 +1009,10 @@ function handleRecordClick() {
       if (result === 'shared' || result === 'downloaded') {
         pendingRecord = null;
         updateRecordButton();
-        showToast('已保存 ' + filename);
-      } else if (result === 'cancelled') {
-        showToast('已取消，可重新点击下载');
-      } else {
+      } else if (result === 'failed') {
         showToast('保存失败，请重试' + (err && err.message ? '：' + err.message : ''));
       }
+      // 取消静默，pendingRecord 保留，可再次点击下载
     });
     return;
   }
@@ -1185,26 +1148,6 @@ function onSplitMove(e) {
   const totalH = appRect.height - splitterH;
   const ratio = clamp((splitStartH + dy) / totalH, 0, 1);
   splitRatio = ratio;
-
-  // 拖拽到两端附近时提示吸附
-  if (snapHint) {
-    let text = '';
-    if (ratio <= 0.10) text = '松开收起预览';
-    else if (ratio >= 0.90) text = '松开收起编辑器';
-    if (text) {
-      snapHint.textContent = text;
-      if (snapHint.hidden) {
-        snapHint.hidden = false;
-        requestAnimationFrame(() => snapHint.classList.add('is-show'));
-      } else {
-        snapHint.classList.add('is-show');
-      }
-    } else {
-      snapHint.classList.remove('is-show');
-      snapHint.hidden = true;
-    }
-  }
-
   applySplit();
 }
 
@@ -1214,10 +1157,6 @@ function onSplitUp(e) {
   try { splitterEl.releasePointerCapture(e.pointerId); } catch (_) {}
   document.body.style.cursor = '';
   document.body.style.userSelect = '';
-  if (snapHint) {
-    snapHint.classList.remove('is-show');
-    snapHint.hidden = true;
-  }
   if (splitMoved) {
     lastDownTime = 0; lastDownY = 0; splitMoved = false;
     // 双向吸附
@@ -1288,7 +1227,6 @@ btnReset.addEventListener('click', () => {
   editor.setValue(buildTemplate());
   updatePreview();
   saveDraft();
-  showToast('已重置');
 });
 btnFormat.addEventListener('click', () => { closeAllMenus(); formatCode(); });
 btnWrapToggle.addEventListener('click', () => { setWrap(!wrapEnabled); closeAllMenus(); });
@@ -1399,18 +1337,16 @@ window.addEventListener('message', e => {
       if (result === 'shared' || result === 'downloaded') {
         pendingRecord = null;
         updateRecordButton();
-        showToast('已保存 ' + filename);
+        // 保存成功不提示
       } else {
         pendingRecord = { blob, isMP4, filename };
         updateRecordButton();
-        if (result === 'cancelled') {
-          showToast('已取消，点击「下载」可保存');
-        } else {
+        if (result === 'failed') {
           showToast('请点击「' + (isMP4 ? '下载 MP4' : '下载 WebM') + '」保存');
         }
+        // 取消静默，pendingRecord 保留，可点击按钮再下载
       }
     });
-    // 不重载 iframe，保留画布状态
   } else if (d.type === 'record-error') {
     isRecording = false;
     setEditorReadOnly(false);
@@ -1466,7 +1402,6 @@ function init() {
 
   try {
     const v = parseFloat(localStorage.getItem(SPLIT_KEY));
-    // 仅持久化中间比例；0/1 的极值刷新后回默认
     if (isFinite(v) && v > 0.1 && v < 0.9) splitRatio = v;
   } catch (_) {}
 
