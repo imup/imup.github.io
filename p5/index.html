@@ -139,6 +139,21 @@ body {
 }
 .img-item__del:hover { background: #fee2e2; color: #dc2626; }
 
+/* 压缩中 spinner */
+.menu__item.is-loading { pointer-events: none; opacity: 0.7; }
+.menu__item.is-loading::after {
+  content: '';
+  display: inline-block;
+  width: 10px; height: 10px;
+  margin-left: 8px;
+  border: 1.5px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+  vertical-align: -1px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
 .view-controls {
   position: absolute; left: 14px; bottom: 12px; z-index: 8;
   display: flex; align-items: center; gap: 8px;
@@ -221,15 +236,6 @@ body {
 .tool-btn:hover { color: var(--text); background: var(--active); }
 .tool-btn:active:not(:disabled) { transform: scale(.94); }
 
-/* AI 助手图标按钮（工具栏上与"⋯"并列） */
-.tool-btn.ai-btn {
-  color: var(--accent);
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 1;
-}
-.tool-btn.ai-btn:hover { background: var(--active); color: var(--accent); }
-
 .tool-btn.anim-btn {
   position: absolute; left: 50%; top: 50%;
   transform: translate(-50%, -50%);
@@ -297,7 +303,6 @@ body {
 @media (max-width: 720px) {
   .splitter { flex-basis: 32px; padding: 0 4px; }
   .tool-btn { min-width: 26px; height: 22px; font-size: 11.5px; padding: 0 6px; }
-  .tool-btn.ai-btn { font-size: 14px; }
   .menu-btn { font-size: 16px; }
   .menu { min-width: 120px; }
   .CodeMirror { font-size: 14px; }
@@ -315,16 +320,16 @@ body {
 <div class="app" id="app">
   <section class="preview-wrap bg-checker" id="previewWrap">
     <div class="preview-stage" id="previewStage">
-      <iframe id="preview" sandbox="allow-scripts allow-same-origin" title="p5.js 预览"></iframe>
+      <iframe id="preview" sandbox="allow-scripts allow-same-origin allow-downloads" title="p5.js 预览"></iframe>
     </div>
 
     <div class="preview-menu-wrap">
       <button class="preview-menu-btn" id="btnPreviewMenu" type="button" title="更多" aria-label="更多" aria-haspopup="true" aria-expanded="false">⋯</button>
-      <div class="menu" id="previewMenu" hidden>
-        <button class="menu__item" id="btnSave" type="button">保存 HTML</button>
-        <button class="menu__item" id="btnSavePNG" type="button">保存 PNG</button>
+      <div class="menu" id="previewMenu" role="menu" hidden>
+        <button class="menu__item" id="btnSave" type="button" role="menuitem">保存 HTML</button>
+        <button class="menu__item" id="btnSavePNG" type="button" role="menuitem">保存 PNG</button>
         <div class="menu__sep"></div>
-        <button class="menu__item" id="btnRecordMP4" type="button">录制 MP4</button>
+        <button class="menu__item" id="btnRecordMP4" type="button" role="menuitem">录制 MP4</button>
       </div>
     </div>
 
@@ -342,12 +347,10 @@ body {
   </section>
 
   <div class="splitter" id="splitter">
-    <!-- 左侧：菜单"⋯" + AI 助手"✦"并列 -->
     <div class="tool-group tool-group--left">
       <button class="tool-btn menu-btn" id="btnMenuLeft" type="button" title="菜单" aria-label="菜单" aria-haspopup="true" aria-expanded="false">⋯</button>
-      <button class="tool-btn ai-btn" id="btnAI" type="button" title="AI 助手（即将推出）" aria-label="AI 助手">✦</button>
-      <div class="menu" id="menuLeft" hidden>
-        <button class="menu__item" id="btnUploadImage" type="button">上传图片</button>
+      <div class="menu" id="menuLeft" role="menu" hidden>
+        <button class="menu__item" id="btnUploadImage" type="button" role="menuitem">上传图片</button>
         <div class="img-list" id="imgList" hidden></div>
       </div>
     </div>
@@ -364,18 +367,18 @@ body {
     </div>
     <div class="tool-group tool-group--right">
       <button class="tool-btn menu-btn" id="btnMenuRight" type="button" title="菜单" aria-label="菜单" aria-haspopup="true" aria-expanded="false">⋯</button>
-      <div class="menu" id="menuRight" hidden>
-        <button class="menu__item" id="btnReset" type="button">重置</button>
-        <button class="menu__item" id="btnFormat" type="button">格式化代码</button>
+      <div class="menu" id="menuRight" role="menu" hidden>
+        <button class="menu__item" id="btnReset" type="button" role="menuitem">重置</button>
+        <button class="menu__item" id="btnFormat" type="button" role="menuitem">格式化代码</button>
         <div class="menu__sep"></div>
-        <button class="menu__item" id="btnWrapToggle" type="button">自动换行</button>
-        <button class="menu__item" id="btnAutoPreviewToggle" type="button">自动预览 <span class="wrap-check">✓</span></button>
+        <button class="menu__item" id="btnWrapToggle" type="button" role="menuitem">自动换行</button>
+        <button class="menu__item" id="btnAutoPreviewToggle" type="button" role="menuitem">自动预览 <span class="wrap-check">✓</span></button>
         <div class="menu__sep"></div>
-        <button class="menu__item" id="btnLayoutDefault" type="button">恢复默认布局</button>
-        <button class="menu__item" id="btnLayoutCodeMax" type="button">代码最大化</button>
-        <button class="menu__item" id="btnLayoutPreviewMax" type="button">预览最大化</button>
+        <button class="menu__item" id="btnLayoutDefault" type="button" role="menuitem">恢复默认布局</button>
+        <button class="menu__item" id="btnLayoutCodeMax" type="button" role="menuitem">代码最大化</button>
+        <button class="menu__item" id="btnLayoutPreviewMax" type="button" role="menuitem">预览最大化</button>
         <div class="menu__sep"></div>
-        <button class="menu__item danger" id="btnClearCode" type="button">清空代码</button>
+        <button class="menu__item danger" id="btnClearCode" type="button" role="menuitem">清空代码</button>
       </div>
     </div>
   </div>
@@ -431,7 +434,6 @@ const zoomInBtn = $('zoomIn');
 const zoomOutBtn = $('zoomOut');
 const zoomResetBtn = $('zoomReset');
 const btnRun = $('btnRun');
-const btnAI = $('btnAI');
 const btnLayoutDefault = $('btnLayoutDefault');
 const btnLayoutCodeMax = $('btnLayoutCodeMax');
 const btnLayoutPreviewMax = $('btnLayoutPreviewMax');
@@ -459,6 +461,9 @@ let pendingRecord = null;
 /* 图片：上传时压缩一次，三档共享同一张 dataURL */
 let uploadedImages = [];
 let imgSeq = 0;
+
+/* 图片 dataURL JSON 缓存 */
+let _imageJSONCache = { key: '', json: '{}' };
 
 function showToast(msg) {
   toastEl.textContent = msg;
@@ -719,14 +724,19 @@ function toggleImage(name) {
   img.selected = !img.selected;
   renderImageList();
   saveImagesToDB();
+  /* 勾选状态变化 → 刷新预览（自动预览开启时） */
+  schedulePreview();
 }
 
 function deleteImage(name) {
+  if (!confirm('删除图片「' + name + '」？')) return;
   const idx = uploadedImages.findIndex(i => i.name === name);
   if (idx < 0) return;
   uploadedImages.splice(idx, 1);
   renderImageList();
   saveImagesToDB();
+  /* 删除图片 → 刷新预览 */
+  schedulePreview();
 }
 
 btnUploadImage.addEventListener('click', () => {
@@ -739,6 +749,7 @@ imageInput.addEventListener('change', async (e) => {
   if (files.length === 0) return;
 
   btnUploadImage.disabled = true;
+  btnUploadImage.classList.add('is-loading');
   const originalText = btnUploadImage.textContent;
 
   for (const file of files) {
@@ -759,21 +770,37 @@ imageInput.addEventListener('change', async (e) => {
   }
 
   btnUploadImage.textContent = originalText;
+  btnUploadImage.classList.remove('is-loading');
   btnUploadImage.disabled = false;
   imageInput.value = '';
   renderImageList();
   saveImagesToDB();
+  /* 上传完成 → 刷新预览 */
+  schedulePreview();
 });
+
+/* 图片 dataURL JSON：图片集合不变则复用缓存 */
+function getImageDataJSON() {
+  const keyParts = [];
+  uploadedImages.forEach(img => {
+    if (img.selected && img.dataURL) keyParts.push(img.name + '#' + img.dataURL.length);
+  });
+  const key = keyParts.join('|');
+  if (key === _imageJSONCache.key) return _imageJSONCache.json;
+
+  const obj = {};
+  uploadedImages.forEach(img => {
+    if (img.selected) obj[img.name] = img.dataURL;
+  });
+  const json = JSON.stringify(obj);
+  _imageJSONCache = { key, json };
+  return json;
+}
 
 /* ================= 运行时 HTML ================= */
 function buildRuntimeHTML(userCode) {
   const safeCode = escapeUserCode(userCode);
-
-  const imageData = {};
-  uploadedImages.forEach(img => {
-    if (img.selected) imageData[img.name] = img.dataURL;
-  });
-  const imageDataJSON = JSON.stringify(imageData);
+  const imageDataJSON = getImageDataJSON();
 
   return `<!DOCTYPE html>
 <html>
@@ -789,6 +816,24 @@ function buildRuntimeHTML(userCode) {
 </head>
 <body>
 <script>
+/* 用户代码错误上报 */
+window.addEventListener('error', function (e) {
+  try {
+    parent.postMessage({
+      type: 'code-error',
+      message: e.message || '未知错误',
+      lineno: e.lineno || 0,
+      colno: e.colno || 0
+    }, '*');
+  } catch (_) {}
+}, true);
+window.addEventListener('unhandledrejection', function (e) {
+  try {
+    var msg = (e.reason && e.reason.message) ? e.reason.message : String(e.reason);
+    parent.postMessage({ type: 'code-error', message: 'Promise: ' + msg }, '*');
+  } catch (_) {}
+});
+
 /* 图片资源注入 + hook p5.prototype.loadImage / p5.prototype.image */
 (function () {
   var _images = ${imageDataJSON};
@@ -986,7 +1031,7 @@ function updatePreview() {
 
 function schedulePreview() {
   if (isRecording) return;
-  if (!autoPreviewEnabled) return;  /* 关闭自动预览时不再提示，静默等待手动运行 */
+  if (!autoPreviewEnabled) return;
   clearTimeout(renderTimer);
   renderTimer = setTimeout(updatePreview, 300);
 }
@@ -1122,13 +1167,15 @@ function guessMime(filename, fallback) {
   return map[ext] || fallback || 'application/octet-stream';
 }
 
+/* 桌面端跳过 navigator.share，直接下载 */
 function shareOrDownload(blob, filename, onDone) {
   const mime = blob.type && blob.type.indexOf('application/octet-stream') === -1
     ? blob.type : guessMime(filename, blob.type);
   let file = null;
   try { file = new File([blob], filename, { type: mime }); } catch (_) {}
 
-  const canShareFiles = !!(file && navigator.share && navigator.canShare &&
+  const isCoarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+  const canShareFiles = !!(isCoarse && file && navigator.share && navigator.canShare &&
                           navigator.canShare({ files: [file] }));
 
   if (canShareFiles) {
@@ -1237,12 +1284,13 @@ btnPreviewMenu.addEventListener('click', e => {
 });
 
 document.addEventListener('pointerdown', e => {
-  if (e.target.closest('.menu, #btnMenuRight, #btnPreviewMenu, #btnMenuLeft, #btnAI')) return;
+  if (e.target.closest('.menu, #btnMenuRight, #btnPreviewMenu, #btnMenuLeft')) return;
   const anyOpen = !menuRight.hidden || !previewMenu.hidden || !menuLeft.hidden;
   closeAllMenus();
   if (anyOpen) blurActiveElement();
 });
 
+/* ===== 分栏布局 ===== */
 function applySplit() {
   const EPS = 0.0001;
   const dragging = splitDragging;
@@ -1275,6 +1323,11 @@ function applySplit() {
   if (editor && visible !== lastEditorVisible) {
     lastEditorVisible = visible;
     if (visible) requestAnimationFrame(() => { try { editor.refresh(); } catch (_) {} });
+  }
+
+  /* 非拖拽状态下持久化比例 */
+  if (!dragging) {
+    try { localStorage.setItem(SPLIT_KEY, String(splitRatio)); } catch (_) {}
   }
 }
 
@@ -1327,10 +1380,11 @@ function onSplitUp(e) {
   document.body.style.userSelect = '';
   if (splitMoved) {
     lastDownTime = 0; lastDownY = 0; splitMoved = false;
-    if (splitRatio <= 0.10) { splitRatio = 0; applySplit(); }
-    else if (splitRatio >= 0.90) { splitRatio = 1; applySplit(); }
-    refreshEditorSoon();
+    if (splitRatio <= 0.10) { splitRatio = 0; }
+    else if (splitRatio >= 0.90) { splitRatio = 1; }
   }
+  applySplit();
+  if (splitMoved) refreshEditorSoon();
 }
 splitterEl.addEventListener('pointerdown', onSplitDown);
 splitterEl.addEventListener('pointermove', onSplitMove);
@@ -1413,9 +1467,21 @@ zoomResetBtn.addEventListener('click', () => { stageScale = 1; applyStageTransfo
 
 btnRun.addEventListener('click', runCode);
 
-/* AI 助手按钮：工具栏图标按钮，点击提示即将推出 */
-btnAI.addEventListener('click', () => {
-  showToast('AI 助手即将推出');
+/* 键盘快捷键：Ctrl/Cmd+S 保存、Ctrl/Cmd+Enter 运行、Ctrl/Cmd+Shift+F 格式化、Escape 关闭菜单 */
+document.addEventListener('keydown', (e) => {
+  const mod = e.ctrlKey || e.metaKey;
+  if (mod && !e.shiftKey && (e.key === 's' || e.key === 'S')) {
+    e.preventDefault();
+    saveHTML();
+  } else if (mod && (e.key === 'Enter')) {
+    e.preventDefault();
+    runCode();
+  } else if (mod && e.shiftKey && (e.key === 'f' || e.key === 'F')) {
+    e.preventDefault();
+    formatCode();
+  } else if (e.key === 'Escape') {
+    closeAllMenus();
+  }
 });
 
 window.addEventListener('message', e => {
@@ -1425,6 +1491,11 @@ window.addEventListener('message', e => {
 
   if (d.type === 'outside-click') { closeAllMenus(); blurActiveElement(); return; }
   if (d.type === 'p5-error') { showToast(d.message || 'p5.js 加载失败'); return; }
+  if (d.type === 'code-error') {
+    const loc = d.lineno ? '（第 ' + d.lineno + ' 行）' : '';
+    showToast('代码错误：' + (d.message || '未知') + loc);
+    return;
+  }
 
   if (d.type === 'record-started') {
     isRecording = true;
@@ -1473,6 +1544,9 @@ async function initImages() {
       return m ? Math.max(max, parseInt(m[1], 10)) : max;
     }, 0);
     renderImageList();
+
+    /* 图片加载完成后刷新预览，避免引用图片的草稿首次渲染为空 */
+    updatePreview();
   }
 }
 
