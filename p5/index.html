@@ -582,7 +582,6 @@ function compressImage(file) {
           const maxSide = Math.max(iw, ih);
 
           if (file.type === 'image/gif' || maxSide <= MAX) {
-            // GIF 保留动画；小图直接复用原图
             resolve({ dataURL: originalDataURL, type: file.type });
             return;
           }
@@ -663,7 +662,6 @@ async function saveImagesToDB() {
   } catch (_) {}
 }
 
-/* 列表渲染 */
 function renderImageList() {
   if (uploadedImages.length === 0) {
     imgList.hidden = true;
@@ -770,7 +768,6 @@ imageInput.addEventListener('change', async (e) => {
 function buildRuntimeHTML(userCode) {
   const safeCode = escapeUserCode(userCode);
 
-  // 只收集选中的图片
   const imageData = {};
   uploadedImages.forEach(img => {
     if (img.selected) imageData[img.name] = img.dataURL;
@@ -791,14 +788,9 @@ function buildRuntimeHTML(userCode) {
 </head>
 <body>
 <script>
-/* ===== 图片资源注入 & 三档显示模式 =====
-   内部只存一份 dataURL（_images），三个全局对象通过 getter 返回不同前缀：
-     imageUrl[name]  → 原始 dataURL
-     imageMax[name]  → '__p5fit_cover__' + dataURL
-     imageMin[name]  → '__p5fit_contain__' + dataURL
-   loadImage 会剥离前缀并给图片对象打上 _fitMode 标记。
-   image(img) 无额外参数时按 _fitMode 适配整块画布。
-*/
+/* 图片资源注入 + hook。
+   关键：hook p5.prototype.loadImage / p5.prototype.image，
+   因为 window.loadImage 是 p5 实例化后才挂上的，此刻还不存在。 */
 (function () {
   var _images = ${imageDataJSON};
 
@@ -816,54 +808,80 @@ function buildRuntimeHTML(userCode) {
   window.imageUrl = makeFitObj('');
   window.imageMax = makeFitObj('__p5fit_cover__');
   window.imageMin = makeFitObj('__p5fit_contain__');
-  /* 兼容旧 API */
   window.UPLOADED_IMAGES = window.imageUrl;
 
-  /* hook loadImage / image */
-  if (typeof window.loadImage === 'function' && typeof window.image === 'function') {
-    var _origLoadImage = window.loadImage;
-    var _origImage = window.image;
+  if (window.__p5fitHooked) return;
+  window.__p5fitHooked = true;
 
-    function _p5ctx() {
-      return (window.p5 && window.p5.instance) || window;
-    }
+  var PREFIX_RE = /^__p5fit_(cover|contain)__([\\s\\S]*)$/;
 
-    window.loadImage = function (src) {
+  function wrapLoadImage(orig) {
+    var fn = function (src) {
       var args = Array.prototype.slice.call(arguments);
       if (typeof src === 'string') {
-        var m = src.match(/^__p5fit_(cover|contain)__([\\s\\S]*)$/);
+        var m = src.match(PREFIX_RE);
         if (m) {
           args[0] = m[2];
-          var img = _origLoadImage.apply(_p5ctx(), args);
-          if (img) { try { img._fitMode = m[1]; } catch (_) {} }
-          return img;
+          var pImg = orig.apply(this, args);
+          if (pImg) { try { pImg._fitMode = m[1]; } catch (_) {} }
+          return pImg;
         }
       }
-      return _origLoadImage.apply(_p5ctx(), args);
+      return orig.apply(this, args);
     };
+    fn.__p5fitWrapped = true;
+    return fn;
+  }
 
-    window.image = function (img) {
+  function wrapImage(orig) {
+    var fn = function (img) {
       var args = Array.prototype.slice.call(arguments);
       if (img && img._fitMode && args.length === 1) {
-        var cw = (typeof width !== 'undefined' ? width : 0);
-        var ch = (typeof height !== 'undefined' ? height : 0);
+        var cw = (typeof this.width === 'number' && this.width > 0) ? this.width : (window.width || 0);
+        var ch = (typeof this.height === 'number' && this.height > 0) ? this.height : (window.height || 0);
         var iw = img.width || 0;
         var ih = img.height || 0;
         if (cw > 0 && ch > 0 && iw > 0 && ih > 0) {
+          var s, w, h;
           if (img._fitMode === 'cover') {
-            var s = Math.max(cw / iw, ch / ih);
-            var w = iw * s, h = ih * s;
-            return _origImage.call(_p5ctx(), img, (cw - w) / 2, (ch - h) / 2, w, h);
+            s = Math.max(cw / iw, ch / ih);
+            w = iw * s; h = ih * s;
+            return orig.call(this, img, (cw - w) / 2, (ch - h) / 2, w, h);
           }
           if (img._fitMode === 'contain') {
-            var s2 = Math.min(cw / iw, ch / ih);
-            var w2 = iw * s2, h2 = ih * s2;
-            return _origImage.call(_p5ctx(), img, (cw - w2) / 2, (ch - h2) / 2, w2, h2);
+            s = Math.min(cw / iw, ch / ih);
+            w = iw * s; h = ih * s;
+            return orig.call(this, img, (cw - w) / 2, (ch - h) / 2, w, h);
           }
         }
       }
-      return _origImage.apply(_p5ctx(), args);
+      return orig.apply(this, args);
     };
+    fn.__p5fitWrapped = true;
+    return fn;
+  }
+
+  function installHooks() {
+    var proto = window.p5 && window.p5.prototype;
+    if (proto && typeof proto.loadImage === 'function' && !proto.loadImage.__p5fitWrapped) {
+      proto.loadImage = wrapLoadImage(proto.loadImage);
+      proto.image = wrapImage(proto.image);
+      return true;
+    }
+    if (typeof window.loadImage === 'function' && !window.loadImage.__p5fitWrapped) {
+      window.loadImage = wrapLoadImage(window.loadImage);
+      window.image = wrapImage(window.image);
+      return true;
+    }
+    return false;
+  }
+
+  if (!installHooks()) {
+    var tries = 0;
+    var timer = setInterval(function () {
+      tries++;
+      if (installHooks() || tries >= 100) clearInterval(timer);
+    }, 10);
   }
 })();
 <\/script>
@@ -1447,7 +1465,6 @@ async function initImages() {
   const saved = await loadImagesFromDB();
   if (saved && saved.length) {
     uploadedImages = saved.map(img => {
-      // 兼容旧格式（versions.url / dataURL）
       const dataURL = img.dataURL || (img.versions && img.versions.url) || '';
       return {
         name: img.name,
