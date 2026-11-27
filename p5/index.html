@@ -19,11 +19,7 @@
 }
 *,*::before,*::after { box-sizing: border-box; }
 
-html {
-  height: 100%;
-  touch-action: pan-x pan-y;
-  -webkit-text-size-adjust: 100%; text-size-adjust: 100%;
-}
+html { height: 100%; touch-action: pan-x pan-y; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 body {
   margin: 0; height: 100%;
   font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
@@ -33,11 +29,7 @@ body {
   touch-action: pan-x pan-y;
 }
 
-.app {
-  display: flex; flex-direction: column;
-  width: 100%; height: 100vh; height: 100dvh;
-  position: relative;
-}
+.app { display: flex; flex-direction: column; width: 100%; height: 100vh; height: 100dvh; position: relative; }
 
 .preview-wrap {
   flex: 80 1 0; min-height: 80px;
@@ -60,22 +52,10 @@ body {
 .preview-wrap.bg-white { background: #ffffff; }
 .preview-wrap.bg-dark { background: #0f172a; }
 
-.preview-stage {
-  position: absolute; inset: 0;
-  transform-origin: center center;
-  will-change: transform;
-}
-.preview-stage iframe {
-  display: block; width: 100%; height: 100%;
-  border: 0; background: transparent;
-  pointer-events: auto;
-}
+.preview-stage { position: absolute; inset: 0; transform-origin: center center; will-change: transform; }
+.preview-stage iframe { display: block; width: 100%; height: 100%; border: 0; background: transparent; pointer-events: auto; }
 
-.preview-menu-wrap {
-  position: absolute;
-  top: 14px; right: 14px;
-  z-index: 10;
-}
+.preview-menu-wrap { position: absolute; top: 14px; right: 14px; z-index: 10; }
 .preview-menu-btn {
   width: 32px; height: 32px;
   display: grid; place-items: center;
@@ -91,15 +71,10 @@ body {
   transition: background .14s, color .14s;
 }
 .preview-menu-btn:hover { background: var(--hover); color: var(--text); }
-.preview-menu-wrap .menu {
-  top: calc(100% + 6px);
-  left: auto; right: 0;
-}
+.preview-menu-wrap .menu { top: calc(100% + 6px); left: auto; right: 0; }
 
 .stale-badge {
-  position: absolute;
-  top: 14px; left: 14px;
-  z-index: 9;
+  position: absolute; top: 14px; left: 14px; z-index: 9;
   padding: 5px 11px;
   font-size: 11.5px; font-weight: 600;
   color: #92400e;
@@ -117,22 +92,11 @@ body {
 
 .menu__item.is-recording { color: #dc2626; }
 .menu__item.is-ready { color: var(--accent); font-weight: 600; }
-
-.menu__item .wrap-check {
-  color: #16a34a;
-  font-weight: 700;
-  margin-left: 2px;
-}
-
+.menu__item .wrap-check { color: #16a34a; font-weight: 700; margin-left: 2px; }
 .menu__item.ai-item { color: var(--accent); font-weight: 600; }
 
-.menu__sep {
-  height: 1px;
-  background: var(--border);
-  margin: 4px 2px;
-}
+.menu__sep { height: 1px; background: var(--border); margin: 4px 2px; }
 
-/* ===== 图片资源列表 ===== */
 .img-list {
   display: flex; flex-direction: column;
   gap: 1px;
@@ -185,8 +149,7 @@ body {
   flex: 0 0 auto;
   width: 20px; height: 20px;
   display: grid; place-items: center;
-  font-size: 14px;
-  line-height: 1;
+  font-size: 14px; line-height: 1;
   color: var(--text-dim);
   background: transparent; border: 0; border-radius: 4px;
   cursor: pointer;
@@ -224,15 +187,8 @@ body {
 }
 .bg-btn[data-bg="white"] { background: #fff; }
 .bg-btn[data-bg="dark"] { background: #1e293b; border-color: #334155; }
-.bg-btn.is-active {
-  box-shadow: 0 0 0 2px var(--accent);
-  border-color: var(--accent);
-}
-.view-controls__sep {
-  width: 1px; height: 18px;
-  background: var(--border);
-  margin: 0 2px;
-}
+.bg-btn.is-active { box-shadow: 0 0 0 2px var(--accent); border-color: var(--accent); }
+.view-controls__sep { width: 1px; height: 18px; background: var(--border); margin: 0 2px; }
 
 .zoom-btn {
   min-width: 26px; height: 26px; padding: 0 6px;
@@ -268,12 +224,7 @@ body {
 }
 .tool-group { flex: 0 0 auto; display: flex; align-items: center; gap: 2px; }
 .tool-group--left, .tool-group--right { position: relative; }
-
-.tool-center {
-  flex: 1 1 auto; min-width: 60px;
-  display: flex; align-items: center; justify-content: center;
-  position: relative;
-}
+.tool-center { flex: 1 1 auto; min-width: 60px; display: flex; align-items: center; justify-content: center; position: relative; }
 .tool-btn {
   flex: 0 0 auto;
   min-width: 28px; height: 24px;
@@ -287,39 +238,22 @@ body {
 }
 .tool-btn:hover { color: var(--text); background: var(--active); }
 .tool-btn:active:not(:disabled) { transform: scale(.94); }
-.tool-btn.primary { color: #fff; background: var(--accent); border-color: var(--accent); }
-.tool-btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
 
 .tool-btn.anim-btn {
-  position: absolute;
-  left: 50%; top: 50%;
+  position: absolute; left: 50%; top: 50%;
   transform: translate(-50%, -50%);
-  z-index: 2;
-  margin: 0;
+  z-index: 2; margin: 0;
   color: var(--accent);
   background: var(--splitter-bg);
 }
 .tool-btn.anim-btn:hover { background: var(--active); color: var(--accent); }
 .tool-btn.anim-btn:active:not(:disabled) { transform: translate(-50%, -50%) scale(.94); }
-.tool-btn.anim-btn.spinning svg {
-  animation: runSpin .5s ease;
-}
-@keyframes runSpin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
+.tool-btn.anim-btn.spinning svg { animation: runSpin .5s ease; }
+@keyframes runSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-.menu-btn {
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  line-height: 1;
-  padding: 0 4px;
-}
+.menu-btn { font-size: 18px; font-weight: 700; letter-spacing: 2px; line-height: 1; padding: 0 4px; }
 .menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
+  position: absolute; top: calc(100% + 6px); left: 0;
   min-width: 130px;
   max-height: calc(100vh - 120px);
   overflow-y: auto;
@@ -349,27 +283,11 @@ body {
 .menu__item.danger { color: #dc2626; }
 .menu__item.danger:hover { background: #fef2f2; }
 
-.splitter-grip {
-  flex: 1 1 auto; min-width: 20px; height: 100%;
-  cursor: ns-resize; touch-action: none; position: relative;
-}
+.splitter-grip { flex: 1 1 auto; min-width: 20px; height: 100%; cursor: ns-resize; touch-action: none; position: relative; }
 
-.editor-wrap {
-  flex: 20 1 0; min-height: 100px;
-  position: relative; overflow: hidden;
-  background: var(--ed-bg);
-}
-.CodeMirror {
-  height: 100% !important;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 13px; line-height: 1.55;
-  touch-action: pan-x pan-y;
-}
-.CodeMirror-scroll,
-.CodeMirror-lines,
-.CodeMirror textarea {
-  touch-action: pan-x pan-y;
-}
+.editor-wrap { flex: 20 1 0; min-height: 100px; position: relative; overflow: hidden; background: var(--ed-bg); }
+.CodeMirror { height: 100% !important; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.55; touch-action: pan-x pan-y; }
+.CodeMirror-scroll, .CodeMirror-lines, .CodeMirror textarea { touch-action: pan-x pan-y; }
 .editor-wrap[hidden] { display: none !important; }
 
 .toast {
@@ -390,9 +308,7 @@ body {
   .tool-btn { min-width: 26px; height: 22px; font-size: 11.5px; padding: 0 6px; }
   .menu-btn { font-size: 16px; }
   .menu { min-width: 120px; }
-
   .CodeMirror { font-size: 14px; }
-
   .view-controls { left: 8px; bottom: 8px; gap: 4px; padding: 4px 6px; }
   .zoom-label { min-width: 54px; height: 26px; font-size: 11.5px; }
   .zoom-btn { min-width: 26px; height: 26px; font-size: 13px; }
@@ -437,7 +353,6 @@ body {
   </section>
 
   <div class="splitter" id="splitter">
-    <!-- 左侧"⋯"菜单：AI + 上传图片 + 图片列表 -->
     <div class="tool-group tool-group--left">
       <button class="tool-btn menu-btn" id="btnMenuLeft" type="button" title="菜单" aria-label="菜单" aria-haspopup="true" aria-expanded="false">⋯</button>
       <div class="menu" id="menuLeft" hidden>
@@ -447,7 +362,6 @@ body {
         <div class="img-list" id="imgList" hidden></div>
       </div>
     </div>
-    <!-- 隐藏的 file input -->
     <input type="file" id="imageInput" accept="image/*" multiple hidden>
 
     <div class="tool-center">
@@ -544,7 +458,6 @@ let inputTimer = 0;
 let toastTimer = null;
 
 let stageScale = 1;
-
 let splitRatio = 0.8;
 let lastEditorVisible = true;
 
@@ -555,8 +468,9 @@ let autoPreviewEnabled = true;
 let isRecording = false;
 let pendingRecord = null;
 
-/* 图片资源：数组保序，selected 控制是否注入到 p5 */
-let uploadedImages = []; // { name, dataURL, selected, type }
+/* 图片：上传时压缩一次，三档共享同一张 dataURL */
+/* { name, dataURL, type, selected } */
+let uploadedImages = [];
 let imgSeq = 0;
 
 function showToast(msg) {
@@ -590,17 +504,30 @@ function timestampFilename(prefix, ext) {
 }
 
 function buildTemplate() {
-  return `function setup() {
+  return `// 图片调用三种显示模式：
+//   imageUrl['name']  → 原图状态（p5 默认，按原尺寸绘制）
+//   imageMax['name']  → 最大化填满画布，超出裁剪，不变形（cover）
+//   imageMin['name']  → 完整显示在画布内，留边不裁剪（contain）
+//
+// 用法：image(img) 会自动按模式适配整块画布。
+// 若指定位置或尺寸（如 image(img, x, y)），则按 p5 原生行为绘制。
+let img;
+
+function preload() {
+  img = loadImage(imageMax['c3.jpg']);
+}
+
+function setup() {
   createCanvas(windowWidth, windowHeight);
 }
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
-  pixelDensity(Math.min(window.devicePixelRatio || 1, 2));
 }
 
 function draw() {
-  clear();
+  background(255);
+  if (img) image(img);
 }
 `;
 }
@@ -609,9 +536,8 @@ function escapeUserCode(code) {
   return String(code).replace(/<\/script/gi, '<\\/script');
 }
 
-/* ================= 图片上传 & 压缩 & 管理 ================= */
+/* ================= 图片上传 & 压缩 ================= */
 
-/* 自动改名：ASCII 安全字符保留；含中文/特殊字符则改为 img_N */
 function sanitizeImageName(originalName, existingNames) {
   const dotIdx = originalName.lastIndexOf('.');
   const rawExt = dotIdx >= 0 ? originalName.slice(dotIdx).toLowerCase() : '';
@@ -619,7 +545,6 @@ function sanitizeImageName(originalName, existingNames) {
   const ext = allowedExt.includes(rawExt) ? rawExt : '.png';
   const base = originalName.slice(0, dotIdx >= 0 ? dotIdx : originalName.length);
 
-  // 全部是 [A-Za-z0-9_-] 才保留原名
   if (/^[A-Za-z0-9_-]+$/.test(base)) {
     let name = base + ext;
     let i = 1;
@@ -630,7 +555,6 @@ function sanitizeImageName(originalName, existingNames) {
     return name;
   }
 
-  // 含非 ASCII 或特殊字符 → 自动命名 img_N
   let candidate;
   do {
     imgSeq++;
@@ -639,63 +563,51 @@ function sanitizeImageName(originalName, existingNames) {
   return candidate;
 }
 
-/* 压缩：限制最大边 2048，JPEG 0.82，超 400KB 降质；PNG 保留透明 */
+/* 单档压缩：最大边 2048，JPEG 0.85；PNG/GIF 保留格式 */
 function compressImage(file) {
   return new Promise((resolve, reject) => {
-    if (!file.type || !file.type.startsWith('image/')) {
-      reject(new Error('不是图片文件'));
-      return;
-    }
-    if (file.size > 20 * 1024 * 1024) {
-      reject(new Error('超过 20MB'));
-      return;
-    }
+    if (!file.type || !file.type.startsWith('image/')) { reject(new Error('不是图片文件')); return; }
+    if (file.size > 20 * 1024 * 1024) { reject(new Error('超过 20MB')); return; }
     const reader = new FileReader();
     reader.onerror = () => reject(new Error('读取失败'));
     reader.onload = () => {
       const originalDataURL = reader.result;
-      const img = new Image();
-      img.onerror = () => reject(new Error('图片解码失败'));
-      img.onload = () => {
-        const MAX = 2048;
-        let w = img.naturalWidth;
-        let h = img.naturalHeight;
-        const scale = Math.min(1, MAX / Math.max(w, h));
-        const needResize = scale < 1;
-        const needRecompress = file.size >= 200 * 1024;
+      const imgEl = new Image();
+      imgEl.onerror = () => reject(new Error('图片解码失败'));
+      imgEl.onload = () => {
+        try {
+          const MAX = 2048;
+          const iw = imgEl.naturalWidth;
+          const ih = imgEl.naturalHeight;
+          const maxSide = Math.max(iw, ih);
 
-        if (!needResize && !needRecompress) {
-          resolve({ dataURL: originalDataURL, type: file.type });
-          return;
-        }
-
-        w = Math.round(w * scale);
-        h = Math.round(h * scale);
-        const canvas = document.createElement('canvas');
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, w, h);
-
-        const usePNG = file.type === 'image/png';
-        let mime, dataURL;
-        if (usePNG) {
-          mime = 'image/png';
-          dataURL = canvas.toDataURL('image/png');
-        } else {
-          mime = 'image/jpeg';
-          let q = 0.82;
-          dataURL = canvas.toDataURL(mime, q);
-          let tries = 0;
-          while (dataURL.length * 0.75 > 400 * 1024 && q > 0.5 && tries < 4) {
-            q -= 0.1;
-            dataURL = canvas.toDataURL(mime, q);
-            tries++;
+          if (file.type === 'image/gif' || maxSide <= MAX) {
+            // GIF 保留动画；小图直接复用原图
+            resolve({ dataURL: originalDataURL, type: file.type });
+            return;
           }
-        }
-        resolve({ dataURL, type: mime });
+
+          const scale = MAX / maxSide;
+          const w = Math.round(iw * scale);
+          const h = Math.round(ih * scale);
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(imgEl, 0, 0, w, h);
+
+          let dataURL, type;
+          if (file.type === 'image/png') {
+            type = 'image/png';
+            dataURL = canvas.toDataURL('image/png');
+          } else {
+            type = 'image/jpeg';
+            dataURL = canvas.toDataURL('image/jpeg', 0.85);
+          }
+          resolve({ dataURL, type });
+        } catch (e) { reject(e); }
       };
-      img.src = originalDataURL;
+      imgEl.src = originalDataURL;
     };
     reader.readAsDataURL(file);
   });
@@ -728,9 +640,7 @@ async function loadImagesFromDB() {
       req.onsuccess = () => resolve(req.result || []);
       req.onerror = () => reject(req.error);
     });
-  } catch (_) {
-    return [];
-  }
+  } catch (_) { return []; }
 }
 async function saveImagesToDB() {
   try {
@@ -820,7 +730,6 @@ function deleteImage(name) {
   saveImagesToDB();
 }
 
-/* 上传按钮 → 触发文件选择 */
 btnUploadImage.addEventListener('click', () => {
   imageInput.value = '';
   imageInput.click();
@@ -857,19 +766,17 @@ imageInput.addEventListener('change', async (e) => {
   saveImagesToDB();
 });
 
-/* 注入到 srcdoc：只包含勾选的图片 */
-function buildImageInjection() {
-  const obj = {};
-  uploadedImages.forEach(img => {
-    if (img.selected) obj[img.name] = img.dataURL;
-  });
-  return obj;
-}
-
 /* ================= 运行时 HTML ================= */
 function buildRuntimeHTML(userCode) {
   const safeCode = escapeUserCode(userCode);
-  const imagesJSON = JSON.stringify(buildImageInjection());
+
+  // 只收集选中的图片
+  const imageData = {};
+  uploadedImages.forEach(img => {
+    if (img.selected) imageData[img.name] = img.dataURL;
+  });
+  const imageDataJSON = JSON.stringify(imageData);
+
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -884,9 +791,86 @@ function buildRuntimeHTML(userCode) {
 </head>
 <body>
 <script>
-window.UPLOADED_IMAGES = ${imagesJSON};
-${safeCode}
+/* ===== 图片资源注入 & 三档显示模式 =====
+   内部只存一份 dataURL（_images），三个全局对象通过 getter 返回不同前缀：
+     imageUrl[name]  → 原始 dataURL
+     imageMax[name]  → '__p5fit_cover__' + dataURL
+     imageMin[name]  → '__p5fit_contain__' + dataURL
+   loadImage 会剥离前缀并给图片对象打上 _fitMode 标记。
+   image(img) 无额外参数时按 _fitMode 适配整块画布。
+*/
+(function () {
+  var _images = ${imageDataJSON};
 
+  function makeFitObj(prefix) {
+    var obj = {};
+    Object.keys(_images).forEach(function (k) {
+      Object.defineProperty(obj, k, {
+        enumerable: true,
+        get: function () { return prefix + _images[k]; }
+      });
+    });
+    return obj;
+  }
+
+  window.imageUrl = makeFitObj('');
+  window.imageMax = makeFitObj('__p5fit_cover__');
+  window.imageMin = makeFitObj('__p5fit_contain__');
+  /* 兼容旧 API */
+  window.UPLOADED_IMAGES = window.imageUrl;
+
+  /* hook loadImage / image */
+  if (typeof window.loadImage === 'function' && typeof window.image === 'function') {
+    var _origLoadImage = window.loadImage;
+    var _origImage = window.image;
+
+    function _p5ctx() {
+      return (window.p5 && window.p5.instance) || window;
+    }
+
+    window.loadImage = function (src) {
+      var args = Array.prototype.slice.call(arguments);
+      if (typeof src === 'string') {
+        var m = src.match(/^__p5fit_(cover|contain)__([\\s\\S]*)$/);
+        if (m) {
+          args[0] = m[2];
+          var img = _origLoadImage.apply(_p5ctx(), args);
+          if (img) { try { img._fitMode = m[1]; } catch (_) {} }
+          return img;
+        }
+      }
+      return _origLoadImage.apply(_p5ctx(), args);
+    };
+
+    window.image = function (img) {
+      var args = Array.prototype.slice.call(arguments);
+      if (img && img._fitMode && args.length === 1) {
+        var cw = (typeof width !== 'undefined' ? width : 0);
+        var ch = (typeof height !== 'undefined' ? height : 0);
+        var iw = img.width || 0;
+        var ih = img.height || 0;
+        if (cw > 0 && ch > 0 && iw > 0 && ih > 0) {
+          if (img._fitMode === 'cover') {
+            var s = Math.max(cw / iw, ch / ih);
+            var w = iw * s, h = ih * s;
+            return _origImage.call(_p5ctx(), img, (cw - w) / 2, (ch - h) / 2, w, h);
+          }
+          if (img._fitMode === 'contain') {
+            var s2 = Math.min(cw / iw, ch / ih);
+            var w2 = iw * s2, h2 = ih * s2;
+            return _origImage.call(_p5ctx(), img, (cw - w2) / 2, (ch - h2) / 2, w2, h2);
+          }
+        }
+      }
+      return _origImage.apply(_p5ctx(), args);
+    };
+  }
+})();
+<\/script>
+<script>
+${safeCode}
+<\/script>
+<script>
 var _recorder = null;
 var _chunks = [];
 var _recordMime = '';
@@ -995,9 +979,7 @@ function markPreviewStale() {
   if (autoPreviewEnabled || isRecording) { staleBadge.hidden = true; return; }
   staleBadge.hidden = false;
 }
-function clearPreviewStale() {
-  staleBadge.hidden = true;
-}
+function clearPreviewStale() { staleBadge.hidden = true; }
 
 function runCode() {
   if (isRecording) { showToast('录制中，无法运行'); return; }
@@ -1032,18 +1014,13 @@ function setPreviewBg(bg) {
 
 function postToIframe(type) {
   try {
-    if (previewEl.contentWindow) {
-      previewEl.contentWindow.postMessage({ type }, '*');
-    }
+    if (previewEl.contentWindow) previewEl.contentWindow.postMessage({ type }, '*');
   } catch (_) {}
 }
 
 function updateWrapLabel() {
-  if (wrapEnabled) {
-    btnWrapToggle.innerHTML = '自动换行 <span class="wrap-check">✓</span>';
-  } else {
-    btnWrapToggle.textContent = '自动换行';
-  }
+  if (wrapEnabled) btnWrapToggle.innerHTML = '自动换行 <span class="wrap-check">✓</span>';
+  else btnWrapToggle.textContent = '自动换行';
 }
 function setWrap(on) {
   wrapEnabled = !!on;
@@ -1053,39 +1030,26 @@ function setWrap(on) {
 }
 
 function updateAutoPreviewLabel() {
-  if (autoPreviewEnabled) {
-    btnAutoPreviewToggle.innerHTML = '自动预览 <span class="wrap-check">✓</span>';
-  } else {
-    btnAutoPreviewToggle.textContent = '自动预览';
-  }
+  if (autoPreviewEnabled) btnAutoPreviewToggle.innerHTML = '自动预览 <span class="wrap-check">✓</span>';
+  else btnAutoPreviewToggle.textContent = '自动预览';
 }
 function setAutoPreview(on) {
   autoPreviewEnabled = !!on;
   updateAutoPreviewLabel();
   try { localStorage.setItem(AUTO_PREVIEW_KEY, autoPreviewEnabled ? '1' : '0'); } catch (_) {}
-  if (autoPreviewEnabled && !isRecording && editor) {
-    updatePreview();
-  } else if (!autoPreviewEnabled) {
-    markPreviewStale();
-  }
+  if (autoPreviewEnabled && !isRecording && editor) updatePreview();
+  else if (!autoPreviewEnabled) markPreviewStale();
 }
 
 function formatCode() {
-  if (typeof js_beautify === 'undefined') {
-    showToast('格式化库未加载，请检查网络');
-    return;
-  }
+  if (typeof js_beautify === 'undefined') { showToast('格式化库未加载，请检查网络'); return; }
   try {
     const code = editor.getValue();
     const formatted = js_beautify(code, {
-      indent_size: 2,
-      indent_char: ' ',
-      preserve_newlines: true,
-      max_preserve_newlines: 2,
-      end_with_newline: true,
-      wrap_line_length: 0
+      indent_size: 2, indent_char: ' ', preserve_newlines: true,
+      max_preserve_newlines: 2, end_with_newline: true, wrap_line_length: 0
     });
-    if (formatted === code) { return; }
+    if (formatted === code) return;
     const lastLine = editor.lastLine();
     const lastCh = editor.getLine(lastLine).length;
     const cur = editor.getCursor();
@@ -1106,7 +1070,7 @@ function clearCode() {
   if (isRecording) { showToast('录制中，无法清空'); return; }
   if (!editor) return;
   const lastLine = editor.lineCount() - 1;
-  if (lastLine === 0 && editor.getLine(0) === '') { return; }
+  if (lastLine === 0 && editor.getLine(0) === '') return;
   const lastCh = editor.getLine(lastLine).length;
   editor.replaceRange('', { line: 0, ch: 0 }, { line: lastLine, ch: lastCh });
 }
@@ -1122,13 +1086,9 @@ function capturePNG() {
   try {
     const url = canvas.toDataURL('image/png');
     const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.rel = 'noopener';
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    a.href = url; a.download = filename;
+    a.rel = 'noopener'; a.style.display = 'none';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
   } catch (err) {
     showToast('保存 PNG 失败：' + (err && err.message || '未知错误'));
   }
@@ -1137,13 +1097,9 @@ function capturePNG() {
 function legacyDownload(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.rel = 'noopener';
-  a.style.display = 'none';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  a.href = url; a.download = filename;
+  a.rel = 'noopener'; a.style.display = 'none';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
@@ -1159,8 +1115,7 @@ function guessMime(filename, fallback) {
 
 function shareOrDownload(blob, filename, onDone) {
   const mime = blob.type && blob.type.indexOf('application/octet-stream') === -1
-    ? blob.type
-    : guessMime(filename, blob.type);
+    ? blob.type : guessMime(filename, blob.type);
   let file = null;
   try { file = new File([blob], filename, { type: mime }); } catch (_) {}
 
@@ -1172,12 +1127,8 @@ function shareOrDownload(blob, filename, onDone) {
       .then(() => { onDone && onDone('shared'); })
       .catch(err => {
         if (err && err.name === 'AbortError') { onDone && onDone('cancelled'); return; }
-        try {
-          legacyDownload(blob, filename);
-          onDone && onDone('downloaded');
-        } catch (_) {
-          onDone && onDone('failed', err);
-        }
+        try { legacyDownload(blob, filename); onDone && onDone('downloaded'); }
+        catch (_) { onDone && onDone('failed', err); }
       });
     return;
   }
@@ -1192,9 +1143,7 @@ function saveHTML() {
   const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
   const filename = timestampFilename('sketch', 'html');
   shareOrDownload(blob, filename, (result, err) => {
-    if (result === 'failed') {
-      showToast('保存失败，请重试' + (err && err.message ? '：' + err.message : ''));
-    }
+    if (result === 'failed') showToast('保存失败，请重试' + (err && err.message ? '：' + err.message : ''));
   });
 }
 
@@ -1285,7 +1234,6 @@ document.addEventListener('pointerdown', e => {
   if (anyOpen) blurActiveElement();
 });
 
-/* ===== 分栏布局 ===== */
 function applySplit() {
   const EPS = 0.0001;
   const dragging = splitDragging;
@@ -1358,8 +1306,7 @@ function onSplitMove(e) {
   const appRect = appEl.getBoundingClientRect();
   const splitterH = splitterEl.getBoundingClientRect().height;
   const totalH = appRect.height - splitterH;
-  const ratio = clamp((splitStartH + dy) / totalH, 0, 1);
-  splitRatio = ratio;
+  splitRatio = clamp((splitStartH + dy) / totalH, 0, 1);
   applySplit();
 }
 
@@ -1371,13 +1318,8 @@ function onSplitUp(e) {
   document.body.style.userSelect = '';
   if (splitMoved) {
     lastDownTime = 0; lastDownY = 0; splitMoved = false;
-    if (splitRatio <= 0.10) {
-      splitRatio = 0;
-      applySplit();
-    } else if (splitRatio >= 0.90) {
-      splitRatio = 1;
-      applySplit();
-    }
+    if (splitRatio <= 0.10) { splitRatio = 0; applySplit(); }
+    else if (splitRatio >= 0.90) { splitRatio = 1; applySplit(); }
     refreshEditorSoon();
   }
 }
@@ -1386,7 +1328,6 @@ splitterEl.addEventListener('pointermove', onSplitMove);
 splitterEl.addEventListener('pointerup', onSplitUp);
 splitterEl.addEventListener('pointercancel', onSplitUp);
 
-/* ===== 防缩放 ===== */
 ['gesturestart', 'gesturechange', 'gestureend'].forEach(evt => {
   document.addEventListener(evt, e => e.preventDefault(), { passive: false });
 });
@@ -1397,9 +1338,7 @@ document.addEventListener('touchmove', e => {
 function installDoubleTapGuard(el, opts) {
   opts = opts || {};
   el.addEventListener('mousedown', e => {
-    if (e.detail >= 2 && !e.target.closest('.tool-btn, .menu, .menu__item')) {
-      e.preventDefault();
-    }
+    if (e.detail >= 2 && !e.target.closest('.tool-btn, .menu, .menu__item')) e.preventDefault();
   });
   el.addEventListener('dblclick', e => { e.preventDefault(); });
   if (opts.touch) {
@@ -1414,7 +1353,6 @@ function installDoubleTapGuard(el, opts) {
 }
 installDoubleTapGuard(splitterEl, { touch: true });
 
-/* ===== 草稿存取 ===== */
 function saveDraft() {
   try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ code: editor ? editor.getValue() : '' })); }
   catch (_) {}
@@ -1429,7 +1367,6 @@ function loadDraft() {
   return null;
 }
 
-/* ===== 菜单项事件 ===== */
 btnSave.addEventListener('click', () => { closeAllMenus(); saveHTML(); });
 btnReset.addEventListener('click', () => {
   closeAllMenus();
@@ -1445,22 +1382,13 @@ btnAutoPreviewToggle.addEventListener('click', () => { setAutoPreview(!autoPrevi
 btnClearCode.addEventListener('click', () => { closeAllMenus(); clearCode(); });
 
 btnLayoutDefault.addEventListener('click', () => {
-  closeAllMenus();
-  splitRatio = 0.8;
-  applySplit();
-  refreshEditorSoon();
+  closeAllMenus(); splitRatio = 0.8; applySplit(); refreshEditorSoon();
 });
 btnLayoutCodeMax.addEventListener('click', () => {
-  closeAllMenus();
-  splitRatio = 0;
-  applySplit();
-  refreshEditorSoon();
+  closeAllMenus(); splitRatio = 0; applySplit(); refreshEditorSoon();
 });
 btnLayoutPreviewMax.addEventListener('click', () => {
-  closeAllMenus();
-  splitRatio = 1;
-  applySplit();
-  refreshEditorSoon();
+  closeAllMenus(); splitRatio = 1; applySplit(); refreshEditorSoon();
 });
 
 btnSavePNG.addEventListener('click', () => { closeAllMenus(); capturePNG(); });
@@ -1472,35 +1400,19 @@ bgBtns.forEach(btn => {
 
 zoomInBtn.addEventListener('click', () => zoomByButton(1.25));
 zoomOutBtn.addEventListener('click', () => zoomByButton(1 / 1.25));
-zoomResetBtn.addEventListener('click', () => {
-  stageScale = 1;
-  applyStageTransform();
-});
+zoomResetBtn.addEventListener('click', () => { stageScale = 1; applyStageTransform(); });
 
 btnRun.addEventListener('click', runCode);
-
 staleBadge.addEventListener('click', () => { runCode(); });
+btnAI.addEventListener('click', () => { closeAllMenus(); showToast('AI 助手即将推出'); });
 
-btnAI.addEventListener('click', () => {
-  closeAllMenus();
-  showToast('AI 助手即将推出');
-});
-
-/* ===== 消息处理 ===== */
 window.addEventListener('message', e => {
   const d = e.data;
   if (!d) return;
   if (e.source !== previewEl.contentWindow) return;
 
-  if (d.type === 'outside-click') {
-    closeAllMenus();
-    blurActiveElement();
-    return;
-  }
-  if (d.type === 'p5-error') {
-    showToast(d.message || 'p5.js 加载失败');
-    return;
-  }
+  if (d.type === 'outside-click') { closeAllMenus(); blurActiveElement(); return; }
+  if (d.type === 'p5-error') { showToast(d.message || 'p5.js 加载失败'); return; }
 
   if (d.type === 'record-started') {
     isRecording = true;
@@ -1513,17 +1425,12 @@ window.addEventListener('message', e => {
     const isMP4 = !!d.isMP4;
     const blob = new Blob([d.buffer], { type: isMP4 ? 'video/mp4' : 'video/webm' });
     const filename = timestampFilename('sketch', isMP4 ? 'mp4' : 'webm');
-
     shareOrDownload(blob, filename, (result) => {
       if (result === 'shared' || result === 'downloaded') {
-        pendingRecord = null;
-        updateRecordButton();
+        pendingRecord = null; updateRecordButton();
       } else {
-        pendingRecord = { blob, isMP4, filename };
-        updateRecordButton();
-        if (result === 'failed') {
-          showToast('请点击「' + (isMP4 ? '下载 MP4' : '下载 WebM') + '」保存');
-        }
+        pendingRecord = { blob, isMP4, filename }; updateRecordButton();
+        if (result === 'failed') showToast('请点击「' + (isMP4 ? '下载 MP4' : '下载 WebM') + '」保存');
       }
     });
   } else if (d.type === 'record-error') {
@@ -1539,13 +1446,17 @@ window.addEventListener('resize', () => { closeAllMenus(); });
 async function initImages() {
   const saved = await loadImagesFromDB();
   if (saved && saved.length) {
-    uploadedImages = saved.map(img => ({
-      name: img.name,
-      dataURL: img.dataURL,
-      selected: !!img.selected,
-      type: img.type
-    }));
-    // 恢复 imgSeq（避免自动命名冲突）
+    uploadedImages = saved.map(img => {
+      // 兼容旧格式（versions.url / dataURL）
+      const dataURL = img.dataURL || (img.versions && img.versions.url) || '';
+      return {
+        name: img.name,
+        dataURL: dataURL,
+        selected: !!img.selected,
+        type: img.type
+      };
+    }).filter(img => img.name && img.dataURL);
+
     imgSeq = uploadedImages.reduce((max, img) => {
       const m = img.name.match(/^img_(\d+)/);
       return m ? Math.max(max, parseInt(m[1], 10)) : max;
@@ -1574,9 +1485,7 @@ function init() {
     if (e.touches.length > 1) e.preventDefault();
   }, { passive: false });
 
-  try {
-    if (localStorage.getItem(WRAP_KEY) === '1') wrapEnabled = true;
-  } catch (_) {}
+  try { if (localStorage.getItem(WRAP_KEY) === '1') wrapEnabled = true; } catch (_) {}
   editor.setOption('lineWrapping', wrapEnabled);
   updateWrapLabel();
 
@@ -1611,10 +1520,8 @@ function init() {
   setPreviewBg(previewBg);
   updateRecordButton();
   updatePreview();
-
   blurEditor();
 
-  // 异步加载已保存的图片（不阻塞首次渲染）
   initImages();
 }
 
