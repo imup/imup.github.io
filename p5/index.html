@@ -487,15 +487,10 @@ function timestampFilename(prefix, ext) {
   return `${prefix}_${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.${ext}`;
 }
 
-/* [FIX] 示例模板：image(img, 0, 0, width, height) 作为推荐用法 */
 function buildTemplate() {
   return `let img;
 
 function preload() {
-  // 三种 API 都自动适配到目标区域，保持宽高比不变形：
-  //   imageUrl['x'] → 原图（p5 原生行为，带尺寸时按尺寸拉伸）
-  //   imageMax['x'] → cover：铺满目标区域，超出部分裁掉，不变形
-  //   imageMin['x'] → contain：完整显示在目标区域内，留边，不变形
   // img = loadImage(imageUrl['xxx.jpg']);
   // img = loadImage(imageMax['xxx.jpg']);
   // img = loadImage(imageMin['xxx.jpg']);
@@ -511,11 +506,9 @@ function windowResized() {
 
 function draw() {
   clear();
-
-  if (img) {
-    // 适配到 (0, 0, width, height) 区域，保持宽高比
-    image(img, 0, 0, width, height);
-  }
+// if (img) {
+//  image(img, 0, 0, width, height);
+// }
 }
 `;
 }
