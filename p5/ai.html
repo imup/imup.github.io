@@ -264,14 +264,14 @@ body {
 .tool-btn:hover { color: var(--text); background: var(--active); }
 .tool-btn:active:not(:disabled) { transform: scale(.94); }
 
+/* AI 图标 */
 .tool-btn.ai-btn {
   color: var(--accent);
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 1;
+  padding: 0 6px;
 }
 .tool-btn.ai-btn:hover { background: var(--active); color: var(--accent); }
 .tool-btn.ai-btn.is-active { background: var(--active); color: var(--accent); }
+.tool-btn.ai-btn svg { display: block; }
 
 .tool-btn.anim-btn {
   position: absolute; left: 50%; top: 50%;
@@ -333,59 +333,40 @@ body {
 }
 .ai-pane[hidden] { display: none; }
 
-.ai-header {
-  flex: 0 0 auto;
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 12px;
-  border-bottom: 1px solid rgba(148,163,184,.18);
-}
-.ai-title { font-size: 13px; font-weight: 600; color: var(--accent); }
-.ai-current {
-  flex: 1 1 auto;
-  font-size: 12px; color: #94a3b8;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.ai-current.is-ok { color: #22c55e; font-weight: 600; }
-.ai-back {
-  flex: 0 0 auto;
-  padding: 4px 10px;
-  font-family: inherit; font-size: 12px;
-  color: #cbd5e1;
-  background: transparent;
-  border: 1px solid rgba(148,163,184,.3);
-  border-radius: 5px;
-  cursor: pointer; touch-action: manipulation;
-}
-.ai-back:hover { background: rgba(148,163,184,.12); color: #f1f5f9; }
-
 .ai-messages {
   flex: 1 1 auto;
   overflow-y: auto;
-  padding: 12px;
-  font-size: 12.5px; line-height: 1.6;
+  padding: 14px 12px;
+  font-size: 13px; line-height: 1.65;
+  -webkit-overflow-scrolling: touch;
 }
 .ai-empty {
   text-align: center; color: #64748b;
-  padding: 24px 12px; font-size: 12.5px;
+  padding: 28px 12px; font-size: 13px; line-height: 1.8;
 }
 
-.ai-msg { margin-bottom: 12px; }
-.ai-msg--user { color: #93c5fd; padding-left: 12px; border-left: 2px solid rgba(147,197,253,.4); }
+.ai-msg { margin-bottom: 14px; }
+.ai-msg--user {
+  color: #93c5fd;
+  padding: 8px 12px;
+  background: rgba(37,99,235,.1);
+  border-radius: 10px;
+}
 .ai-msg--ai { color: #e2e8f0; }
-.ai-msg--error { color: #fca5a5; }
+.ai-msg--error { color: #fca5a5; padding: 6px 10px; background: rgba(220,38,38,.1); border-radius: 6px; }
 .ai-msg--loading { color: #94a3b8; font-style: italic; }
 
 .ai-result {
   margin-top: 8px;
   background: #0b1220;
   border: 1px solid rgba(148,163,184,.25);
-  border-radius: 8px;
+  border-radius: 10px;
   overflow: hidden;
 }
 .ai-result__code {
   margin: 0;
   padding: 10px 12px;
-  max-height: 260px;
+  max-height: 240px;
   overflow: auto;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 11.5px; line-height: 1.5;
@@ -415,88 +396,97 @@ body {
   border-color: var(--accent);
 }
 .ai-result__btn--primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
-.ai-result__btn--primary[disabled] { opacity: .5; cursor: default; }
 
+/* 药丸输入行 */
 .ai-input-row {
   flex: 0 0 auto;
-  display: flex; align-items: center; gap: 6px;
-  padding: 8px 10px;
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+  background: var(--ed-bg);
   border-top: 1px solid rgba(148,163,184,.18);
-  background: #0b1220;
-  position: relative;
+}
+.ai-input-pill {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  background: #0f172a;
+  border: 1px solid rgba(148,163,184,.3);
+  border-radius: 22px;
+  min-height: 40px;
 }
 .ai-plus-wrap { position: relative; flex: 0 0 auto; }
 .ai-plus {
-  width: 30px; height: 30px;
+  width: 32px; height: 32px;
   display: grid; place-items: center;
-  font-family: inherit; font-size: 18px; font-weight: 600; line-height: 1;
+  font-family: inherit; font-size: 20px; font-weight: 500; line-height: 1;
   color: #94a3b8;
   background: transparent;
-  border: 1px solid rgba(148,163,184,.3);
-  border-radius: 6px;
+  border: 0;
+  border-radius: 50%;
   cursor: pointer; touch-action: manipulation;
+  transition: background .14s, color .14s;
 }
 .ai-plus:hover { background: rgba(148,163,184,.12); color: #e2e8f0; }
 
 .ai-input {
   flex: 1 1 auto;
   min-width: 0;
-  height: 30px;
-  padding: 0 10px;
-  font-family: inherit; font-size: 12.5px;
+  height: 32px;
+  padding: 0 6px;
+  font-family: inherit; font-size: 13px;
   color: #e2e8f0;
-  background: #0f172a;
-  border: 1px solid rgba(148,163,184,.3);
-  border-radius: 6px;
+  background: transparent;
+  border: 0;
   outline: none;
 }
-.ai-input:focus { border-color: var(--accent); }
 .ai-input::placeholder { color: #64748b; }
 
 .ai-send {
   flex: 0 0 auto;
-  height: 30px; padding: 0 14px;
-  font-family: inherit; font-size: 12.5px; font-weight: 600;
+  height: 32px; padding: 0 14px;
+  font-family: inherit; font-size: 13px; font-weight: 600;
   color: #fff;
   background: var(--accent);
-  border: 0; border-radius: 6px;
+  border: 0; border-radius: 16px;
   cursor: pointer; touch-action: manipulation;
+  transition: background .14s, opacity .14s;
 }
 .ai-send:hover:not(:disabled) { background: var(--accent-hover); }
-.ai-send:disabled { opacity: .5; cursor: not-allowed; }
+.ai-send:disabled { opacity: .4; cursor: not-allowed; }
 
-/* 模型选择弹窗 */
+/* 模型列表弹窗 */
 .ai-model-popup {
   position: absolute;
-  bottom: calc(100% + 6px);
+  bottom: calc(100% + 8px);
   left: 0;
-  min-width: 190px;
+  min-width: 200px;
   padding: 4px;
   background: #1e293b;
   border: 1px solid rgba(148,163,184,.25);
-  border-radius: 8px;
-  box-shadow: 0 8px 24px rgba(0,0,0,.4);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,.5);
   z-index: 40;
 }
 .ai-model-popup[hidden] { display: none; }
 .ai-model-item {
   display: flex; align-items: center; gap: 8px;
-  padding: 8px 10px;
+  padding: 9px 10px;
   font-size: 12.5px; color: #e2e8f0;
-  border-radius: 5px;
+  border-radius: 6px;
   cursor: pointer;
   transition: background .14s;
 }
 .ai-model-item:hover { background: rgba(148,163,184,.12); }
 .ai-model-item.is-current { background: rgba(37,99,235,.18); }
 .ai-model-name { flex: 1 1 auto; }
-.ai-model-status { font-size: 11.5px; }
+.ai-model-status { font-size: 11.5px; white-space: nowrap; }
 .ai-model-status.is-ok { color: #22c55e; font-weight: 700; }
+.ai-model-status.is-muted { color: #94a3b8; }
 .ai-model-status.is-none { color: #64748b; }
 .ai-model-edit {
-  width: 20px; height: 20px;
+  width: 22px; height: 22px;
   display: grid; place-items: center;
-  font-size: 11px;
+  font-size: 12px;
   color: #64748b;
   background: transparent; border: 0; border-radius: 4px;
   cursor: pointer;
@@ -517,13 +507,14 @@ body {
   padding: 18px;
   background: var(--panel);
   color: var(--text);
-  border-radius: 10px;
+  border-radius: 12px;
   box-shadow: 0 16px 48px rgba(15,23,42,.3);
 }
 .ai-modal__title { font-size: 14px; font-weight: 600; margin-bottom: 12px; }
 .ai-modal__field { display: block; margin-bottom: 10px; font-size: 12px; color: var(--text-dim); }
 .ai-modal__field > span { display: block; margin-bottom: 4px; }
-.ai-modal__field > input {
+.ai-modal__field > input[type="text"],
+.ai-modal__field > input[type="password"] {
   width: 100%;
   height: 32px; padding: 0 10px;
   font-family: inherit; font-size: 12.5px;
@@ -533,12 +524,28 @@ body {
   border-radius: 6px;
   outline: none;
 }
-.ai-modal__field > input:focus { border-color: var(--accent); }
+.ai-modal__field > input[type="text"]:focus,
+.ai-modal__field > input[type="password"]:focus { border-color: var(--accent); }
+
+.ai-modal__check {
+  display: flex; align-items: center; gap: 8px;
+  margin: 12px 0 6px;
+  font-size: 12.5px; color: var(--text);
+  cursor: pointer;
+  user-select: none; -webkit-user-select: none;
+}
+.ai-modal__check input { width: 16px; height: 16px; accent-color: var(--accent); }
+
 .ai-modal__hint {
   font-size: 11px; color: var(--text-muted);
-  margin-top: 2px;
+  margin-top: 3px; line-height: 1.4;
 }
-.ai-modal__actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+
+.ai-modal__actions {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 16px;
+}
+.ai-modal__actions .spacer { flex: 1 1 auto; }
 .ai-modal__btn {
   height: 32px; padding: 0 14px;
   font-family: inherit; font-size: 12.5px; font-weight: 500;
@@ -551,6 +558,9 @@ body {
 .ai-modal__btn:hover { background: var(--hover); color: var(--text); }
 .ai-modal__btn--primary { color: #fff; background: var(--accent); border-color: var(--accent); }
 .ai-modal__btn--primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+.ai-modal__btn--danger { color: #dc2626; border-color: #fecaca; }
+.ai-modal__btn--danger:hover { background: #fef2f2; }
+.ai-modal__btn--danger[hidden] { display: none; }
 
 .toast {
   position: fixed; left: 50%;
@@ -568,7 +578,6 @@ body {
 @media (max-width: 720px) {
   .splitter { flex-basis: 32px; padding: 0 4px; }
   .tool-btn { min-width: 26px; height: 22px; font-size: 11.5px; padding: 0 6px; }
-  .tool-btn.ai-btn { font-size: 14px; }
   .menu-btn { font-size: 16px; }
   .menu { min-width: 120px; }
   .CodeMirror { font-size: 14px; }
@@ -578,9 +587,6 @@ body {
   .bg-btn { width: 18px; height: 18px; }
   .preview-menu-wrap { top: 8px; right: 8px; }
   .preview-menu-btn, .fullscreen-exit { width: 28px; height: 28px; font-size: 16px; }
-  .ai-plus { width: 28px; height: 28px; font-size: 16px; }
-  .ai-input { height: 28px; font-size: 12px; }
-  .ai-send { height: 28px; padding: 0 12px; font-size: 12px; }
   .ai-modal__dialog { padding: 14px; }
 }
 </style>
@@ -627,7 +633,13 @@ body {
   <div class="splitter" id="splitter">
     <div class="tool-group tool-group--left">
       <button class="tool-btn menu-btn" id="btnMenuLeft" type="button" title="菜单" aria-label="菜单" aria-haspopup="true" aria-expanded="false">⋯</button>
-      <button class="tool-btn ai-btn" id="btnAI" type="button" title="AI 助手" aria-label="AI 助手">✦</button>
+      <button class="tool-btn ai-btn" id="btnAI" type="button" title="AI 助手" aria-label="AI 助手">
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <path d="M12 3L13.8 9.2L20 11L13.8 12.8L12 19L10.2 12.8L4 11L10.2 9.2L12 3Z" fill="currentColor"/>
+          <circle cx="19" cy="5" r="1.6" fill="currentColor"/>
+          <circle cx="5" cy="19" r="1.6" fill="currentColor"/>
+        </svg>
+      </button>
       <div class="menu" id="menuLeft" role="menu" hidden>
         <button class="menu__item" id="btnUploadImage" type="button" role="menuitem">上传图片</button>
         <div class="img-list" id="imgList" hidden></div>
@@ -666,23 +678,19 @@ body {
   <section class="editor-wrap" id="editorWrap">
     <textarea id="code"></textarea>
 
-    <!-- AI 面板 -->
     <div class="ai-pane" id="aiPane" hidden>
-      <div class="ai-header">
-        <span class="ai-title">✦ AI 助手</span>
-        <span class="ai-current" id="aiCurrentLabel">未选择模型</span>
-        <button class="ai-back" id="btnAIBack" type="button">← 返回代码</button>
-      </div>
       <div class="ai-messages" id="aiMessagesEl">
-        <div class="ai-empty">点击下方输入框描述你想要的 p5.js 效果<br>如"做一个蓝色粒子旋转效果"</div>
+        <div class="ai-empty">描述你想要的 p5.js 效果<br>如"做一个蓝色粒子旋转效果"</div>
       </div>
       <div class="ai-input-row">
-        <div class="ai-plus-wrap">
-          <button class="ai-plus" id="btnAIModelPlus" type="button" title="选择模型" aria-label="选择模型">+</button>
-          <div class="ai-model-popup" id="aiModelPopup" hidden></div>
+        <div class="ai-input-pill">
+          <div class="ai-plus-wrap">
+            <button class="ai-plus" id="btnAIModelPlus" type="button" title="选择模型" aria-label="选择模型">+</button>
+            <div class="ai-model-popup" id="aiModelPopup" hidden></div>
+          </div>
+          <input type="text" class="ai-input" id="aiInput" placeholder="描述你想要的效果…" autocomplete="off">
+          <button class="ai-send" id="btnAISend" type="button" disabled>发送</button>
         </div>
-        <input type="text" class="ai-input" id="aiInput" placeholder="描述你想要的效果…" autocomplete="off">
-        <button class="ai-send" id="btnAISend" type="button" disabled>发送</button>
       </div>
     </div>
   </section>
@@ -706,7 +714,13 @@ body {
       <input type="password" id="aiModalApiKey" placeholder="sk-..." autocomplete="off">
       <div class="ai-modal__hint">仅存于浏览器本地，不会发送到本工具服务器</div>
     </label>
+    <label class="ai-modal__check">
+      <input type="checkbox" id="aiModalVision">
+      <span>该模型支持图片输入（多模态）</span>
+    </label>
     <div class="ai-modal__actions">
+      <button class="ai-modal__btn ai-modal__btn--danger" id="aiModalDelete" type="button" hidden>删除配置</button>
+      <span class="spacer"></span>
       <button class="ai-modal__btn" id="aiModalCancel" type="button">取消</button>
       <button class="ai-modal__btn ai-modal__btn--primary" id="aiModalSave" type="button">保存并选中</button>
     </div>
@@ -768,9 +782,7 @@ const btnUploadImage = $('btnUploadImage');
 const imageInput = $('imageInput');
 const imgList = $('imgList');
 const aiPane = $('aiPane');
-const aiCurrentLabel = $('aiCurrentLabel');
 const aiMessagesEl = $('aiMessagesEl');
-const btnAIBack = $('btnAIBack');
 const btnAIModelPlus = $('btnAIModelPlus');
 const aiModelPopup = $('aiModelPopup');
 const aiInput = $('aiInput');
@@ -780,6 +792,8 @@ const aiModalTitle = $('aiModalTitle');
 const aiModalBaseUrl = $('aiModalBaseUrl');
 const aiModalModel = $('aiModalModel');
 const aiModalApiKey = $('aiModalApiKey');
+const aiModalVision = $('aiModalVision');
+const aiModalDelete = $('aiModalDelete');
 const aiModalCancel = $('aiModalCancel');
 const aiModalSave = $('aiModalSave');
 const bgBtns = Array.from(document.querySelectorAll('.bg-btn'));
@@ -1705,7 +1719,17 @@ btnPreviewMenu.addEventListener('click', e => {
 });
 
 document.addEventListener('pointerdown', e => {
-  if (e.target.closest('.menu, #btnMenuRight, #btnPreviewMenu, #btnMenuLeft, #btnAIModelPlus, #aiModelPopup, .ai-modal')) return;
+  if (e.target.closest('.ai-modal')) return;
+
+  // AI 面板打开时，点预览空白处 → 收键盘 + 返回代码编辑
+  if (!aiPane.hidden && e.target.closest('#previewWrap')) {
+    if (!e.target.closest('.preview-menu-wrap, .view-controls')) {
+      closeAIPanel();
+      return;
+    }
+  }
+
+  if (e.target.closest('.menu, #btnMenuRight, #btnPreviewMenu, #btnMenuLeft, #btnAIModelPlus, #aiModelPopup, .ai-pane')) return;
   const anyOpen = !menuRight.hidden || !previewMenu.hidden || !menuLeft.hidden ||
                   (aiModelPopup && !aiModelPopup.hidden);
   closeAllMenus();
@@ -1901,27 +1925,19 @@ function openAIPanel() {
   aiPane.hidden = false;
   if (cmWrapper) cmWrapper.style.display = 'none';
   btnAI.classList.add('is-active');
-  updateAICurrentLabel();
-  setTimeout(() => aiInput.focus(), 60);
+  updateSendState();
+  setTimeout(() => { try { aiInput.focus(); } catch (_) {} }, 80);
 }
 function closeAIPanel() {
   aiPane.hidden = true;
   if (cmWrapper) cmWrapper.style.display = '';
   btnAI.classList.remove('is-active');
+  try { aiInput.blur(); } catch (_) {}
   if (editor) requestAnimationFrame(() => { try { editor.refresh(); } catch (_) {} });
 }
 
-function updateAICurrentLabel() {
-  const id = aiConfig.current;
-  if (id && isAIConfigured(id)) {
-    aiCurrentLabel.textContent = AI_PRESETS[id].label;
-    aiCurrentLabel.classList.add('is-ok');
-    btnAISend.disabled = aiSending ? true : false;
-  } else {
-    aiCurrentLabel.textContent = '未选择模型';
-    aiCurrentLabel.classList.remove('is-ok');
-    btnAISend.disabled = true;
-  }
+function updateSendState() {
+  btnAISend.disabled = aiSending || !isAIConfigured(aiConfig.current);
 }
 
 function renderAIModelList() {
@@ -1939,8 +1955,16 @@ function renderAIModelList() {
     item.appendChild(nameSpan);
 
     const statusSpan = document.createElement('span');
-    statusSpan.className = 'ai-model-status ' + (configured ? 'is-ok' : 'is-none');
-    statusSpan.textContent = configured ? (isCurrent ? '✓ 当前' : '✓') : '未配置';
+    if (isCurrent) {
+      statusSpan.className = 'ai-model-status is-ok';
+      statusSpan.textContent = '✓ 当前';
+    } else if (configured) {
+      statusSpan.className = 'ai-model-status is-muted';
+      statusSpan.textContent = '已配置';
+    } else {
+      statusSpan.className = 'ai-model-status is-none';
+      statusSpan.textContent = '未配置';
+    }
     item.appendChild(statusSpan);
 
     const editBtn = document.createElement('button');
@@ -1960,7 +1984,7 @@ function renderAIModelList() {
       if (configured) {
         aiConfig.current = id;
         saveAIConfig();
-        updateAICurrentLabel();
+        updateSendState();
       } else {
         openAISettings(id);
       }
@@ -1978,8 +2002,12 @@ function openAISettings(id) {
   aiModalBaseUrl.value = (conf && conf.baseUrl) || preset.baseUrl || '';
   aiModalModel.value = (conf && conf.model) || preset.model || '';
   aiModalApiKey.value = (conf && conf.apiKey) || '';
+  aiModalVision.checked = (conf && typeof conf.vision === 'boolean')
+    ? conf.vision
+    : !!preset.vision;
+  aiModalDelete.hidden = !conf;
   aiModal.hidden = false;
-  setTimeout(() => aiModalApiKey.focus(), 40);
+  setTimeout(() => { try { aiModalApiKey.focus(); } catch (_) {} }, 60);
 }
 function closeAISettings() {
   aiModal.hidden = true;
@@ -1994,11 +2022,21 @@ aiModalSave.addEventListener('click', () => {
   const apiKey = aiModalApiKey.value.trim();
   if (!baseUrl) { showToast('请填写 Base URL'); return; }
   if (!apiKey) { showToast('请填写 API Key'); return; }
-  aiConfig.configs[id] = { baseUrl, model, apiKey };
+  aiConfig.configs[id] = { baseUrl, model, apiKey, vision: !!aiModalVision.checked };
   aiConfig.current = id;
   saveAIConfig();
   closeAISettings();
-  updateAICurrentLabel();
+  updateSendState();
+});
+aiModalDelete.addEventListener('click', () => {
+  const id = editingAIModelId;
+  if (!id) return;
+  if (!confirm('删除「' + AI_PRESETS[id].label + '」的配置？')) return;
+  delete aiConfig.configs[id];
+  if (aiConfig.current === id) aiConfig.current = null;
+  saveAIConfig();
+  closeAISettings();
+  updateSendState();
 });
 
 /* ===== 消息渲染 ===== */
@@ -2111,23 +2149,21 @@ async function sendAIMessage() {
   const id = aiConfig.current;
   if (!id || !isAIConfigured(id)) { showToast('请先选择并配置模型'); return; }
   const conf = aiConfig.configs[id];
-  const preset = AI_PRESETS[id];
 
   aiSending = true;
-  btnAISend.disabled = true;
+  updateSendState();
   aiInput.value = '';
   clearAIEmptyHint();
   appendAIMsg('user', prompt);
   const loadingEl = appendAIMsg('loading', '正在生成…');
 
-  const userMsg = { role: 'user', content: prompt };
-  aiHistory.push(userMsg);
+  aiHistory.push({ role: 'user', content: prompt });
 
   try {
     const apiMessages = [{ role: 'system', content: AI_SYSTEM_PROMPT }].concat(aiHistory);
 
-    // 视觉输入：取最新 user 消息，附加选中图片
-    if (preset.vision) {
+    // 视觉输入：仅当配置勾选了 vision 时
+    if (conf.vision) {
       const selected = uploadedImages.filter(i => i.selected);
       if (selected.length > 0) {
         const last = apiMessages[apiMessages.length - 1];
@@ -2136,7 +2172,6 @@ async function sendAIMessage() {
           selected.slice(0, 3).forEach(img => {
             content.push({ type: 'image_url', image_url: { url: img.dataURL, detail: 'low' } });
           });
-          // 仅替换 apiMessages 中的副本，不改 aiHistory
           apiMessages[apiMessages.length - 1] = { role: 'user', content };
         }
       }
@@ -2162,17 +2197,8 @@ async function sendAIMessage() {
         break;
       }
 
-      // 记录 assistant 的 tool_calls 到历史
-      aiHistory.push({
-        role: 'assistant',
-        content: msg.content || '',
-        tool_calls: msg.tool_calls
-      });
-      apiMessages.push({
-        role: 'assistant',
-        content: msg.content || '',
-        tool_calls: msg.tool_calls
-      });
+      aiHistory.push({ role: 'assistant', content: msg.content || '', tool_calls: msg.tool_calls });
+      apiMessages.push({ role: 'assistant', content: msg.content || '', tool_calls: msg.tool_calls });
 
       for (const tc of msg.tool_calls) {
         const fn = tc.function || {};
@@ -2185,11 +2211,7 @@ async function sendAIMessage() {
           toolResult = { ok: true, message: '代码已接收' };
         }
 
-        const toolMsg = {
-          role: 'tool',
-          tool_call_id: tc.id,
-          content: JSON.stringify(toolResult)
-        };
+        const toolMsg = { role: 'tool', tool_call_id: tc.id, content: JSON.stringify(toolResult) };
         aiHistory.push(toolMsg);
         apiMessages.push(toolMsg);
       }
@@ -2202,7 +2224,6 @@ async function sendAIMessage() {
     if (finalCode) {
       appendAIResult(finalCode, finalExplain);
 
-      // 空或模板 → 直接写入
       const current = editor.getValue().trim();
       const isTemplate = current === buildTemplate().trim() || current === '';
       if (isTemplate) {
@@ -2218,13 +2239,11 @@ async function sendAIMessage() {
     appendAIMsg('error', '请求失败：' + (err && err.message || '未知错误'));
   } finally {
     aiSending = false;
-    btnAISend.disabled = !isAIConfigured(aiConfig.current);
+    updateSendState();
   }
 }
 
 /* ===== 事件绑定 ===== */
-btnAIBack.addEventListener('click', () => closeAIPanel());
-
 btnAI.addEventListener('click', () => {
   if (aiPane.hidden) openAIPanel();
   else closeAIPanel();
@@ -2303,7 +2322,13 @@ window.addEventListener('message', e => {
   if (!d) return;
   if (e.source !== previewEl.contentWindow) return;
 
-  if (d.type === 'outside-click') { closeAllMenus(); blurActiveElement(); return; }
+  if (d.type === 'outside-click') {
+    closeAllMenus();
+    blurActiveElement();
+    // iframe 内点击 → AI 面板打开时返回代码编辑
+    if (!aiPane.hidden) closeAIPanel();
+    return;
+  }
   if (d.type === 'p5-error') { showToast(d.message || 'p5.js 加载失败'); return; }
   if (d.type === 'code-error') {
     const loc = d.lineno ? '（第 ' + d.lineno + ' 行）' : '';
@@ -2415,7 +2440,7 @@ function init() {
   } catch (_) {}
 
   loadAIConfig();
-  updateAICurrentLabel();
+  updateSendState();
 
   applySplit();
   setPreviewBg(previewBg);
