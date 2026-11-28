@@ -505,7 +505,6 @@ function windowResized() {
 }
 
 function draw() {
-  clear();
 // if (img) {
 //  image(img, 0, 0, width, height);
 // }
@@ -841,7 +840,6 @@ window.addEventListener('unhandledrejection', function (e) {
     return fn;
   }
 
-  /* [FIX] 支持 image(img) 与 image(img, x, y, w, h) 两种适配调用 */
   function wrapImage(orig) {
     var fn = function (img) {
       var args = Array.prototype.slice.call(arguments);
