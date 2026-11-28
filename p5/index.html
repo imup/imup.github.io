@@ -263,7 +263,6 @@ body {
 .menu__item.danger { color: #dc2626; }
 .menu__item.danger:hover { background: #fef2f2; }
 
-/* 左侧菜单中的图片列表项样式（优化：改为删除图标） */
 .img-menu-item {
   display: flex;
   align-items: center;
@@ -401,7 +400,6 @@ body {
   </section>
 
   <div class="splitter" id="splitter">
-    <!-- 左侧：更多菜单与图片资源管理 -->
     <div class="tool-group tool-group--left">
       <button class="tool-btn menu-btn" id="btnLeftMenu" type="button" title="菜单" aria-label="菜单" aria-haspopup="true" aria-expanded="false">⋯</button>
       <div class="menu" id="leftMenu" hidden>
@@ -507,7 +505,7 @@ let autoPreviewEnabled = true;
 let isRecording = false;
 let pendingRecord = null;
 
-let uploadedImagesMap = {}; // 存储 { filename: blobUrl }
+let uploadedImagesMap = {}; 
 let selectedImageKey = null;
 
 function showToast(msg) {
@@ -542,20 +540,15 @@ function timestampFilename(prefix, ext) {
 
 function buildTemplate() {
   return `let img;
-
 function preload() {
-  // 可以直接使用 imageUrl['文件名'] 调用上传的图片
-  // img = loadImage(imageUrl['c3.jpg']);
+  // img = loadImage(imageUrl['xxx.jpg']);
 }
-
 function setup() {
   createCanvas(windowWidth, windowHeight);
 }
-
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
 }
-
 function draw() {
   clear();
   // if (img) {
