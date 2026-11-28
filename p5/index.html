@@ -487,11 +487,15 @@ function timestampFilename(prefix, ext) {
   return `${prefix}_${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.${ext}`;
 }
 
-/* 示例模板 */
+/* [FIX] 示例模板：image(img, 0, 0, width, height) 作为推荐用法 */
 function buildTemplate() {
   return `let img;
 
 function preload() {
+  // 三种 API 都自动适配到目标区域，保持宽高比不变形：
+  //   imageUrl['x'] → 原图（p5 原生行为，带尺寸时按尺寸拉伸）
+  //   imageMax['x'] → cover：铺满目标区域，超出部分裁掉，不变形
+  //   imageMin['x'] → contain：完整显示在目标区域内，留边，不变形
   // img = loadImage(imageUrl['xxx.jpg']);
   // img = loadImage(imageMax['xxx.jpg']);
   // img = loadImage(imageMin['xxx.jpg']);
@@ -508,9 +512,10 @@ function windowResized() {
 function draw() {
   clear();
 
-  // if (img) {
-  //   image(img, 0, 0);
-  // }
+  if (img) {
+    // 适配到 (0, 0, width, height) 区域，保持宽高比
+    image(img, 0, 0, width, height);
+  }
 }
 `;
 }
@@ -843,29 +848,43 @@ window.addEventListener('unhandledrejection', function (e) {
     return fn;
   }
 
+  /* [FIX] 支持 image(img) 与 image(img, x, y, w, h) 两种适配调用 */
   function wrapImage(orig) {
     var fn = function (img) {
       var args = Array.prototype.slice.call(arguments);
-      if (img && img._fitMode && args.length === 1) {
-        var cw = (typeof this.width === 'number' && this.width > 0) ? this.width : (window.width || 0);
-        var ch = (typeof this.height === 'number' && this.height > 0) ? this.height : (window.height || 0);
-        var iw = img.width || 0;
-        var ih = img.height || 0;
-        if (cw > 0 && ch > 0 && iw > 0 && ih > 0) {
-          var s, w, h;
-          if (img._fitMode === 'cover') {
-            s = Math.max(cw / iw, ch / ih);
-            w = iw * s; h = ih * s;
-            return orig.call(this, img, (cw - w) / 2, (ch - h) / 2, w, h);
-          }
-          if (img._fitMode === 'contain') {
-            s = Math.min(cw / iw, ch / ih);
-            w = iw * s; h = ih * s;
-            return orig.call(this, img, (cw - w) / 2, (ch - h) / 2, w, h);
-          }
-        }
+      if (!img || !img._fitMode) return orig.apply(this, args);
+
+      var dx = 0, dy = 0, dw = 0, dh = 0;
+      if (args.length === 1) {
+        dw = (typeof this.width === 'number' && this.width > 0) ? this.width : (window.width || 0);
+        dh = (typeof this.height === 'number' && this.height > 0) ? this.height : (window.height || 0);
+      } else if (args.length === 5 &&
+                 typeof args[1] === 'number' && typeof args[2] === 'number' &&
+                 typeof args[3] === 'number' && typeof args[4] === 'number') {
+        dx = args[1]; dy = args[2]; dw = args[3]; dh = args[4];
+      } else {
+        return orig.apply(this, args);
       }
-      return orig.apply(this, args);
+
+      var iw = img.width || 0;
+      var ih = img.height || 0;
+      if (dw <= 0 || dh <= 0 || iw <= 0 || ih <= 0) {
+        return orig.apply(this, args);
+      }
+
+      var s, w, h;
+      if (img._fitMode === 'cover') {
+        s = Math.max(dw / iw, dh / ih);
+      } else if (img._fitMode === 'contain') {
+        s = Math.min(dw / iw, dh / ih);
+      } else {
+        return orig.apply(this, args);
+      }
+      w = iw * s;
+      h = ih * s;
+      var x = dx + (dw - w) / 2;
+      var y = dy + (dh - h) / 2;
+      return orig.call(this, img, x, y, w, h);
     };
     fn.__p5fitWrapped = true;
     return fn;
