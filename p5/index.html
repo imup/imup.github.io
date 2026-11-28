@@ -19,11 +19,7 @@
 }
 *,*::before,*::after { box-sizing: border-box; }
 
-html {
-  height: 100%;
-  touch-action: pan-x pan-y;
-  -webkit-text-size-adjust: 100%; text-size-adjust: 100%;
-}
+html { height: 100%; touch-action: pan-x pan-y; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 body {
   margin: 0; height: 100%;
   font-family: system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
@@ -33,14 +29,10 @@ body {
   touch-action: pan-x pan-y;
 }
 
-.app {
-  display: flex; flex-direction: column;
-  width: 100%; height: 100vh; height: 100dvh;
-  position: relative;
-}
+.app { display: flex; flex-direction: column; width: 100%; height: 100vh; height: 100dvh; position: relative; }
 
 .preview-wrap {
-  flex: 80 1 0; min-height: 0px;
+  flex: 80 1 0; min-height: 80px;
   position: relative; overflow: hidden;
   background: #f1f5f9;
   touch-action: pan-x pan-y;
@@ -60,27 +52,17 @@ body {
 .preview-wrap.bg-white { background: #ffffff; }
 .preview-wrap.bg-dark { background: #0f172a; }
 
-.preview-stage {
-  position: absolute; inset: 0;
-  transform-origin: center center;
-  will-change: transform;
-}
-.preview-stage iframe {
-  display: block; width: 100%; height: 100%;
-  border: 0; background: transparent;
-  pointer-events: auto;
-}
+.preview-stage { position: absolute; inset: 0; transform-origin: center center; will-change: transform; }
+.preview-stage iframe { display: block; width: 100%; height: 100%; border: 0; background: transparent; pointer-events: auto; }
 
-.preview-menu-wrap {
-  position: absolute;
-  top: 14px; right: 14px;
-  z-index: 10;
-}
+.preview-menu-wrap { position: absolute; top: 14px; right: 14px; z-index: 10; }
 .preview-menu-btn {
   width: 32px; height: 32px;
   display: grid; place-items: center;
   font-family: inherit; font-size: 18px; font-weight: 700;
-  letter-spacing: 2px; line-height: 1;
+  letter-spacing: 0;
+  line-height: 1;
+  padding: 0;
   color: var(--text-dim);
   background: rgba(255,255,255,.94);
   border: 1px solid var(--border);
@@ -91,25 +73,87 @@ body {
   transition: background .14s, color .14s;
 }
 .preview-menu-btn:hover { background: var(--hover); color: var(--text); }
-.preview-menu-wrap .menu {
-  top: calc(100% + 6px);
-  left: auto; right: 0;
-}
+.preview-menu-wrap .menu { top: calc(100% + 6px); left: auto; right: 0; }
 
 .menu__item.is-recording { color: #dc2626; }
 .menu__item.is-ready { color: var(--accent); font-weight: 600; }
+.menu__item .wrap-check { color: #16a34a; font-weight: 700; margin-left: 2px; }
 
-.menu__item .wrap-check {
-  color: #16a34a;
+.menu__sep { height: 1px; background: var(--border); margin: 4px 2px; }
+
+.img-list {
+  display: flex; flex-direction: column;
+  gap: 1px;
+  max-height: 220px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 2px 0;
+  border-top: 1px solid var(--border);
+  margin-top: 2px;
+}
+.img-list[hidden] { display: none; }
+.img-list__header {
+  padding: 6px 8px 2px;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.img-item {
+  display: flex; align-items: center;
+  gap: 6px;
+  padding: 6px 8px;
+  border-radius: 5px;
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+  user-select: none; -webkit-user-select: none;
+  touch-action: manipulation;
+  transition: background .14s;
+}
+.img-item:hover { background: var(--hover); }
+.img-item__check {
+  flex: 0 0 auto;
+  width: 16px;
+  text-align: center;
   font-weight: 700;
-  margin-left: 2px;
+  font-size: 13px;
+  color: #cbd5e1;
 }
+.img-item.is-selected .img-item__check { color: #16a34a; }
+.img-item__name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11.5px;
+}
+.img-item__del {
+  flex: 0 0 auto;
+  width: 20px; height: 20px;
+  display: grid; place-items: center;
+  font-size: 14px; line-height: 1;
+  color: var(--text-dim);
+  background: transparent; border: 0; border-radius: 4px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.img-item__del:hover { background: #fee2e2; color: #dc2626; }
 
-.menu__sep {
-  height: 1px;
-  background: var(--border);
-  margin: 4px 2px;
+.menu__item.is-loading { pointer-events: none; opacity: 0.7; }
+.menu__item.is-loading::after {
+  content: '';
+  display: inline-block;
+  width: 10px; height: 10px;
+  margin-left: 8px;
+  border: 1.5px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+  vertical-align: -1px;
 }
+@keyframes spin { to { transform: rotate(360deg); } }
 
 .view-controls {
   position: absolute; left: 14px; bottom: 12px; z-index: 8;
@@ -141,15 +185,8 @@ body {
 }
 .bg-btn[data-bg="white"] { background: #fff; }
 .bg-btn[data-bg="dark"] { background: #1e293b; border-color: #334155; }
-.bg-btn.is-active {
-  box-shadow: 0 0 0 2px var(--accent);
-  border-color: var(--accent);
-}
-.view-controls__sep {
-  width: 1px; height: 18px;
-  background: var(--border);
-  margin: 0 2px;
-}
+.bg-btn.is-active { box-shadow: 0 0 0 2px var(--accent); border-color: var(--accent); }
+.view-controls__sep { width: 1px; height: 18px; background: var(--border); margin: 0 2px; }
 
 .zoom-btn {
   min-width: 26px; height: 26px; padding: 0 6px;
@@ -185,12 +222,7 @@ body {
 }
 .tool-group { flex: 0 0 auto; display: flex; align-items: center; gap: 2px; }
 .tool-group--left, .tool-group--right { position: relative; }
-
-.tool-center {
-  flex: 1 1 auto; min-width: 60px;
-  display: flex; align-items: center; justify-content: center;
-  position: relative;
-}
+.tool-center { flex: 1 1 auto; min-width: 60px; display: flex; align-items: center; justify-content: center; position: relative; }
 .tool-btn {
   flex: 0 0 auto;
   min-width: 28px; height: 24px;
@@ -204,40 +236,26 @@ body {
 }
 .tool-btn:hover { color: var(--text); background: var(--active); }
 .tool-btn:active:not(:disabled) { transform: scale(.94); }
-.tool-btn.primary { color: #fff; background: var(--accent); border-color: var(--accent); }
-.tool-btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
 
 .tool-btn.anim-btn {
-  position: absolute;
-  left: 50%; top: 50%;
+  position: absolute; left: 50%; top: 50%;
   transform: translate(-50%, -50%);
-  z-index: 2;
-  margin: 0;
+  z-index: 2; margin: 0;
   color: var(--accent);
   background: var(--splitter-bg);
 }
 .tool-btn.anim-btn:hover { background: var(--active); color: var(--accent); }
 .tool-btn.anim-btn:active:not(:disabled) { transform: translate(-50%, -50%) scale(.94); }
-.tool-btn.anim-btn.spinning svg {
-  animation: runSpin .5s ease;
-}
-@keyframes runSpin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
+.tool-btn.anim-btn.spinning svg { animation: runSpin .5s ease; }
+@keyframes runSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 
-.menu-btn {
-  font-size: 18px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  line-height: 1;
-  padding: 0 4px;
-}
+.menu-btn { font-size: 18px; font-weight: 700; letter-spacing: 0; line-height: 1; padding: 0 4px; }
 .menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  min-width: 140px;
+  position: absolute; top: calc(100% + 6px); left: 0;
+  min-width: 130px;
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 4px;
   display: flex; flex-direction: column; gap: 2px;
   background: var(--panel);
@@ -263,84 +281,16 @@ body {
 .menu__item.danger { color: #dc2626; }
 .menu__item.danger:hover { background: #fef2f2; }
 
-.img-menu-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  padding: 6px 8px;
-  background: transparent;
-  border: 0;
-  border-radius: 4px;
-  cursor: pointer;
-  text-align: left;
-  font-family: inherit;
-  font-size: 12px;
-  color: var(--text);
-  transition: background .14s;
-}
-.img-menu-item:hover { background: var(--hover); }
-.img-menu-item.is-selected { font-weight: 600; color: var(--accent); }
-.img-menu-item .img-info {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  overflow: hidden;
-  flex: 1;
-  margin-right: 6px;
-}
-.img-menu-item .img-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.img-menu-item .img-check {
-  color: #16a34a;
-  font-weight: 700;
-  flex-shrink: 0;
-}
-.img-menu-item .img-del-icon {
-  background: transparent;
-  border: 0;
-  color: var(--text-dim);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  transition: color .14s, background .14s;
-}
-.img-menu-item .img-del-icon:hover {
-  color: #dc2626;
-  background: #fef2f2;
-}
+.splitter-grip { flex: 1 1 auto; min-width: 20px; height: 100%; cursor: ns-resize; touch-action: none; position: relative; }
 
-.splitter-grip {
-  flex: 1 1 auto; min-width: 20px; height: 100%;
-  cursor: ns-resize; touch-action: none; position: relative;
-}
-
-.editor-wrap {
-  flex: 20 1 0; min-height: 0px;
-  position: relative; overflow: hidden;
-  background: var(--ed-bg);
-}
-.CodeMirror {
-  height: 100% !important;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 13px; line-height: 1.55;
-  touch-action: pan-x pan-y;
-}
-.CodeMirror-scroll,
-.CodeMirror-lines,
-.CodeMirror textarea {
-  touch-action: pan-x pan-y;
-}
+.editor-wrap { flex: 20 1 0; min-height: 100px; position: relative; overflow: hidden; background: var(--ed-bg); }
+.CodeMirror { height: 100% !important; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.55; touch-action: pan-x pan-y; }
+.CodeMirror-scroll, .CodeMirror-lines, .CodeMirror textarea { touch-action: pan-x pan-y; }
 .editor-wrap[hidden] { display: none !important; }
 
 .toast {
-  position: fixed; left: 50%; bottom: 24px;
+  position: fixed; left: 50%;
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
   transform: translate(-50%, 14px);
   padding: 10px 18px; border-radius: 999px;
   background: rgba(15,23,42,.94); color: #f8fafc;
@@ -356,13 +306,11 @@ body {
   .tool-btn { min-width: 26px; height: 22px; font-size: 11.5px; padding: 0 6px; }
   .menu-btn { font-size: 16px; }
   .menu { min-width: 120px; }
-
   .CodeMirror { font-size: 14px; }
-
   .view-controls { left: 8px; bottom: 8px; gap: 4px; padding: 4px 6px; }
-  .zoom-label { min-width: 42px; font-size: 11px; }
-  .zoom-btn { min-width: 22px; height: 22px; font-size: 12px; }
-  .bg-btn { width: 16px; height: 16px; }
+  .zoom-label { min-width: 54px; height: 26px; font-size: 11.5px; }
+  .zoom-btn { min-width: 26px; height: 26px; font-size: 13px; }
+  .bg-btn { width: 18px; height: 18px; }
   .preview-menu-wrap { top: 8px; right: 8px; }
   .preview-menu-btn { width: 28px; height: 28px; font-size: 16px; }
 }
@@ -373,16 +321,16 @@ body {
 <div class="app" id="app">
   <section class="preview-wrap bg-checker" id="previewWrap">
     <div class="preview-stage" id="previewStage">
-      <iframe id="preview" sandbox="allow-scripts allow-same-origin" title="p5.js 预览"></iframe>
+      <iframe id="preview" sandbox="allow-scripts allow-same-origin allow-downloads" title="p5.js 预览"></iframe>
     </div>
 
     <div class="preview-menu-wrap">
       <button class="preview-menu-btn" id="btnPreviewMenu" type="button" title="更多" aria-label="更多" aria-haspopup="true" aria-expanded="false">⋯</button>
-      <div class="menu" id="previewMenu" hidden>
-        <button class="menu__item" id="btnSave" type="button">保存 HTML</button>
-        <button class="menu__item" id="btnSavePNG" type="button">保存 PNG</button>
+      <div class="menu" id="previewMenu" role="menu" hidden>
+        <button class="menu__item" id="btnSave" type="button" role="menuitem">保存 HTML</button>
+        <button class="menu__item" id="btnSavePNG" type="button" role="menuitem">保存 PNG</button>
         <div class="menu__sep"></div>
-        <button class="menu__item" id="btnRecordMP4" type="button">录制 MP4</button>
+        <button class="menu__item" id="btnRecordMP4" type="button" role="menuitem">录制 MP4</button>
       </div>
     </div>
 
@@ -401,14 +349,13 @@ body {
 
   <div class="splitter" id="splitter">
     <div class="tool-group tool-group--left">
-      <button class="tool-btn menu-btn" id="btnLeftMenu" type="button" title="菜单" aria-label="菜单" aria-haspopup="true" aria-expanded="false">⋯</button>
-      <div class="menu" id="leftMenu" hidden>
-        <button class="menu__item" id="btnUploadImage" type="button">上传图片</button>
-        <div class="menu__sep" id="imgListSep" style="display: none;"></div>
-        <div id="uploadedImagesContainer" style="display: flex; flex-direction: column; gap: 2px; max-height: 200px; overflow-y: auto;"></div>
+      <button class="tool-btn menu-btn" id="btnMenuLeft" type="button" title="菜单" aria-label="菜单" aria-haspopup="true" aria-expanded="false">⋯</button>
+      <div class="menu" id="menuLeft" role="menu" hidden>
+        <button class="menu__item" id="btnUploadImage" type="button" role="menuitem">上传图片</button>
+        <div class="img-list" id="imgList" hidden></div>
       </div>
     </div>
-    <input type="file" id="fileInput" accept="image/*" multiple hidden />
+    <input type="file" id="imageInput" accept="image/*" multiple hidden>
 
     <div class="tool-center">
       <div class="splitter-grip" id="splitterGrip" title="拖动调整布局 · 双击恢复默认"></div>
@@ -419,17 +366,16 @@ body {
         </svg>
       </button>
     </div>
-
     <div class="tool-group tool-group--right">
       <button class="tool-btn menu-btn" id="btnMenuRight" type="button" title="菜单" aria-label="菜单" aria-haspopup="true" aria-expanded="false">⋯</button>
-      <div class="menu" id="menuRight" hidden>
-        <button class="menu__item" id="btnReset" type="button">重置</button>
-        <button class="menu__item" id="btnFormat" type="button">格式化代码</button>
+      <div class="menu" id="menuRight" role="menu" hidden>
+        <button class="menu__item" id="btnReset" type="button" role="menuitem">重置</button>
+        <button class="menu__item" id="btnFormat" type="button" role="menuitem">格式化代码</button>
         <div class="menu__sep"></div>
-        <button class="menu__item" id="btnWrapToggle" type="button">自动换行</button>
-        <button class="menu__item" id="btnAutoPreviewToggle" type="button">自动预览 <span class="wrap-check">✓</span></button>
+        <button class="menu__item" id="btnWrapToggle" type="button" role="menuitem">自动换行</button>
+        <button class="menu__item" id="btnAutoPreviewToggle" type="button" role="menuitem">自动预览 <span class="wrap-check">✓</span></button>
         <div class="menu__sep"></div>
-        <button class="menu__item danger" id="btnClearCode" type="button">清空代码</button>
+        <button class="menu__item danger" id="btnClearCode" type="button" role="menuitem">清空代码</button>
       </div>
     </div>
   </div>
@@ -454,6 +400,9 @@ const SPLIT_KEY = 'p5-editor.split.v1';
 const BG_KEY = 'p5-editor.bg.v1';
 const WRAP_KEY = 'p5-editor.wrap.v1';
 const AUTO_PREVIEW_KEY = 'p5-editor.autopreview.v1';
+const IMG_DB_NAME = 'p5-editor-images';
+const IMG_DB_STORE = 'images';
+const IMG_DB_VERSION = 1;
 
 const $ = id => document.getElementById(id);
 const appEl = $('app');
@@ -471,6 +420,8 @@ const btnWrapToggle = $('btnWrapToggle');
 const btnAutoPreviewToggle = $('btnAutoPreviewToggle');
 const btnClearCode = $('btnClearCode');
 const btnMenuRight = $('btnMenuRight');
+const btnMenuLeft = $('btnMenuLeft');
+const menuLeft = $('menuLeft');
 const btnPreviewMenu = $('btnPreviewMenu');
 const btnSavePNG = $('btnSavePNG');
 const btnRecordMP4 = $('btnRecordMP4');
@@ -480,12 +431,9 @@ const zoomInBtn = $('zoomIn');
 const zoomOutBtn = $('zoomOut');
 const zoomResetBtn = $('zoomReset');
 const btnRun = $('btnRun');
-const btnLeftMenu = $('btnLeftMenu');
-const leftMenu = $('leftMenu');
 const btnUploadImage = $('btnUploadImage');
-const fileInput = $('fileInput');
-const uploadedImagesContainer = $('uploadedImagesContainer');
-const imgListSep = $('imgListSep');
+const imageInput = $('imageInput');
+const imgList = $('imgList');
 const bgBtns = Array.from(document.querySelectorAll('.bg-btn'));
 
 let editor = null;
@@ -493,10 +441,9 @@ let renderTimer = null;
 let inputTimer = 0;
 let toastTimer = null;
 
-let stageScale = 1, stagePanX = 0, stagePanY = 0;
-
+let stageScale = 1;
 let splitRatio = 0.8;
-let splitState = 'default';
+let lastEditorVisible = true;
 
 let previewBg = 'checker';
 let wrapEnabled = false;
@@ -505,8 +452,10 @@ let autoPreviewEnabled = true;
 let isRecording = false;
 let pendingRecord = null;
 
-let uploadedImagesMap = {}; 
-let selectedImageKey = null;
+let uploadedImages = [];
+let imgSeq = 0;
+
+let _imageJSONCache = { key: '', json: '{}' };
 
 function showToast(msg) {
   toastEl.textContent = msg;
@@ -538,19 +487,27 @@ function timestampFilename(prefix, ext) {
   return `${prefix}_${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}_${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}.${ext}`;
 }
 
+/* 示例模板 */
 function buildTemplate() {
   return `let img;
+
 function preload() {
   // img = loadImage(imageUrl['xxx.jpg']);
+  // img = loadImage(imageMax['xxx.jpg']);
+  // img = loadImage(imageMin['xxx.jpg']);
 }
+
 function setup() {
   createCanvas(windowWidth, windowHeight);
 }
+
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
 }
+
 function draw() {
   clear();
+
   // if (img) {
   //   image(img, 0, 0);
   // }
@@ -558,9 +515,260 @@ function draw() {
 `;
 }
 
-function buildRuntimeHTML(userCode, imagesMap) {
-  imagesMap = imagesMap || {};
-  const imageUrlScript = `const imageUrl = ${JSON.stringify(imagesMap)};\n`;
+function escapeUserCode(code) {
+  return String(code).replace(/<\/script/gi, '<\\/script');
+}
+
+/* ================= 图片上传 & 压缩 ================= */
+
+function sanitizeImageName(originalName, existingNames) {
+  const dotIdx = originalName.lastIndexOf('.');
+  const rawExt = dotIdx >= 0 ? originalName.slice(dotIdx).toLowerCase() : '';
+  const allowedExt = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.bmp'];
+  const ext = allowedExt.includes(rawExt) ? rawExt : '.png';
+  const base = originalName.slice(0, dotIdx >= 0 ? dotIdx : originalName.length);
+
+  if (/^[A-Za-z0-9_-]+$/.test(base)) {
+    let name = base + ext;
+    let i = 1;
+    while (existingNames.has(name)) {
+      name = base + '(' + i + ')' + ext;
+      i++;
+    }
+    return name;
+  }
+
+  let candidate;
+  do {
+    imgSeq++;
+    candidate = 'img_' + imgSeq + ext;
+  } while (existingNames.has(candidate));
+  return candidate;
+}
+
+function compressImage(file) {
+  return new Promise((resolve, reject) => {
+    if (!file.type || !file.type.startsWith('image/')) { reject(new Error('不是图片文件')); return; }
+    if (file.size > 20 * 1024 * 1024) { reject(new Error('超过 20MB')); return; }
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('读取失败'));
+    reader.onload = () => {
+      const originalDataURL = reader.result;
+      const imgEl = new Image();
+      imgEl.onerror = () => reject(new Error('图片解码失败'));
+      imgEl.onload = () => {
+        try {
+          const MAX = 2048;
+          const iw = imgEl.naturalWidth;
+          const ih = imgEl.naturalHeight;
+          const maxSide = Math.max(iw, ih);
+          if (file.type === 'image/gif' || maxSide <= MAX) {
+            resolve({ dataURL: originalDataURL, type: file.type });
+            return;
+          }
+          const scale = MAX / maxSide;
+          const w = Math.round(iw * scale);
+          const h = Math.round(ih * scale);
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(imgEl, 0, 0, w, h);
+          let dataURL, type;
+          if (file.type === 'image/png') {
+            type = 'image/png';
+            dataURL = canvas.toDataURL('image/png');
+          } else {
+            type = 'image/jpeg';
+            dataURL = canvas.toDataURL('image/jpeg', 0.85);
+          }
+          resolve({ dataURL, type });
+        } catch (e) { reject(e); }
+      };
+      imgEl.src = originalDataURL;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+let dbPromise = null;
+function openImageDB() {
+  if (dbPromise) return dbPromise;
+  dbPromise = new Promise((resolve, reject) => {
+    if (!window.indexedDB) { reject(new Error('无 IndexedDB')); return; }
+    const req = indexedDB.open(IMG_DB_NAME, IMG_DB_VERSION);
+    req.onupgradeneeded = () => {
+      const db = req.result;
+      if (!db.objectStoreNames.contains(IMG_DB_STORE)) {
+        db.createObjectStore(IMG_DB_STORE, { keyPath: 'name' });
+      }
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  return dbPromise;
+}
+async function loadImagesFromDB() {
+  try {
+    const db = await openImageDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(IMG_DB_STORE, 'readonly');
+      const req = tx.objectStore(IMG_DB_STORE).getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
+  } catch (_) { return []; }
+}
+async function saveImagesToDB() {
+  try {
+    const db = await openImageDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction(IMG_DB_STORE, 'readwrite');
+      const store = tx.objectStore(IMG_DB_STORE);
+      store.clear();
+      uploadedImages.forEach(img => {
+        store.put({
+          name: img.name,
+          dataURL: img.dataURL,
+          selected: img.selected,
+          type: img.type
+        });
+      });
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => resolve();
+    });
+  } catch (_) {}
+}
+
+function renderImageList() {
+  if (uploadedImages.length === 0) {
+    imgList.hidden = true;
+    imgList.innerHTML = '';
+    return;
+  }
+  imgList.hidden = false;
+  imgList.innerHTML = '';
+
+  const selectedCount = uploadedImages.filter(i => i.selected).length;
+  const header = document.createElement('div');
+  header.className = 'img-list__header';
+  header.textContent = '图片（' + selectedCount + '/' + uploadedImages.length + ' 已选）';
+  imgList.appendChild(header);
+
+  uploadedImages.forEach(img => {
+    const item = document.createElement('div');
+    item.className = 'img-item' + (img.selected ? ' is-selected' : '');
+
+    const check = document.createElement('span');
+    check.className = 'img-item__check';
+    check.textContent = img.selected ? '✓' : '□';
+    item.appendChild(check);
+
+    const name = document.createElement('span');
+    name.className = 'img-item__name';
+    name.textContent = img.name;
+    name.title = img.name;
+    item.appendChild(name);
+
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'img-item__del';
+    del.textContent = '×';
+    del.title = '删除';
+    del.addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteImage(img.name);
+    });
+    item.appendChild(del);
+
+    item.addEventListener('click', (e) => {
+      if (e.target === del || del.contains(e.target)) return;
+      toggleImage(img.name);
+    });
+
+    imgList.appendChild(item);
+  });
+}
+
+function toggleImage(name) {
+  const img = uploadedImages.find(i => i.name === name);
+  if (!img) return;
+  img.selected = !img.selected;
+  renderImageList();
+  saveImagesToDB();
+  schedulePreview();
+}
+
+function deleteImage(name) {
+  if (!confirm('删除图片「' + name + '」？')) return;
+  const idx = uploadedImages.findIndex(i => i.name === name);
+  if (idx < 0) return;
+  uploadedImages.splice(idx, 1);
+  renderImageList();
+  saveImagesToDB();
+  schedulePreview();
+}
+
+btnUploadImage.addEventListener('click', () => {
+  imageInput.value = '';
+  imageInput.click();
+});
+
+imageInput.addEventListener('change', async (e) => {
+  const files = Array.from(e.target.files || []);
+  if (files.length === 0) return;
+
+  btnUploadImage.disabled = true;
+  btnUploadImage.classList.add('is-loading');
+  const originalText = btnUploadImage.textContent;
+
+  for (const file of files) {
+    btnUploadImage.textContent = '压缩中…';
+    try {
+      const result = await compressImage(file);
+      const existingNames = new Set(uploadedImages.map(i => i.name));
+      const safeName = sanitizeImageName(file.name, existingNames);
+      uploadedImages.push({
+        name: safeName,
+        dataURL: result.dataURL,
+        selected: true,
+        type: result.type
+      });
+    } catch (err) {
+      showToast('「' + file.name + '」上传失败：' + err.message);
+    }
+  }
+
+  btnUploadImage.textContent = originalText;
+  btnUploadImage.classList.remove('is-loading');
+  btnUploadImage.disabled = false;
+  imageInput.value = '';
+  renderImageList();
+  saveImagesToDB();
+  schedulePreview();
+});
+
+function getImageDataJSON() {
+  const keyParts = [];
+  uploadedImages.forEach(img => {
+    if (img.selected && img.dataURL) keyParts.push(img.name + '#' + img.dataURL.length);
+  });
+  const key = keyParts.join('|');
+  if (key === _imageJSONCache.key) return _imageJSONCache.json;
+
+  const obj = {};
+  uploadedImages.forEach(img => {
+    if (img.selected) obj[img.name] = img.dataURL;
+  });
+  const json = JSON.stringify(obj);
+  _imageJSONCache = { key, json };
+  return json;
+}
+
+/* ================= 运行时 HTML ================= */
+function buildRuntimeHTML(userCode) {
+  const safeCode = escapeUserCode(userCode);
+  const imageDataJSON = getImageDataJSON();
 
   return `<!DOCTYPE html>
 <html>
@@ -572,19 +780,125 @@ function buildRuntimeHTML(userCode, imagesMap) {
   html, body { margin:0; padding:0; width:100%; height:100%; overflow:hidden; background:transparent; touch-action:none; }
   canvas { display:block; touch-action:none; }
 </style>
-<script src="${P5_CDN}"><\/script>
+<script src="${P5_CDN}" onerror="try{parent.postMessage({type:'p5-error',message:'p5.js 加载失败，请检查网络'},'*')}catch(_){}"><\/script>
 </head>
 <body>
 <script>
-window.addEventListener('error', function(e) {
-  parent.postMessage({ type: 'sketch-error', message: e.message, line: e.lineno }, '*');
+window.addEventListener('error', function (e) {
+  try {
+    parent.postMessage({
+      type: 'code-error',
+      message: e.message || '未知错误',
+      lineno: e.lineno || 0,
+      colno: e.colno || 0
+    }, '*');
+  } catch (_) {}
+}, true);
+window.addEventListener('unhandledrejection', function (e) {
+  try {
+    var msg = (e.reason && e.reason.message) ? e.reason.message : String(e.reason);
+    parent.postMessage({ type: 'code-error', message: 'Promise: ' + msg }, '*');
+  } catch (_) {}
 });
 
-/* 自动注入全局 imageUrl 字典映射，代码中可直接通过 imageUrl['name.jpg'] 调用 */
-${imageUrlScript}
+(function () {
+  var _images = ${imageDataJSON};
 
-${userCode}
+  function makeFitObj(prefix) {
+    var obj = {};
+    Object.keys(_images).forEach(function (k) {
+      Object.defineProperty(obj, k, {
+        enumerable: true,
+        get: function () { return prefix + _images[k]; }
+      });
+    });
+    return obj;
+  }
 
+  window.imageUrl = makeFitObj('');
+  window.imageMax = makeFitObj('__p5fit_cover__');
+  window.imageMin = makeFitObj('__p5fit_contain__');
+  window.UPLOADED_IMAGES = window.imageUrl;
+
+  if (window.__p5fitHooked) return;
+  window.__p5fitHooked = true;
+
+  var PREFIX_RE = /^__p5fit_(cover|contain)__([\\s\\S]*)$/;
+
+  function wrapLoadImage(orig) {
+    var fn = function (src) {
+      var args = Array.prototype.slice.call(arguments);
+      if (typeof src === 'string') {
+        var m = src.match(PREFIX_RE);
+        if (m) {
+          args[0] = m[2];
+          var pImg = orig.apply(this, args);
+          if (pImg) { try { pImg._fitMode = m[1]; } catch (_) {} }
+          return pImg;
+        }
+      }
+      return orig.apply(this, args);
+    };
+    fn.__p5fitWrapped = true;
+    return fn;
+  }
+
+  function wrapImage(orig) {
+    var fn = function (img) {
+      var args = Array.prototype.slice.call(arguments);
+      if (img && img._fitMode && args.length === 1) {
+        var cw = (typeof this.width === 'number' && this.width > 0) ? this.width : (window.width || 0);
+        var ch = (typeof this.height === 'number' && this.height > 0) ? this.height : (window.height || 0);
+        var iw = img.width || 0;
+        var ih = img.height || 0;
+        if (cw > 0 && ch > 0 && iw > 0 && ih > 0) {
+          var s, w, h;
+          if (img._fitMode === 'cover') {
+            s = Math.max(cw / iw, ch / ih);
+            w = iw * s; h = ih * s;
+            return orig.call(this, img, (cw - w) / 2, (ch - h) / 2, w, h);
+          }
+          if (img._fitMode === 'contain') {
+            s = Math.min(cw / iw, ch / ih);
+            w = iw * s; h = ih * s;
+            return orig.call(this, img, (cw - w) / 2, (ch - h) / 2, w, h);
+          }
+        }
+      }
+      return orig.apply(this, args);
+    };
+    fn.__p5fitWrapped = true;
+    return fn;
+  }
+
+  function installHooks() {
+    var proto = window.p5 && window.p5.prototype;
+    if (proto && typeof proto.loadImage === 'function' && !proto.loadImage.__p5fitWrapped) {
+      proto.loadImage = wrapLoadImage(proto.loadImage);
+      proto.image = wrapImage(proto.image);
+      return true;
+    }
+    if (typeof window.loadImage === 'function' && !window.loadImage.__p5fitWrapped) {
+      window.loadImage = wrapLoadImage(window.loadImage);
+      window.image = wrapImage(window.image);
+      return true;
+    }
+    return false;
+  }
+
+  if (!installHooks()) {
+    var tries = 0;
+    var timer = setInterval(function () {
+      tries++;
+      if (installHooks() || tries >= 100) clearInterval(timer);
+    }, 10);
+  }
+})();
+<\/script>
+<script>
+${safeCode}
+<\/script>
+<script>
 var _recorder = null;
 var _chunks = [];
 var _recordMime = '';
@@ -631,7 +945,11 @@ function _startRecording() {
     var isMP4 = _recordMime.indexOf('mp4') >= 0;
     var blob = new Blob(_chunks, { type: _recordMime });
     blob.arrayBuffer().then(function (buf) {
-      parent.postMessage({ type: 'record-done', buffer: buf, isMP4: isMP4 }, '*');
+      try {
+        parent.postMessage({ type: 'record-done', buffer: buf, isMP4: isMP4 }, '*', [buf]);
+      } catch (_) {
+        parent.postMessage({ type: 'record-done', buffer: buf, isMP4: isMP4 }, '*');
+      }
     });
     try { stream.getTracks().forEach(function (t) { t.stop(); }); } catch (_) {}
   };
@@ -674,7 +992,7 @@ document.addEventListener('dblclick', function (e) { e.preventDefault(); }, { pa
 
 function updatePreview() {
   const code = editor ? editor.getValue() : buildTemplate();
-  previewEl.srcdoc = buildRuntimeHTML(code, uploadedImagesMap);
+  previewEl.srcdoc = buildRuntimeHTML(code);
 }
 
 function schedulePreview() {
@@ -697,26 +1015,15 @@ function runCode() {
 }
 
 function applyStageTransform() {
-  previewStage.style.transform =
-    `translate(${stagePanX}px, ${stagePanY}px) scale(${stageScale})`;
+  previewStage.style.transform = `scale(${stageScale})`;
   zoomResetBtn.textContent = Math.round(stageScale * 100) + '%';
 }
 
-function zoomAt(factor, localX, localY) {
-  const rect = previewWrap.getBoundingClientRect();
+function zoomByButton(factor) {
   const newScale = clamp(stageScale * factor, 0.25, 8);
   if (newScale === stageScale) return;
-  const ratio = newScale / stageScale;
-  const relX = localX - rect.width / 2 - stagePanX;
-  const relY = localY - rect.height / 2 - stagePanY;
-  stagePanX = localX - rect.width / 2 - relX * ratio;
-  stagePanY = localY - rect.height / 2 - relY * ratio;
   stageScale = newScale;
   applyStageTransform();
-}
-function zoomByButton(factor) {
-  const rect = previewWrap.getBoundingClientRect();
-  zoomAt(factor, rect.width / 2, rect.height / 2);
 }
 
 function setPreviewBg(bg) {
@@ -728,63 +1035,52 @@ function setPreviewBg(bg) {
 
 function postToIframe(type) {
   try {
-    if (previewEl.contentWindow) {
-      previewEl.contentWindow.postMessage({ type }, '*');
-    }
+    if (previewEl.contentWindow) previewEl.contentWindow.postMessage({ type }, '*');
   } catch (_) {}
 }
 
 function updateWrapLabel() {
-  if (wrapEnabled) {
-    btnWrapToggle.innerHTML = '自动换行 <span class="wrap-check">✓</span>';
-  } else {
-    btnWrapToggle.textContent = '自动换行';
-  }
+  if (wrapEnabled) btnWrapToggle.innerHTML = '自动换行 <span class="wrap-check">✓</span>';
+  else btnWrapToggle.textContent = '自动换行';
 }
-function setWrap(on, silent) {
+function setWrap(on) {
   wrapEnabled = !!on;
   if (editor) editor.setOption('lineWrapping', wrapEnabled);
   updateWrapLabel();
   try { localStorage.setItem(WRAP_KEY, wrapEnabled ? '1' : '0'); } catch (_) {}
-  if (!silent) showToast(wrapEnabled ? '已开启自动换行' : '已关闭自动换行');
 }
 
 function updateAutoPreviewLabel() {
-  if (autoPreviewEnabled) {
-    btnAutoPreviewToggle.innerHTML = '自动预览 <span class="wrap-check">✓</span>';
-  } else {
-    btnAutoPreviewToggle.textContent = '自动预览';
-  }
+  if (autoPreviewEnabled) btnAutoPreviewToggle.innerHTML = '自动预览 <span class="wrap-check">✓</span>';
+  else btnAutoPreviewToggle.textContent = '自动预览';
 }
-function setAutoPreview(on, silent) {
+function setAutoPreview(on) {
   autoPreviewEnabled = !!on;
   updateAutoPreviewLabel();
   try { localStorage.setItem(AUTO_PREVIEW_KEY, autoPreviewEnabled ? '1' : '0'); } catch (_) {}
-  if (!silent) showToast(autoPreviewEnabled ? '已开启自动预览' : '已关闭自动预览');
-  if (autoPreviewEnabled && !isRecording && editor) {
-    updatePreview();
-  }
+  if (autoPreviewEnabled && !isRecording && editor) updatePreview();
 }
 
 function formatCode() {
-  if (typeof js_beautify === 'undefined') {
-    showToast('格式化库未加载，请检查网络');
-    return;
-  }
+  if (typeof js_beautify === 'undefined') { showToast('格式化库未加载，请检查网络'); return; }
   try {
     const code = editor.getValue();
     const formatted = js_beautify(code, {
-      indent_size: 2,
-      indent_char: ' ',
-      preserve_newlines: true,
-      max_preserve_newlines: 2,
-      end_with_newline: true,
-      wrap_line_length: 0
+      indent_size: 2, indent_char: ' ', preserve_newlines: true,
+      max_preserve_newlines: 2, end_with_newline: true, wrap_line_length: 0
     });
-    if (formatted === code) { showToast('代码已是格式化状态'); return; }
-    editor.setValue(formatted);
+    if (formatted === code) return;
+    const lastLine = editor.lastLine();
+    const lastCh = editor.getLine(lastLine).length;
+    const cur = editor.getCursor();
+    editor.operation(() => {
+      editor.replaceRange(formatted, { line: 0, ch: 0 }, { line: lastLine, ch: lastCh });
+      const newLastLine = editor.lastLine();
+      const safeLine = Math.min(cur.line, newLastLine);
+      const safeCh = Math.min(cur.ch, editor.getLine(safeLine).length);
+      editor.setCursor({ line: safeLine, ch: safeCh });
+    });
     saveDraft();
-    showToast('已格式化');
   } catch (err) {
     showToast('格式化失败：' + (err && err.message || '未知错误'));
   }
@@ -794,13 +1090,36 @@ function clearCode() {
   if (isRecording) { showToast('录制中，无法清空'); return; }
   if (!editor) return;
   const lastLine = editor.lineCount() - 1;
-  if (lastLine === 0 && editor.getLine(0) === '') {
-    showToast('代码已是空的');
-    return;
-  }
+  if (lastLine === 0 && editor.getLine(0) === '') return;
   const lastCh = editor.getLine(lastLine).length;
   editor.replaceRange('', { line: 0, ch: 0 }, { line: lastLine, ch: lastCh });
-  showToast('已清空代码（可撤销）');
+}
+
+function dataURLToBlob(dataURL) {
+  const parts = dataURL.split(',');
+  const m = parts[0].match(/:(.*?);/);
+  const mime = m ? m[1] : 'image/png';
+  const bstr = atob(parts[1]);
+  const n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  for (let i = 0; i < n; i++) u8arr[i] = bstr.charCodeAt(i);
+  return new Blob([u8arr], { type: mime });
+}
+
+function isIOSDevice() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+
+function fallbackDownloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  a.rel = 'noopener'; a.style.display = 'none';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
 }
 
 function capturePNG() {
@@ -810,49 +1129,67 @@ function capturePNG() {
     if (doc) canvas = doc.querySelector('canvas');
   } catch (_) {}
   if (!canvas) { showToast('无法获取画布，请稍后重试'); return; }
+  const filename = timestampFilename('sketch', 'png');
+
   try {
-    const filename = timestampFilename('sketch', 'png');
-    const url = canvas.toDataURL('image/png');
-    const a = document.createElement('a');
-    a.href = url; a.download = filename;
-    document.body.appendChild(a); a.click(); a.remove();
-    showToast('已保存 ' + filename);
+    const dataURL = canvas.toDataURL('image/png');
+    if (!dataURL || dataURL === 'data:,' || dataURL.length < 100) {
+      showToast('画布过大，无法导出');
+      return;
+    }
+    const blob = dataURLToBlob(dataURL);
+
+    if (isIOSDevice()) {
+      try {
+        const file = new File([blob], filename, { type: 'image/png' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          navigator.share({ files: [file] })
+            .catch((err) => {
+              if (err && err.name === 'AbortError') return;
+              fallbackDownloadBlob(blob, filename);
+            });
+          return;
+        }
+      } catch (_) {}
+    }
+
+    fallbackDownloadBlob(blob, filename);
   } catch (err) {
     showToast('保存 PNG 失败：' + (err && err.message || '未知错误'));
   }
 }
 
 function legacyDownload(blob, filename) {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.rel = 'noopener';
-  a.style.display = 'none';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  fallbackDownloadBlob(blob, filename);
+}
+
+function guessMime(filename, fallback) {
+  const ext = String(filename).split('.').pop().toLowerCase();
+  const map = {
+    html: 'text/html', htm: 'text/html',
+    mp4: 'video/mp4', webm: 'video/webm',
+    png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg'
+  };
+  return map[ext] || fallback || 'application/octet-stream';
 }
 
 function shareOrDownload(blob, filename, onDone) {
+  const mime = blob.type && blob.type.indexOf('application/octet-stream') === -1
+    ? blob.type : guessMime(filename, blob.type);
   let file = null;
-  try {
-    file = new File([blob], filename, { type: 'application/octet-stream' });
-  } catch (_) {}
+  try { file = new File([blob], filename, { type: mime }); } catch (_) {}
 
-  const canShareFiles = !!(file && navigator.share && navigator.canShare &&
+  const isCoarse = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+  const canShareFiles = !!(isCoarse && file && navigator.share && navigator.canShare &&
                           navigator.canShare({ files: [file] }));
 
   if (canShareFiles) {
     navigator.share({ files: [file] })
       .then(() => { onDone && onDone('shared'); })
       .catch(err => {
-        if (err && err.name === 'AbortError') {
-          onDone && onDone('cancelled');
-          return;
-        }
-        onDone && onDone('failed', err);
+        if (err && err.name === 'AbortError') { onDone && onDone('cancelled'); return; }
+        try { legacyDownload(blob, filename); onDone && onDone('downloaded'); }
+        catch (_) { onDone && onDone('failed', err); }
       });
     return;
   }
@@ -863,18 +1200,16 @@ function shareOrDownload(blob, filename, onDone) {
 
 function saveHTML() {
   const code = editor.getValue();
-  const html = buildRuntimeHTML(code, uploadedImagesMap);
-  const blob = new Blob([html], { type: 'application/octet-stream' });
+  const html = buildRuntimeHTML(code);
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
   const filename = timestampFilename('sketch', 'html');
   shareOrDownload(blob, filename, (result, err) => {
-    if (result === 'shared' || result === 'downloaded') {
-      showToast('已保存 ' + filename);
-    } else if (result === 'cancelled') {
-      showToast('已取消');
-    } else {
-      showToast('保存失败，请重试' + (err && err.message ? '：' + err.message : ''));
-    }
+    if (result === 'failed') showToast('保存失败，请重试' + (err && err.message ? '：' + err.message : ''));
   });
+}
+
+function setEditorReadOnly(on) {
+  if (editor) editor.setOption('readOnly', on ? 'nocursor' : false);
 }
 
 function updateRecordButton() {
@@ -893,43 +1228,38 @@ function updateRecordButton() {
 }
 
 function handleRecordClick() {
-  if (isRecording) {
-    postToIframe('record-stop');
-    showToast('正在停止录制…');
-    return;
-  }
-
+  if (isRecording) { postToIframe('record-stop'); return; }
   if (pendingRecord) {
     const { blob, filename } = pendingRecord;
     shareOrDownload(blob, filename, (result, err) => {
       if (result === 'shared' || result === 'downloaded') {
         pendingRecord = null;
         updateRecordButton();
-        showToast('已保存 ' + filename);
-      } else if (result === 'cancelled') {
-        showToast('已取消，可重新点击下载');
-      } else {
+      } else if (result === 'failed') {
         showToast('保存失败，请重试' + (err && err.message ? '：' + err.message : ''));
       }
     });
     return;
   }
-
   postToIframe('record-start');
 }
 
 function closeAllMenus() {
   menuRight.hidden = true;
+  menuLeft.hidden = true;
   previewMenu.hidden = true;
-  if (typeof leftMenu !== 'undefined') leftMenu.hidden = true;
   btnMenuRight.setAttribute('aria-expanded', 'false');
+  btnMenuLeft.setAttribute('aria-expanded', 'false');
   btnPreviewMenu.setAttribute('aria-expanded', 'false');
-  if (typeof btnLeftMenu !== 'undefined') btnLeftMenu.setAttribute('aria-expanded', 'false');
 }
 
 function openMenu(menu, btn) {
   closeAllMenus();
   menu.hidden = false;
+  menu.style.top = 'calc(100% + 6px)';
+  menu.style.bottom = 'auto';
+  menu.style.maxHeight = '';
+  menu.style.overflowY = '';
   btn.setAttribute('aria-expanded', 'true');
   const btnRect = btn.getBoundingClientRect();
   const menuH = menu.offsetHeight;
@@ -937,9 +1267,11 @@ function openMenu(menu, btn) {
   if (spaceBelow < menuH + 12) {
     menu.style.top = 'auto';
     menu.style.bottom = 'calc(100% + 6px)';
-  } else {
-    menu.style.top = 'calc(100% + 6px)';
-    menu.style.bottom = 'auto';
+    const spaceAbove = btnRect.top;
+    if (spaceAbove < menuH + 12) {
+      menu.style.maxHeight = Math.max(spaceAbove - 12, 120) + 'px';
+      menu.style.overflowY = 'auto';
+    }
   }
 }
 
@@ -947,124 +1279,63 @@ btnMenuRight.addEventListener('click', e => {
   e.stopPropagation();
   if (menuRight.hidden) openMenu(menuRight, btnMenuRight); else closeAllMenus();
 });
+btnMenuLeft.addEventListener('click', e => {
+  e.stopPropagation();
+  if (menuLeft.hidden) openMenu(menuLeft, btnMenuLeft); else closeAllMenus();
+});
 btnPreviewMenu.addEventListener('click', e => {
   e.stopPropagation();
   if (previewMenu.hidden) openMenu(previewMenu, btnPreviewMenu); else closeAllMenus();
 });
-btnLeftMenu.addEventListener('click', e => {
-  e.stopPropagation();
-  if (leftMenu.hidden) openMenu(leftMenu, btnLeftMenu); else closeAllMenus();
-});
 
 document.addEventListener('pointerdown', e => {
-  if (e.target.closest('.menu, #btnMenuRight, #btnPreviewMenu, #btnLeftMenu')) return;
-  const anyOpen = !menuRight.hidden || !previewMenu.hidden || !leftMenu.hidden;
+  if (e.target.closest('.menu, #btnMenuRight, #btnPreviewMenu, #btnMenuLeft')) return;
+  const anyOpen = !menuRight.hidden || !previewMenu.hidden || !menuLeft.hidden;
   closeAllMenus();
   if (anyOpen) blurActiveElement();
 });
 
-window.addEventListener('keydown', e => {
-  if (e.key === 'Escape') {
-    closeAllMenus();
-    blurActiveElement();
+function applySplit() {
+  const EPS = 0.0001;
+  const dragging = splitDragging;
+  const previewHidden = !dragging && splitRatio <= EPS;
+  const editorHidden = !dragging && splitRatio >= 1 - EPS;
+
+  if (previewHidden) {
+    previewWrap.style.flex = '0 0 0px';
+    previewWrap.style.minHeight = '0';
+    editorWrap.style.flex = '1 1 0';
+    editorWrap.style.minHeight = '100px';
+    editorWrap.style.overflow = '';
+  } else if (editorHidden) {
+    previewWrap.style.flex = '1 1 0';
+    previewWrap.style.minHeight = '80px';
+    editorWrap.style.flex = '0 0 0px';
+    editorWrap.style.minHeight = '0';
+    editorWrap.style.overflow = 'hidden';
+  } else {
+    const minP = dragging ? 0 : 80;
+    const minE = dragging ? 0 : 100;
+    previewWrap.style.flex = (splitRatio * 100) + ' 1 0';
+    previewWrap.style.minHeight = minP + 'px';
+    editorWrap.style.flex = ((1 - splitRatio) * 100) + ' 1 0';
+    editorWrap.style.minHeight = minE + 'px';
+    editorWrap.style.overflow = '';
   }
-});
 
-function renderUploadedImagesList() {
-  uploadedImagesContainer.innerHTML = '';
-  const keys = Object.keys(uploadedImagesMap);
-  
-  if (keys.length === 0) {
-    imgListSep.style.display = 'none';
-    return;
+  const visible = !editorHidden;
+  if (editor && visible !== lastEditorVisible) {
+    lastEditorVisible = visible;
+    if (visible) requestAnimationFrame(() => { try { editor.refresh(); } catch (_) {} });
   }
-  imgListSep.style.display = 'block';
 
-  keys.forEach(filename => {
-    const isSelected = (selectedImageKey === filename);
-    const itemEl = document.createElement('div');
-    itemEl.className = 'img-menu-item' + (isSelected ? ' is-selected' : '');
-    
-    itemEl.innerHTML = `
-      <div class="img-info" title="${filename}">
-        ${isSelected ? '<span class="img-check">✓</span>' : ''}
-        <span class="img-name">${filename}</span>
-      </div>
-      <button class="img-del-icon" type="button" title="删除">
-        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="3 6 5 6 21 6"></polyline>
-          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-          <line x1="10" y1="11" x2="10" y2="17"></line>
-          <line x1="14" y1="11" x2="14" y2="17"></line>
-        </svg>
-      </button>
-    `;
-
-    itemEl.querySelector('.img-info').addEventListener('click', () => {
-      selectedImageKey = filename;
-      renderUploadedImagesList();
-      showToast(`已选中图片：${filename}`);
-    });
-
-    itemEl.querySelector('.img-del-icon').addEventListener('click', (ev) => {
-      ev.stopPropagation();
-      const urlToRevoke = uploadedImagesMap[filename];
-      if (urlToRevoke) {
-        URL.revokeObjectURL(urlToRevoke);
-      }
-      delete uploadedImagesMap[filename];
-      if (selectedImageKey === filename) {
-        const remaining = Object.keys(uploadedImagesMap);
-        selectedImageKey = remaining.length > 0 ? remaining[0] : null;
-      }
-      renderUploadedImagesList();
-      updatePreview();
-      showToast(`已删除图片：${filename}`);
-    });
-
-    uploadedImagesContainer.appendChild(itemEl);
-  });
+  if (!dragging) {
+    try { localStorage.setItem(SPLIT_KEY, String(splitRatio)); } catch (_) {}
+  }
 }
 
-btnUploadImage.addEventListener('click', () => {
-  closeAllMenus();
-  if (isRecording) { showToast('录制中, 无法上传'); return; }
-  fileInput.click();
-});
-
-fileInput.addEventListener('change', e => {
-  const files = e.target.files;
-  if (!files || files.length === 0) return;
-
-  Array.from(files).forEach(file => {
-    const safeName = file.name.replace(/['"\\]/g, '');
-    const blobUrl = URL.createObjectURL(file);
-    
-    uploadedImagesMap[safeName] = blobUrl;
-    if (!selectedImageKey) {
-      selectedImageKey = safeName;
-    }
-    renderUploadedImagesList();
-    updatePreview();
-    showToast(`成功上传：${safeName}`);
-  });
-  fileInput.value = '';
-});
-
-function applySplit() {
-  if (splitState === 'code-max') {
-    previewWrap.style.flex = '0 0 0px';
-    editorWrap.style.flex = '1 1 0';
-    previewWrap.style.minHeight = '0px';
-  } else if (splitState === 'preview-max') {
-    previewWrap.style.flex = '1 1 0';
-    editorWrap.style.flex = '0 0 0px';
-    previewWrap.style.minHeight = '0px';
-  } else {
-    previewWrap.style.flex = (splitRatio * 100) + ' 1 0';
-    editorWrap.style.flex = ((1 - splitRatio) * 100) + ' 1 0';
-    previewWrap.style.minHeight = '80px';
-  }
+function refreshEditorSoon() {
+  if (editor) requestAnimationFrame(() => { try { editor.refresh(); } catch (_) {} });
 }
 
 let splitDragging = false, splitMoved = false;
@@ -1078,9 +1349,9 @@ function onSplitDown(e) {
   const now = Date.now();
   if (now - lastDownTime < DBLCLICK_MS && Math.abs(e.clientY - lastDownY) < DBLCLICK_DIST) {
     lastDownTime = 0; lastDownY = 0; splitDragging = false;
-    splitState = 'default'; splitRatio = 0.8;
+    splitRatio = 0.8;
     applySplit();
-    showToast('已恢复默认布局');
+    refreshEditorSoon();
     return;
   }
   lastDownTime = now; lastDownY = e.clientY;
@@ -1091,43 +1362,32 @@ function onSplitDown(e) {
   document.body.style.cursor = 'ns-resize';
   document.body.style.userSelect = 'none';
 }
+
 function onSplitMove(e) {
   if (!splitDragging) return;
   const dy = e.clientY - splitStartY;
   if (!splitMoved && Math.abs(dy) < 3) return;
   splitMoved = true;
-  
   const appRect = appEl.getBoundingClientRect();
   const splitterH = splitterEl.getBoundingClientRect().height;
-  const availableH = appRect.height - splitterH;
-  const currentPreviewH = splitStartH + dy;
-  const ratio = clamp(currentPreviewH / availableH, 0, 1);
-  splitRatio = ratio; 
-  splitState = 'default';
-  
-  splitterGrip.classList.toggle('is-snap-code', ratio <= 0.08);
-  splitterGrip.classList.toggle('is-snap-preview', ratio >= 0.92);
+  const totalH = appRect.height - splitterH;
+  splitRatio = clamp((splitStartH + dy) / totalH, 0, 1);
   applySplit();
 }
+
 function onSplitUp(e) {
   if (!splitDragging) return;
   splitDragging = false;
   try { splitterEl.releasePointerCapture(e.pointerId); } catch (_) {}
   document.body.style.cursor = '';
   document.body.style.userSelect = '';
-  splitterGrip.classList.remove('is-snap-code', 'is-snap-preview');
   if (splitMoved) {
     lastDownTime = 0; lastDownY = 0; splitMoved = false;
-    if (splitRatio <= 0.08) {
-      splitState = 'code-max';
-      applySplit();
-      showToast('代码区已最大化');
-    } else if (splitRatio >= 0.92) {
-      splitState = 'preview-max';
-      applySplit();
-      showToast('预览区已最大化');
-    }
+    if (splitRatio <= 0.10) { splitRatio = 0; }
+    else if (splitRatio >= 0.90) { splitRatio = 1; }
   }
+  applySplit();
+  if (splitMoved) refreshEditorSoon();
 }
 splitterEl.addEventListener('pointerdown', onSplitDown);
 splitterEl.addEventListener('pointermove', onSplitMove);
@@ -1141,23 +1401,23 @@ document.addEventListener('touchmove', e => {
   if (e.touches.length > 1) e.preventDefault();
 }, { passive: false });
 
-function installDoubleTapGuard(el) {
+function installDoubleTapGuard(el, opts) {
+  opts = opts || {};
   el.addEventListener('mousedown', e => {
-    if (e.detail >= 2 && !e.target.closest('.tool-btn, .menu, .menu__item')) {
-      e.preventDefault();
-    }
+    if (e.detail >= 2 && !e.target.closest('.tool-btn, .menu, .menu__item')) e.preventDefault();
   });
   el.addEventListener('dblclick', e => { e.preventDefault(); });
-  let lastEnd = 0;
-  el.addEventListener('touchend', e => {
-    if (e.target.closest('.tool-btn, .menu, .menu__item, .view-controls, .preview-menu-wrap, .zoom-btn, .zoom-label, .bg-btn')) return;
-    const now = Date.now();
-    if (now - lastEnd < 300) e.preventDefault();
-    lastEnd = now;
-  }, { passive: false });
+  if (opts.touch) {
+    let lastEnd = 0;
+    el.addEventListener('touchend', e => {
+      if (e.target.closest('.tool-btn, .menu, .menu__item, .view-controls, .preview-menu-wrap, .zoom-btn, .zoom-label, .bg-btn')) return;
+      const now = Date.now();
+      if (now - lastEnd < 300) e.preventDefault();
+      lastEnd = now;
+    }, { passive: false });
+  }
 }
-installDoubleTapGuard(splitterEl);
-installDoubleTapGuard(previewWrap);
+installDoubleTapGuard(splitterEl, { touch: true });
 
 function saveDraft() {
   try { localStorage.setItem(DRAFT_KEY, JSON.stringify({ code: editor ? editor.getValue() : '' })); }
@@ -1181,7 +1441,6 @@ btnReset.addEventListener('click', () => {
   editor.setValue(buildTemplate());
   updatePreview();
   saveDraft();
-  showToast('已重置');
 });
 btnFormat.addEventListener('click', () => { closeAllMenus(); formatCode(); });
 btnWrapToggle.addEventListener('click', () => { setWrap(!wrapEnabled); closeAllMenus(); });
@@ -1197,67 +1456,89 @@ bgBtns.forEach(btn => {
 
 zoomInBtn.addEventListener('click', () => zoomByButton(1.25));
 zoomOutBtn.addEventListener('click', () => zoomByButton(1 / 1.25));
-zoomResetBtn.addEventListener('click', () => {
-  stageScale = 1; stagePanX = 0; stagePanY = 0;
-  applyStageTransform();
-});
+zoomResetBtn.addEventListener('click', () => { stageScale = 1; applyStageTransform(); });
 
 btnRun.addEventListener('click', runCode);
+
+document.addEventListener('keydown', (e) => {
+  const mod = e.ctrlKey || e.metaKey;
+  if (mod && !e.shiftKey && (e.key === 's' || e.key === 'S')) {
+    e.preventDefault();
+    saveHTML();
+  } else if (mod && (e.key === 'Enter')) {
+    e.preventDefault();
+    runCode();
+  } else if (mod && e.shiftKey && (e.key === 'f' || e.key === 'F')) {
+    e.preventDefault();
+    formatCode();
+  } else if (e.key === 'Escape') {
+    closeAllMenus();
+  }
+});
 
 window.addEventListener('message', e => {
   const d = e.data;
   if (!d) return;
-  if (d.type === 'sketch-error') {
-    showToast('运行错误: ' + d.message + (d.line ? ' (行 ' + d.line + ')' : ''));
+  if (e.source !== previewEl.contentWindow) return;
+
+  if (d.type === 'outside-click') { closeAllMenus(); blurActiveElement(); return; }
+  if (d.type === 'p5-error') { showToast(d.message || 'p5.js 加载失败'); return; }
+  if (d.type === 'code-error') {
+    const loc = d.lineno ? '（第 ' + d.lineno + ' 行）' : '';
+    showToast('代码错误：' + (d.message || '未知') + loc);
     return;
   }
-  if (d.type === 'outside-click') {
-    closeAllMenus();
-    blurActiveElement();
-    return;
-  }
+
   if (d.type === 'record-started') {
     isRecording = true;
+    setEditorReadOnly(true);
     updateRecordButton();
     showToast('开始录制…');
   } else if (d.type === 'record-done') {
     isRecording = false;
+    setEditorReadOnly(false);
     const isMP4 = !!d.isMP4;
     const blob = new Blob([d.buffer], { type: isMP4 ? 'video/mp4' : 'video/webm' });
     const filename = timestampFilename('sketch', isMP4 ? 'mp4' : 'webm');
-
     shareOrDownload(blob, filename, (result) => {
       if (result === 'shared' || result === 'downloaded') {
-        pendingRecord = null;
-        updateRecordButton();
-        showToast('已保存 ' + filename);
+        pendingRecord = null; updateRecordButton();
       } else {
-        pendingRecord = { blob, isMP4, filename };
-        updateRecordButton();
-        if (result === 'cancelled') {
-          showToast('已取消，点击「下载」可保存');
-        } else {
-          showToast('请点击「' + (isMP4 ? '下载 MP4' : '下载 WebM') + '」保存');
-        }
+        pendingRecord = { blob, isMP4, filename }; updateRecordButton();
+        if (result === 'failed') showToast('请点击「' + (isMP4 ? '下载 MP4' : '下载 WebM') + '」保存');
       }
     });
-    updatePreview();
   } else if (d.type === 'record-error') {
     isRecording = false;
+    setEditorReadOnly(false);
     updateRecordButton();
     showToast('录制失败：' + (d.message || '未知错误'));
   }
 });
 
-if (window.visualViewport) {
-  window.visualViewport.addEventListener('scroll', () => {
-    if (window.visualViewport.offsetTop === 0 && Math.abs(window.scrollY) > 1) {
-      window.scrollTo(0, 0);
-    }
-  });
-}
-
 window.addEventListener('resize', () => { closeAllMenus(); });
+
+async function initImages() {
+  const saved = await loadImagesFromDB();
+  if (saved && saved.length) {
+    uploadedImages = saved.map(img => {
+      const dataURL = img.dataURL || (img.versions && img.versions.url) || '';
+      return {
+        name: img.name,
+        dataURL: dataURL,
+        selected: !!img.selected,
+        type: img.type
+      };
+    }).filter(img => img.name && img.dataURL);
+
+    imgSeq = uploadedImages.reduce((max, img) => {
+      const m = img.name.match(/^img_(\d+)/);
+      return m ? Math.max(max, parseInt(m[1], 10)) : max;
+    }, 0);
+    renderImageList();
+    updatePreview();
+  }
+}
 
 function init() {
   editor = CodeMirror.fromTextArea($('code'), {
@@ -1279,9 +1560,7 @@ function init() {
     if (e.touches.length > 1) e.preventDefault();
   }, { passive: false });
 
-  try {
-    if (localStorage.getItem(WRAP_KEY) === '1') wrapEnabled = true;
-  } catch (_) {}
+  try { if (localStorage.getItem(WRAP_KEY) === '1') wrapEnabled = true; } catch (_) {}
   editor.setOption('lineWrapping', wrapEnabled);
   updateWrapLabel();
 
@@ -1316,8 +1595,9 @@ function init() {
   setPreviewBg(previewBg);
   updateRecordButton();
   updatePreview();
-
   blurEditor();
+
+  initImages();
 }
 
 init();
