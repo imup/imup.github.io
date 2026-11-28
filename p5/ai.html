@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=resizes-content" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover, interactive-widget=overlays-content" />
 <title>p5.js编辑器</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/lib/codemirror.min.css" />
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/codemirror@5.65.16/theme/material-darker.min.css" />
@@ -16,6 +16,7 @@
   --splitter-bg: #f1f5f9; --grip: #cbd5e1; --grip-hover: #94a3b8;
   --shadow-sm: 0 2px 8px rgba(15,23,42,.08);
   --ed-bg: #0f172a;
+  --kb-height: 0px;
 }
 *,*::before,*::after { box-sizing: border-box; }
 
@@ -27,6 +28,8 @@ body {
   font-size: 13px; overflow: hidden;
   -webkit-font-smoothing: antialiased;
   touch-action: pan-x pan-y;
+  position: fixed; width: 100%;
+  inset: 0;
 }
 
 .app { display: flex; flex-direction: column; width: 100%; height: 100vh; height: 100dvh; position: relative; }
@@ -264,7 +267,6 @@ body {
 .tool-btn:hover { color: var(--text); background: var(--active); }
 .tool-btn:active:not(:disabled) { transform: scale(.94); }
 
-/* AI 图标 */
 .tool-btn.ai-btn {
   color: var(--accent);
   padding: 0 6px;
@@ -339,6 +341,7 @@ body {
   padding: 14px 12px;
   font-size: 13px; line-height: 1.65;
   -webkit-overflow-scrolling: touch;
+  min-height: 0;
 }
 .ai-empty {
   text-align: center; color: #64748b;
@@ -397,12 +400,13 @@ body {
 }
 .ai-result__btn--primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
 
-/* 药丸输入行 */
+/* 药丸输入行：键盘弹起时通过 --kb-height 垫高，不推页面 */
 .ai-input-row {
   flex: 0 0 auto;
-  padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px) + var(--kb-height, 0px));
   background: var(--ed-bg);
   border-top: 1px solid rgba(148,163,184,.18);
+  transition: padding-bottom .12s ease-out;
 }
 .ai-input-pill {
   display: flex;
@@ -454,7 +458,6 @@ body {
 .ai-send:hover:not(:disabled) { background: var(--accent-hover); }
 .ai-send:disabled { opacity: .4; cursor: not-allowed; }
 
-/* 模型列表弹窗 */
 .ai-model-popup {
   position: absolute;
   bottom: calc(100% + 8px);
@@ -493,7 +496,6 @@ body {
 }
 .ai-model-edit:hover { background: rgba(148,163,184,.2); color: #e2e8f0; }
 
-/* 模型配置弹窗 */
 .ai-modal {
   position: fixed; inset: 0;
   z-index: 1000;
@@ -820,7 +822,6 @@ let uploadedImages = [];
 let imgSeq = 0;
 let _imageJSONCache = { key: '', json: '{}' };
 
-/* ===== AI 状态 ===== */
 const AI_PRESETS = {
   deepseek: { label: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-chat', vision: false },
   openai:   { label: 'ChatGPT',  baseUrl: 'https://api.openai.com/v1',     model: 'gpt-4o-mini',   vision: true },
@@ -888,6 +889,23 @@ function blurActiveElement() {
   blurEditor();
 }
 
+/* 键盘高度自适应：只垫高 AI 输入行，不推整页 */
+function updateKeyboardInset() {
+  if (!window.visualViewport) {
+    document.documentElement.style.setProperty('--kb-height', '0px');
+    return;
+  }
+  const vv = window.visualViewport;
+  const inset = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+  // 阈值 60px 避免把浏览器 UI 变化误判为键盘
+  const kb = (!aiPane.hidden && inset > 60) ? inset : 0;
+  document.documentElement.style.setProperty('--kb-height', kb + 'px');
+}
+if (window.visualViewport) {
+  window.visualViewport.addEventListener('resize', updateKeyboardInset);
+  window.visualViewport.addEventListener('scroll', updateKeyboardInset);
+}
+
 function timestampFilename(prefix, ext) {
   const d = new Date();
   const p = n => String(n).padStart(2, '0');
@@ -924,8 +942,7 @@ function escapeUserCode(code) {
   return String(code).replace(/<\/script/gi, '<\\/script');
 }
 
-/* ================= 图片上传 & 压缩 ================= */
-
+/* ================= 图片 ================= */
 function sanitizeImageName(originalName, existingNames) {
   const dotIdx = originalName.lastIndexOf('.');
   const rawExt = dotIdx >= 0 ? originalName.slice(dotIdx).toLowerCase() : '';
@@ -1719,20 +1736,35 @@ btnPreviewMenu.addEventListener('click', e => {
 });
 
 document.addEventListener('pointerdown', e => {
+  // 弹窗内 → 不处理
   if (e.target.closest('.ai-modal')) return;
 
-  // AI 面板打开时，点预览空白处 → 收键盘 + 返回代码编辑
-  if (!aiPane.hidden && e.target.closest('#previewWrap')) {
-    if (!e.target.closest('.preview-menu-wrap, .view-controls')) {
-      closeAIPanel();
-      return;
-    }
-  }
+  // 下拉按钮本身 → 由自身 handler 处理
+  if (e.target.closest('#btnAIModelPlus')) return;
+  // 下拉菜单内 → 不关
+  if (e.target.closest('#aiModelPopup')) return;
+  // 工具栏菜单按钮/菜单内 → 由 handler 处理
+  if (e.target.closest('.menu, #btnMenuRight, #btnPreviewMenu, #btnMenuLeft')) return;
 
-  if (e.target.closest('.menu, #btnMenuRight, #btnPreviewMenu, #btnMenuLeft, #btnAIModelPlus, #aiModelPopup, .ai-pane')) return;
+  // 先关所有菜单
   const anyOpen = !menuRight.hidden || !previewMenu.hidden || !menuLeft.hidden ||
                   (aiModelPopup && !aiModelPopup.hidden);
   closeAllMenus();
+
+  // 点预览区空白：收键盘（不返回代码编辑）
+  if (e.target.closest('#previewWrap') &&
+      !e.target.closest('.preview-menu-wrap, .view-controls')) {
+    blurActiveElement();
+    return;
+  }
+
+  // 点 AI 面板内空白：收键盘（不返回代码编辑）
+  if (!aiPane.hidden && e.target.closest('.ai-pane') &&
+      !e.target.closest('.ai-input-row, .ai-result')) {
+    blurActiveElement();
+    return;
+  }
+
   if (anyOpen) blurActiveElement();
 });
 
@@ -1926,6 +1958,7 @@ function openAIPanel() {
   if (cmWrapper) cmWrapper.style.display = 'none';
   btnAI.classList.add('is-active');
   updateSendState();
+  updateKeyboardInset();
   setTimeout(() => { try { aiInput.focus(); } catch (_) {} }, 80);
 }
 function closeAIPanel() {
@@ -1933,6 +1966,7 @@ function closeAIPanel() {
   if (cmWrapper) cmWrapper.style.display = '';
   btnAI.classList.remove('is-active');
   try { aiInput.blur(); } catch (_) {}
+  updateKeyboardInset();
   if (editor) requestAnimationFrame(() => { try { editor.refresh(); } catch (_) {} });
 }
 
@@ -2039,7 +2073,6 @@ aiModalDelete.addEventListener('click', () => {
   updateSendState();
 });
 
-/* ===== 消息渲染 ===== */
 function appendAIMsg(role, text) {
   const div = document.createElement('div');
   div.className = 'ai-msg ai-msg--' + role;
@@ -2109,7 +2142,6 @@ function clearAIEmptyHint() {
   if (empty) empty.remove();
 }
 
-/* ===== AI 发送 ===== */
 function safeParseJSON(s) {
   try { return JSON.parse(s); } catch (_) { return {}; }
 }
@@ -2162,7 +2194,6 @@ async function sendAIMessage() {
   try {
     const apiMessages = [{ role: 'system', content: AI_SYSTEM_PROMPT }].concat(aiHistory);
 
-    // 视觉输入：仅当配置勾选了 vision 时
     if (conf.vision) {
       const selected = uploadedImages.filter(i => i.selected);
       if (selected.length > 0) {
@@ -2323,10 +2354,9 @@ window.addEventListener('message', e => {
   if (e.source !== previewEl.contentWindow) return;
 
   if (d.type === 'outside-click') {
+    // iframe 内点击：收键盘 + 关下拉，但不关闭 AI 面板
     closeAllMenus();
     blurActiveElement();
-    // iframe 内点击 → AI 面板打开时返回代码编辑
-    if (!aiPane.hidden) closeAIPanel();
     return;
   }
   if (d.type === 'p5-error') { showToast(d.message || 'p5.js 加载失败'); return; }
